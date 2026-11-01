@@ -1,0 +1,164 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Orthologous loci: presence and absence of SINEs</h2>
+  <p class="lede">A SINE copy lands at one place in one genome, in one animal. If that copy spreads through the population and is inherited, every descendant species carries it at the same place, between the same two pieces of unique DNA. Species that branched off earlier have the same place without it. So "is the copy there or not?" at one place, asked in several genomes, is a character for phylogenetics, like a feather type or a tooth cusp, only much cleaner. This section shows how the place is found in two genomes, how the lab's tool SINE_orth_loc decides "present", "absent" or "cannot tell", and when the answer misleads.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>Locus</dt><dd>Here: one SINE copy together with its <dfn>flanks</dfn>, the unique DNA just to its left (5′) and right (3′). The flanks, not the SINE, tell you which place in the genome this is: SINE copies are similar to each other, flanks are not.</dd>
+    <dt>Orthologous loci</dt><dd>The same place in two genomes, inherited from their common ancestor. Found by matching the flanks (<a href="../03-annotation/#s07">lesson 3, section 07</a> used the same idea for genes).</dd>
+    <dt>Empty site</dt><dd>The orthologous place in a genome that has no SINE there: the left and right flanks join directly. Usually only one copy of the <span class="tip" title="Target site duplication: a short stretch of the target DNA copied on both sides of a new insertion (section 01). An empty site has it once.">TSD</span> sequence is present (<a href="#s01">section 01</a>).</dd>
+    <dt>Presence/absence character</dt><dd>For one orthologous locus, a table entry per species: 1 (SINE present), 0 (empty site) or "?" (no data). Many loci give a <dfn>matrix</dfn> that can be read like any other character matrix.</dd>
+    <dt>Outgroup</dt><dd>A species outside the group you study. It shows which state is the old one. For SINE insertions the old state is normally "absent".</dd>
+    <dt>Polymorphic insertion</dt><dd>A copy that is present in some individuals of a species and absent in others: it has not (yet) become fixed.</dd>
+    <dt>Incomplete lineage sorting (ILS)</dt><dd>A polymorphism that was still present when an ancestral species split, and was then fixed differently in the daughter species. The insertion pattern of that locus then disagrees with the species tree, although nothing went wrong with the data.</dd>
+    <dt>Homoplasy</dt><dd>The same state reached independently, not by common descent. For SINEs: two separate insertions at the same place (<dfn>parallel insertion</dfn>), or a copy removed so exactly that the empty site is restored (<dfn>precise deletion</dfn>).</dd>
+  </dl>
+
+  <h3>Why an insertion is such a good character</h3>
+  <p>Shedlock and Okada (2000, <i>BioEssays</i>) summarised the argument: SINE insertions are <b>irreversible</b> and <b>independent</b>, so a shared copy at the same place diagnoses common ancestry "with extreme confidence". Shedlock, Takahashi and Okada (2004, <i>Trends in Ecology and Evolution</i>) add that most SINE copies are neutral, are not precisely excised, and have a <b>known ancestral state</b> (no copy). Compare a DNA base: a C can become T and back to C, and the same change can happen in two lineages; you need a model of substitution to read it. A SINE copy at one place in a genome of a billion places is unlikely to arise twice, and is rarely removed cleanly.</p>
+  <p>A classic use: Nikaido, Rooney and Okada (1999, <i>PNAS</i>) showed with SINE and LINE insertions that whales sit inside the even-toed ungulates and that hippopotamuses are their closest living relatives. Lum et al. (2000, <i>Mol Biol Evol</i>) tested the "irreversible" assumption on seven loci in five <span class="tip" title="Cetartiodactyla: even-toed ungulates together with whales and dolphins.">cetartiodactyl</span> taxa and found the insertion topology consistent with the tree from the flanking DNA. Before whole genomes, each locus meant cloning, PCR and sequencing; Okada, Shedlock and Nikaido (2004) describe that laboratory workflow. Now thousands of loci can be read from assemblies, as Churakov et al. (2009, <i>Genome Research</i>) did with about 2 million candidate loci for the root of placental mammals.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: a sticker in a book</summary><div class="in">
+    <p>Imagine a book that is copied by hand, again and again, for centuries. One day a copyist glues a small sticker on page 112, between the words "river" and "bank". Every copy made from that copy has the sticker in the same place. Copies made from older versions do not.</p>
+    <p>Now you find three copies of the book. Two have the sticker between "river" and "bank"; one has "river bank" with nothing between. You know the two with stickers share a more recent ancestor. You did not need to compare every word of the books, only that one place. And you found the place by the words around it ("river" ... "bank"), not by the sticker: every sticker looks alike.</p>
+    <p>Two warnings, which the rest of the section makes precise. (1) Someone could peel a sticker off so neatly that no trace is left: precise deletion. (2) If the copyist's shop had both stickered and unstickered versions on the shelf when it split into two shops, each shop may have kept a different version by chance: incomplete lineage sorting.</p>
+  </div></details>
+
+  <section class="tool" aria-labelledby="s05-tree-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-tree-h">Put insertions on a tree, read the matrix</h3></div>
+    <p class="tool-note">Three toy species A, B, C (letters only; not the species A of our projects) and an outgroup O. The true tree is fixed: A and B are sisters. Pick a locus (L1-L5) and an action, then <b>click a branch</b> to place it. Each locus is one place in the genome. The table shows what a genome comparison would see (1 = SINE present, 0 = empty site) and which grouping each locus supports. The "what really happened" column is what the analyst does <b>not</b> see.</p>
+    <div class="slider-row"><span>Locus:</span><span class="seg" id="s05-loc"></span></div>
+    <div class="slider-row"><span>Action:</span><span class="seg" id="s05-act" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-a="ins" aria-pressed="true" title="A new SINE copy appears at this locus on this branch and becomes fixed: all descendants carry it.">insertion</button><button type="button" data-a="del" aria-pressed="false" title="The copy is removed so exactly that the empty site is restored, on this branch. Rare.">precise deletion</button><button type="button" data-a="ils" aria-pressed="false" title="The insertion was still polymorphic at a split; this lineage happened to keep the empty allele. Place it below the insertion's branch.">lost by lineage sorting</button><button type="button" data-a="erase" aria-pressed="false" title="Remove this locus's marks from the branch you click.">erase</button>
+    </span></div>
+    <div class="slider-row"><span>Scenario:</span><span class="seg" id="s05-pre" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-p="clean">clean</button><button type="button" data-p="ils">lineage sorting</button><button type="button" data-p="del">precise deletion</button><button type="button" data-p="par">parallel insertion</button><button type="button" data-p="old">old copy</button><button type="button" data-p="none">empty</button>
+    </span></div>
+    <div class="svgbox" id="s05-tree" style="cursor:pointer"></div>
+    <div class="legend" id="s05-tleg"></div>
+    <div class="tbl"><table id="s05-mat" style="min-width:600px"></table></div>
+    <div class="readout" id="s05-tout" aria-live="polite"></div>
+    <p id="s05-twhy" style="font-size:14px;max-width:none" aria-live="polite"></p>
+  </section>
+
+  <h3>When the pattern misleads</h3>
+  <p>Try the scenarios "lineage sorting", "precise deletion" and "parallel insertion" above: all three give the same row in the matrix (A and C present, B absent), which supports the wrong pair. The matrix alone cannot tell them apart.</p>
+  <ul>
+    <li><b>Incomplete lineage sorting</b> is the common one and is not an error of the method. Shedlock et al. (2004) stress that such "discordant" loci record ancestral polymorphism and should not be dismissed as noise. It is frequent when speciation events follow each other quickly: in neoavian birds, Suh, Smeds and Ellegren (2015, <i>PLoS Biology</i>) found ILS-derived conflicts at 35 % of 2,118 retrotransposon presence/absence markers on autosomes. For placental mammals, Churakov et al. (2009) found significant support for each of three competing root hypotheses (5, 9 and 8 insertions) and concluded the root is a "soft" <span class="tip" title="Polytomy: a node with more than two branches; 'soft' means the data cannot resolve the order, not that the splits were truly simultaneous.">polytomy</span>, explained by ILS and/or ancestral hybridisation.</li>
+    <li><b>Homoplasy is rare but possible.</b> Ray, Xing, Salem and Batzer (2006, <i>Systematic Biology</i>, "SINEs of a nearly perfect character") collected all primate <i>Alu</i> insertion studies and found "very low levels" of lineage sorting, parallel insertions and precise excision. "Very low" is measured on <i>Alu</i> in primates; other groups may differ.</li>
+    <li><b>How many loci are enough?</b> Kuritzin, Kischka, Schmitz and Churakov (2016, <i>PLoS Computational Biology</i>) give a statistical test (KKSC): if all three species were searched equally and there is no conflict, <b>three</b> elements present in two species and absent in the third give p &lt; 0.05 for that grouping; <b>five</b> are needed if loci were found in one species' genome only. Conflicting loci are evaluated by their symmetry: ILS spreads conflicts evenly over the alternative trees, hybridisation favours one.</li>
+    <li><b>Polarity needs an outgroup.</b> With two genomes, "present in species 1, absent in species 2" does not say whether the SINE was inserted on lineage 1 or (rarely) deleted on lineage 2. An outgroup genome that lacks it makes the insertion reading the simple one.</li>
+  </ul>
+  <p>Within a species, young <span class="tip" title="Present in some individuals, absent in others.">polymorphic</span> insertions are population markers: Shedlock et al. (2004) cite human <i>Alu</i> polymorphisms used for human genetic diversity and ancient demography. Kosushkin et al. (2023, <i>Genes</i>) describe a polymorphic insertion between species as a shared derived character.</p>
+
+  <h3>Finding the same place in two genomes: SINE_orth_loc</h3>
+  <p><a href="https://github.com/Toki-bio/SINE_orth_loc">SINE_orth_loc</a> is the lab's tool for this ("Search for the orthologous SINE-containing loci in two genome assemblies"). Version <code>v1.0-genes2023</code> is the workflow of Kosushkin, Korchagin, Vergun and Ryskov (2023, <i>Genes</i> 14:2089), shown on lacertid lizards; the description below is the current version (commit <code>f40fbf2</code>, 30 October 2026), which keeps the same classification rules. It does not search for SINEs itself: it starts from the copies you already have in each genome (<a href="#s02">section 02</a>, <a href="https://github.com/Toki-bio/sear2k">sear2k</a>, or a SINEderella run, <a href="#s08">section 08</a>).</p>
+
+  <figure>
+    <div class="svgbox" id="s05-flow"></div>
+    <figcaption><b>How a locus is matched.</b> The 300 bp left flank of a copy in genome 1 is mapped to genome 2. From the place where it lands, a <dfn>window</dfn> is cut that is long enough for the SINE plus a right flank. The two windows and the SINE consensus are aligned together (three rows). The consensus row has gaps over both flanks, so the alignment shows where the SINE is in each genome, or that one genome has only the empty site.</figcaption>
+  </figure>
+
+  <ol class="steps">
+    <li><div><b>Inputs</b><div class="d">Two genome FASTA files, the SINE consensus, and a <span class="tip" title="BED: a tab-separated text format, one region per line: sequence name, start, end (0-based), optional name, score and strand.">BED</span> file of the copies in each genome (named <code>sp1-SINE.bed</code>, <code>sp2-SINE.bed</code>). In <dfn>bank mode</dfn> the consensus file holds many consensuses (subfamilies, composite SINEs) and the copies come from a SINEderella run: only copies with the verdict <code>SINE</code> (assigned, unique flanks) and partial copies are used; every alignment gets its own copy's consensus as the reference row.</div></div></li>
+    <li><div><b>Isolated copies only</b><div class="d">Copies closer than <code>FLANK</code> (300 bp) to another copy are grouped (<code>bedtools cluster -d 300</code>) and kept out of the flank mapping: their flanks would contain SINE sequence, not unique DNA. This is the lab's rule that an interspersed copy is defined by <b>unique flanks</b>. (A later step, <code>sine_nest.py</code>, handles SINEs inserted into other SINEs and close pairs separately.)</div></div></li>
+    <li><div><b>Map the flanks</b><div class="d">The 300 bp left flank of every isolated copy is mapped to the other genome, in both directions, with <span class="tip" title="minimap2: Heng Li's fast aligner for reads and genomes. Here it places 300 bp pieces of one genome in the other, like short reads.">minimap2</span> (<code>-x sr -k 11 -w 3 -p 0.5 -N 50</code>; <code>MAPPER=bwa</code> uses <span class="tip" title="bwa mem: another standard short-read aligner (Heng Li)."><code>bwa mem</code></span>, with results within 0.2 %). By default (<code>BOTHFLANKS=1</code>) the right flank is mapped too, and a left-flank hit is kept only where the right flank lands on the same sequence and strand, at most SINE length + 100 bp downstream. Flanks that stay unplaced (in a repeat, for example) are cut again at 600 and 1,000 bp and remapped (<code>ADAPT</code>), stopping before any neighbouring copy.</div></div></li>
+    <li><div><b>Cut windows, group them</b><div class="d">Each hit is extended to the right by SINE length + 300 bp. Windows from both directions that overlap are joined into clusters. A cluster of 2 loci is a <dfn>double</dfn> (one place in each genome), 3-10 a <dfn>multi</dfn>, more a <dfn>poly</dfn> (not analysed). Multi clusters go through a two-flank rescue that allows one partner per site and reports ties as ambiguous.</div></div></li>
+    <li><div><b>Align and judge</b><div class="d">Each cluster's windows plus the consensus are aligned with <span class="tip" title="MAFFT: a multiple sequence aligner. --op 5 raises the gap-opening penalty (MAFFT default 1.53). Opening gaps becomes expensive, so one long gap (the missing SINE) is preferred to many small ones.">MAFFT <code>--op 5</code></span>. The script <code>ComPair.sh</code> measures the alignment with <span class="tip" title="esl-alipid (HMMER/Easel): prints, for every pair of rows of an alignment, the % identity and the number of identical residues. Identity = identical residues / length of the shorter of the two sequences (gaps not counted).">esl-alipid</span> and classifies it (rules in the toy below).</div></div></li>
+    <li><div><b>Write the results</b><div class="d">Alignment bundles per class, a table of every pair, and, for several genomes, a multi-species matrix (outputs further down).</div></div></li>
+  </ol>
+
+  <section class="tool" aria-labelledby="s05-cp-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-cp-h">Classify a toy locus the way ComPair.sh does</h3></div>
+    <p class="tool-note">A toy three-row alignment: genome 1, genome 2, and a 250 bp consensus. Set how much of the SINE each genome has at this place (<b>0 = empty site</b>), how similar each copy is to the consensus, and how similar the flanks of the two genomes are. The figure and the measurements follow; the verdict uses the default thresholds of <code>ComPair.sh</code> and its order of tests. Toy assumptions: the two copies are as similar to each other as the left flanks are (both diverged since the species split); a partial copy is the 3′ part of the SINE.</p>
+    <div class="slider-row"><span>Example:</span><span class="seg" id="s05-cpre" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-p="shared">shared copy</button><button type="button" data-p="pm">genome 1 only</button><button type="button" data-p="mp">genome 2 only</button><button type="button" data-p="trunc">truncated in genome 2</button><button type="button" data-p="short">short in both</button><button type="button" data-p="nolf">flanks not orthologous</button><button type="button" data-p="badrf">right flank broken</button>
+    </span></div>
+    <div class="controls">
+      <label for="s05-l1">genome 1: copy length (bp)<input type="range" id="s05-l1" min="0" max="250" step="10" value="250"><output id="s05-l1o"></output></label>
+      <label for="s05-s1">genome 1: identity to consensus<input type="range" id="s05-s1" min="50" max="100" step="1" value="80"><output id="s05-s1o"></output></label>
+      <label for="s05-l2">genome 2: copy length (bp)<input type="range" id="s05-l2" min="0" max="250" step="10" value="250"><output id="s05-l2o"></output></label>
+      <label for="s05-s2">genome 2: identity to consensus<input type="range" id="s05-s2" min="50" max="100" step="1" value="80"><output id="s05-s2o"></output></label>
+      <label for="s05-fl">left flanks: identity genome 1 vs 2<input type="range" id="s05-fl" min="20" max="100" step="1" value="90"><output id="s05-flo"></output></label>
+      <label for="s05-fr">right flanks: identity genome 1 vs 2<input type="range" id="s05-fr" min="20" max="100" step="1" value="90"><output id="s05-fro"></output></label>
+    </div>
+    <div class="svgbox" id="s05-aln"></div>
+    <div class="legend" id="s05-aleg"></div>
+    <div class="readout" id="s05-cout" aria-live="polite"></div>
+    <p id="s05-cnote" style="font-size:14px;max-width:none" aria-live="polite"></p>
+    <div class="tbl"><table id="s05-tests" style="min-width:560px"></table></div>
+    <details class="simple"><summary>The ComPair.sh rules, in order</summary><div class="in">
+      <ol>
+        <li>The consensus row must start and end with gaps (there must be a left and a right flank); otherwise <code>lfSINE</code> / <code>rfSINE</code>.</li>
+        <li><b>Left flank</b>: longer than 150 alignment columns, more than 65 identical bases and more than 65 % identity between the two genomes; otherwise <code>badLF</code> (the flanks are not shown to be orthologous).</li>
+        <li><b>SINE in both?</b> Identity between the two SINE regions above 65 %, and more than 100 identical bases between them, between copy 1 and the consensus, and between copy 2 and the consensus. If yes: the right flank must be longer than 150 columns and above 65 % identity: <code>SINE</code> (present in both); else <code>badRF</code>.</li>
+        <li><b>Otherwise the SINE may be in one genome only.</b> The overhang at the end of the longer window is cut off; the trimmed right flank must be longer than 150 columns, above 70 % identity and have more than 120 identical bases. Then <code>PM</code> if copy 1 has more bases identical to the consensus than copy 2, else <code>MP</code>. If the right flank fails: <code>badRF</code>.</li>
+      </ol>
+      <p>Note what "absent" means here: <b>not present enough to pass test 3</b>. A copy of 90 bp, or one too decayed to share 100 identical bases with the consensus, counts as absent. That is why bank mode can lower the 100-base threshold to a share of the consensus length (<code>CP_SINE_FRAC</code>, default 50 % in bank mode: 52 bases for a 105 bp consensus), and why a ComPair "PM" with a short copy on the other side deserves a look at the alignment.</p>
+      <p>Not in the toy: a right flank that fails only because of a second indel of 50 bp or more is re-tested with that gap masked (<code>CP_INDEL_MIN</code>); a window clipped by the end of a contig becomes <code>contig_end</code> (sequence missing, not absent); a too-short left flank is repaired first. Threshold names: <code>CP_FLANK_LEN=150 CP_FLANK_NID=65 CP_FLANK_PID=65 CP_SINE_PID=65 CP_SINE_NID=100 CP_CUT_PID=70 CP_CUT_NID=120</code> (the defaults).</p>
+    </div></details>
+  </section>
+
+  <p><b>Why 65 % for flanks?</b> Unrelated DNA is not 0 % identical. Lab notes give a measured background: 2,000 random pairs of 70 bp genomic windows were on average 25 % identical when compared position by position, and an aligner that may open gaps can raise unrelated sequences to about 50 %. A flank threshold must sit clearly above that. Flanks of real orthologues between close species are far more similar.</p>
+
+  <h3>Running it</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># needs mafft, esl-alipid (Easel), seqkit, bedtools, samtools, minimap2 (or bwa), sam2bed (BEDOPS), GNU awk
+# copies of the SINE in each genome: sp1_SINE.bed, sp2_SINE.bed (e.g. from sear2k)</span>
+SINE_orth_loc_flexible.sh -g1 sp1.fa -g2 sp2.fa -s SINE.fa -b1 sp1_SINE.bed -b2 sp2_SINE.bed \
+    -n1 sp1 -n2 sp2 -o results_sp1-sp2 -t 16 --scratch "$TMPDIR"
+<span class="c">#   SINE_orth_loc_flexible.sh --help lists all options; --no-rescue skips the multi-copy rescue
+
+# bank mode: copies and subfamilies from two SINEderella runs that used the same bank BANK.fa</span>
+sinederella_bed.py RUN_A -o aaa-BANK.bed
+sinederella_bed.py RUN_B -o bbb-BANK.bed
+SINE_orth_loc.bash aaa.bnk bbb.bnk BANK.fa
+<span class="c">#   settings are environment variables: FLANK=300 MAPPER=minimap2 BOTHFLANKS=1 ADAPT="600 1000"
+#   and the ComPair.sh thresholds CP_FLANK_LEN=150 ... CP_CUT_NID=120</span></pre></div>
+
+  <h3>What comes out</h3>
+  <dl class="defs">
+    <dt><code>aln_&lt;sp1&gt;-&lt;sp2&gt;_SINE / _PM / _MP / _rejected.aln.gz</code></dt><dd>Every three-row alignment, one bundle per class (a <code>##FILE &lt;name&gt;</code> line before each alignment). <b>PM</b>: SINE in species 1 (the first genome given), empty site in species 2. <b>MP</b>: the reverse. <b>SINE</b>: present in both. <b>rejected</b>: alignments that failed a test.</dd>
+    <dt><code>stat_doubles_*</code>, <code>stat_multi_*</code></dt><dd>One line per alignment: its class and every measurement (<code>LF FL LFcp RFlength FR RFcp OneTwo OneSINE TwoSINE SL SO ST</code>).</dd>
+    <dt><code>orth_&lt;sp1&gt;-&lt;sp2&gt;.tsv</code></dt><dd>One row per validated alignment: both loci, their species, whether each carries the SINE, and the measurements. In bank mode also <code>summary_*.tsv</code> per subfamily and bundles split by reference (<code>by_reference/</code>).</dd>
+    <dt><code>clusters_*.tsv</code>, <code>rescue_*.tsv</code></dt><dd>What happened to every multi-copy cluster and copy.</dd>
+  </dl>
+  <p class="note warn"><b>Cluster names are not IDs.</b> Alignments are named <code>C&lt;N&gt;R</code>, where N is a line number inside one run. Two runs of the same species pair give unrelated numbers: never join results of different runs by these names; use coordinates.</p>
+
+  <p><b>More than two genomes.</b> <code>sine_registry.py</code> joins the pairwise tables into <dfn>orthologous groups</dfn>, one per ancestral insertion, with the copy or the empty site in every genome. No genome is the reference. Each group gets one state per species:</p>
+  <div class="tbl"><table style="min-width:520px">
+    <thead><tr><th>State</th><th>Meaning (docs/pan-sineome.md)</th></tr></thead>
+    <tbody>
+      <tr><td><b>P</b></td><td>SINE present at the site</td></tr>
+      <tr><td><b>A</b></td><td>empty site: orthologous flanks, no SINE</td></tr>
+      <tr><td><b>U</b></td><td>no data: no validated evidence for this genome</td></tr>
+      <tr><td><b>X</b></td><td>ambiguous: contradicting calls, several sites of one genome in the group (<code>multicopy</code>), or a satellite unit</td></tr>
+      <tr><td><b>M</b></td><td>missing: the only evidence is a window cut by a contig end. The sequence is absent from the assembly; this is <b>not</b> an empty site.</td></tr>
+    </tbody>
+  </table></div>
+  <p>It writes the groups, a pattern count, and a <span class="tip" title="NEXUS: a standard text format for character matrices, read by phylogenetics programs such as PAUP* and MrBayes.">NEXUS</span> 0/1 matrix of the variable groups (at least one P and one A; U and X coded "?"), which phylogenetics programs read directly: the matrix of the tree toy above, from real genomes. Two further scripts in the repository are labelled in the README as tests or prototypes: <code>sine_genotype.py</code> genotypes the groups in any resequenced individual from reads crossing the junctions (0/0, 0/1, 1/1), and <code>sine_nest.py</code> handles SINEs inserted into older SINEs and orders subfamilies in time from who inserted into whom (a reconstruction of the <span class="tip" title="TinT (transposition in transposition): a method that dates repeat families relative to each other from which families insert into which.">TinT</span> model, not the original code).</p>
+  <p class="note"><b>How reliable are the calls?</b> The README reports one check against read genotypes of a sequenced individual (one lizard genome against six others, unpublished): 0.22 % of SINE, 0.77 % of PM and 0.45 % of MP calls were contradicted by the reads, about the error rate of the genotyper itself (0.37 %).</p>
+
+  <h3>Looking at the alignments</h3>
+  <ul>
+    <li><b><code>sine_loci_browser.html</code></b> (in the SINE_orth_loc repository) opens the bundles. Its <b>Thresholds</b> panel re-classifies the loaded alignments with a JavaScript port of the ComPair.sh rules under thresholds you choose, marks what changed (for example <code>PM→badRF</code>), and gives the setting for the next run.</li>
+    <li><a href="https://toki-bio.github.io/SINE-loci-viewer/">SINE-loci-viewer</a> (<a href="https://github.com/Toki-bio/SINE-loci-viewer">repository</a>) loads two genome FASTAs and either the alignment files or a table of coordinate pairs, and lets you widen the left or right flank and realign in the browser with MAFFT <code>--op 5</code>, as in the pipeline. Useful when a locus is close to a threshold.</li>
+    <li><a href="https://github.com/Toki-bio/SINEtribes">SINEtribes</a> works inside <b>one</b> genome, not between genomes: it clusters copies at 99 % identity (<span class="tip" title="vsearch: a fast program for clustering and searching DNA sequences by identity.">vsearch</span>, groups of at least 5), aligns each group with MAFFT and writes a consensus (35 % plurality) and a BED track per group ("tribe"). Groups of nearly identical copies are where one would look for young, possibly polymorphic insertions; that is our reading, not something the tool tests.</li>
+  </ul>
+
+  <p class="note warn"><b>Checklist before reading a presence/absence result.</b> (1) "Absent" in ComPair means "no copy that passes the SINE test": open the alignment for short or decayed copies. (2) Contig ends and assembly gaps give missing data, not absence (<a href="#s07">section 07</a>: young SINEs are where short-read assemblies break). (3) A primary assembly holds one haplotype: a heterozygous insertion can look absent (<a href="../02-assembly/#s07">lesson 2, assembly products</a>). (4) PM/MP says which genome has the copy, not on which lineage it was gained or lost; that needs an outgroup. (5) Copies with shared, non-unique flanks (duplications, arrays) are left out by design.</p>
+
+  <div class="note"><h3 style="margin-bottom:8px">In our projects</h3>
+    <ul>
+      <li><b>Two rodents, one SINE family.</b> SINE_orth_loc between species A and a close relative for one SINE family (one subfamily consensus, starting from the firmly assigned loci of whole-genome SINEderella runs) gave several hundred thousand validated locus pairs. About four in five had the SINE in both species (SINE); the rest split almost evenly between copies in species A only (PM) and in the relative only (MP). In both one-species classes, one subfamily made up about four fifths of the copies and a second subfamily most of the rest. These numbers are one run of one family in one pair of species; they say nothing about other SINE families or taxa.</li>
+      <li><b>Direction not yet known.</b> With two genomes, PM and MP say only which species has the copy. Our project log names a third, more distant genome as the intended outgroup.</li>
+      <li><b>Rule we follow.</b> Only copies with unique flanks are studied; copies whose flanks are shared with other places in the genome are excluded before anything is shown.</li>
+    </ul>
+  </div>
+
+  <details class="simple"><summary>Check yourself</summary><div class="in">
+    <p><b>1.</b> Species X and Y both have a SINE copy at a locus; the outgroup has the empty site. What does the locus say? <i>(That X and Y share an ancestor after the outgroup split off, unless it is homoplasy.)</i></p>
+    <p><b>2.</b> ComPair calls a locus PM, but genome 2 has a 90 bp piece of the SINE at the junction. Why? <i>(The piece shares fewer than 100 identical bases with the consensus, so the "SINE in both" test fails.)</i></p>
+    <p><b>3.</b> Why are copies within 300 bp of another copy left out of the flank mapping? <i>(Their flanks contain SINE sequence, which maps to many places: no unique anchor.)</i></p>
+    <p><b>4.</b> One locus out of twenty supports A+C, the rest A+B. Error? <i>(Not necessarily: lineage sorting, which is expected after short internal branches. Test the conflict, for example with the KKSC statistics.)</i></p>
+  </div></details>
+</section>

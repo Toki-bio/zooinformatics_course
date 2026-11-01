@@ -1,0 +1,168 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>From reads to per-site methylation</h2>
+  <p class="lede">After basecalling (<a href="#s02">section 02</a>) every read carries its own modification calls in the MM and ML tags: one probability per CpG for one molecule. A biologist usually wants one number per CpG for the animal: what fraction of the DNA molecules in the sample were methylated there. This section covers the two steps in between: aligning the reads to the genome <b>without losing the tags</b>, and stacking the reads at each CpG and counting, the <dfn>pileup</dfn>. It uses <code>modkit</code> for Oxford Nanopore data and PacBio's tools for HiFi data.</p>
+
+  <h3>The words</h3>
+  <dl class="defs">
+    <dt>Pileup</dt><dd>All reads that cover one position of the reference, stacked on top of each other. A pileup program walks along the genome and, at each position, counts what the stacked reads say.</dd>
+    <dt>Methylation level</dt><dd>At one CpG: the number of reads called methylated divided by the number of reads with a usable call there. It is a <b>fraction of molecules</b>, not a probability for one molecule. Tissue is a mix of cells and each cell has two copies of each chromosome, so a level of 60 % can mean "60 % of the molecules in the tube were methylated at this site".</dd>
+    <dt>bedMethyl</dt><dd>The table a pileup writes: one row per CpG (or per CpG and strand), with its position, coverage, counts and percentage. The format comes from the <span class="tip" title="ENCODE: the Encyclopedia of DNA Elements, a large public project that set standard file formats and pipelines for functional genome data, including bisulfite sequencing.">ENCODE</span> project's bisulfite pipelines; <code>modkit</code> writes an extended version with extra count columns.</dd>
+    <dt>Pass threshold</dt><dd>The minimum confidence a read's call must have to be counted. Calls below it are not thrown into "unmethylated"; they are set aside as <i>failed</i> and do not enter the percentage.</dd>
+  </dl>
+
+  <h3>Step 1: align without losing the tags</h3>
+  <p>The MM tag lists modified positions by counting bases from the start of the read <i>as it came off the machine</i>. Two things can break that link during alignment (SAM tags specification, MM/MN entries):</p>
+  <ul>
+    <li><b>The tags are not carried over.</b> Most aligners read FASTQ, and a FASTQ has nowhere to keep MM and ML (<a href="#s02">section 02</a>). Start from the unaligned BAM the basecaller wrote, and use an aligner path that copies the tags.</li>
+    <li><b>The read is shortened.</b> When one read aligns in pieces, aligners report the extra pieces as <span class="tip" title="Supplementary alignment: when parts of one read align to different places (for example across a structural variant or two contigs), one piece is the primary alignment and each other piece is written as a supplementary record of the same read.">supplementary alignments</span> and often <span class="tip" title="Hard clipping: the unaligned ends of a read are cut out of the stored sequence. Soft clipping keeps the whole sequence in the record and only marks the ends as unaligned.">hard-clip</span> them: the unaligned ends are cut out of the stored sequence. The positions in MM then point at the wrong bases. The <code>MN</code> tag records the read length when the tags were written, so tools can detect this; with soft clipping (minimap2 and Dorado flag <code>-Y</code>) the sequence stays whole.</li>
+  </ul>
+  <div class="tbl"><table>
+    <thead><tr><th>Data</th><th>Aligner path</th><th>What the documentation says about the tags</th></tr></thead>
+    <tbody>
+      <tr><td>ONT, Dorado BAM</td><td><code>dorado aligner</code> (minimap2 inside, preset <code>lr:hq</code>)</td><td>Keeps MM, ML and MN on the main alignment. In the source code (v2.1.2) it deletes them from secondary and supplementary records unless soft clipping (<code>-Y</code>) is on.</td></tr>
+      <tr><td>ONT or any modBAM</td><td><code>samtools fastq -T MM,ML</code> piped into <code>minimap2 -y</code></td><td><code>samtools fastq -T</code> copies the listed tags into the FASTQ header line; <code>minimap2 -y</code> copies header comments into the output, so the tags arrive in the aligned record. The tags always describe the read as sequenced, so the reverse-complementing done by aligners does not spoil them (SAM tags spec).</td></tr>
+      <tr><td>PacBio HiFi BAM</td><td><code>pbmm2 align</code></td><td>pb-CpG-tools asks for reads mapped "using a method that does not hard-clip supplementary alignments", and names pbmm2 (recommended) or minimap2 with <code>-Y</code>. pbmm2 strips HiFi kinetics tags (changelog 1.11.0), so run jasmine first if you still need calls from kinetics (<a href="#s02">section 02</a>).</td></tr>
+    </tbody>
+  </table></div>
+  <p><code>modkit pileup</code> uses only <span class="tip" title="Primary alignment: the one main alignment record of each read. Secondary records are alternative places the read could align to; supplementary records are other pieces of a split read.">primary alignments</span> unless told otherwise, so a hard-clipped supplementary piece does not spoil a default pileup. Its documentation also asks you to mark <span class="tip" title="Duplicate: two records of the same original molecule, for example from PCR copies or from a read that was written twice. Counting both inflates the coverage at that site.">duplicate</span> alignments first, "as multiple primary alignments can be double counted".</p>
+
+  <h3>Step 2: count reads per CpG</h3>
+  <p><code>modkit pileup</code> (version 0.6.4, 11 June 2026) reads an aligned, sorted and indexed modBAM (a BAM with MM/ML tags) and writes one bedMethyl row per reference position and modification. Three options shape the table for CpG work:</p>
+  <dl class="defs">
+    <dt><code>--cpg</code></dt><dd>Report only reference CpGs. It is shorthand for <code>--motif CG 0</code>: count the C of CG on the top strand, and the C opposite the G on the bottom strand. Needs <code>--ref</code>.</dd>
+    <dt><code>--combine-strands</code></dt><dd>A CpG is <span class="tip" title="Palindromic motif: a motif that reads the same on both strands (5'-CG-3' on top pairs with 5'-CG-3' on the bottom). CHH, for example, is not palindromic.">palindromic</span>: its partner on the other strand is also a CpG, and in vertebrates the two are usually methylated together. This option adds the bottom-strand counts to the top-strand position and writes the strand as <code>.</code> "indicating that the strand information has been lost". Roughly doubles the coverage per row. The help text adds that it "requires that the BAM records have correct MN tags".</dd>
+    <dt><code>--modified-bases 5mC 5hmC</code></dt><dd>Which modifications to report (with <code>--ref</code>, the faster code path in version 0.6+). A 5mCG_5hmCG model gives three classes per C (unmodified, 5mC, 5hmC), so each site gets an <code>m</code> row and an <code>h</code> row. <code>--combine-mods</code> adds them into one "modified" count if you only want modified versus not.</dd>
+  </dl>
+
+  <h3>How modkit decides which calls to count</h3>
+  <p>For each read at each C, the model gives probabilities for every class; the probability of "unmodified" is 1 minus the sum of the modification probabilities (modkit FAQ). The read's call is the most likely class, and its <dfn>confidence</dfn> is that highest probability. A call is counted only if its confidence is at least the pass threshold; otherwise it goes into the <code>Nfail</code> column. Because the confidence is the maximum, a read with 5mC probability 0.05 has confidence 0.95 and counts, confidently, as unmethylated. What fails are the <b>uncertain calls in the middle</b>.</p>
+  <p>By default modkit does not ask you for the threshold. It samples about 10,042 reads (option <code>-n</code>) spread over the genome, collects the confidences of their calls, and sets the threshold at the value below which the lowest 10 % of them fall (<code>--filter-percentile</code>, default 0.1). So by design about one call in ten is dropped. You can instead fix it with <code>--filter-threshold C:0.8</code>, give a separate value per modification with <code>--mod-threshold</code>, cap the estimate with <code>--max-filter-threshold</code>, or switch filtering off with <code>--no-filtering</code>. The documentation recommends letting modkit estimate the value, and suggests <code>modkit modbam sample-probs --hist</code> to look at the distribution "in some cases such as exotic organisms or specialized assays", which for a model trained on human and model-organism data is a fair description of a wild mammal (our reading).</p>
+  <p>One documented trap: Dorado omits very low modification probabilities from all-context models (<code>--modified-bases-threshold</code>, default 0.05 in the source), and the MM flag <code>.</code> says such skipped Cs are canonical. modkit then treats them as 100 % canonical, which "can affect the estimation of the pass threshold".</p>
+
+  <section class="tool explain" aria-labelledby="s03-toy-h" id="s03-toy">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-toy-h">A toy pileup: 11 reads over 3 CpGs</h3></div>
+    <p class="tool-note">A 40-bp toy reference with three CpGs, and 11 reads from both strands (forward reads above, reverse reads below). Each circle is one read's call at one C, with its 5mC probability. A forward read is read at the C of CG; a reverse read at the C on the other strand, which sits opposite the G. <b>Move the threshold</b> and watch calls turn grey (failed) and the per-site percentages change. Then try the <b>estimated</b> threshold, the <b>count mode</b> of PacBio's pb-CpG-tools, and <b>combine strands</b>. The bedMethyl rows below the figure are written by the same rules as <code>modkit pileup --cpg</code>.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Counting rule">
+        <button type="button" id="s03-m-fix" aria-pressed="true">modkit, my threshold</button>
+        <button type="button" id="s03-m-est" aria-pressed="false">modkit, estimated</button>
+        <button type="button" id="s03-m-cnt" aria-pressed="false">pb-CpG-tools count mode</button>
+      </div>
+      <label for="s03-thr">pass threshold <output id="s03-thr-o">0.70</output><input type="range" id="s03-thr" min="0.5" max="0.99" step="0.01" value="0.70"></label>
+      <label style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s03-comb"> combine strands (<code>--combine-strands</code>)</label>
+    </div>
+    <div class="legend" id="s03-leg"></div>
+    <div class="svgbox"><svg id="s03-svg" viewBox="0 0 760 470" width="100%" style="min-width:660px" role="img" aria-label="Toy reads aligned to a 40 base reference with three CpG sites; each read's methylation call at each CpG is drawn as a circle labelled with its probability, and per-site methylation percentages are shown at the bottom"></svg></div>
+    <div class="readout" id="s03-out" aria-live="polite"></div>
+    <div class="toy" id="s03-bed" aria-label="bedMethyl rows of the toy pileup"></div>
+    <p class="tool-note" id="s03-note"></p>
+  </section>
+
+  <p>What the toy shows. At CpG 2 most reads are uncertain (probabilities between 0.3 and 0.7). Raising the threshold removes them, so the percentage there rests on fewer and fewer reads, while CpG 1 and CpG 3, with confident calls, hardly change. A site whose reads are mostly uncertain is a warning in itself: look at its <code>Nfail</code> column before trusting its percentage. Count mode never fails a call: everything above 0.5 is methylated, so uncertain reads are split by a coin-edge rule, and the reads without a probability (the no-call read and the read with a T) are counted as unmethylated.</p>
+
+  <h3>Reading a bedMethyl row</h3>
+  <p>modkit writes 18 columns. The first nine are standard <span class="tip" title="BED: a plain-text table of genome intervals; the first three columns are sequence name, start and end. Positions start at 0 and the end is not included, so one base at position 6 is written 6 7.">BED</span> columns kept for compatibility; the counts that matter start at column 10.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Col</th><th>Name</th><th>Meaning (modkit documentation)</th></tr></thead>
+    <tbody>
+      <tr><td>1-3</td><td>chrom, start, end</td><td>Sequence name and position, 0-based, end not included (one base per row).</td></tr>
+      <tr><td>4</td><td>name</td><td>Modification code (<code>m</code> = 5mC, <code>h</code> = 5hmC), plus the motif when more than one motif is used.</td></tr>
+      <tr><td>5</td><td>score</td><td>Equal to N<sub>valid_cov</sub>.</td></tr>
+      <tr><td>6</td><td>strand</td><td><code>+</code>, <code>-</code>, or <code>.</code> when strands are combined.</td></tr>
+      <tr><td>7-9</td><td>start, end, colour</td><td>Repeated for compatibility; colour is always 255,0,0.</td></tr>
+      <tr><td>10</td><td>N<sub>valid_cov</sub></td><td>Passing calls: N<sub>mod</sub> + N<sub>other_mod</sub> + N<sub>canonical</sub>. This is the coverage the percentage rests on.</td></tr>
+      <tr><td>11</td><td>percent modified</td><td>N<sub>mod</sub> / N<sub>valid_cov</sub> × 100.</td></tr>
+      <tr><td>12</td><td>N<sub>mod</sub></td><td>Passing calls of this modification.</td></tr>
+      <tr><td>13</td><td>N<sub>canonical</sub></td><td>Passing calls of the unmodified base.</td></tr>
+      <tr><td>14</td><td>N<sub>other_mod</sub></td><td>Passing calls of another modification of the same base (in the <code>m</code> row: the 5hmC calls).</td></tr>
+      <tr><td>15</td><td>N<sub>delete</sub></td><td>Reads with a deletion here.</td></tr>
+      <tr><td>16</td><td>N<sub>fail</sub></td><td>Calls below the pass threshold.</td></tr>
+      <tr><td>17</td><td>N<sub>diff</sub></td><td>Reads with a different base here (for example a C&gt;T <span class="tip" title="SNP: single-nucleotide polymorphism, a site where the two copies of a chromosome, or two individuals, carry different bases.">SNP</span> on one parental copy).</td></tr>
+      <tr><td>18</td><td>N<sub>nocall</sub></td><td>Reads with the right base but no modification call, for example when a CpG-only model sees CA in the read instead of CG.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Rows with no passing calls are not written at all (troubleshooting page), so a CpG that is missing from the file has zero usable coverage, not zero methylation. A high N<sub>diff</sub> at a CpG usually means the animal is not like the reference there: a SNP that destroys the CpG on one or both parental copies. That is common in a wild animal mapped to its own assembly's other haplotype or to a related species' genome.</p>
+
+  <h3>Checking the calls before the pileup</h3>
+  <p>Two quick modkit commands describe a modBAM before the long pileup run. <code>modkit modbam check-tags</code> lists which modification codes the file contains (useful when a provider's BAM arrives without documentation). <code>modkit modbam summary</code> prints, per base and code, how many calls there are and how many pass the threshold, and the threshold it estimated (for example <code>pass_threshold_C 0.7089844</code> in the documentation's example). <code>modkit modbam sample-probs</code> prints the threshold at chosen percentiles (default 10, 50 and 90) and, with <code>--hist --out-dir</code>, histograms of the probabilities. A healthy model gives two peaks, near 0 and near 1; a broad middle means many calls will fail, and suggests the model and the data do not match (for example a model run on another platform's signal, <a href="#s02">section 02</a>). In version 0.6.4 these subcommands sit under <code>modkit modbam</code>; older tutorials write <code>modkit summary</code> and <code>modkit sample-probs</code>.</p>
+
+  <h3>PacBio HiFi: MethBat and pb-CpG-tools</h3>
+  <p>PacBio's jasmine writes the same MM/ML tags (<a href="#s02">section 02</a>), but PacBio has its own pileup tools. jasmine's README (May 2026) recommends <b>MethBat</b> (v1.1.0) "for methylation pileup and downstream analysis" and says pb-CpG-tools "is deprecated in favor of MethBat for new analyses". You will still meet pb-CpG-tools (v3.0.0) in published methods, so both are described here. One difference from nanopore data matters for this section: a HiFi read is a consensus of both strands of the molecule, and jasmine "integrates signal from both strands into a single prediction" and "reports one call per CpG dyad on the forward strand" (a <dfn>dyad</dfn> is the pair of Cs of one CpG, one on each strand). So for HiFi the strand combining already happens in the caller, and both PacBio pileup tools write one unstranded row per CpG.</p>
+  <ul>
+    <li><b>pb-CpG-tools, <code>aligned_bam_to_cpg_scores</code></b> reports one value per CpG (no strand column), for all reads and, if reads carry haplotype tags, for each haplotype (<a href="#s04">section 04</a>). Its default <code>model</code> mode feeds the distribution of probabilities at a CpG to a built-in machine-learning model; the source code (v3.0.0) shows it looks at a window of 11 neighbouring CpGs that includes the called one, and summarises each CpG as a 20-bin histogram of read probabilities. The result is an estimate, not a count of reads. <code>--pileup-mode count</code> calls every read with probability above 0.5 methylated and the rest unmethylated, with no failed class. In the source, every read base aligned at the site counts towards coverage, and a read with no probability there is counted as unmethylated, so a read carrying a T (a C&gt;T SNP) also counts as unmethylated. Minimum coverage defaults to 4 reads, minimum <span class="tip" title="Mapping quality (MAPQ): the aligner's confidence, on a log scale, that the read is placed in the right spot of the genome. 0 means it could equally well belong elsewhere, for example in a repeat.">mapping quality</span> to 1.</li>
+    <li><b>MethBat, <code>methbat pileup</code></b> writes one <span class="tip" title="bgzip: a block-wise gzip compression that still lets tabix jump straight to a region of the file, so a genome browser can read one window without unpacking everything.">bgzipped</span> BED per modification (5mC, 5hmC, 6mA) with <code>cov</code>, <code>mod_count</code>, <code>unmod_count</code>, <code>diff_base_count</code> and haplotype rows in one file; 5mC rows are unstranded. Defaults: at least 4 reads with modification information per site, mapping quality at least 1, and 20 bases trimmed from each read end. A <code>--preset pbcpgtools</code> exists only to reproduce pb-CpG-tools count mode.</li>
+  </ul>
+  <p>Our inference, not tested by us: modkit reads the standard MM/ML tags and should also run on HiFi modBAMs, which would let ONT and PacBio samples go through one pileup tool. Check the <code>modbam summary</code> output first if you try it.</p>
+
+  <h3>How many reads per CpG?</h3>
+  <p>A methylation level from <i>n</i> reads is a proportion, and proportions from few reads are coarse: with 4 reads the only possible values are 0, 25, 50, 75 and 100 %. The calculator below shows the range of levels you would observe by chance alone if every read were called correctly (a <span class="tip" title="Binomial distribution: the number of successes in n independent trials, each with the same chance p. Here: the number of methylated reads among n reads, if each read comes from a methylated molecule with chance equal to the true level.">binomial</span> calculation; real data add calling errors on top).</p>
+
+  <section class="tool explain" aria-labelledby="s03-cov-h" id="s03-cov">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-cov-h">How precise is a level from n reads?</h3></div>
+    <div class="controls">
+      <label for="s03-n">reads with a valid call at the CpG <output id="s03-n-o">10</output><input type="range" id="s03-n" min="1" max="60" step="1" value="10"></label>
+      <label for="s03-p">true methylation level <output id="s03-p-o">50 %</output><input type="range" id="s03-p" min="0" max="100" step="5" value="50"></label>
+    </div>
+    <div class="svgbox"><svg id="s03-cov-svg" viewBox="0 0 760 190" width="100%" style="min-width:560px" role="img" aria-label="Probability of each observed methylation level for the chosen number of reads and true level"></svg></div>
+    <div class="readout" id="s03-cov-out" aria-live="polite"></div>
+  </section>
+
+  <p>Per-site numbers are therefore noisy at the depths of a typical long-read genome (about 30x, split between the two strands unless they are combined). Two common ways out: combine strands, and average over a region (all CpGs of a promoter, a CpG island or a repeat copy) instead of reading single CpGs (<a href="#s05">section 05</a>). For comparing samples, Ziller et al. (2015) found with bisulfite data (coverage counted over both strands together) that per-sample coverage of 5x to 15x was enough for finding <span class="tip" title="Differentially methylated region (DMR): a stretch of genome whose methylation level differs between two groups of samples.">differentially methylated regions</span>, and that beyond that, extra biological replicates helped more than extra depth (<a href="#s06">section 06</a>).</p>
+
+  <details class="simple"><summary>Simple explanation with examples: a show of hands with some unclear votes</summary><div class="in">
+    <p>Think of each CpG as a question put to a room of DNA molecules: "are you methylated?" Each read is one molecule raising or not raising its hand. The basecaller is the person counting hands, and for each molecule it writes how sure it is: 0.97 means "clearly a hand", 0.05 means "clearly no hand", 0.5 means "I couldn't see".</p>
+    <p>The pileup is the tally. modkit's rule is: count only the votes you are reasonably sure about, in either direction, and put the unclear ones in a separate pile (<code>Nfail</code>). The result, "7 of 10 clear votes were hands", is the methylation level, 70 %.</p>
+    <p>Example from the toy above, CpG 2 with the threshold at 0.70 and strands combined: of 11 reads, 1 has a deletion, 5 are clear (0.91, 0.86, 0.71 yes; 0.30 and 0.12 no) and 5 are unclear (0.62, 0.58, 0.52, 0.45, 0.40). The level is 3 of 5 = 60 %, resting on only 5 reads. Change the threshold and different reads count, so the level moves. A site where most votes are unclear does not have a reliable level, however carefully you count.</p>
+    <p>Combining strands is like counting the same question in two rooms that should agree: the two Cs of one CpG sit on opposite strands, and in vertebrates they are usually methylated together, so their votes are added.</p>
+  </div></details>
+
+  <h3>Verified commands</h3>
+  <p>Oxford Nanopore, from a Dorado BAM with a 5mCG_5hmCG model (the lab's planned pipeline for species A, see the note below). File names are placeholders.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1a. align with Dorado's built-in minimap2; tags are kept on primary alignments</span>
+dorado aligner ref.fa calls.bam | samtools sort -o aligned.bam
+samtools index aligned.bam
+samtools faidx ref.fa
+
+<span class="c"># 1b. or: copy the tags through FASTQ headers into minimap2 (-y keeps header comments,</span>
+<span class="c">#     -Y soft-clips supplementary pieces so their tags stay valid; lr:hq = Dorado's default preset)</span>
+samtools fastq -T MM,ML calls.bam | minimap2 -ax lr:hq -y -Y ref.fa - | samtools sort -o aligned.bam
+samtools index aligned.bam
+
+<span class="c"># 2. look before counting: which codes, how many calls pass, probability histograms</span>
+modkit modbam check-tags aligned.bam --head 100
+modkit modbam summary aligned.bam
+modkit modbam sample-probs aligned.bam --hist --out-dir probs/
+
+<span class="c"># 3. pileup at reference CpGs, both strands added, 5mC and 5hmC rows</span>
+modkit pileup aligned.bam sample.cpg.bed.gz \
+  --modified-bases 5mC 5hmC --ref ref.fa \
+  --cpg --combine-strands --bgzf \
+  --threads 8 --log-filepath pileup.log
+tabix -p bed sample.cpg.bed.gz
+
+<span class="c"># 3b. the same with a fixed pass threshold instead of the estimated one</span>
+modkit pileup aligned.bam sample.cpg.f80.bed.gz --modified-bases 5mC 5hmC --ref ref.fa \
+  --cpg --combine-strands --filter-threshold C:0.8 --bgzf --log-filepath pileup_f80.log</pre></div>
+  <p>PacBio HiFi, from a BAM with jasmine calls:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. align and sort (pbmm2 does not hard-clip supplementary alignments); writes a .bai index</span>
+pbmm2 align ref.fa movie.hifi_reads.bam aligned.bam --preset HIFI --sort -j 8
+
+<span class="c"># 2a. MethBat (recommended by PacBio): one BED per modification, Total/hap1/hap2 rows</span>
+methbat pileup --threads 8 --input-bam aligned.bam --output-prefix sample
+
+<span class="c"># 2b. pb-CpG-tools (deprecated, still common in papers): model mode by default</span>
+aligned_bam_to_cpg_scores --bam aligned.bam --output-prefix sample --threads 8
+aligned_bam_to_cpg_scores --bam aligned.bam --output-prefix sample_count --pileup-mode count --threads 8</pre></div>
+  <p>Notes on these commands. <code>modkit pileup</code> needs the BAM sorted and indexed. Index the FASTA first (<code>samtools faidx</code>): the pileup guide says modkit creates a missing index, but the option help says the index must be "pre-generated", so do not rely on it. <code>--log-filepath</code> (alias <code>--log</code>) is recommended: when the output is empty, the log says why each read was skipped. When you test on one contig, pass <code>--region</code> rather than cutting the BAM down first, or the threshold sampler will look for reads on contigs that are not there (troubleshooting page). <code>-x lr:hq</code> is meant for reads with under 1 % errors; for older, noisier nanopore reads use <code>-x map-ont</code> (minimap2 manual). pbmm2 adds soft clipping (<code>-Y</code>) by itself and uses its HiFi preset by default (pbmm2 README).</p>
+
+  <div class="note">In our projects: for species A (a rodent), the lab's plan was exactly the nanopore pipeline above: re-basecall from raw signal with Dorado's most accurate (<code>sup</code>) model and the 5mCG_5hmCG model, then <code>modkit pileup</code>, which "gives CpG methylation for free". It never ran: we received only FASTQ (no basecaller-model tags, no raw signal), our server has no <span class="tip" title="GPU: graphics processing unit, the graphics-card chip that Dorado needs to basecall at a usable speed.">GPU</span>, and the reads are probably from a CycloneSEQ instrument rather than Oxford Nanopore, which Dorado's models are not made for (details in <a href="#s02">section 02</a>). So the toy above stands in for real data: none of the lab's long-read data that we have checked can produce a bedMethyl file (a lizard HiFi run labelled for methylation has not been checked, <a href="#s02">section 02</a>).</div>
+
+  <h3>Sources</h3>
+  <ul>
+    <li>modkit documentation and command help, version 0.6.4: pileup, filtering, sample-probs, summary, FAQ, troubleshooting (<a href="https://nanoporetech.github.io/modkit/">nanoporetech.github.io/modkit</a>).</li>
+    <li>Dorado 2.1.2 README, alignment documentation and source (<a href="https://github.com/nanoporetech/dorado">github.com/nanoporetech/dorado</a>).</li>
+    <li>SAM optional tags specification, MM/ML/MN (<a href="https://samtools.github.io/hts-specs/SAMtags.pdf">samtools.github.io/hts-specs/SAMtags.pdf</a>); samtools 1.25 fastq manual; minimap2 2.31 manual.</li>
+    <li>pb-CpG-tools 3.0.0 README and source; MethBat 1.1.0 pileup guide; jasmine README; pbmm2 README (<a href="https://github.com/PacificBiosciences">github.com/PacificBiosciences</a>).</li>
+    <li>Ziller MJ, Hansen KD, Meissner A, Aryee MJ (2015) Coverage recommendations for methylation analysis by whole-genome bisulfite sequencing. <i>Nature Methods</i> 12: 230-232. <a href="https://doi.org/10.1038/nmeth.3152">doi:10.1038/nmeth.3152</a></li>
+  </ul>
+</section>

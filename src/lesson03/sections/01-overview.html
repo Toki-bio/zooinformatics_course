@@ -1,0 +1,218 @@
+<section aria-labelledby="s01" id="s01-wrap">
+  <h2 id="s01"><span class="n">01</span>From assembly to annotation: what and in which order</h2>
+  <p class="lede">An assembly is a few billion letters with no labels. <dfn>Annotation</dfn> writes labels onto those letters: here is a repeat, here is a gene, its exons start and stop at these positions, and this gene probably makes a protein of this kind. This section explains the words, the order of the work, the one file convention every later tool depends on (soft-masking), what data to collect before you start, and how to choose a gene annotation route.</p>
+
+  <h3>Two kinds of annotation</h3>
+  <dl class="defs">
+    <dt>Structural</dt>
+    <dd>Where things are, as coordinates on the assembly. Three layers:
+      <ul>
+        <li><b>Repeats</b>: <span class="tip" title="Transposable element (TE): a DNA segment that copies itself into new places in the genome. SINEs, LINEs, LTR retrotransposons and DNA transposons are the main kinds (section 02).">transposable elements</span>, satellites and simple repeats (sections <a href="#s02">02</a> to <a href="#s04">04</a>).</li>
+        <li><b>Protein-coding genes</b>: for each gene, its <span class="tip" title="Exon: a piece of a gene that stays in the mature RNA after splicing.">exons</span> and <span class="tip" title="Intron: a piece of a gene that is cut out of the RNA (spliced out) before the RNA is used.">introns</span>, the <span class="tip" title="CDS (coding sequence): the part of the exons that is translated into protein, from the start codon to the stop codon.">CDS</span> and the <span class="tip" title="UTR (untranslated region): exon sequence before the start codon (5' UTR) or after the stop codon (3' UTR). It is in the RNA but not translated.">UTRs</span>, and alternative <span class="tip" title="Transcript (isoform): one particular combination of exons of a gene. One gene can make several transcripts.">transcripts</span> (sections <a href="#s05">05</a> to <a href="#s07">07</a>).</li>
+        <li><b>Non-coding RNA genes</b>: genes whose product is the RNA itself, such as <span class="tip" title="tRNA (transfer RNA): small RNAs that bring amino acids to the ribosome. A genome has hundreds of tRNA genes.">tRNAs</span> and <span class="tip" title="rRNA (ribosomal RNA): the RNA part of the ribosome.">rRNAs</span>. NCBI's pipeline EGAPx, for example, predicts rRNAs by default and tRNAs, <span class="tip" title="snoRNA and snRNA (small nucleolar and small nuclear RNAs): short RNAs that help modify ribosomal RNA (snoRNA) or cut introns out of messenger RNA (snRNA).">snoRNAs and snRNAs</span> when you switch that on. This lesson does not cover non-coding RNA genes further.</li>
+      </ul>
+    </dd>
+    <dt>Functional</dt>
+    <dd>What a gene probably does: a name (for example from its <span class="tip" title="Ortholog: the 'same' gene in another species, descended from one gene in their common ancestor.">ortholog</span> in a well-studied species), the protein <span class="tip" title="Protein domain: a part of a protein with a typical fold and function, recognised by sequence models (for example Pfam models), even in distant species.">domains</span> it carries, and functional terms. Section <a href="#s08">08</a>.</dd>
+  </dl>
+
+  <h3>The order of the work</h3>
+  <ol class="steps">
+    <li><div>
+      <b>Clean the assembly and fix the names</b>
+      <p class="d">Remove contamination (<a href="../02-assembly/#s09">lesson 2, FCS-GX</a>) and the copies of mitochondrial DNA (<a href="../02-assembly/#s11">lesson 2, mito</a>). Give the sequences short, simple names now (see <a href="#s01-ids">Sequence names</a> below). Every later file refers to these names, so changing them later means converting every file.</p>
+      <p class="t">EGAPx README: screen for contamination before running it · BRAKER README: "Use simple scaffold names"</p>
+    </div></li>
+    <li><div>
+      <b>Repeats: build a library, then mask</b>
+      <p class="d">Find the repeat families of your species (<a href="#s03">03</a>), then mark every copy in the genome (<a href="#s04">04</a>). The result is a <span class="tip" title="Soft-masked genome: the same FASTA file with repeat bases written in lowercase (acgt) and all other bases in capitals (ACGT). No letter is lost.">soft-masked</span> genome: repeats in lowercase. Repeats come first because gene finders mistake transposable elements for genes (next part).</p>
+    </div></li>
+    <li><div>
+      <b>Collect gene evidence</b>
+      <p class="d">RNA from the animal, proteins of relatives, an annotated relative genome. Align them to the masked genome (<a href="#s05">05</a>).</p>
+    </div></li>
+    <li><div>
+      <b>Predict or project genes</b>
+      <p class="d">A gene-prediction pipeline (<a href="#s06">06</a>), a projection from a relative's annotation (<a href="#s07">07</a>), or both.</p>
+    </div></li>
+    <li><div>
+      <b>Name, check, submit</b>
+      <p class="d">Give genes names and domains, measure completeness, prepare files for a database (<a href="#s08">08</a>).</p>
+    </div></li>
+    <li class="later"><div>
+      <b>Side branch: heterozygosity and runs of homozygosity</b>
+      <p class="d">Uses the reads and the assembly, not the gene annotation, but uses the repeat mask to choose which regions to trust (<a href="#s09">09</a>).</p>
+    </div></li>
+  </ol>
+
+  <details class="simple"><summary>Simple explanation with examples: annotation as labelling a map</summary><div class="in">
+    <p>Think of the assembly as a satellite photo of a country with no labels. Annotation is drawing on it. First you shade the areas you know are not interesting for your question: forests that repeat the same pattern again and again (repeats). Then you draw the roads (genes) and mark where each road starts, where it is interrupted by bridges (introns) and where it ends. Last, you write names on the roads: "this one goes to the harbour" (function).</p>
+    <p>Why shade the forests first? Because from above, a long straight logging track inside a forest looks just like a road. A transposable element such as a <span class="tip" title="LINE (long interspersed element): a transposable element of several kb that carries its own protein-coding reading frames, which it uses to copy itself.">LINE</span> really does carry protein-coding <span class="tip" title="ORF (open reading frame): a stretch of DNA that can be read in codons from a start to a stop codon without an earlier stop. Genes have ORFs; so do many transposable elements.">reading frames</span>; a gene finder that sees it unmasked will report it as a gene, and there are tens of thousands of copies.</p>
+    <p>Example from one of our rodent genomes (species A, not yet published): its largest single repeat family is a LINE-1 family with a full-length (several kb) <span class="tip" title="Consensus: one reference sequence for a repeat family, made by taking the most common base at each position of an alignment of many copies (section 02).">consensus</span> and tens of thousands of copies. Unmasked, every intact copy is a candidate "gene".</p>
+  </div></details>
+
+  <h3>Soft-masking and hard-masking</h3>
+  <p>Masking marks repeat bases in the FASTA file itself. There are two ways:</p>
+  <dl class="defs">
+    <dt>Soft-masking</dt>
+    <dd>Repeat bases are written in lowercase (<code>acgt</code>), everything else in capitals. No information is lost; a program can choose to treat lowercase as "repeat" or ignore the case. <span class="tip" title="RepeatMasker: the standard program that finds copies of known repeat families in a genome and masks them (section 04).">RepeatMasker</span> writes this with <code>-xsmall</code>.</dd>
+    <dt>Hard-masking</dt>
+    <dd>Repeat bases are replaced by <code>N</code> ("unknown base"). The sequence of the repeat is gone from that file. This is RepeatMasker's default output; <code>-x</code> uses <code>X</code> instead of <code>N</code>.</dd>
+  </dl>
+  <p>For annotation, soft-masking is the standard. The tools say so themselves (table below). Keep one soft-masked FASTA as your master copy; you can always make a hard-masked or unmasked copy from it, but not the other way round.</p>
+
+  <section class="tool" aria-labelledby="s01-mask-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s01-mask-h">A soft-masked sequence, three ways</h3></div>
+    <p class="tool-note">A 480-base toy excerpt laid out like a contig in a soft-masked genome file: repeat stretches in lowercase, unique sequence in capitals (the letters are random, not real sequence). Switch the view, then pick a program to see what it does with these letters.</p>
+    <div class="controls">
+      <span class="seg" id="s01-mview" role="group" aria-label="Masking style">
+        <button type="button" data-v="soft" aria-pressed="true">soft-masked (as stored)</button>
+        <button type="button" data-v="hard" aria-pressed="false">hard-masked (N)</button>
+        <button type="button" data-v="none" aria-pressed="false">unmasked</button>
+      </span>
+      <span class="seg" id="s01-mtool" role="group" aria-label="Program">
+        <button type="button" data-t="aug" aria-pressed="true">AUGUSTUS / BRAKER</button>
+        <button type="button" data-t="lastz" aria-pressed="false">LASTZ chains → TOGA2</button>
+        <button type="button" data-t="mm2" aria-pressed="false">minimap2</button>
+      </span>
+    </div>
+    <div class="svgbox"><svg id="s01-msvg" viewBox="0 0 760 64" width="100%" style="min-width:560px" role="img" aria-label="Map of repeat (lowercase) and non-repeat (capital) stretches in the 480-bp excerpt"></svg></div>
+    <div class="toy" id="s01-mseq" aria-live="polite"></div>
+    <div class="readout" id="s01-mread"></div>
+    <p class="tool-note" id="s01-mtxt"></p>
+  </section>
+
+  <h3>Which tool wants which mask</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Wants</th><th>What it does with the mask (its own documentation)</th></tr></thead>
+    <tbody>
+      <tr><td><b>BRAKER</b> 3.0.8</td><td><span class="tag s">soft</span></td><td>"BRAKER should only be applied to genomes that have been softmasked for repeats!" Soft-masking mode is on by default; <code>--softmasking_off</code> is "discouraged". For its gene finders, soft-masking "leads to better results than hardmasking". Its successor BRAKER4 (<a href="#s06">section 06</a>) says the same and masks the genome itself if you give no masked copy.</td></tr>
+      <tr><td><b><span class="tip" title="AUGUSTUS: the classic gene-finding program; it scores possible gene structures with a statistical model of exons, introns and splice sites. BRAKER and GALBA train and run it for you (section 06).">AUGUSTUS</span></b> (inside BRAKER and GALBA)</td><td><span class="tag s">soft</span></td><td>With <code>--softmasking=1</code>, lowercase is read as evidence against exons (<span class="tip" title="AUGUSTUS 'hints' are pieces of external evidence (an intron here, an exon part there) that raise or lower the score of gene structures. A 'nonexonpart' hint says: probably no exon here.">nonexonpart hints</span>, default bonus 1.15). "Slightly more accurate than hard masking", and on human "more than twice as fast".</td></tr>
+      <tr><td><b>GALBA</b> 1.0.11</td><td><span class="tag s">soft</span></td><td>"GALBA always treats genomes as softmasked for repeats!"</td></tr>
+      <tr><td><b>make_lastz_chains</b> (<span class="tip" title="Chains: a whole-genome alignment between two species, stored as ordered blocks of aligned sequence (UCSC chain format). Made with the aligner LASTZ by the make_lastz_chains pipeline (section 07).">chains</span> for <span class="tip" title="TOGA2: a program that carries the genes of an annotated species over to your genome and says for each one whether it is intact, lost or missing (section 07).">TOGA2</span>)</td><td><span class="tag s">soft</span></td><td>"Softmask both genomes (lowercase, do NOT hardmask)." LASTZ skips lowercase when it looks for <span class="tip" title="Seed: a short exact or near-exact match between two sequences, used as a starting point; the aligner then extends it into a full alignment.">seeds</span> but uses it in later alignment stages. <code>faToTwoBit</code> keeps lowercase in the <span class="tip" title=".2bit: a compact binary genome format from UCSC (2 bits per base). TOGA2 reads genomes in this format.">.2bit</span> file unless you add <code>-noMask</code>.</td></tr>
+      <tr><td><b><span class="tip" title="EGAPx: the public version of NCBI's own genome annotation pipeline, which you can run on your own computer (section 06).">EGAPx</span></b> 1.0.1 (NCBI)</td><td><span class="tag">any</span></td><td>"The genome sequence does not need to be repeat-masked prior to annotation. EGAPx performs masking steps as part of the pipeline."</td></tr>
+      <tr><td><b><span class="tip" title="Helixer: a gene finder based on a deep neural network trained on many annotated genomes; it needs no evidence and no training on your species (section 06).">Helixer</span></b> 0.3.7</td><td><span class="tag">not stated</span></td><td>The README asks for a FASTA file and a lineage model; it says nothing about masking.</td></tr>
+      <tr><td><b>minimap2</b> 2.31</td><td><span class="tag l">case ignored</span></td><td>No masking option in the manual. In the source (<code>sketch.c</code>), lowercase and capital letters get the same code, and <code>N</code> breaks <span class="tip" title="Minimizer: the k-mer minimap2 picks as a seed from each small window of the sequence. A k-mer containing N cannot be a minimizer.">minimizers</span>. So soft-masking changes nothing, while hard-masked stretches give minimap2 no seeds to place reads from those repeats.</td></tr>
+      <tr><td><b>HISAT2</b> (RNA-seq mapper)</td><td><span class="tag l">case ignored</span></td><td>BRAKER README: HISAT2 and some other mappers "ignore masking information".</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Sources and versions: <code>01-overview.notes.md</code>. Short rule: <b>annotate on a soft-masked genome, map reads to the same soft-masked genome, and do not hard-mask unless a tool's manual asks for it.</b></p>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># share of the genome that is soft-masked (lowercase) and hard-masked (N)</span>
+grep -v '^&gt;' genome.sm.fa | tr -cd 'acgtn' | wc -c     <span class="c"># lowercase bases</span>
+grep -v '^&gt;' genome.sm.fa | tr -cd 'Nn'    | wc -c     <span class="c"># N bases (assembly gaps or hard mask)</span>
+grep -v '^&gt;' genome.sm.fa | tr -d '\n'    | wc -c     <span class="c"># all bases</span>
+
+<span class="c"># RepeatMasker 4.2.x: write the masked genome in lowercase instead of N</span>
+RepeatMasker -pa 16 -lib species-families.fa -xsmall genome.fa
+
+<span class="c"># a hard-masked copy, only if a tool asks for one (lowercase acgt -&gt; N)</span>
+sed '/^&gt;/! s/[acgt]/N/g' genome.sm.fa &gt; genome.hm.fa
+
+<span class="c"># .2bit for TOGA2 / LASTZ: lowercase is kept by default (-noMask would drop it)</span>
+faToTwoBit genome.sm.fa genome.2bit</pre></div>
+  <p class="tool-note"><code>-xsmall</code> and <code>-x</code>: RepeatMasker 4.2.6 help. <code>-pa</code> (parallel jobs) and <code>-lib</code> (your library) are explained in <a href="#s04">section 04</a>. <code>faToTwoBit</code> options: UCSC kent source. The <code>tr</code>/<code>sed</code> lines are plain Unix tools.</p>
+
+  <h3>Why repeats are masked before genes</h3>
+  <p>Gene finders look for long open reading frames with good <span class="tip" title="Splice sites: the short signals at the two ends of an intron (almost always GT at the start, AG at the end) where the RNA is cut and the exons joined.">splice sites</span>. Many transposable elements have exactly that, because they carry genes for their own copying enzymes. GALBA's README describes the result: if transposable elements "have not been masked appropriately, AUGUSTUS tends to predict those elements as protein coding genes. This can lead to a huge number genes." BRAKER's README gives the same reason for masking: it "will avoid the prediction of false positive gene structures in repetitive and <span class="tip" title="Low-complexity region: DNA made of very few letters or a very short motif, for example AAAAAA or ATATATAT.">low complexity</span> regions." A gene set with far more genes than its relatives, where many proteins are near-copies of each other, is the typical sign. Section <a href="#s08">08</a> shows how to check.</p>
+  <p>Soft-masking does not forbid genes in repeats; it only makes them less likely. Real genes can contain repeat fragments in their introns or UTRs, and a gene finder on a soft-masked genome can still place an exon there when RNA or protein evidence supports it.</p>
+
+  <h3>What evidence to gather, before you start</h3>
+  <ol class="steps">
+    <li><div>
+      <b>RNA-seq from the same species, several tissues</b>
+      <p class="d">Short-read <span class="tip" title="RNA-seq: sequencing of the RNA in a tissue. Reads that span two exons show exactly where an intron was spliced out.">RNA-seq</span>. A gene appears only in tissues where it is switched on, so RNA from one organ shows only that organ's genes; brain, testis, liver, kidney and an embryo or whole juvenile together cover much more. For gene prediction the reads are aligned to the genome; BRAKER needs each intron "covered by many alignments", so a few well-covered libraries are better than one shallow one. Used by BRAKER3, EGAPx (<a href="#s05">05</a>, <a href="#s06">06</a>).</p>
+    </div></li>
+    <li><div>
+      <b>Long-read RNA (Iso-Seq, Nanopore <span class="tip" title="cDNA (complementary DNA): a DNA copy of an RNA molecule made by reverse transcriptase; sequencers read DNA, so RNA is usually converted first.">cDNA</span>)</b>
+      <p class="d">Each read is a whole transcript, so it shows which exons go together. BRAKER has a separate long-read variant that must not be mixed with short reads in one run; EGAPx accepts long reads alone or together with short reads. Its value depends on depth: BRAKER warns that accuracy "heavily depends on the depth of your isoseq data".</p>
+    </div></li>
+    <li><div>
+      <b>Proteins of relatives</b>
+      <p class="d">Two different kinds. (a) A large protein database with many representatives of each protein family, such as the <span class="tip" title="OrthoDB: a database of groups of orthologous genes across many species. The BRAKER team provides ready-made protein files per clade, for example Vertebrata.fa.gz.">OrthoDB</span> clade files the BRAKER team provides (<code>Vertebrata.fa.gz</code> at bioinf.uni-greifswald.de/bioinf/partitioned_odb12/). BRAKER requires this kind: "many representatives of each protein family must be present". (b) The proteomes of one or a few <b>close</b> relatives, for example from <span class="tip" title="UniProt: the main public protein database. Its reference proteomes give one protein set per well-annotated species.">UniProt</span> reference proteomes or NCBI <span class="tip" title="RefSeq: NCBI's curated reference set of genomes, transcripts and proteins, including NCBI's own annotations of many animal genomes.">RefSeq</span>. GALBA is built for this kind.</p>
+    </div></li>
+    <li><div>
+      <b>An annotated relative genome</b>
+      <p class="d">A related species with a good genome and gene annotation (for mammals, for example human or mouse). Its genes can be <span class="tip" title="Projection: transferring gene models from an annotated genome to a new one through a whole-genome alignment, instead of predicting them from scratch.">projected</span> onto your genome through a whole-genome alignment (TOGA2, <a href="#s07">07</a>). This gives orthology and, uniquely, a call for each reference gene: intact, lost or missing.</p>
+    </div></li>
+  </ol>
+  <p class="tool-note">The tissue list is this course's advice, not a tool requirement. Plan RNA sampling together with the DNA sampling, so that the RNA comes from the same population or, better, the same animal.</p>
+
+  <h3>Choosing a gene annotation route</h3>
+  <p>The tools in sections 06 and 07 differ mostly in what evidence they need. Tick what you have; the helper lists the routes their own READMEs recommend for that situation. This course's advice: run one main route and one independent route, and compare them.</p>
+
+  <section class="tool" aria-labelledby="s01-route-h">
+    <div class="tool-head"><span class="tool-tag">Decision helper</span><h3 id="s01-route-h">What you have → which pipeline</h3></div>
+    <div class="calc" role="group" aria-label="Load an example">
+      <span class="seg" id="s01-rpre">
+        <button type="button" data-p="spA" aria-pressed="false">our species A</button>
+        <button type="button" data-p="rich" aria-pressed="false">well-funded project</button>
+        <button type="button" data-p="dna" aria-pressed="false">DNA only</button>
+      </span>
+    </div>
+    <fieldset class="s01-checks" id="s01-rbox">
+      <legend class="tool-note">Your situation</legend>
+      <label><input type="checkbox" id="s01-c-rs"> RNA-seq (short reads) from this species</label>
+      <label><input type="checkbox" id="s01-c-iso"> Long-read RNA (Iso-Seq or Nanopore cDNA)</label>
+      <label><input type="checkbox" id="s01-c-cp"> Protein sets of one or a few close relatives (same family)</label>
+      <label><input type="checkbox" id="s01-c-ref"> A well-annotated relative genome (e.g. human, mouse)</label>
+      <label><input type="checkbox" id="s01-c-big" checked> Large genome (mouse- or chicken-sized, about 1 Gb or more)</label>
+      <label><input type="checkbox" id="s01-c-gpu"> An NVIDIA GPU</label>
+      <label><input type="checkbox" id="s01-c-sub"> You will submit the annotation to GenBank</label>
+      <label><input type="checkbox" id="s01-c-tax" checked> The animal is in EGAPx's supported groups (vertebrates, many arthropods, molluscs, echinoderms, cnidarians)</label>
+    </fieldset>
+    <p class="tool-note">A large protein database (OrthoDB clade file) is assumed: anyone can download it.</p>
+    <ol class="steps" id="s01-rout" aria-live="polite"></ol>
+    <p class="tool-note" id="s01-rnote"></p>
+  </section>
+
+  <h3>Annotation files: GFF3, GTF and BED</h3>
+  <p>Gene and repeat annotations are plain tab-separated text files: one line per feature (a gene, a transcript, an exon). Three formats dominate, and the trap is that they do not count positions the same way.</p>
+  <dl class="defs">
+    <dt>GFF3</dt><dd>9 columns: sequence name, source, feature type, start, end, score, strand, <span class="tip" title="Phase (column 8, CDS lines only): how many bases to skip from the start of this CDS piece before the next complete codon begins: 0, 1 or 2.">phase</span>, attributes. Positions are <b>1-based and inclusive</b>: the first base of a contig is 1, and start=1, end=100 is 100 bases. Lines are linked by <code>ID=</code> and <code>Parent=</code> in column 9. The format for submission and for most pipelines' final output (Helixer, EGAPx, BRAKER with <code>--gff3</code>).</dd>
+    <dt>GTF</dt><dd>The same 9 columns and the same 1-based counting (it is GFF version 2), but column 9 says <code>gene_id "…"; transcript_id "…";</code>. BRAKER writes GTF unless you add <code>--gff3</code>.</dd>
+    <dt>BED</dt><dd>UCSC's format: name, start, end, and optionally up to 9 more columns. Positions are <b>0-based, end not included</b>: the first 100 bases are start=0, end=100. <span class="tip" title="BED12: BED with all 12 columns. Columns 7-8 mark the coding part (thickStart, thickEnd); columns 10-12 list the exons as blocks: how many, their sizes, and their starts relative to the gene start.">BED12</span> holds a whole transcript on one line. TOGA2 writes its gene models as BED12; repeat tracks are often BED.</dd>
+  </dl>
+
+  <section class="tool explain" aria-labelledby="s01-fmt-h">
+    <div class="tool-head"><span class="tool-tag">Toy</span><h3 id="s01-fmt-h">One gene, three formats</h3></div>
+    <p class="tool-note">A made-up gene <code>g1</code> on contig <code>ctg1</code>, plus strand, three exons. Pick a format and click an exon (or its line) to see the same piece in each notation.</p>
+    <div class="controls">
+      <span class="seg" id="s01-fseg" role="group" aria-label="Format">
+        <button type="button" data-f="gff" aria-pressed="true">GFF3</button>
+        <button type="button" data-f="gtf" aria-pressed="false">GTF</button>
+        <button type="button" data-f="bed" aria-pressed="false">BED12</button>
+      </span>
+    </div>
+    <div class="svgbox"><svg id="s01-fsvg" viewBox="0 0 760 110" width="100%" style="min-width:560px" role="img" aria-label="Toy gene with three exons; coding part drawn thick"></svg></div>
+    <div class="toy" id="s01-ftxt"></div>
+    <p class="tool-note" id="s01-fnote" aria-live="polite"></p>
+  </section>
+  <p>Never convert between these formats by hand-written <code>awk</code> unless you test it on a toy like this one. Converters (gffread, AGAT; <a href="#s06">section 06</a>) know the details, such as how each tool writes phase and codons.</p>
+
+  <h3 id="s01-ids">Sequence names</h3>
+  <p>Contig names travel into every file: the <span class="tip" title="BAM: the compressed binary file of reads aligned to a genome (SAM in binary form); each read line names the contig it aligned to.">BAM</span> of RNA-seq reads, the repeat table, the GFF3, the .2bit, the chains. Problems the tools' own documents warn about:</p>
+  <ul>
+    <li><b>Spaces and long descriptions.</b> BRAKER: "If the headers are long and contain whitespaces, some RNA-Seq alignment tools will truncate sequence names in the BAM file. This leads to an error with BRAKER." Keep only the first word.</li>
+    <li><b>Dots.</b> make_lastz_chains: "avoid dots (rename <code>NC_00000.1</code> → <code>NC_00000</code>)".</li>
+    <li><b>Special characters.</b> GFF3 allows any characters in the sequence name but they must be escaped unless in <code>[a-zA-Z0-9.:^*$@!+_?-|]</code>. TOGA2 discards reference transcripts whose names contain anything other than letters, digits, <code>.</code>, <code>-</code> and <code>#</code>.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># keep only the first word of each header; letter case (the mask) is not touched</span>
+seqkit seq -i genome.sm.fa &gt; genome.ids.fa
+
+<span class="c"># optional: rename to ctg00001, ctg00002, ... and keep the translation table</span>
+seqkit seq -n -i genome.ids.fa | awk '{printf "%s\tctg%05d\n", $1, NR}' &gt; rename.tsv
+seqkit replace -p '^(\S+)$' -r '{kv}' -k rename.tsv genome.ids.fa &gt; genome.renamed.fa</pre></div>
+  <p class="tool-note">seqkit 2.14: <code>seq -i</code> "print IDs instead of full headers", <code>-n</code> names only; <code>replace</code> with <code>{kv}</code> looks up the captured name in the two-column file <code>-k</code>. Keep <code>rename.tsv</code> with the assembly: a reviewer or database will ask which contig was which.</p>
+
+  <div class="note"><b>In our projects</b>
+    <ul>
+      <li><b>The genome.</b> Species A, a rodent (not yet published, so no name or exact numbers here): our hifiasm primary assembly from long reads, about 3 Gb in roughly a thousand contigs, no gaps, contig N50 in the tens of Mb, <a href="../02-assembly/#s10">BUSCO</a> (mammalia_odb10, genome mode) above 95% complete; the animal is male. Dozens of mitochondrial-like contigs have to be removed before annotation.</li>
+      <li><b>The mask.</b> In the soft-masked file <b>about half</b> of all bases are lowercase, with no N. The file looks like the toy excerpt above: capitals, then lowercase where a repeat begins, a few hundred bases into the first contig.</li>
+      <li><b>The evidence we had.</b> No RNA-seq. A published chromosome-level genome of a close relative, and the human annotation. Genes were projected from human with TOGA2 by the Hiller lab: most human genes were found, the large majority of them as <span class="tip" title="1:1 ortholog: exactly one copy in human and exactly one copy in species A.">1:1 orthologs</span> (section <a href="#s07">07</a>). In the helper above, load the species A example to see where this situation leads.</li>
+      <li><b>One warning carried forward.</b> Base errors in long-read assemblies, mostly in runs of one letter, break reading frames. Sections <a href="#s06">06</a> and <a href="#s07">07</a> show what they did to our gene models: polish before you annotate.</li>
+    </ul>
+  </div>
+
+  <p class="tool-note">Not in this lesson: demographic history (PSMC and relatives) comes in a later lesson, with only a pointer at the end of <a href="#s09">section 09</a>; SINEs and satellites in depth get their own lesson (pointers in <a href="#s02">02</a>–<a href="#s04">04</a>); DNA methylation is left out.</p>
+</section>

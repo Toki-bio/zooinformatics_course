@@ -1,0 +1,213 @@
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">08</span>Reporting a demographic analysis</h2>
+  <p class="lede">A PSMC curve is only as good as the choices behind it: which reads, which calls, which mask, which time pattern, which mutation rate and generation time. A reader cannot judge the curve, or redraw it with a better mutation rate, unless every one of those choices is written down. This section lists what a methods paragraph must say, how to draw the figure, which sentences a single genome cannot support, and which files to share. The tool at the end builds a methods paragraph from your choices and marks what is missing.</p>
+
+  <h3>1. What the methods paragraph must state</h3>
+  <p>Each item below changes the curve. If it is missing, a reader cannot tell whether a bump is history or a by-product of your settings. The right-hand column says where in this lesson the reason is explained.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Item</th><th>What to write</th><th>Why it matters</th></tr></thead>
+    <tbody>
+      <tr><td><b>The animal</b></td><td>Species, sample or voucher ID, sex, one individual.</td><td>A male's X is single-copy and looks like one long homozygous stretch (<a href="#s02">s02</a>). One individual stands for its population only if that population was not structured (<a href="#s01">s01</a>).</td></tr>
+      <tr><td><b>Reads</b></td><td>Technology and chemistry (Illumina PE150, PacBio HiFi, ONT R10.4.1 and basecaller model), mean depth on the autosomes.</td><td>Depth decides how many heterozygous sites are missed. Nadachowska-Brzyska et al. (2016) found that curves of the same flycatchers agreed only from a mean coverage of about 18× and with no more than 25 % missing data.</td></tr>
+      <tr><td><b>Reference and mapping</b></td><td>Which assembly (own or a relative's), mapper with version and preset.</td><td>Reads that map poorly in divergent regions remove heterozygous sites there.</td></tr>
+      <tr><td><b>Caller and filters</b></td><td>Caller, version and model; which calls were kept (<span class="tip" title="PASS: the caller's own filter column says the call passed its quality tests.">PASS</span>, biallelic SNVs only, <span class="tip" title="Allele fraction: the share of reads at a heterozygous site that carry the second base. A true heterozygote is near 0.5.">allele fraction</span> window such as 0.3–0.7).</td><td>Filters alone can change the heterozygosity several-fold, and the recent part of the curve with it (<a href="#s02">s02</a>, <a href="#s06">s06</a>).</td></tr>
+      <tr><td><b>Callable mask</b></td><td>The rule (depth bounds, <span class="tip" title="Mapping quality: the aligner's confidence, on a log scale, that a read belongs where it was placed. 0 = equally good elsewhere.">MAPQ</span> cut-off, excluded contigs) and the result: callable bases and their share of the autosomes analysed.</td><td>Unmasked low-depth regions look homozygous and push the curve down; high-depth regions (collapsed repeats) add false heterozygotes. The PSMC README recommends a minimum depth of a third of the average and a maximum of twice the average.</td></tr>
+      <tr><td><b>Sex chromosomes and organelles</b></td><td>Which contigs were removed and how they were recognised.</td><td>In the heterogametic sex the X or Z has no heterozygous sites at all (<a href="../03-annotation/#s09">lesson 3, s09</a>).</td></tr>
+      <tr><td><b>PSMC input</b></td><td>Bin size (100 bp unless you changed it) and how bins were coded.</td><td>The bin size enters the scaling formula directly (<a href="#s04">s04</a>).</td></tr>
+      <tr><td><b>PSMC run</b></td><td>Version and the full command line, including <code>-N -t -r -p</code>.</td><td>The <code>-p</code> pattern decides how many time windows the curve has. The psmc program's built-in default (<code>4+5*3+4</code> in the current source) is <b>not</b> the README's <code>4+25*2+4+6</code>, so "default settings" is ambiguous: always write the pattern out.</td></tr>
+      <tr><td><b>Pattern reruns</b></td><td>The extra patterns you ran, e.g. <code>-p "2+2+25*2+4+6"</code> and <code>"1+1+1+1+25*2+4+6"</code>, and whether the curve changed.</td><td>Hilgers et al. (2025) found false recent peaks with the README pattern in more than 200 published PSMC curves and wrote: "If a peak is only observed with the default parameter setting, it is likely an artifact" (<a href="#s06">s06</a>).</td></tr>
+      <tr><td><b>Bootstraps</b></td><td>How many, and the segment size the input was cut into. <code>splitfa</code> cuts pieces of 500,000 bins by default (50 Mb at 100-bp bins) and leaves a sequence whole if it is shorter than 1.5 times that, so in a contig-level assembly most contigs are single segments.</td><td>Shows how much the curve depends on which parts of the genome were used. It does not test the calls, the pattern or the mutation rate.</td></tr>
+      <tr><td><b>Mutation rate μ and generation time g</b></td><td>The values, their units (per site <b>per generation</b>, or per year), and a source for each. If either is a placeholder, say so.</td><td>Every year and every population size on the axes is proportional to 1/μ; years also scale with g (<a href="#s04">s04</a>).</td></tr>
+      <tr><td><b>Plotting</b></td><td>Which iteration was plotted and the axis limits; plotting script and version.</td><td>PSMC refines its estimate in rounds (<span class="tip" title="Iteration: one round of the expectation-maximisation fit; -N sets how many rounds are run, and every round is written to the .psmc file.">iterations</span>, set by <code>-N</code>). <code>psmc_plot.pl</code> plots iteration 20 unless told otherwise (<code>-n 20</code>), starts the time axis at 10,000 (<code>-x</code>; its help text says generations, but it is applied to the plotted axis, in years when <code>-g</code> is given), and uses human values (<code>-u 2.5e-08</code>, <code>-g 25</code>) unless you give your own.</td></tr>
+      <tr><td><b>Sensitivity tests and the trusted time range</b></td><td>What else you ran (other call sets, read halves, masks, a second method) and the time range you interpret.</td><td>The old part of a single-genome curve is usually reproducible; the most recent part is not (<a href="#s03">s03</a>, <a href="#s06">s06</a>).</td></tr>
+    </tbody>
+  </table></div>
+
+  <details class="simple"><summary>Simple explanation with examples: why a reader needs all of this</summary><div class="in">
+    <p>Think of the curve as a reading on an instrument that has several dials. A paper that prints the reading without the dial positions cannot be checked or compared. Three common cases:</p>
+    <div class="toy">Paper A: "PSMC (default settings), μ = 2.5e-8, g = 25"
+        <span class="x">^ which pattern?</span>  <span class="x">^ these are psmc_plot.pl's human values; source for a vole?</span>
+Paper B: "Illumina 12x, bcftools, PASS"
+        <span class="x">^ below ~18x: heterozygous sites lost, Ne too low (Nadachowska-Brzyska 2016)</span>
+Paper C: "100 bootstraps confirm the bottleneck at 20 kya"
+        <span class="x">^ bootstraps resample the genome; they do not test the pattern, the calls or μ</span></div>
+    <p>With the dial positions written down, a reader can redo the scaling with a better μ in two minutes, or see that a peak sits exactly in the window the default pattern is known to distort.</p>
+  </div></details>
+
+  <h3>2. Drawing the figure</h3>
+  <ul>
+    <li><b>Log time axis.</b> PSMC's time windows are spaced on a logarithmic scale (the source sets them as <code>α(e<sup>βk</sup> − 1)</code>), so a linear axis squeezes everything except the oldest windows into the left edge. A log axis for Ne is usual too.</li>
+    <li><b>Units in the axis labels, μ and g in the caption.</b> "Years ago (μ = 5.4×10⁻⁹ per site per generation, g = 1 year)". Or draw the curve in <dfn>scaled units</dfn>, which need neither: time as pairwise divergence <code>d = t × θ₀ / s</code> and size as <code>θ = λ × θ₀ / s</code> (PSMC README, appendix I; θ₀ is the scaled mutation rate PSMC estimates, s the bin size). A reader then multiplies by their own μ.</li>
+    <li><b>Bootstraps as thin lines behind the main curve,</b> so the reader sees where they spread.</li>
+    <li><b>Several μ values</b> (or a stated range) when μ is uncertain. On log–log axes a different μ slides the whole curve along a diagonal, without changing its shape.</li>
+    <li><b>Mark the time range you do not interpret,</b> rather than cutting it off silently or letting the most recent window run up the y axis.</li>
+    <li><b>A title inside the image and a colour legend above the plot.</b> Figures get copied into slides and reviews without their captions. Keep one colour per species in every figure of the paper.</li>
+  </ul>
+
+  <figure>
+    <div class="tool-head"><span class="tool-tag">Try it</span><b>The same toy curve, drawn badly and drawn well</b></div>
+    <div class="calc">
+      <span class="seg" id="s08-fpre" role="group" aria-label="Figure presets">
+        <button type="button" data-p="bad" aria-pressed="false">typical bad figure</button>
+        <button type="button" data-p="good" aria-pressed="true">reportable figure</button>
+      </span>
+    </div>
+    <fieldset class="s08-checks" id="s08-fopts">
+      <legend class="tool-note">Or switch single elements</legend>
+      <label><input type="checkbox" id="s08-f-log" checked> log time axis</label>
+      <label><input type="checkbox" id="s08-f-boot" checked> bootstrap lines</label>
+      <label><input type="checkbox" id="s08-f-mu" checked> curves for μ × 0.7 and μ × 1.4</label>
+      <label><input type="checkbox" id="s08-f-shade" checked> mark the unresolved recent part</label>
+      <label><input type="checkbox" id="s08-f-lab" checked> title, units, μ and g in the image</label>
+      <label><input type="checkbox" id="s08-f-scaled"> scaled units instead of years</label>
+    </fieldset>
+    <div class="slider-row">
+      <label for="s08-f-g">generation time g</label>
+      <input type="range" id="s08-f-g" min="0.5" max="3" step="0.5" value="1"><output id="s08-f-gv">1 yr</output>
+    </div>
+    <div class="legend" id="s08-fleg"></div>
+    <div class="svgbox" id="s08-fig"></div>
+    <p class="tool-note" id="s08-fread" aria-live="polite"></p>
+    <figcaption><b>Toy example, not real data.</b> One made-up history in scaled units, turned into years and individuals with μ = 5.4×10⁻⁹ per site per generation and the generation time on the slider. The ten grey lines are simulated stand-ins for bootstraps: their spread grows toward the present, as it does in real runs. The shaded part is where they disagree more than two-fold.</figcaption>
+  </figure>
+
+  <h3>3. What a single-genome curve cannot support</h3>
+  <p>The curve is a smoothed estimate of how fast the two copies of the genome found common ancestors at each time in the past, its <span class="tip" title="Inverse instantaneous coalescence rate: 1 divided by the rate at which two gene copies find a common ancestor at a given time in the past. In one unstructured, randomly mating population it equals the effective population size.">IICR</span>. It equals the <span class="tip" title="Effective population size: the size of an ideal, randomly mating population that would lose genetic diversity at the same rate as the real one. Usually far smaller than the number of animals alive.">effective population size (Ne)</span> only if the population was one randomly mating unit; subdivided populations of constant size can produce curves that look like growth or decline (Mazet et al. 2016; Chikhi et al. 2018). Write accordingly.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Do not write</th><th>Why not</th><th>Write instead</th></tr></thead>
+    <tbody>
+      <tr><td>"The population declined 18,500 years ago."</td><td>Times come from discrete windows and scale with 1/μ and with g, and both are uncertain for most species (<a href="#s04">s04</a>).</td><td>"A decline between about 15 and 25 thousand years ago at μ = …, g = …; between … and … over the μ range shown."</td></tr>
+      <tr><td>"About 10,000 animals lived then."</td><td>Ne is not a census, and under population structure even Ne is not what the curve shows.</td><td>"Ne (read from the inverse coalescence rate, assuming one panmictic population) fell to about 10,000."</td></tr>
+      <tr><td>"The Last Glacial Maximum caused the decline."</td><td>A coincidence in time, on a time axis that moves whenever μ or g change. Structure changes can produce the same shape.</td><td>"The decline overlaps the Last Glacial Maximum under our scaling." Claim a cause only with independent evidence: fossils, other species scaled the same way, or a fitted model with and without structure.</td></tr>
+      <tr><td>"Ne increased again in the last 5,000 years."</td><td>Few coalescences happen that recently; bootstraps spread widely, and the first window is where the default-pattern artefact sits (for human data Li &amp; Durbin 2011 wrote that "more recently than 20 kya ... few recombination events are left").</td><td>"The most recent ~10,000 years are not resolved by this analysis."</td></tr>
+      <tr><td>"The species split 1.2 million years ago, where the curves separate."</td><td>Two single-genome curves can separate long after the split, or before it under structure (<a href="#s07">s07</a>).</td><td>Use a method built for divergence (hPSMC with calibration simulations, BPP) and report it as in <a href="#s07">s07</a>.</td></tr>
+      <tr><td>"100 bootstraps confirm the bottleneck."</td><td>Bootstraps resample segments of the same genome. They are blind to call errors, the time pattern and μ.</td><td>"The feature is present in all bootstraps, in both pattern reruns and in the read-half replicate" (list what you actually ran).</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>4. Sharing inputs and outputs</h3>
+  <p>The reads go to a public archive (<a href="../02-assembly/#s13">lesson 2, s13</a>). That is not enough to redo a PSMC, because the calls, the mask and the settings are where analyses differ. Share these small files as well, in a general data repository with a DOI (for example Zenodo or Dryad):</p>
+  <dl class="defs">
+    <dt>PSMC input (<code>.psmcfa</code>)</dt><dd>One character per 100-bp bin, so about 25 MB for a 2.5-Gb genome before compression. With it, anyone can rerun PSMC with other patterns.</dd>
+    <dt>Callable mask (<span class="tip" title="BED: a text table of regions, one line each: contig, start (counted from 0), end.">BED</span>)</dt><dd>The regions counted as callable, and the list of excluded contigs.</dd>
+    <dt>Heterozygous calls (VCF)</dt><dd>After filtering, with the filter command. A <span class="tip" title="gVCF: a VCF that also lists the blocks of reference (homozygous) positions that were examined, so callable and uncalled bases can be told apart.">gVCF</span> is better if you have it.</dd>
+    <dt>PSMC outputs (<code>.psmc</code>)</dt><dd>Main run and every bootstrap. The file header (<code>MM</code> lines) records the PSMC version, the pattern and the number of iterations, so it documents itself.</dd>
+    <dt>Plotted numbers</dt><dd>The time and Ne table behind each line. <code>psmc_plot.pl -R</code> keeps the tables it draws from (<code>prefix.N.txt</code>); without <code>-R</code> it deletes them.</dd>
+    <dt>Commands and scripts</dt><dd>Every command with tool versions, and the script that converts to years with μ and g.</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># keep the plotted tables and give your own mu and g (psmc_plot.pl defaults are human: -u 2.5e-08 -g 25)</span>
+<span class="c"># -R keeps prefix.*.txt; -x 0 lets the time axis start where the data start instead of at 10,000 years</span>
+utils/psmc_plot.pl -R -u 5.4e-09 -g 1 -x 0 -T "Species, PSMC, mu 5.4e-9, g 1 yr" prefix combined.psmc
+
+<span class="c"># the header of every .psmc file records version, pattern and iterations</span>
+grep '^MM' sample.psmc | head -3</pre></div>
+
+  <section class="tool" aria-labelledby="s08-bh">
+    <div class="tool-head"><span class="tool-tag">Builder</span><h3 id="s08-bh">Methods paragraph from your choices</h3></div>
+    <p class="tool-note">Fill what you know. The paragraph below updates as you type; anything not filled appears as <span class="s08-miss">[missing]</span>, and the list underneath says what a reviewer would ask. Load an example to see a full and a thin report.</p>
+    <div class="calc" role="group" aria-label="Load an example">
+      <span class="seg" id="s08-pre">
+        <button type="button" data-p="spA" aria-pressed="false">a species A-like record (rounded)</button>
+        <button type="button" data-p="thin" aria-pressed="false">typical thin report</button>
+        <button type="button" data-p="clear" aria-pressed="false">clear</button>
+      </span>
+    </div>
+
+    <fieldset class="s08-grp"><legend>1 · Animal and reads</legend>
+      <div class="calc">
+        <label>species (binomial)<input id="s08-sp" class="s08-w"></label>
+        <label>sample ID<input id="s08-id"></label>
+        <label>sex<select id="s08-sex"><option value="">?</option><option>male</option><option>female</option><option value="unknown">not known</option></select></label>
+        <label>reads<select id="s08-tech"><option value="">?</option><option>Illumina paired-end</option><option>PacBio HiFi</option><option>Oxford Nanopore</option></select></label>
+        <label>chemistry / basecaller model<input id="s08-chem" class="s08-w"></label>
+        <label>mean depth (×)<input id="s08-dep" type="number" min="0" step="0.1"></label>
+        <label>reference<select id="s08-ref"><option value="">?</option><option value="own">own assembly</option><option value="rel">assembly of a relative</option></select></label>
+        <label>mapper + version<input id="s08-map" class="s08-w"></label>
+      </div>
+    </fieldset>
+
+    <fieldset class="s08-grp"><legend>2 · Calls and mask</legend>
+      <div class="calc">
+        <label>caller<input id="s08-cal"></label>
+        <label>caller version<input id="s08-cver"></label>
+        <label>caller model<input id="s08-cmod" class="s08-w"></label>
+        <label>calls kept<select id="s08-filt"><option value="">?</option><option value="pass">PASS only</option><option value="af">PASS + allele fraction 0.3–0.7</option><option value="hard">hard QUAL/depth filters</option></select></label>
+        <label>MAPQ ≥<input id="s08-mq" type="number" min="0"></label>
+        <label>depth min (×)<input id="s08-dmin" type="number" min="0" step="0.1"></label>
+        <label>depth max (×)<input id="s08-dmax" type="number" min="0" step="0.1"></label>
+        <label>callable (Mb)<input id="s08-cmb" type="number" min="0"></label>
+        <label>autosomal contigs analysed (Mb)<input id="s08-amb" type="number" min="0"></label>
+        <label>sex chromosomes<select id="s08-sx"><option value="">?</option><option value="ex">excluded</option><option value="in">kept</option><option value="na">not identified</option></select></label>
+      </div>
+      <fieldset class="s08-checks"><legend class="tool-note">Checks on the calls</legend>
+        <label><input type="checkbox" id="s08-q-xc"> false-heterozygote control on the male X (or female W/Z)</label>
+        <label><input type="checkbox" id="s08-q-tt"> <span class="tip" title="Ratio of transitions (A&lt;-&gt;G, C&lt;-&gt;T) to transversions among the heterozygous SNVs; real mammal SNVs give about 2, random errors pull it down.">Ts/Tv</span> of the heterozygous SNVs</label>
+      </fieldset>
+    </fieldset>
+
+    <fieldset class="s08-grp"><legend>3 · PSMC</legend>
+      <div class="calc">
+        <label>bin size (bp)<input id="s08-bin" type="number" min="1"></label>
+        <label>PSMC version<input id="s08-pv"></label>
+        <label>-N (iterations)<input id="s08-N" type="number" min="1"></label>
+        <label>-t<input id="s08-t" type="number" min="0" step="any"></label>
+        <label>-r<input id="s08-r" type="number" min="0" step="any"></label>
+        <label>-p pattern<input id="s08-p" class="s08-w"></label>
+        <label>bootstraps<input id="s08-b" type="number" min="0"></label>
+        <label>bootstrap segment size<input id="s08-seg"></label>
+        <label>iteration plotted<input id="s08-it" type="number" min="0"></label>
+      </div>
+      <fieldset class="s08-checks"><legend class="tool-note">Pattern reruns (Hilgers et al. 2025)</legend>
+        <label><input type="checkbox" id="s08-pa"> -p "2+2+25*2+4+6"</label>
+        <label><input type="checkbox" id="s08-pb"> -p "1+1+1+1+25*2+4+6"</label>
+      </fieldset>
+    </fieldset>
+
+    <fieldset class="s08-grp"><legend>4 · Scaling</legend>
+      <div class="calc">
+        <label>μ per site per generation<input id="s08-mu"></label>
+        <label class="s08-wl">source of μ<input id="s08-mus" class="s08-w"></label>
+        <label>generation time (years)<input id="s08-g" type="number" min="0" step="any"></label>
+        <label class="s08-wl">source of g<input id="s08-gs" class="s08-w"></label>
+      </div>
+      <fieldset class="s08-checks"><legend class="tool-note">In the figure</legend>
+        <label><input type="checkbox" id="s08-grid"> curves for a range of μ (and g)</label>
+        <label><input type="checkbox" id="s08-sc"> an axis in scaled units</label>
+      </fieldset>
+    </fieldset>
+
+    <fieldset class="s08-grp"><legend>5 · Sensitivity and interpretation</legend>
+      <fieldset class="s08-checks"><legend class="tool-note">Tests you ran</legend>
+        <label><input type="checkbox" id="s08-s-cs"> a second call set (other filter)</label>
+        <label><input type="checkbox" id="s08-s-rh"> independent read halves</label>
+        <label><input type="checkbox" id="s08-s-roh"> runs of homozygosity masked</label>
+        <label><input type="checkbox" id="s08-s-rnd"> random mask of the same size</label>
+        <label><input type="checkbox" id="s08-s-m2"> a second method (MSMC2, SMC++, …)</label>
+      </fieldset>
+      <div class="calc"><label class="wide">time range you interpret<input id="s08-rng" class="wide"></label></div>
+    </fieldset>
+
+    <fieldset class="s08-grp"><legend>6 · Shared files</legend>
+      <fieldset class="s08-checks">
+        <label><input type="checkbox" id="s08-d-reads"> raw reads (archive accession)</label>
+        <label><input type="checkbox" id="s08-d-fa"> .psmcfa input</label>
+        <label><input type="checkbox" id="s08-d-bed"> callable mask BED</label>
+        <label><input type="checkbox" id="s08-d-vcf"> filtered VCF / gVCF</label>
+        <label><input type="checkbox" id="s08-d-out"> .psmc outputs incl. bootstraps</label>
+        <label><input type="checkbox" id="s08-d-cmd"> commands, scripts, plotted tables</label>
+      </fieldset>
+    </fieldset>
+
+    <div class="s08-out">
+      <div class="tool-head"><b>Methods paragraph</b><button type="button" class="btn" id="s08-copy">copy text</button></div>
+      <p id="s08-par" aria-live="polite"></p>
+    </div>
+    <div class="readout" id="s08-score"></div>
+    <ul class="s08-flags" id="s08-flags" aria-live="polite"></ul>
+  </section>
+
+  <div class="note"><b>In our projects.</b> The species A-like example in the builder follows what our project log records, with depth and callable length rounded to toy values: ONT reads, Clair3 with model <code>r1041_e82_400bps_sup_v500</code>, heterozygous SNVs kept at PASS and allele fraction 0.3–0.7, a mask of MAPQ ≥ 10 and depth bounds of about half to twice the mean, the half-depth X-class contigs excluded, 100-bp bins, PSMC 0.6.5-r67 with <code>-N25 -t15 -r5 -p "4+25*2+4+6"</code>, 20 bootstraps and both split-first-window reruns. μ = 5.4×10⁻⁹ and g = 1 year are <b>placeholders</b>, not values established for this species; changing μ to 7.86×10⁻⁹ moves every time and size by a factor of 1.46 (<a href="#s04">s04</a>). The curve is reproducible across call sets and read halves for the old part only; the most recent intervals are not interpretable. The fields the builder still flags in this preset (the exact Clair3 version, the mapper, the plotted iteration, the bootstrap segment size) are ones the log we quote does not give, and the R10.4.1 chemistry is inferred, not confirmed by the provider. That is the point: write these down while you run the analysis, not when you write the paper. Our own figure rule: a title inside every image, a colour legend above the plot, and the same colour for each species in every figure (species A grey, the relative teal).</div>
+
+  <h3>What comes next in the course</h3>
+  <p>This lesson used one genome per species. Many of the questions it left open, such as whether a decline was shared by the whole population, whether the sister species exchanged genes, or what the allele frequencies are, need more individuals: <span class="tip" title="Site frequency spectrum: how many variant sites have their second allele in 1, 2, 3 ... of the sampled chromosomes. Needs several individuals.">SFS</span>-based methods and the standard gene-flow tests need more than one genome per population (<a href="#s05">s05</a>, <a href="#s07">s07</a>). The course plan continues with DNA methylation read from the same long reads, and with SINEs and satellite DNA in depth, which return to the repeats met in <a href="../03-annotation/#s02">lesson 3</a>.</p>
+</section>

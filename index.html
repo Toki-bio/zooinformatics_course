@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Zooinformatics</title>
+<meta name="description" content="Practical genomics for zoologists: from raw sequencing reads to assembled and checked genomes, explained with toy examples and interactive figures.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one column; course header, then the lessons as a numbered sequence */
+:root{
+  --bg:#F5F7F8; --panel:#FFFFFF; --fg:#13212C; --muted:#586A77; --line:#D3DCE2;
+  --accent:#0A6C96; --het:#B9770E; --code-bg:#EBF0F3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root{
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --code-bg:#1A2731; color-scheme:dark}}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+.wrap{max-width:900px;margin:0 auto;padding-block:40px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:40px}
+h1,h2,h3{font-family:var(--f-display);margin:0;line-height:1.15;text-wrap:balance}
+h1{font-size:clamp(34px,6vw,54px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:22px}
+h3{font-size:19px}
+p{margin:0;max-width:66ch}
+a{color:var(--accent)}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.lede{font-size:17.5px;color:var(--muted)}
+header{display:flex;flex-direction:column;gap:12px}
+.facts{display:flex;flex-wrap:wrap;gap:8px 22px;font-size:14px;color:var(--muted)}
+.facts b{color:var(--fg);font-weight:600}
+/* lesson list */
+.lessons{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:14px;counter-reset:ls}
+.lesson{counter-increment:ls;display:grid;grid-template-columns:52px 1fr;gap:0 16px;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:18px}
+.lesson::before{content:counter(ls,decimal-leading-zero);font-family:var(--f-mono);font-size:20px;font-weight:600;color:var(--accent)}
+.lesson>div{display:flex;flex-direction:column;gap:8px;min-width:0}
+.lesson h3 a{color:var(--fg);text-decoration:none}
+.lesson h3 a:hover,.lesson h3 a:focus-visible{color:var(--accent);text-decoration:underline}
+.lesson.planned{background:transparent;border-style:dashed}
+.lesson.planned::before{color:var(--muted)}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{font-family:var(--f-mono);font-size:11.5px;border:1px solid var(--line);border-radius:3px;padding:1px 7px;color:var(--muted)}
+.meta{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.go{font-weight:600;text-decoration:none}
+.go:hover{text-decoration:underline}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+section{display:flex;flex-direction:column;gap:14px}
+ul.plain{margin:0;padding-left:20px;max-width:66ch}
+footer{font-size:13px;color:var(--muted);border-top:1px solid var(--line);padding-top:16px}
+@media (max-width:520px){.lesson{grid-template-columns:1fr;gap:6px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Course</div>
+  <h1>Zooinformatics</h1>
+  <p class="lede">Practical genomics for zoologists: from raw sequencing reads to assembled and checked genomes. Each lesson builds the ideas from toy examples and interactive figures, then gives the tools and commands to run on real data.</p>
+  <div class="facts"><span><b>Format</b> self-paced web lessons</span><span><b>Level</b> no bioinformatics background assumed</span><span><b>Practice</b> commands for Linux servers and Galaxy</span></div>
+</header>
+
+<section aria-labelledby="lessons-h">
+  <h2 id="lessons-h">Lessons</h2>
+  <ol class="lessons">
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/01-pre-assembly/">Pre-Assembly Read Profiling</a></h3>
+        <p>What to learn from raw short and long reads before assembling a genome: read quality, genome size, heterozygosity, ploidy, repeats and contamination. Starts from what a read and a k-mer are, with interactive coverage, k-mer and spectrum figures.</p>
+        <div class="tags"><span>read QC</span><span>k-mers</span><span>GenomeScope2</span><span>Smudgeplot</span><span>flow cytometry</span><span>contamination</span><span>VGP</span><span>Galaxy</span></div>
+        <a class="go" href="lessons/01-pre-assembly/">Open lesson →</a>
+      </div>
+    </li>
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/02-assembly/">Genome Assembly</a></h3>
+        <p>From profiled reads to a checked genome: a pre-flight check, computing needs, short-read and long-read assemblers, Hi-C scaffolding with YaHS, polishing, duplicate purging and gap closing, haplotypes and phasing, quality metrics, contamination, BUSCO, mitogenomes and NUMTs, sex chromosomes, and depositing data. Illustrated with the lab's own small-mammal assemblies, including desmans.</p>
+        <div class="tags"><span>hifiasm</span><span>Flye</span><span>SPAdes</span><span>ABySS</span><span>YaHS</span><span>purge_dups</span><span>Merqury</span><span>BUSCO</span><span>FCS-GX</span><span>NUMTs</span><span>NCBI</span></div>
+        <a class="go" href="lessons/02-assembly/">Open lesson →</a>
+      </div>
+    </li>
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/03-annotation/">Repeats, Genes and ROH</a></h3>
+        <p>From an assembled genome to biology: what repeats are, building a repeat library and masking it, repeat landscapes and tandem arrays; evidence for genes, gene prediction, annotation by projection with TOGA2, naming and checking genes; heterozygosity and runs of homozygosity from one animal. One of the lab's own rodent genomes is the running example.</p>
+        <div class="tags"><span>RepeatModeler2</span><span>RepeatMasker</span><span>EDTA</span><span>Earl Grey</span><span>TRF</span><span>BRAKER</span><span>Helixer</span><span>TOGA2</span><span>InterProScan</span><span>OMArk</span><span>ROH</span></div>
+        <a class="go" href="lessons/03-annotation/">Open lesson →</a>
+      </div>
+    </li>
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/04-demography/">Population History from One Genome</a></h3>
+        <p>How the two copies of each chromosome in one animal record its population history: the coalescent, preparing a callable diploid genome, PSMC and how to scale it to years, MSMC2, SMC++, cobraa and SFS methods, pitfalls and checks, divergence and gene flow between two species (hPSMC, BPP, gIMble), and how to report the analysis. Examples from the lab's own rodent genome and a published genome of a close relative.</p>
+        <div class="tags"><span>coalescent</span><span>PSMC</span><span>MSMC2</span><span>SMC++</span><span>cobraa</span><span>hPSMC</span><span>BPP</span><span>gIMble</span><span>bootstrap</span></div>
+        <a class="go" href="lessons/04-demography/">Open lesson →</a>
+      </div>
+    </li>
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/05-methylation/">DNA Methylation from Long Reads</a></h3>
+        <p>What CpG methylation is and why zoologists care, how nanopore and PacBio reads detect it and what must be kept from a run to use it later, per-site calls with modkit, methylation on each parental copy, patterns across genes and repeats, comparing samples, quality checks and viewing in IGV.</p>
+        <div class="tags"><span>5mC</span><span>CpG</span><span>Dorado</span><span>MM/ML tags</span><span>modkit</span><span>pb-CpG-tools</span><span>haplotypes</span><span>DMR</span><span>IGV</span></div>
+        <a class="go" href="lessons/05-methylation/">Open lesson →</a>
+      </div>
+    </li>
+    <li class="lesson">
+      <div>
+        <h3><a href="lessons/06-sines-satellites/">SINEs and Satellite DNA</a></h3>
+        <p>Short interspersed elements and tandem satellite arrays: SINE biology, finding copies of known SINEs, discovering new ones and their tRNA heads, families and subfamilies, orthologous loci and presence/absence markers, satellite monomers and higher-order repeats, how both behave in assemblies, and a complete SINE study with the lab's own tools.</p>
+        <div class="tags"><span>SINE</span><span>tRNA head</span><span>sear2k</span><span>SINEderella</span><span>SubFam</span><span>SINE_orth_loc</span><span>satellite DNA</span><span>HOR</span><span>CLsat</span></div>
+        <a class="go" href="lessons/06-sines-satellites/">Open lesson →</a>
+      </div>
+    </li>
+  </ol>
+</section>
+
+<section aria-labelledby="use-h">
+  <h2 id="use-h">How to use the lessons</h2>
+  <ul class="plain">
+    <li>Take the lessons in order. Each starts with an introduction and an "order of work" list; every term is defined where it first appears, and dotted terms show an explanation when you hover over them.</li>
+    <li>Open the collapsed "Simple explanation" boxes when a step is not obvious; they work through small examples.</li>
+    <li>The figures are simulated teaching examples. The commands are meant for real data; check them against the tool versions you have installed.</li>
+  </ul>
+</section>
+
+<section aria-labelledby="made-h">
+  <h2 id="made-h">How the lessons are made</h2>
+  <ul class="plain">
+    <li><b>Checked against the sources.</b> Defaults, options, file names and resource figures come from each tool's own documentation and, where needed, its source code, at the version named in the lesson. Each section's sources are listed in the <a href="https://github.com/Toki-bio/zooinformatics_course/tree/main/src">course repository</a>.</li>
+    <li><b>Our own data as examples.</b> "In our projects" boxes show what happened in the lab's genome projects on small mammals (desmans among them), including what went wrong.</li>
+    <li><b>Reviewed as a whole.</b> Each lesson is read end to end for undefined terms and contradictions, and every interactive figure is tested in a browser on desktop and phone widths.</li>
+  </ul>
+</section>
+
+<footer>Source and corrections: <a href="https://github.com/Toki-bio/zooinformatics_course">github.com/Toki-bio/zooinformatics_course</a> · <a href="https://github.com/Toki-bio/zooinformatics_course/blob/main/CHANGELOG.md">changelog</a> · text CC BY 4.0, code MIT · last updated 2026-11-01</footer>
+
+</div>
+</body>
+</html>

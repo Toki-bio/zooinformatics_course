@@ -1,0 +1,7 @@
+#s01-wrap .toy .s01-tsd{background:var(--line)}
+#s01-wrap .toy .s01-c{color:var(--muted)}
+#s01-wrap #s01-anat-out p{margin-top:4px;font-size:14px}
+#s01-wrap #s01-anat g:focus{outline:none}
+#s01-wrap #s01-anat g:focus-visible rect{stroke-width:2.5}
+#s01-wrap .readout div > span.tip{color:var(--muted)}
+#s01-wrap .note p+p{margin-top:8px}

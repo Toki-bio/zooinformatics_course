@@ -1,0 +1,106 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>From model units to years: mutation rate and generation time</h2>
+  <p class="lede">PSMC never sees a year or an animal. It reads where the heterozygous sites lie along one genome and reports times and population sizes in its own units, measured against an unknown reference size. To turn them into years and numbers of individuals you supply two numbers from outside the genome: the mutation rate and the generation time. This section shows the arithmetic, where those two numbers come from, what happens to the curve when they change, and how to report the uncertainty they bring.</p>
+
+  <h3>What PSMC reports</h3>
+  <p>The <code>.psmc</code> output file (<a href="#s03">s03</a>) holds, for every iteration, a <code>TR</code> line and a block of <code>RS</code> lines. The PSMC README says: "All these parameters are scaled to 2N<sub>0</sub>". The three numbers you need are:</p>
+  <dl class="defs">
+    <dt>θ<sub>0</sub> (theta zero)</dt><dd>The second column of the <code>TR</code> line: the scaled mutation rate per <span class="tip" title="One letter of the .psmcfa input stands for 100 bases of genome (the default of fq2psmcfa). θ0 is per bin, so you divide by the bin size s to get it per base.">bin</span>. In population-genetics units θ = 4<i>N</i>μ: four times the population size times the mutation rate. It is, roughly, how often two copies of the genome differ per base, which is why it carries the heterozygosity of the animal.</dd>
+    <dt>t<sub>k</sub></dt><dd>Third column of each <code>RS</code> line: the start of time interval <i>k</i>, in units of 2<i>N</i><sub>0</sub> generations (0.5 means "<i>N</i><sub>0</sub> generations ago").</dd>
+    <dt>λ<sub>k</sub> (lambda)</dt><dd>Fourth column of each <code>RS</code> line: the population size in interval <i>k</i> relative to <i>N</i><sub>0</sub> (λ = 2 means twice <i>N</i><sub>0</sub>).</dd>
+    <dt><i>N</i><sub>0</sub></dt><dd>A reference <span class="tip" title="Effective population size: the size of an idealised population that would lose genetic diversity at the same rate as the real one. For a single-genome curve it is really the inverse of the coalescence rate (s01), and it is usually much smaller than the census count of animals.">effective population size</span> that is never known by itself. Every time and every size in the output is a multiple of it.</dd>
+  </dl>
+  <p>Li and Durbin (2011) and the PSMC README convert with a per-site, per-generation mutation rate μ and the bin size <i>s</i> (100 by default):</p>
+  <div class="formula">N<sub>0</sub> = θ<sub>0</sub> / (4 μ s)<br>generations ago T<sub>k</sub> = 2 N<sub>0</sub> t<sub>k</sub>        years ago = T<sub>k</sub> × g<br>N<sub>e</sub> in interval k = λ<sub>k</sub> N<sub>0</sub></div>
+  <p>Here <i>g</i> is the <dfn>generation time</dfn> in years: the average age of the parents when their offspring are born. Notice what the formulas imply. θ<sub>0</sub>, t<sub>k</sub> and λ<sub>k</sub> come from the genome and are fixed. μ sits in the denominator of <i>N</i><sub>0</sub>, and <i>N</i><sub>0</sub> multiplies both times and sizes; <i>g</i> multiplies only the times.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: from θ<sub>0</sub> to a number of mice</summary><div class="in">
+    <p>Take a PSMC run like the one in <a href="#s03">s03</a>, with a round example value of θ<sub>0</sub> = 0.08 per 100-base bin. Assume μ = 5.4 × 10<sup>-9</sup> per site per generation (an illustrative value, see below) and <i>g</i> = 1 year.</p>
+    <div class="toy">N0 = 0.08 / (4 × 5.4e-9 × 100) = 0.08 / 2.16e-6 = <span class="a">37,037</span>
+an interval starting at t = 0.5:   T = 2 × 37,037 × 0.5 = 37,037 generations = <span class="a">37,037 years</span> at g = 1
+the same interval with λ = 1.5:    Ne = 1.5 × 37,037 = <span class="a">55,600</span>
+
+double μ to 1.08e-8:   N0 = <span class="h">18,519</span>   → T = <span class="h">18,519 years</span>, Ne = <span class="h">27,800</span>   (both halved)
+double g to 2 years:   N0 = 37,037   → T = <span class="h">74,074 years</span>, Ne = 55,600   (only time doubles)</div>
+    <p>The interval and the λ did not change. Only the ruler did. The genome itself fixes products such as 2<i>N</i><sub>0</sub>μ<i>t</i>; you can trade a larger population for a smaller mutation rate and the data look identical.</p>
+    <p>The README also gives a way to plot without μ at all: time as the pairwise divergence <i>d</i><sub>k</sub> = 2μ<i>T</i><sub>k</sub> = <i>t</i><sub>k</sub>θ<sub>0</sub>/<i>s</i>, and size as θ<sub>k</sub> = 4<i>N</i><sub>k</sub>μ = λ<sub>k</sub>θ<sub>0</sub>/<i>s</i>. Such a plot never has to be redrawn when somebody publishes a better mutation rate.</p>
+  </div></details>
+
+  <section class="tool explain" aria-labelledby="s04-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-toy-h">Rescale one PSMC curve</h3></div>
+    <p class="tool-note">The grey dashed step curve is an invented PSMC-like history (round toy values, not the output of any real run), scaled with μ = 5.4 × 10<sup>-9</sup> per generation and <i>g</i> = 1 year. The blue curve is the same model output, re-scaled with your μ and <i>g</i>. Both axes are <span class="tip" title="On a logarithmic axis every tenfold step (1k, 10k, 100k) takes the same distance. Multiplying all values by the same factor then moves the curve without changing its shape.">logarithmic</span>. The dot marks the trough at about 55 to 80 thousand years in the reference scaling; the thin line through it is the path that dot takes when only μ changes.</p>
+    <div class="controls" role="group" aria-label="Scaling constants">
+      <label for="s04-mu"><span>Mutation rate μ <span id="s04-mu-unit">per site per generation</span></span><output id="s04-mu-o">5.40 × 10⁻⁹</output><input type="range" id="s04-mu" min="0" max="1000" step="1" value="0"></label>
+      <label for="s04-g">Generation time g (years) <output id="s04-g-o">1.0</output><input type="range" id="s04-g" min="0" max="1000" step="1" value="0"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">The rate you have is
+        <div class="seg" role="group" aria-label="Unit of the mutation rate" id="s04-unit"><button type="button" data-v="gen" aria-pressed="true">per generation</button><button type="button" data-v="yr" aria-pressed="false">per year</button></div></div>
+      <label style="min-width:auto;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="s04-env"> show the μ/g grid (μ 4.6 to 7.9 × 10⁻⁹, g 1 to 2 yr)</label>
+    </div>
+    <div class="controls" role="group" aria-label="Presets">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Presets (rate per generation)
+        <div class="seg" role="group" aria-label="Presets" id="s04-pre"><button type="button" data-mu="5.4e-9" data-g="1" aria-pressed="true">5.4 × 10⁻⁹, 1 yr</button><button type="button" data-mu="7.86e-9" data-g="1" aria-pressed="false">7.86 × 10⁻⁹, 1 yr</button><button type="button" data-mu="5.4e-9" data-g="2" aria-pressed="false">5.4 × 10⁻⁹, 2 yr</button><button type="button" data-mu="2.5e-8" data-g="25" aria-pressed="false">2.5 × 10⁻⁸, 25 yr</button></div></div>
+    </div>
+    <div class="legend" id="s04-legend"></div>
+    <div class="svgbox" id="s04-fig"></div>
+    <div class="readout" id="s04-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) Change μ alone: the whole curve slides along the diagonal, older-and-larger for a smaller μ, younger-and-smaller for a larger one, and the shape is untouched. (2) Change <i>g</i> with a per-generation rate: the curve slides only sideways; population sizes stay. (3) Switch to "per year" and change <i>g</i>: now the times stay and only the sizes move, because a per-year rate already contains the generation time. (4) The 7.86 × 10⁻⁹ preset is 1.46 times the placeholder: every time and every size shrinks by the same 1.46. (5) The last preset is what <code>psmc_plot.pl</code> uses when you forget <code>-u</code> and <code>-g</code>: its defaults are the human values of Li and Durbin (2011). (6) With the grid on, the faint curves show the spread from plausible-but-unknown constants; compare it with the width of the bootstrap band in <a href="#s03">s03</a>.</p>
+  </section>
+
+  <h3>Where the mutation rate comes from</h3>
+  <p>There are two kinds of estimates, and they answer slightly different questions.</p>
+  <ul>
+    <li><b>Direct (pedigree) rates.</b> Sequence parents and offspring (a <dfn>trio</dfn>) or lines kept for many generations (a <span class="tip" title="Mutation-accumulation lines: inbred lines kept by brother-sister mating for many generations, so that new mutations pile up and can be counted by comparing the lines with their founder.">mutation-accumulation experiment</span>), and count new mutations that neither parent carried. The result is per site per generation: exactly what PSMC needs. It is a modern, short-term rate, measured in a few individuals, often of a laboratory strain.</li>
+    <li><b>Phylogenetic (long-term) rates.</b> Divide the sequence divergence between two species by twice their split time, which itself comes from fossils or a dated tree (the factor 2 because both lineages accumulate changes: <i>d</i> = 2μ<i>T</i>, as in the PSMC README). The result is per site per year, averaged over millions of years, and only as good as the calibration date.</li>
+  </ul>
+  <p>The two can disagree. When the first trio studies gave a human rate of about 1.2 × 10<sup>-8</sup> per generation (Kong et al. 2012), it was "approximately half" of the older value from fossil calibration (Scally and Durbin 2012). Halving μ doubles every date scaled with it, so the timing of human prehistory inferred from genomes had to be revised. Li and Durbin (2011) had used 2.5 × 10<sup>-8</sup> per generation and 25 years; they noted the "uncertainty of the per-year mutation rate 1.0 × 10<sup>-9</sup> (= 2.5 × 10<sup>-8</sup>/25)" as an important caveat.</p>
+
+  <div class="tbl"><table style="min-width:600px">
+    <thead><tr><th>Species and method</th><th>μ per site per generation</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Human, 78 trios (fathers aged 29.7 on average)</td><td>1.20 × 10<sup>-8</sup></td><td>Kong et al. 2012</td></tr>
+      <tr><td>Human, value used to scale the first PSMC curves</td><td>2.5 × 10<sup>-8</sup> (with g = 25 yr)</td><td>Li and Durbin 2011</td></tr>
+      <tr><td>House mouse C57BL/6, more than 20 generations of accumulation</td><td>5.4 × 10<sup>-9</sup> (95 % <span class="tip" title="Confidence interval: the range that, by the authors' statistics, contains the true value with 95 % probability.">CI</span> 4.6 to 6.5 × 10<sup>-9</sup>)</td><td>Uchimura et al. 2015</td></tr>
+      <tr><td>House mouse, six multi-sibling pedigrees (C57BL/6 × 129S5)</td><td>0.39 × 10<sup>-8</sup>, about one third of the human rate in the same study</td><td>Lindsay et al. 2019, Table 1</td></tr>
+      <tr><td>House mouse, 12 accumulation lines, PacBio long reads</td><td>7.86 × 10<sup>-9</sup> (single-nucleotide mutations)</td><td>López-Cortegano et al. 2025</td></tr>
+      <tr><td>68 vertebrate species, 151 trios</td><td>varies about 40-fold between species</td><td>Bergeron et al. 2023</td></tr>
+    </tbody>
+  </table></div>
+  <p>Even for the laboratory mouse, three careful studies differ by a factor of two. For a wild species without its own estimate you borrow a rate from a relative, and the 40-fold spread across vertebrates is a reminder that the borrowed number is a guess. Bergeron et al. (2023) also found that generation time, age at maturity and fecundity are the main life-history traits behind that spread, so a rate measured in a fast-breeding species may not transfer to a slow one.</p>
+  <p>One more thing acts like a lower mutation rate: heterozygous sites you failed to call. Li and Durbin (2011) state that "missing heterozygotes uniformly at a probability p is equivalent to reducing the neutral mutation rate". Low coverage or strict filters (<a href="#s02">s02</a>) therefore push the curve the same way a smaller μ would. <code>psmc_plot.pl</code> has <code>-N</code> (one false-negative rate) and <code>-M "sample=0.1"</code> (per sample) to correct for it, and the README calls an uncorrected low coverage "the most common pitfall when using PSMC".</p>
+
+  <h3>Generation time</h3>
+  <p>For a wild mammal the generation time is rarely measured. It is set from life-history data (age at first breeding, lifespan, how many years an animal breeds) and is longer than the age at first breeding whenever animals breed for more than one season. Two rules follow from the formulas:</p>
+  <ul>
+    <li>With a <b>per-generation</b> μ, <i>g</i> moves only the time axis: years = generations × <i>g</i>. Population sizes do not depend on it.</li>
+    <li>With a <b>per-year</b> rate, convert first: μ<sub>gen</sub> = μ<sub>yr</sub> × <i>g</i>. Then the years no longer depend on <i>g</i> (it cancels), but the population sizes do: a longer generation time gives a smaller N<sub>e</sub>.</li>
+  </ul>
+  <div class="formula">per generation:  years = 2 N0 t g = θ0 t g / (2 μ_gen s)      Ne = λ θ0 / (4 μ_gen s)<br>per year:        years = θ0 t / (2 μ_yr s)                 Ne = λ θ0 / (4 μ_yr g s)</div>
+
+  <h3>Reporting the uncertainty</h3>
+  <p>The bootstrap band from <a href="#s03">s03</a> shows how much the curve changes when you resample pieces of the genome. It says nothing about μ and <i>g</i>, which multiply every value at once. For a species without its own rate this second uncertainty is usually the larger one. Report it separately:</p>
+  <ol class="qlist">
+    <li>State μ, its unit (per generation or per year), and where it comes from; state <i>g</i> and its basis. Say plainly if either is borrowed or a placeholder.</li>
+    <li>Give the rescaling rule so readers can convert: "for another μ multiply all times and sizes by 5.4 × 10<sup>-9</sup>/μ; for another <i>g</i> multiply times by <i>g</i>".</li>
+    <li>Show a small grid of scalings (as in the figure above), or a second axis in model units (divergence <i>d</i> and θ), next to the main figure.</li>
+    <li>Make claims that do not depend on the constants: the order of events, ratios ("the trough is about 2.5 times below the old plateau"), and the comparison of two genomes that share the same μ and <i>g</i>. Absolute dates matched to a climate event need the constants and inherit their uncertainty.</li>
+    <li>Never overlay curves from different papers without re-scaling them to the same μ and <i>g</i>.</li>
+  </ol>
+  <p>The plotting script takes μ, <i>g</i> and the bin size as options. Its defaults are the human values (<code>-u 2.5e-8</code>, <code>-g 25</code>, <code>-s 100</code>), so always set them. It needs <a href="http://www.gnuplot.info/">gnuplot</a>; <code>-R</code> keeps the text tables (<code>prefix.0.txt</code> for the main run, one per bootstrap) whose first two columns are years and N<sub>e</sub> in units of 10<sup>4</sup>, which you can plot with any other program.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># one scaling: our placeholder mu (per site per generation) and g = 1 year</span>
+psmc_plot.pl -u 5.4e-09 -g 1 -s 100 -R sp_u5.4_g1 combined.psmc
+<span class="c"># a grid of scalings for the same run (2 rates x 2 generation times)</span>
+for u in 4.6e-09 7.9e-09; do
+  for g in 1 2; do
+    psmc_plot.pl -u $u -g $g -s 100 -R sp_u${u}_g${g} combined.psmc
+  done
+done
+<span class="c"># → sp_*.eps (add -p for PDF) and, with -R, sp_*.0.txt: years, Ne/10^4, ...</span></pre></div>
+  <p class="tool-note">The other single-genome programs of <a href="#s05">s05</a> also work in mutation-scaled units: MSMC2 reports times and rates scaled by μ, and SMC++ takes μ as an argument of <code>smc++ estimate</code> and <i>g</i> as <code>-g</code> of <code>smc++ plot</code>. The same rules apply. Split times between two species (<a href="#s07">s07</a>) are scaled the same way.</p>
+
+  <div class="note"><b>In our projects</b>
+    <p>All our species A curves were scaled with μ = 5.4 × 10<sup>-9</sup> per site per generation and <i>g</i> = 1 year, and every figure says these are illustrative placeholders, not values verified for this species. The μ is the same number as the C57BL/6 laboratory-mouse estimate of Uchimura et al. (2015); no rate has been measured for species A or its close relatives, and we have no measured generation time. Re-scaling to the long-read mouse rate of 7.86 × 10<sup>-9</sup> divides every time and size by 1.46. Our recommended display is a grid of μ 4.6 to 7.9 × 10<sup>-9</sup> per generation and <i>g</i> 1 to 2 years.</p>
+    <p>The constants matter most for dates. Suppose a split time scaled with the placeholder constants comes out at 1 million years, while an independent dated phylogeny puts the same split at 2 million years. Both can be true only if the yearly rate is half the placeholder, 2.7 × 10<sup>-9</sup>: for example a per-generation rate of 5.4 × 10<sup>-9</sup> with a generation time of 2 years. Whether such a generation time is realistic has to come from the species' life history; the arithmetic alone cannot decide it. Our own two-species estimates (<a href="#s07">s07</a>) carry exactly this uncertainty.</p>
+  </div>
+
+  <p class="tool-note">Sources: PSMC README "Appendix I: Scaling the PSMC output" and <code>utils/psmc_plot.pl</code> (github.com/lh3/psmc); Li and Durbin 2011 <i>Nature</i> 475:493; mutation-rate papers as in the table. Full list in the section notes.</p>
+</section>

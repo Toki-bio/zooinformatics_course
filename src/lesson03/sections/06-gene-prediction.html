@@ -1,0 +1,177 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Predicting genes: BRAKER, GALBA, Helixer, EGAPx</h2>
+  <p class="lede">A gene predictor reads the repeat-masked genome and writes down where each protein-coding gene lies: where it starts, where every exon begins and ends, and where it stops. It combines three kinds of information: signals in the DNA itself, evidence from RNA and proteins (<a href="#s05">section 05</a>), and parameters learned for your species. This section explains how that combination works, which pipeline to choose for which data, what the pipelines need and produce, and how to check the result.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>Gene model</dt><dd>One predicted gene written as coordinates: a chain of exons joined by introns, with a start codon in the first coding exon and a stop codon in the last. A gene can have several <dfn>transcripts</dfn> (alternative splice forms); each is a separate chain.</dd>
+    <dt>CDS</dt><dd><b>C</b>o<b>d</b>ing <b>s</b>equence: the part of the exons that is translated into protein, from the start codon (usually ATG) to the stop codon (TAA, TAG or TGA). Exon parts before and after it are the <dfn>UTRs</dfn> (untranslated regions).</dd>
+    <dt>Splice sites</dt><dd>The two ends of an intron. Almost all introns begin with GT (the <dfn>donor</dfn> site) and end with AG (the <dfn>acceptor</dfn> site). A rare class begins with GC.</dd>
+    <dt><i>Ab initio</i> prediction</dt><dd>Latin for "from the beginning": predicting genes from the genome sequence alone, using only what a model has learned about how genes of that kind of organism look (codon usage, splice-site patterns, typical exon and intron lengths).</dd>
+    <dt>Evidence, hints</dt><dd>Extra information from outside the genome sequence: introns seen in spliced RNA-seq reads, proteins of other species aligned to the genome, repeat masking. AUGUSTUS calls each such piece a <dfn>hint</dfn> ("this interval is probably an intron", "this interval is probably coding").</dd>
+    <dt>Training</dt><dd>Fitting a predictor's parameters to one species. A predictor trained on human splice sites and codon usage works less well on a fish or an insect, so pipelines first build a set of reliable genes from the evidence and train on them.</dd>
+    <dt>GTF / GFF3</dt><dd>Two tab-separated text formats with one line per feature (gene, mRNA, exon, CDS) and 9 columns: sequence name, source, feature type, start, end, score, strand, phase, attributes. GTF links lines by <code>gene_id</code>/<code>transcript_id</code>; GFF3 by <code>ID</code>/<code>Parent</code>. Most pipelines below write one or both. Both count from 1; the toy in <a href="#s01-fmt-h">section 01</a> compares them with BED.</dd>
+  </dl>
+
+  <h3>How a classic predictor decides: AUGUSTUS</h3>
+  <p>Most pipelines in this section end with <dfn>AUGUSTUS</dfn> (current release 3.5.0) or a program built the same way. AUGUSTUS is a <span class="tip" title="A generalized hidden Markov model: a statistical model of a gene as a sequence of states (intergenic, exon, intron) with probabilities for the DNA letters in each state and for how long each state lasts. The program finds the most probable path of states through the genome.">generalized hidden Markov model</span> (the title of its 2006 hints paper). In plain words: it scores every possible way of cutting the DNA into intergenic region, exons and introns, and reports the most probable one. The scores come from a parameter set chosen with <code>--species</code>. AUGUSTUS ships 167 parameter sets (folders in <code>config/species/</code>), among them <code>human</code>, <code>chicken</code>, <code>zebrafish</code> and <code>fly</code>. For a new species, pipelines such as BRAKER and GALBA train a new set.</p>
+  <p>Evidence enters as a hints file (16 hint types, for example <code>intron</code>, <code>CDSpart</code>, <code>exonpart</code>, <code>start</code>, <code>stop</code>). The AUGUSTUS manual describes the rule: a gene structure that agrees with a hint gets its probability multiplied by a <dfn>bonus</dfn>; each feature that has no supporting hint gets multiplied by a <dfn>malus</dfn> (penalty) below 1. Bonus and malus are set per hint type and per evidence source in an <span class="tip" title="extrinsic.cfg: the AUGUSTUS configuration file that lists evidence sources (for example M = manual, P = protein, E = EST/RNA, RM = RepeatMasker) and the bonus and malus for every hint type from each source.">extrinsic configuration file</span>. In the shipped example <code>extrinsic.MPE.cfg</code>, an RNA-derived intron hint (source E) has a bonus of 10,000 and a protein-derived CDSpart hint (source P) a bonus of 100,000. So evidence does not force a gene: it tilts the scores, and a large enough bonus wins against the sequence signals.</p>
+  <p>Repeats enter through soft-masking. With <code>--softmasking=1</code> AUGUSTUS treats lower-case bases as evidence against exons (a <code>nonexonpart</code> hint with a default bonus of 1.15 per base, which grows with the length of the masked stretch). The manual says this is slightly more accurate than hard masking with N and, on human, more than twice as fast. Two smaller rules worth knowing: AUGUSTUS predicts a GC donor site only where a hint supports it, and it reads every letter other than a, c, g, t (either case) as an unknown base.</p>
+
+  <section class="tool" aria-labelledby="s06-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">A toy gene finder: sequence signals plus weighted evidence</h3></div>
+    <p class="tool-note">A <b>toy</b>, not AUGUSTUS. Seven candidate exons sit on a 1,000-bp stretch. Each has a "looks coding" score from the sequence alone. The toy lists every allowed gene model (a chain that starts with an ATG exon and ends with a stop exon), adds up its score, and keeps the best, as a gene finder does with <span class="tip" title="Dynamic programming: a way to find the best chain among a huge number of possible chains without listing them all, by remembering the best partial chain ending at each candidate exon. The Viterbi algorithm used in hidden Markov models is one example.">dynamic programming</span>. Switch evidence on and move the <b>hint weight</b> to see the predicted model change. The top track shows the real gene, which only a toy can know.</p>
+    <div class="controls">
+      <label for="s06-w"><span class="tip" title="How many score points one supporting hint adds. In AUGUSTUS terms this is the logarithm of the bonus factor: adding scores here is the same as multiplying probabilities by a bonus there.">Hint weight (log bonus)</span><output id="s06-wo">1.0</output><input type="range" id="s06-w" min="0" max="5" step="0.1" value="1"></label>
+      <div>
+        <div style="font-size:12.5px;color:var(--muted);margin-bottom:4px">Evidence used</div>
+        <div class="seg" role="group" aria-label="Evidence used">
+          <button type="button" id="s06-rna" aria-pressed="false" title="Introns seen in spliced RNA-seq reads (section 05). Each predicted intron that matches one exactly gets the hint weight.">RNA-seq introns</button>
+          <button type="button" id="s06-prot" aria-pressed="false" title="Pieces of related proteins aligned to the genome (CDSpart hints). An exon that contains a whole piece gets the hint weight.">Protein hits</button>
+          <button type="button" id="s06-mask" aria-pressed="false" title="Soft-masking of the repeat at 800-990: exons inside lower-case sequence lose 4 points per fully masked exon.">Soft-masking</button>
+        </div>
+      </div>
+      <button type="button" class="btn" id="s06-reset" style="align-self:center">Reset</button>
+    </div>
+    <figure>
+      <div class="svgbox"><svg id="s06-svg" viewBox="0 0 900 345" width="100%" style="min-width:640px" role="img" aria-label="Toy gene prediction tracks"></svg></div>
+      <figcaption id="s06-cap"></figcaption>
+    </figure>
+    <div class="readout" id="s06-read"></div>
+    <div class="tbl"><table id="s06-tab" style="min-width:560px">
+      <thead><tr><th>Rank</th><th>Gene model (exon chain)</th><th>Sequence</th><th>Introns + gene cost</th><th>Evidence</th><th>Masking</th><th>Total</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <p>Candidate exons: E0 and E1 start with ATG (E0 is a weak upstream decoy), E4 ends with a stop codon, T1 is a single-exon open reading frame with both. E2 and E2x are two alternative versions of exon 2 that use different splice sites; E3 is a short, weak-looking real exon. T1 lies inside a transposable element (the repeat track).</p>
+      <p>Score of a gene model = sum of the exons' sequence scores, minus 1 per intron, minus 2 per gene (a cost that stops the toy from calling genes everywhere). A gene is predicted only if its total is above 0. RNA-seq on: +weight for each intron that matches an RNA-seq intron exactly. Protein on: +weight for each exon that fully contains a protein hit. Masking on: −4 × (masked fraction of the exon). Frames, UTRs and the second strand are ignored. In the real programs the same idea runs over millions of candidates with probabilities instead of points.</p>
+    </div></details>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: reading a recipe with the spaces removed</summary><div class="in">
+    <p>Imagine a long text with all spaces and punctuation removed, in which a few recipes are hidden among pages of random letters. You know some rules: a recipe starts with "TAKE" and ends with "SERVE", and inside it the words look like cooking words. Reading only with these rules is <i>ab initio</i> prediction. You will find most recipes, but you will sometimes cut a sentence at the wrong place, skip a short step, or mistake a copied advertisement that also says "TAKE ... SERVE" for a recipe.</p>
+    <p>Now a friend who has cooked some of the dishes marks with a pencil where steps really break (that is RNA-seq: it shows where introns were cut out in living cells), and you have a cookbook of a neighbouring country with similar dishes (that is protein evidence). You give the pencil marks some weight. A light weight lets the marks settle close calls; a heavy weight makes you follow them even where the text disagrees. The copied advertisements are the transposable elements: they really contain "TAKE ... SERVE", and the neighbouring cookbook may even contain the same advertisement, so heavy trust in the cookbook brings them back. That is why repeats are masked before prediction and repeat-derived genes are filtered afterwards.</p>
+  </div></details>
+
+  <h3>Which pipeline for which data</h3>
+  <ol class="steps">
+    <li><div><b>RNA-seq of your species and a protein database</b><div class="d">BRAKER3 mode (called ETP). The developers call it the most accurate mode for short-read RNA-seq. Long-read RNA (Iso-Seq) plus proteins is a separate mode in BRAKER4.</div></div></li>
+    <li><div><b>RNA-seq only</b><div class="d">BRAKER1 mode (ET). Each intron must be covered by many reads; the BRAKER guide warns that it does not work with an assembled transcriptome mapped to the genome.</div></div></li>
+    <li><div><b>No RNA, but proteins</b><div class="d">BRAKER2 mode (EP) with a large protein database such as an OrthoDB partition (many relatives per gene family), or GALBA with the proteins of one or a few close relatives. GALBA's own guide says: if you have no RNA-seq and the genome is large, use GALBA; otherwise try BRAKER first.</div></div></li>
+    <li><div><b>Nothing but the genome</b><div class="d">Helixer (a trained neural network, no training on your species needed). BRAKER can also run genome-only (ES mode), but its developers warn that this mode has the lowest accuracy and recommend protein mode instead.</div></div></li>
+    <li><div><b>You want NCBI's own method and a GenBank submission</b><div class="d">EGAPx, the public version of NCBI's annotation pipeline. It picks proteins for your taxon automatically; RNA-seq is "highly recommended".</div></div></li>
+    <li class="later"><div><b>A well-annotated close relative exists</b><div class="d">Projection of its genes onto your genome (Liftoff, TOGA2) is a different route; see <a href="#s07">section 07</a>. It is often combined with the predictors here.</div></div></li>
+  </ol>
+
+  <h3>BRAKER: three modes, one logic</h3>
+  <p>BRAKER (Greifswald and Georgia Tech) never predicts genes by itself. It trains and runs two gene finders: <dfn>GeneMark</dfn> (in its flavours ES, ET, EP+ and ETP, named after the evidence they use) and AUGUSTUS. GeneMark trains on the evidence, the most reliable GeneMark genes become the training set for AUGUSTUS, and AUGUSTUS then predicts with the same evidence as hints. In BRAKER3 a third program, <span class="tip" title="TSEBRA, Transcript Selector for BRAKER: compares transcripts from several gene sets and keeps those best supported by intron and start/stop evidence.">TSEBRA</span>, merges the AUGUSTUS and GeneMark-ETP gene sets and keeps transcripts with strong support from introns and start/stop evidence.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Mode</th><th>Evidence</th><th>How it trains</th><th>Final <code>braker.gtf</code></th></tr></thead>
+    <tbody>
+      <tr><td><b>ETP</b> (BRAKER3)</td><td>RNA-seq + protein database</td><td>GeneMark-ETP (RNA-seq assembled with StringTie2 + proteins); AUGUSTUS trained on its high-confidence genes</td><td>TSEBRA merge of AUGUSTUS and GeneMark-ETP, only genes with high evidence support</td></tr>
+      <tr><td><b>ET</b> (BRAKER1)</td><td>RNA-seq only</td><td>GeneMark-ET on spliced read alignments</td><td>AUGUSTUS genes plus GeneMark genes fully supported by evidence</td></tr>
+      <tr><td><b>EP</b> (BRAKER2)</td><td>Protein database only</td><td>GeneMark-EP+ on <span class="tip" title="ProtHint: the GeneMark team's pipeline. It finds proteins in the database that resemble genes predicted in your genome (DIAMOND), aligns them across introns (Spaln), and scores the resulting intron, start and stop hints.">ProtHint</span> alignments</td><td>as ET</td></tr>
+      <tr><td><b>ES</b></td><td>genome only</td><td>GeneMark-ES on the sequence; long genes train AUGUSTUS</td><td><i>ab initio</i>; developers advise against relying on it</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>Two versions exist now.</b> The classic Perl script <code>braker.pl</code> (version 3.0.8, February 2024) runs all modes; its README now begins "BRAKER is deprecated. Try BRAKER4". BRAKER4 is a rewrite of the same logic as a <span class="tip" title="Snakemake: a workflow manager. It runs each step as a separate job, restarts from the last finished step after a crash, and can send jobs to a cluster.">Snakemake</span> workflow that runs every tool in Singularity/Apptainer <span class="tip" title="Container: a packaged copy of a program together with everything it needs (libraries, other tools), run as one file; Singularity/Apptainer is the container system used on most university clusters (Docker images can be converted to it).">containers</span>. It is labelled beta (latest release v0.6.0-beta, October 2026). Its README shows it matching <code>braker.pl</code> on an <i>Arabidopsis thaliana</i> benchmark. Both are shown below; use one version for every genome you want to compare.</p>
+  <p><b>Inputs.</b> A soft-masked genome with short, simple sequence names (<code>braker.pl</code> assumes soft-masking unless <code>--softmasking_off</code> is given; BRAKER4 runs RepeatModeler2 + RepeatMasker + TRF itself, or Red if set, when the <code>genome_masked</code> column is left empty). RNA-seq as SRA run IDs, FASTQ files or sorted BAM files. GeneMark-ETP assembles the reads with StringTie2, which needs the strand tag on spliced reads: map with HISAT2 <code>--dta</code> or STAR <code>--outSAMstrandField intronMotif</code>. The protein file must be a <b>database with many relatives per gene family</b>, not one species' proteome; the developers provide OrthoDB v12 partitions (Vertebrata, Metazoa, Arthropoda and others) at <code>bioinf.uni-greifswald.de/bioinf/partitioned_odb12/</code>. You may add the proteins of a close relative to it.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># classic BRAKER (braker.pl 3.0.8) in its container, BRAKER3 mode
+singularity build braker3.sif docker://teambraker/braker3:latest
+wget https://bioinf.uni-greifswald.de/bioinf/partitioned_odb12/Vertebrata.fa.gz
+gunzip Vertebrata.fa.gz
+
+singularity exec -B $PWD:$PWD braker3.sif braker.pl \
+    --genome=genome.softmasked.fa --species=my_species_braker \
+    --prot_seq=Vertebrata.fa \
+    --bam=liver.bam,brain.bam \
+    --threads=32 --gff3
+<span class="c"># proteins only (BRAKER2 mode): drop --bam
+# RNA-seq only (BRAKER1 mode): drop --prot_seq
+# SRA runs instead of BAMs: --rnaseq_sets_ids=SRR...,SRR...</span></pre></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># BRAKER4 (Snakemake): one row per genome in samples.csv; the mode follows from the filled columns</span>
+sample_name,genome,genome_masked,protein_fasta,bam_files,fastq_r1,fastq_r2,sra_ids,varus_genus,varus_species,isoseq_bam,isoseq_fastq,busco_lineage,reference_gtf
+my_species,genome.fa,genome.softmasked.fa,Vertebrata.fa,liver.bam:brain.bam,,,,,,,,mammalia_odb12,
+
+<span class="c"># config.ini: copy config.ini.example from the repository and edit; then</span>
+snakemake --cores 32 --use-singularity --snakefile /path/to/BRAKER4/Snakefile \
+    --singularity-prefix .singularity_cache \
+    --singularity-args "-B /home -B /data" \
+    --latency-wait 120 --restart-times 3</pre></div>
+  <p><b>Outputs</b> (<code>braker.pl</code>, in the working directory): <code>braker.gtf</code> (final gene set), <code>braker.aa</code> (proteins), <code>braker.codingseq</code> (CDS), <code>braker.gff3</code> (only with <code>--gff3</code>), <code>hintsfile.gff</code> (all evidence as hints), <code>Augustus/</code> and <code>GeneMark-E*/genemark.gtf</code> (the two gene finders' own sets). BRAKER4 writes gzipped versions of these to <code>output/&lt;sample&gt;/results/</code> plus <code>braker.longest.aa.gz</code> (one protein per gene), <code>gene_support.tsv</code> (evidence support per gene), a BUSCO/compleasm summary and an HTML report.</p>
+  <p><b>Time and memory.</b> Neither guide gives a run time for a mammal-sized genome. What they do say: <code>braker.pl</code> runs some steps on one thread, and its slow <code>optimize_augustus.pl</code> step uses at most 8 threads; BRAKER4's example cluster settings request 48 CPUs, 120 GB and a 72-hour limit per job (a template, not a measured need). Very many short contigs increase run time without improving accuracy, and BRAKER4 skips contigs shorter than 10 kb by default (<code>min_contig</code>).</p>
+  <p class="note warn"><b>Pitfalls.</b> RNA-seq hints given with <code>--hints</code> are ignored by GeneMark-ETP, so give BRAKER3 BAMs or reads, not a hints file. Older GeneMark copies on your <code>$PATH</code> can break a run. The containers do not include UTR prediction, which the developers call "buggy and unstable". With <code>--busco_lineage</code>, BRAKER uses BUSCO genes as hints and picks the gene set with the fewest missing BUSCOs, so the developers warn that BUSCO can then no longer be used to judge that gene set; use OMArk or a reference instead (<a href="#s08">section 08</a>). How much accuracy to expect: on <i>A. thaliana</i> the BRAKER4 README reports gene-level F1 (a combined measure of finding real genes and avoiding false ones, 100 = perfect) of 79.4 for ETP, 72.5 for EP and 69.4 for ET with <code>braker.pl</code>. That is one plant genome; mammals have longer introns and more repeats.</p>
+
+  <h3>GALBA: proteins of close relatives, then AUGUSTUS</h3>
+  <p>GALBA (same Greifswald group) aligns the proteins of one or a few <b>closely related</b> species to your genome with <span class="tip" title="miniprot: Heng Li's fast protein-to-genome aligner; it aligns proteins across introns and tolerates frameshifts. See section 05.">miniprot</span>, turns the alignments into training genes and hints, trains AUGUSTUS on them and predicts with the hints. It does not use GeneMark. The developers state that BRAKER is very likely more accurate for small and medium genomes, but that GALBA "has a clear advantage in large genomes" (they name <i>Mus musculus</i> and <i>Gallus gallus</i>) when proteins of a close relative are used. Like BRAKER, the Perl version (<code>galba.pl</code> 1.0.11) is now marked deprecated in favour of GALBA2, a Snakemake rewrite whose README recommends OrthoDB proteins.</p>
+  <div class="code"><button type="button">copy</button><pre>singularity build galba.sif docker://katharinahoff/galba-notebook:latest
+singularity exec galba.sif galba.pl --species=my_species_galba \
+    --genome=genome.softmasked.fa --prot_seq=close_relatives.faa --threads=32
+<span class="c"># output: galba.gtf (AUGUSTUS genes with hints), hintsfile.gff; --gff3 adds GFF3
+# GALBA always treats the genome as soft-masked</span></pre></div>
+
+  <h3>Helixer: a trained network, no evidence</h3>
+  <p>Helixer (Weber and Usadel labs; version 0.3.7, July 2026) is <i>ab initio</i> in a new way. A deep neural network, trained by its authors on annotated genomes of one lineage, gives every base a probability of being intergenic, UTR, coding or intron. A hidden Markov model step (HelixerPost) turns these probabilities into gene models. There is no training on your species and no evidence input. Four models exist: <code>vertebrate</code>, <code>invertebrate</code>, <code>land_plant</code> and <code>fungi</code> (the vertebrate model file is <code>vertebrate_v0.3_m_0080.h5</code>, released 2022).</p>
+  <ul class="qlist">
+    <li><b>Hardware.</b> An NVIDIA GPU is "necessary for acceptable performance" on real genomes; the models run on GPUs with 8-11 GB of memory. A web tool (plabipd.de) takes genomes up to 1 GB per file, with every sequence at least 25 kb.</li>
+    <li><b>Soft-masking is ignored.</b> Helixer converts the whole sequence to upper case when it reads the FASTA (in its GeenuFF importer), so lower-case repeats are invisible to it. Repeat-derived genes have to be filtered afterwards.</li>
+    <li><b>One model per gene.</b> The output is "primary gene models": one transcript per gene, no alternative splicing. Derive proteins with gffread.</li>
+    <li><b>Settings.</b> For vertebrates, <code>--lineage vertebrate</code> sets the window the network sees to 213,840 bp; the guide explains that long windows are needed where gene loci often exceed 20 kb, as in vertebrates, and warns that the overlap settings should not exceed the assembly's N50 (or even N90). Raising <code>--peak-threshold</code> from 0.8 to 0.9-0.975 is reported to give fewer false genes with very little loss of BUSCO genes.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre>apptainer pull docker://gglyptodon/helixer-docker:latest
+apptainer run helixer-docker_latest.sif fetch_helixer_models.py --lineage vertebrate
+apptainer run --nv helixer-docker_latest.sif Helixer.py \
+    --fasta-path genome.fa --lineage vertebrate \
+    --species My_species --gff-output-path my_species_helixer.gff3
+<span class="c"># --nv gives the container the GPU; output: one GFF3 with gene, mRNA, exon, CDS, UTR lines</span></pre></div>
+
+  <h3>EGAPx: NCBI's pipeline to run yourself</h3>
+  <p>EGAPx (version 1.0.1, September 2026) is the public version of the NCBI Eukaryotic Genome Annotation Pipeline that builds RefSeq annotations. You give a <span class="tip" title="YAML: a simple text format for settings, written as 'name: value' lines with indentation for lists.">YAML</span> file with the genome, the <span class="tip" title="NCBI Taxonomy identifier: the number NCBI uses for a species or group, found on the NCBI Taxonomy page.">taxid</span> and RNA-seq. EGAPx then picks protein sets and gene-model parameters for that taxon itself, masks repeats itself, aligns proteins (miniprot by default, ProSplign as a slower option), short reads (STAR) and long reads (minimap2), and builds gene models with NCBI's <dfn>Gnomon</dfn>: Gnomon first chains the alignments into models and then fills gaps with <i>ab initio</i> prediction. It also names genes from orthology. Supported groups include Mammalia, Sauropsida, ray-finned fishes, many arthropods, molluscs and flowering plants; fungi, protists and nematodes are out of scope, and an unsupported taxid makes the run fail.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># input.yaml</span>
+genome: /data/my_species/genome.fa
+taxid: 1234567          <span class="c"># your species' NCBI Taxonomy ID</span>
+short_reads:
+  - - liver
+    - - /data/rna/liver_R1.fq
+      - /data/rna/liver_R2.fq
+
+<span class="c"># needs Nextflow 23.10.1 (a workflow manager like Snakemake; the 1.0.1 release notes say EGAPx does not work on Nextflow v26), Python 3.11+</span>
+git clone https://github.com/ncbi/egapx.git &amp;&amp; cd egapx
+python3 -m venv venv &amp;&amp; source venv/bin/activate &amp;&amp; pip install -r requirements.txt
+python3 ui/egapx.py input.yaml -e singularity -w work -o out   <span class="c"># first run writes ./egapx_config templates</span>
+python3 ui/egapx.py input.yaml -e singularity -w work -o out   <span class="c"># run after editing them</span></pre></div>
+  <ul class="qlist">
+    <li><b>Before running:</b> screen the assembly for contamination with FCS (<a href="../02-assembly/#s09">lesson 2, section 09</a>); EGAPx stops with "Too many protein hits to proks" when 5 % or more of its models best match bacteria or viruses. The genome does not need to be masked beforehand.</li>
+    <li><b>Resources:</b> a single machine with 32 CPUs and 256 GB RAM, or a computing cluster (<span class="tip" title="SLURM: the job scheduler used on most university computing clusters. AWS: Amazon's rented cloud computers.">SLURM or AWS</span>). The default settings were tested on a 3-Gb human genome with 10 RNA-seq runs. Reported times on AWS: fruit fly (144 Mb) 3 hours and 71 CPU-hours; chicken (1.1 Gb) 5.5 hours and 425 CPU-hours.</li>
+    <li><b>Outputs:</b> <code>complete.genomic.gff</code> and <code>.gtf</code>, <code>complete.proteins.faa</code>, <code>complete.cds.fna</code>, <code>annotated_genome.asn</code> for GenBank submission (with the included <code>prepare_submission</code> script; <a href="#s08">section 08</a>), BUSCO in protein mode on the longest isoform per gene, and <code>GNOMON/new.gnomon_report.txt</code> listing the evidence behind every model.</li>
+    <li><b>"Major correction" genes:</b> models whose protein has a frameshift or internal stop. EGAPx keeps them, labels the protein "LOW QUALITY PROTEIN" and bridges each frameshift with a 1-2 bp "microintron". RefSeq releases an annotation only if no more than 10 % of protein-coding genes need major corrections; above that, the EGAPx guide recommends polishing the assembly.</li>
+  </ul>
+  <p><b>Annotation as a service.</b> NCBI annotates genomes for RefSeq itself, about one genome per species, with priority for medically or commercially important organisms (EGAPx FAQ); its process page links a request form. For species other than human and mouse it masks with WindowMasker. Ensembl also keeps adding annotated species to its Rapid Release site. If your species is likely to be chosen, a RefSeq or Ensembl annotation may save you the work, but you control neither the timing nor the evidence used.</p>
+
+  <h3>After prediction: clean, count, filter</h3>
+  <p>A raw gene set needs checking before anyone uses it. Three tools cover most of it.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># AGAT (v1.7.0): repair and standardise GTF/GFF (adds missing gene/mRNA/exon lines, makes IDs unique, sorts)</span>
+conda install -c bioconda agat
+agat_convert_sp_gxf2gxf.pl -g braker.gtf -o braker.agat.gff3
+agat_sp_statistics.pl --gff braker.agat.gff3 -g genome.fa -o braker.stats.txt   <span class="c"># genes, mRNAs, exons/gene, lengths</span>
+agat_sp_keep_longest_isoform.pl --gff braker.agat.gff3 -o braker.longest.gff3
+agat_sp_filter_incomplete_gene_coding_models.pl --gff braker.agat.gff3 --fasta genome.fa -o braker.complete.gff3
+
+<span class="c"># gffread (v0.12.9): proteins and CDS from any GFF3/GTF; -V drops models with in-frame stops</span>
+gffread braker.longest.gff3 -g genome.fa -V -y proteins.faa -x cds.fna
+
+<span class="c"># one simple repeat check: genes whose CDS lies at least half inside masked repeats</span>
+awk '$3=="CDS"' braker.longest.gff3 | bedtools intersect -a - -b repeats.bed -f 0.5 -u | cut -f9 | sort -u &gt; cds_in_repeats.txt</pre></div>
+  <ul class="qlist">
+    <li><b>Gene count.</b> Compare it with related species. A mammal has about 20,000 protein-coding genes (the human reference used by TOGA2 in <a href="#s07">section 07</a> has 19,990). The EGAPx guide lists the usual causes: too few genes from weak evidence or an unusual organism; too many from a fragmented assembly, uncollapsed haplotypes (both copies kept; <a href="../02-assembly/#s06">lesson 2, section 06</a>) or "noise from genes annotated on transposons".</li>
+    <li><b>Transposon-derived genes.</b> Transposable elements carry real open reading frames (for example the reverse transcriptase of L1), and protein databases contain these proteins, so a predictor can call them genes, more so when the evidence weight is high (try it in the toy). Flag models that lie mostly in masked sequence (the <code>bedtools</code> line above; the 0.5 fraction is our choice, not a published standard) and models with transposase or reverse-transcriptase domains from InterProScan (<a href="#s08">section 08</a>). Look at flagged models before deleting them.</li>
+    <li><b>Structure statistics.</b> In <code>agat_sp_statistics.pl</code> output, look at the share of single-exon genes, mean exons per gene and very short proteins; compare with a related annotation. A jump in single-exon genes often means broken models or repeat ORFs.</li>
+    <li><b>Look at genes.</b> Both BRAKER and GALBA guides ask you to inspect models in a genome browser together with the evidence (for example IGV with the BAM files and the hints file).</li>
+  </ul>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects</h3>
+    <p>For our rodent species A (not yet published, so no name or exact numbers here) we had no RNA-seq, so none of the RNA-based modes was possible; gene models came from projecting human genes with TOGA2 (<a href="#s07">section 07</a>). What we learned there applies to every predictor in this section. Our assembly is built from long reads that miscount long runs of one letter (<span class="tip" title="Homopolymer: a run of the same base, such as AAAAAA.">homopolymers</span>). Inside the projected exons, the reads contradicted the assembly at hundreds of short insertions or deletions; nearly all of them shift the reading frame and the great majority sit in homopolymers. For 6-bp homopolymers in exons, most of the reads agreed with the assembled length in only a minority of tracts, and in even fewer for C/G runs than for A/T runs. Such read-contradicted frameshifts were almost absent from the "fully intact" TOGA2 genes but hit about one in ten of the "uncertain loss" genes.</p>
+    <p style="margin-top:8px">A false frameshift breaks a gene model whichever program builds it: TOGA2 calls the gene lost, while a predictor has to end the gene early, jump frames with an extra intron, or split it (EGAPx would count it as a "major correction"). We did not run BRAKER or EGAPx on this assembly, so we have no measured numbers for them. The lesson we draw: <b>polish before you predict</b> (<a href="../02-assembly/#s06">lesson 2, section 06</a>), and when a long-read annotation shows many broken genes, suspect the bases before the biology.</p>
+  </div>
+</section>

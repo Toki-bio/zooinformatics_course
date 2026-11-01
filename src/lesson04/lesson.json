@@ -1,0 +1,53 @@
+{
+ "number": 4,
+ "slug": "04-demography",
+ "title": "Population History from One Genome",
+ "eyebrow": "Lesson 4 · what one animal's genome says about its ancestors",
+ "intro": [
+  "The two copies of every chromosome in one animal trace back to common ancestors that lived thousands to millions of generations ago, and how long ago they met depends on how large the population was. This lesson reads that record. It starts with the idea behind every method (the coalescent), then builds the input from one diploid genome, runs PSMC and reads its curve, turns model units into years and animals with a mutation rate and a generation time, and compares PSMC with MSMC2, SMC++, cobraa and methods that need many animals. Then come the checks that tell a real feature from an artefact, the two-species case (split time and gene flow with hPSMC, BPP and gIMble), and what a report must state so that others can judge and redraw the curve.",
+  "The running examples are two closely related rodents with one male genome each: our nanopore genome of a species called species A here, and the public HiFi assembly of a close relative (\"the relative\"). All their dates use placeholder rates, which is itself one of the lessons. Questions that need many animals (allele frequencies, recent history in detail, the standard gene-flow tests) are only outlined here; DNA methylation and an in-depth treatment of SINEs and satellites are left for later lessons. Hover over a dotted term to see what it means."
+ ],
+ "steps": [
+  {
+   "title": "What one genome remembers",
+   "what": "Coalescence, TMRCA and effective size; heterozygosity as a clock; recombination makes a genome a mosaic of many histories.",
+   "tools": "coalescent · TMRCA · IICR"
+  },
+  {
+   "title": "Preparing the input",
+   "what": "From reads to a diploid consensus, a callable mask and the 100-bp bins PSMC reads.",
+   "tools": "bcftools · vcf2fq · Clair3 / DeepVariant · mosdepth · seqtk · fq2psmcfa"
+  },
+  {
+   "title": "PSMC",
+   "what": "The model, time intervals and the -p pattern, options, output, bootstraps, plotting and reading the curve.",
+   "tools": "psmc · splitfa · psmc_plot.pl"
+  },
+  {
+   "title": "From model units to years",
+   "what": "Mutation rate and generation time: where they come from and how they move the curve.",
+   "tools": "psmc_plot.pl -u -g · mutation-rate studies"
+  },
+  {
+   "title": "Beyond PSMC",
+   "what": "More haplotypes, more animals, old structure, site frequency spectra; which method for which data.",
+   "tools": "MSMC2 · SMC++ · cobraa · Stairway Plot 2 · fastsimcoal2"
+  },
+  {
+   "title": "Pitfalls and checks",
+   "what": "What bends the curve, and the sensitivity tests that tell a feature from an artefact.",
+   "tools": "samtools view -s · bcftools isec · bedtools shuffle · psmc -p · msprime"
+  },
+  {
+   "title": "Two species",
+   "what": "Split time and gene flow from one genome per species.",
+   "tools": "hPSMC · MSMC2 cross-coalescence · BPP · gIMble"
+  },
+  {
+   "title": "Reporting",
+   "what": "What the methods must state, how to draw the figure, which claims one genome cannot support, which files to share.",
+   "tools": "methods checklist · psmc_plot.pl -R"
+  }
+ ],
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+}

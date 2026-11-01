@@ -1,0 +1,256 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Polishing, purging duplicates and closing gaps</h2>
+  <p class="lede">An assembler hands you contigs that are long but not yet clean. Three separate clean-up jobs follow, and each answers one question. <b>Polishing</b>: are the letters right? <b>Purging duplicates</b>: is every part of the genome in the assembly only once? <b>Gap closing</b>: can the holes between joined contigs be filled with real sequence? Each job can also damage the assembly, so each one is measured before and after.</p>
+
+  <ol class="steps">
+    <li><div><b>Polish</b> <span class="d">Re-align the reads to the assembly and correct letters where the reads disagree with it.</span><div class="t">Medaka, dorado polish, Racon (long reads) · NextPolish, Pilon, POLCA, HyPo (short reads) · variant caller + Merfin</div></div></li>
+    <li><div><b>Purge duplicates</b> <span class="d">Find contigs that are the second copy of the same place (the other parent's version) and move them out of the main set.</span><div class="t">purge_dups · purge_haplotigs · built into hifiasm</div></div></li>
+    <li><div><b>Scaffold</b> <span class="d">Join contigs into chromosome-sized pieces with Hi-C (<a href="#s05">section 05</a>). This makes gaps.</span><div class="t">YaHS</div></div></li>
+    <li><div><b>Close gaps</b> <span class="d">Fill the runs of N between joined contigs with sequence from reads that reach across.</span><div class="t">TGS-GapCloser, LR_Gapcloser (long reads) · Sealer, GapCloser (short reads)</div></div></li>
+    <li class="later"><div><b>Check again</b> <span class="d">QV, k-mer completeness and BUSCO after every step (<a href="#s08">section 08</a>, <a href="#s10">section 10</a>).</span><div class="t">Merqury · BUSCO</div></div></li>
+  </ol>
+  <p>This order is common for a long-read contig assembly, and it is the order used for our species B and C assemblies below (two unpublished small-mammal genomes). Not every assembly needs every step: hifiasm already purges duplicates itself, and a contig-level assembly without scaffolding has no gaps to close.</p>
+
+  <!-- ===================== A. POLISHING ===================== -->
+  <h3 id="s06-pol-h">A. Polishing: correcting the letters</h3>
+  <p>An assembler builds each contig from many overlapping reads, but its final letters are not always the majority opinion of those reads. Flye, for example, makes its consensus directly from raw long reads, and some of their errors survive into the contigs. <dfn>Polishing</dfn> means aligning reads to the finished contigs again, looking at the stack of reads over every position (the <span class="tip" title="All reads that cover one position of the assembly, stacked on top of each other like a pile. A polisher looks at this pile column by column.">pileup</span>), and replacing the assembly's letter where the reads clearly say something else. The new sequence is called the <span class="tip" title="The sequence that most reads agree on at each position. Polishers output a new consensus FASTA file.">consensus</span>.</p>
+
+  <dl class="defs">
+    <dt>Substitution</dt><dd>One letter replaced by another (C written where the genome has T). Easy for polishers: different reads rarely make the same substitution at the same spot.</dd>
+    <dt>Indel</dt><dd>An <b>in</b>sertion or <b>del</b>etion: an extra or a missing letter. In a gene, a 1- or 2-base indel shifts the reading frame (a <span class="tip" title="A change in the number of bases that is not a multiple of 3. Every codon after it is read wrongly, so the predicted protein is garbage and usually hits a false stop codon.">frameshift</span>) and destroys the predicted protein.</dd>
+    <dt>Homopolymer</dt><dd>A run of the same letter, such as CCCCCC or AAAAAAAA. In nanopore-type reads (Oxford Nanopore and CycloneSEQ) the electric signal changes little while a run of identical bases passes the pore, so the basecaller has to guess the length of the run. The usual result is a run that is one base too short or too long, so the indels left in a long-read assembly tend to sit in homopolymers (about nine in ten of them in our species A exons, below).</dd>
+    <dt>Random vs systematic error</dt><dd><b>Random</b> errors differ from read to read, so the majority of reads outvotes them. <b>Systematic</b> errors are made by most reads in the same way at the same place. A majority vote then confirms the error. No amount of polishing with the same kind of reads removes a systematic error; you need a different technology (for example Illumina reads, which count homopolymers much better).</dd>
+  </dl>
+
+  <section class="tool" aria-labelledby="s06-pol-t">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-pol-t">Polishing by majority vote</h3></div>
+    <p class="tool-note">A toy genome with a run of six C. The draft assembly has one wrong letter and one C too few. Each read is a copy of the true genome with random letter errors (red), and some reads also count the C-run short. The polisher takes the most common letter in every column and the most common run length. Move the sliders, or use the presets.</p>
+    <div class="controls">
+      <label for="s06-pol-cov"><span class="tip" title="How many reads cover this stretch of genome.">Reads (coverage)</span><input id="s06-pol-cov" type="range" min="3" max="40" step="1" value="12"><output id="s06-pol-cov-o">12</output></label>
+      <label for="s06-pol-err"><span class="tip" title="Chance that any one letter of a read is wrong. Random: each read errs at different places.">Random letter errors (%)</span><input id="s06-pol-err" type="range" min="0" max="15" step="0.5" value="6"><output id="s06-pol-err-o">6</output></label>
+      <label for="s06-pol-u1"><span class="tip" title="Share of reads that report the C-run one base too short (C5 instead of C6). This is a systematic error: the same mistake in many reads.">Reads with C5 (%)</span><input id="s06-pol-u1" type="range" min="0" max="80" step="1" value="25"><output id="s06-pol-u1-o">25</output></label>
+      <label for="s06-pol-u2"><span class="tip" title="Share of reads that report the C-run two bases too short (C4).">Reads with C4 (%)</span><input id="s06-pol-u2" type="range" min="0" max="40" step="1" value="5"><output id="s06-pol-u2-o">5</output></label>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Presets">
+        <button type="button" data-p="lr" aria-pressed="true">Long reads, mild bias</button><button type="button" data-p="nd2" aria-pressed="false">Species A-like mtDNA C-run</button><button type="button" data-p="ill" aria-pressed="false">Illumina reads</button>
+      </div>
+      <button type="button" class="btn" id="s06-pol-new">New reads</button>
+    </div>
+    <div class="toy" id="s06-pol-lines" aria-live="polite"></div>
+    <div><b style="font-size:13.5px">Votes for the length of the C-run</b> <span style="font-size:13px;color:var(--muted)">(true length: 6)</span></div>
+    <div class="spec-mini" id="s06-pol-votes"></div>
+    <div class="readout" id="s06-pol-out"></div>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why more reads do not always help</summary><div class="in">
+    <p>Imagine twelve students copying the same sentence from a blackboard. Each one makes a slip now and then, but at different words. If you compare all twelve copies word by word and take the most common spelling, the slips disappear. That is polishing of <b>random</b> errors, and it works with as few as 4–5 copies.</p>
+    <p>Now suppose the blackboard has the word "Mississsippi" written with three s's in the middle, and most students cannot count repeated letters reliably: seven write "ss", three write "sss", two write "s". The majority now votes for "ss", and adding more students who have the same habit only makes the wrong answer more certain. That is a <b>systematic</b> error. To fix it you need a student with a different habit, for example one who counts letters one by one (Illumina reads, which read one base per cycle).</p>
+    <div class="toy">truth      ACGT<span class="a">CCCCCC</span>TAGG
+read 1     ACGT<span class="a">CCCCC</span>-TAGG   <span class="x">one C short</span>
+read 2     ACGT<span class="a">CCCCCC</span>TAGG
+read 3     ACGT<span class="a">CCCCC</span>-TAGG   <span class="x">one C short</span>
+read 4     ACG<span class="x">A</span><span class="a">CCCCCC</span>TAGG   <span class="x">random error, outvoted</span>
+consensus  ACGT<span class="a">CCCCC</span>-TAGG   <span class="x">the run stays one C short</span></div>
+  </div></details>
+
+  <h3>Long-read polishers</h3>
+  <dl class="defs">
+    <dt>Medaka</dt><dd>Oxford Nanopore's neural-network polisher (version 2.2.2 at the time of writing). It aligns the reads to the draft with <span class="tip" title="The standard program for aligning long reads (and whole assemblies) to a sequence. Version 2.31 was used in our projects.">minimap2</span> and lets a trained neural network read the pileup and predict the true consensus. The network is trained on one sequencing chemistry and one <span class="tip" title="The program that turns the raw electric signal from the pore into letters (A, C, G, T). Different basecaller versions and models make different typical errors.">basecaller</span> model, so <b>the medaka model must match the reads</b>. Medaka tries to read the basecaller model from the FASTQ/BAM header. If it cannot find one, its <code>medaka_consensus</code> script prints a WARNING and falls back to its default model, <code>r1041_e82_400bps_sup_v5.2.0</code> (Nanopore R10.4.1 chip, "sup" basecalling). The README says Medaka is trained to polish <b>Flye</b> drafts; other assemblers' drafts "may lead to different results". The README also says <code>medaka inference</code> scales poorly beyond 2 threads.</dd>
+    <dt>dorado polish</dt><dd>The newer Nanopore polisher inside the basecaller package dorado (version 2.1.2). It needs a <span class="tip" title="Binary file of read alignments (the compressed form of SAM). Must be sorted by position and indexed (.bai) for most tools.">BAM</span> made by <code>dorado aligner</code>, sorted and indexed, whose header contains the basecaller model in an <code>@RG</code> line; otherwise it cannot pick a model. It is "a haploid polishing tool": it does not separate the two parental copies, so for a diploid assembly the reads must be separated by haplotype first. It is built to run on a <span class="tip" title="Graphics card. Neural-network programs run many times faster on one than on ordinary processors (CPU).">GPU</span>; on CPU it is slow.</dd>
+    <dt>Racon</dt><dd>An older, model-free polisher (version 1.5.0, 2021). It builds a consensus in 500-base windows from any reads aligned to the draft (PAF/SAM file). Because it has no trained model it works with any long-read platform, but it is less accurate than a matching Medaka/dorado model. TGS-GapCloser uses it to correct its fill sequences.</dd>
+  </dl>
+  <div class="note warn"><b>No model, no Medaka.</b> If your long reads are not Oxford Nanopore (CycloneSEQ, for example) or the basecaller model is not recorded, there is no matching Medaka or dorado model. Check the read headers first (lesson 1, <a href="../01-pre-assembly/#qc">read QC</a>), then run <code>medaka tools resolve_model --auto_model consensus reads.fastq.gz</code> to see which model would be used. A model trained on other reads can still make the assembly better on average, but you then have to prove it with independent measures (QV from Illumina k-mers, BUSCO) rather than assume it.</div>
+
+  <h3>Short-read polishers</h3>
+  <p>Illumina reads make far fewer errors than raw long reads, mostly substitutions, and they count homopolymers well. They are therefore the usual second polisher after a long-read assembly. Their weakness is <b>placement</b>: a 150-base read from a repeat may align to the wrong copy, and the polisher then "corrects" a copy using reads from its sister. Short-read polishers only touch positions where reads align uniquely; long repeats stay unpolished.</p>
+  <dl class="defs">
+    <dt>NextPolish</dt><dd>Version 1.4.1. Aligns reads with bwa (or minimap2), removes <span class="tip" title="Identical read pairs made by copying one DNA fragment during library PCR. They are one observation, not several, so they are counted once.">PCR duplicates</span>, and corrects in two modules: module 1 and module 2 are different short-read algorithms, module 5 is for long reads. <code>task = best</code> is written "[55]1212" in the manual: module 5 twice if long reads are given, then modules 1, 2, 1, 2 (two iterations of the short-read modules), and the authors write that two iterations correct most bases covered by short reads. Note: <code>rerun = 3</code> in the config file is <b>not</b> three rounds of polishing; it re-launches jobs that crashed up to three times. Output: <code>genome.nextpolish.fasta</code>.</dd>
+    <dt>Pilon</dt><dd>Version 1.24 (2021). A Java program from the Broad Institute, originally for bacteria. Besides letters it can fill small gaps and fix local misassemblies (<code>--fix all</code>, the default; <code>--fix bases</code> limits it to letters). Its manual asks for about <b>1 GB of memory per megabase</b> of genome processed at once, so a mammal genome must be cut into pieces with <code>--targets</code>.</dd>
+    <dt>POLCA</dt><dd>Part of MaSuRCA (version 4.1.4). Aligns reads with bwa, calls differences with the variant caller freebayes and applies them. Needs FASTQ (with qualities). One command: <code>polca.sh -a genome.fasta -r 'R1.fq.gz R2.fq.gz' -t 16 -m 1G</code>.</dd>
+    <dt>HyPo</dt><dd>Version 1.0.3 (2020). Uses <span class="tip" title="k-mers that occur once in the genome (by their count in the reads). Stretches of the draft made only of such k-mers are 'strong' and left alone.">unique k-mers</span> to mark stretches that are already right and polishes only the rest. Needs the short-read coverage and genome size on the command line. Its README reports about 380 GB of memory for a whole human genome with Illumina reads.</dd>
+  </dl>
+
+  <h3>Polishing as variant calling, filtered by k-mers</h3>
+  <p>A third approach treats each error as a "variant" between the reads and the assembly. A <span class="tip" title="A program that finds positions where reads differ from a reference sequence and writes them to a VCF file (Variant Call Format: a table of positions with the reference letter and the alternative letter). Here the 'reference' is your own assembly.">variant caller</span> such as DeepVariant (Illumina, PacBio HiFi or Nanopore models) or Clair3 (long reads; it also needs a model matching the basecaller) lists every position where the reads disagree with the assembly. <b>Merfin</b> (version 1.1) then checks each proposed change against the read k-mers: a change is accepted only if it removes k-mers that are absent from the reads and does not create new absent ones. The kept changes are applied with <span class="tip" title="bcftools: a toolkit for VCF files; its consensus command writes a FASTA with the listed changes applied."><code>bcftools consensus</code></span>. Merfin's polishing modes were used for the telomere-to-telomere assembly of HG002, a much-studied human reference individual. For a pseudohaploid assembly its wiki recommends dropping heterozygous calls first, so that the polisher does not mix the two parental copies.</p>
+
+  <h3>Overcorrection, rounds and how to judge</h3>
+  <ul>
+    <li><b>Overcorrection</b> happens when a polisher changes correct letters: reads from a repeat copy or from the other parental chromosome pile onto one place and outvote the truth. Each extra round can then add errors instead of removing them.</li>
+    <li><b>Rounds:</b> Medaka/dorado once on a Flye draft (as their docs describe); NextPolish two iterations (<code>task = best</code>). More is not automatically better; stop when the measures below stop improving.</li>
+    <li><b>Judge with independent data.</b> Merqury QV (lesson 1, <a href="../01-pre-assembly/#gx">Merqury</a>) counts assembly k-mers that are missing from a read set. Use k-mers from reads the polisher did <i>not</i> learn from or that are much more accurate (Illumina or HiFi). QV from the same noisy long reads only ranks assemblies against each other. Also run BUSCO before and after: if polishing fixes frameshifts, more genes become Complete; if BUSCO drops, something was over-corrected.</li>
+    <li><b>Label the file.</b> Write down which FASTA every number belongs to. Polishing changes the file; purging changes it again.</li>
+  </ul>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Long reads: Medaka (reads FASTQ + Flye draft) → medaka_out/consensus.fasta</span>
+medaka tools resolve_model --auto_model consensus reads.fastq.gz   <span class="c"># which model would be used?</span>
+medaka_consensus -i reads.fastq.gz -d flye_out/assembly.fasta -o medaka_out -t 16 -m &lt;model&gt;
+
+<span class="c"># Long reads: dorado polish (needs dorado-basecalled BAM with @RG model info; GPU recommended)</span>
+dorado aligner draft.fasta calls.bam | samtools sort --threads 16 &gt; aligned.bam
+samtools index aligned.bam
+dorado polish aligned.bam draft.fasta &gt; polished.fasta
+
+<span class="c"># Long reads, any platform: Racon (reads, read-to-draft alignments, draft)</span>
+minimap2 -x map-ont -t 16 draft.fasta reads.fastq.gz &gt; reads_to_draft.paf
+racon -t 16 reads.fastq.gz reads_to_draft.paf draft.fasta &gt; racon1.fasta
+
+<span class="c"># Short reads: NextPolish (sgs.fofn lists R1 and R2 files, one per line)</span>
+ls R1.fq.gz R2.fq.gz &gt; sgs.fofn
+cat &gt; run.cfg &lt;&lt;'EOF'
+[General]
+job_type = local
+task = best              <span class="c"># modules 1,2 twice ([5] too if long reads are given)</span>
+rewrite = yes
+rerun = 3                <span class="c"># retries of crashed jobs, NOT polishing rounds</span>
+parallel_jobs = 1
+multithread_jobs = 16
+genome = ./medaka_out/consensus.fasta
+genome_size = auto
+workdir = ./np_run
+polish_options = -p {multithread_jobs}
+[sgs_option]
+sgs_fofn = ./sgs.fofn
+sgs_options = -max_depth 100 -bwa
+EOF
+nextPolish run.cfg       <span class="c"># → np_run/genome.nextpolish.fasta</span>
+
+<span class="c"># Before/after: QV with Illumina k-mers, and BUSCO</span>
+meryl count k=21 threads=16 R1.fq.gz R2.fq.gz output reads.meryl
+merqury.sh reads.meryl medaka_out/consensus.fasta before
+merqury.sh reads.meryl np_run/genome.nextpolish.fasta after</pre></div>
+
+  <div class="note"><b>In our projects: species B and C</b>
+    <p>The Flye contigs were polished with Medaka 2.2.2 and then with NextPolish 1.4.1 using about 30× short reads (<code>task = best</code>, <code>sgs_options = -max_depth 100 -bwa</code>). Merqury QV with Illumina 21-mers, measured on the NextPolish file before purge_dups:</p>
+    <div class="tbl"><table style="min-width:520px"><thead><tr><th></th><th>after Medaka</th><th>after NextPolish</th><th>BUSCO C (Medaka → NextPolish)</th></tr></thead><tbody>
+      <tr><td>species B (roughly 25× long reads)</td><td>QV in the low 30s</td><td>about 3 QV higher (error rate about halved)</td><td>unchanged</td></tr>
+      <tr><td>species C (about 10× long reads)</td><td>QV a few points lower than B</td><td>about 3 QV higher (error rate about halved)</td><td>unchanged (about 10 points below B)</td></tr>
+    </tbody></table></div>
+    <p>The error rate roughly halved and BUSCO did not drop, so there is no sign of overcorrection. BUSCO did not rise either, which suggests that letter errors were not the main reason genes were missing. Run times at 16 threads: Medaka about half a day per animal (only about 200 % CPU, as the README's 2-thread note predicts); NextPolish more than a day for B.</p>
+    <p><b>Caveat:</b> these long reads were CycloneSEQ, not Oxford Nanopore. The Medaka model used, <code>r1041_e82_400bps_sup_v5.2.0</code>, is an ONT R10.4.1 model and is also Medaka's fallback default. Whether it suits CycloneSEQ reads is unknown; the Illumina-based QV and BUSCO are what show the result was not harmed.</p>
+  </div>
+
+  <div class="note warn"><b>In our projects: species A homopolymers that read polishing cannot fix</b>
+    <p>The long reads of species A, an unpublished rodent genome (probably also CycloneSEQ), cover the mitochondrial genome thousands of times. Even so, at one C-run in a mitochondrial gene most reads report the run one base too short and only about a third give the true length: the majority is wrong, and polishing with the same reads keeps the error (try the "Species A-like mtDNA C-run" preset above; its values are rounded). In the nuclear exons the assembly has hundreds of indels that the reads contradict, nearly all of them frameshifting and about nine in ten in homopolymers; of exon homopolymer runs of 6 bases, only a small minority are fully supported by the reads (fewer for C/G than for A/T), and almost none of 8 bases or longer. A read-based estimate of QV counts only errors the reads contradict, so it is a lower bound on the error. Decision: Illumina reads from the same animal are needed for gene-level work; they are not needed for <span class="tip" title="A method that infers past population size from the heterozygous sites of one genome.">PSMC</span> or SINE presence/absence.</p>
+  </div>
+
+  <!-- ===================== B. PURGING ===================== -->
+  <h3 id="s06-pd-h">B. Purging duplicates</h3>
+  <p>A diploid animal carries two copies of each chromosome, one from each parent (lesson 1, <a href="../01-pre-assembly/#gp">heterozygosity</a>). Where the two copies are almost identical, the assembler merges them into one contig. Where they differ enough, it builds two contigs for the same place. One of them should stay in the main (<dfn>primary</dfn>) assembly; the other is a <dfn>haplotig</dfn>, a contig from the other parental copy. Left in, haplotigs make the assembly too large, raise BUSCO "Duplicated", and make reads split between two copies, so each copy looks half as covered. <dfn>Purging</dfn> finds such duplicates and moves them to a separate file. It also trims <b>overlaps</b>: the same stretch present at the end of two neighbouring contigs.</p>
+
+  <h3>How purge_dups decides (from its source code, version 1.2.5/1.2.6)</h3>
+  <ol class="steps">
+    <li><div><b>Read depth along every contig</b> <span class="d">Long reads are aligned to the assembly with minimap2 (a <span class="tip" title="PAF: a plain-text table of alignments, one line per read-to-contig match, written by minimap2. Columns give names, start and end positions and match length.">PAF</span> file). <code>pbcstat</code> counts the read depth at every base (<code>PB.base.cov</code>) and makes a histogram: how many bases have depth 1, 2, 3 … (<code>PB.stat</code>).</span></div></li>
+    <li><div><b>Cutoffs</b> <span class="d"><code>calcuts</code> looks for peaks in the histogram. Merged (both parents in one contig) regions sit at full depth D; regions assembled twice sit at about D/2, because the reads split between the two copies. If it finds two peaks with a valley between them, the valley becomes the <b>mid</b> cutoff (half depth / full depth border) and 3 × the full-depth peak becomes the <b>high</b> cutoff. The low cutoff is fixed at 5. With only one peak it guesses whether that peak is the half- or full-depth one from the mean depth, and prints a warning when unsure.</span></div></li>
+    <li><div><b>Label each contig by depth</b> <span class="d">Each base is low (≤ low), half (≤ mid), full (between mid and high) or high (&gt; high). A contig with more than 80 % low bases is <b>JUNK</b>; more than 80 % full-depth bases, <b>PRIMARY</b> (kept, no further test); more than 80 % high, <b>HIGHCOV</b>; anything else is a candidate duplicate.</span></div></li>
+    <li><div><b>Self-alignment</b> <span class="d">The assembly is cut at N-runs (<code>split_fa</code>) and aligned to itself with <code>minimap2 -x asm5 -DP</code>. For a candidate, purge_dups measures how much of it is covered by alignments to its best partner contig. If at least 70 % is covered, the candidate is a <b>HAPLOTIG</b>; if, in addition, its alignments add up to 200 % or more of its length (it matches several places), it is a <b>REPEAT</b>. A half-depth contig with no partner stays primary: that is how a male's single X chromosome survives.</span></div></li>
+    <li><div><b>Overlaps and partial duplicates</b> <span class="d">Alignments between contig pieces are chained (<code>-2</code> adds a second chaining round that allows gaps up to 50 kb). Duplicated ends become <b>OVLP</b> or HAPLOTIG intervals in <code>dups.bed</code>; of two copies the shorter contig loses.</span></div></li>
+    <li><div><b>Write the files</b> <span class="d"><code>get_seqs dups.bed asm.fa</code> writes <code>purged.fa</code> (kept) and <code>hap.fa</code> (removed). By default everything listed goes to <code>hap.fa</code>, including JUNK and HIGHCOV contigs; <code>-c</code> keeps HIGHCOV contigs. <code>-e</code> removes duplicated stretches only at contig ends (and whole contigs), never from the middle; the README recommends it because middle cuts can be false. If less than 10 kb (or less than 5 %) of a contig would remain after trimming, the whole contig goes to <code>hap.fa</code>.</span></div></li>
+  </ol>
+
+  <section class="tool" aria-labelledby="s06-pd-t">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-pd-t">Read-depth histogram and purge_dups labels</h3></div>
+    <p class="tool-note">A toy 100 Mb genome, assembled at the read coverage you choose. The higher the heterozygosity, the more of it the assembler built twice (pairs of half-depth contigs). It also contains a 5 Mb single X chromosome (half depth, no partner), three collapsed repeats (triple depth), one mitochondrial contig and some junk. Drag the three cutoff lines or use the sliders; "calcuts" puts them where a simplified version of the program's rule would. Each box below the histogram is one contig, coloured by the label purge_dups would give it; a <b style="color:var(--bad)">✗</b> marks a wrong decision.</p>
+    <div class="controls">
+      <label for="s06-pd-het"><span class="tip" title="Share of positions where the two parental copies differ. In this toy, more heterozygosity = more of the genome assembled twice.">Heterozygosity (%)</span><input id="s06-pd-het" type="range" min="0" max="2" step="0.05" value="0.8"><output id="s06-pd-het-o">0.8</output></label>
+      <label for="s06-pd-cov"><span class="tip" title="Read depth of a region where both parental copies are merged into one contig.">Full read depth D (×)</span><input id="s06-pd-cov" type="range" min="10" max="60" step="1" value="30"><output id="s06-pd-cov-o">30</output></label>
+      <label for="s06-pd-lo"><span class="tip" title="Bases at or below this depth count as 'low'. calcuts always writes 5 here.">low cutoff</span><input id="s06-pd-lo" type="range" min="1" max="40" step="1" value="5"><output id="s06-pd-lo-o">5</output></label>
+      <label for="s06-pd-mid"><span class="tip" title="The border between half depth (one parental copy) and full depth (both copies merged). Contigs mostly below it are tested for duplicates.">mid cutoff</span><input id="s06-pd-mid" type="range" min="2" max="150" step="1" value="23"><output id="s06-pd-mid-o">23</output></label>
+      <label for="s06-pd-hi"><span class="tip" title="Bases above this depth count as 'high' (collapsed repeats, organelles).">high cutoff</span><input id="s06-pd-hi" type="range" min="10" max="400" step="1" value="90"><output id="s06-pd-hi-o">90</output></label>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s06-pd-auto">calcuts (automatic)</button>
+      <label style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s06-pd-keephi"> <span class="tip" title="get_seqs -c: keep contigs labelled HIGHCOV in purged.fa instead of moving them to hap.fa.">keep high-coverage contigs (<code>get_seqs -c</code>)</span></label>
+    </div>
+    <div id="s06-pd-msg" class="tool-note" aria-live="polite"></div>
+    <div class="svgbox"><svg id="s06-pd-svg" viewBox="0 0 900 350" width="100%" style="min-width:620px;touch-action:none" role="img" aria-label="Read-depth histogram with cutoffs and contig labels"></svg></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>PRIMARY (kept)</span><span><i style="background:var(--het)"></i>HAPLOTIG (to hap.fa)</span><span><i style="background:var(--rep)"></i>REPEAT (to hap.fa)</span><span><i style="background:var(--bad)"></i>HIGHCOV (to hap.fa unless -c)</span><span><i style="background:var(--err)"></i>JUNK (to hap.fa)</span>
+    </div>
+    <div class="readout" id="s06-pd-out"></div>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why read depth finds duplicates</summary><div class="in">
+    <p>Think of reads as visitors to a museum with one room per genome region. Normally each room gets 30 visitors. Now the museum accidentally opens two copies of the same room next to each other: the visitors for that room split, and each copy gets about 15. Counting visitors per room therefore tells you which rooms exist twice: they are the half-empty ones.</p>
+    <p>Half-empty alone is not proof. A room that really exists only once but holds only one parent's exhibit (the X chromosome in a male) also gets 15 visitors. So purge_dups asks a second question: is there another room with the same exhibit? Only half-empty rooms with a twin are removed.</p>
+    <div class="toy">contig  depth  twin?           label
+ctg1    30×    –               PRIMARY  (both parents merged)
+ctg2    15×    ctg3, 92 %      <span class="h">HAPLOTIG</span> (shorter of the pair → hap.fa)
+ctg3    15×    ctg2            PRIMARY  (keeps the place)
+ctgX    15×    none            PRIMARY  (single X in a male: keep!)
+ctg9     2×    –               JUNK     (almost no reads support it)</div>
+  </div></details>
+
+  <h3>purge_haplotigs, hifiasm, and when not to purge</h3>
+  <ul>
+    <li><b>purge_haplotigs</b> (Roach et al. 2018) uses the same idea with a manual step: you look at the depth histogram and choose low, mid and high cutoffs yourself; contigs are then compared by alignment (a contig ≥ 70 % covered by another is a haplotig; ≥ 250 % is a repeat). Its outputs <code>curated.fasta</code>, <code>curated.haplotigs.fasta</code> and <code>curated.artefacts.fasta</code> (the last one will contain mitochondrial contigs and junk). purge_dups adds the automatic cutoffs and the trimming of overlapping ends.</li>
+    <li><b>hifiasm purges by itself.</b> Its option <code>-l</code> sets the purge level: 3 (most aggressive) is the default for an assembly without parental data, 0 turns purging off (for inbred or homozygous genomes). Its primary contigs (<code>*.bp.p_ctg.gfa</code>) are therefore already purged, and running purge_dups on them again is rarely needed. If hifiasm's primary is much larger than the expected genome size, its FAQ suggests a smaller <code>-s</code> or setting <code>--hom-cov</code> to the full-depth peak instead.</li>
+    <li><b>Do not purge haplotype assemblies</b> (hap1/hap2 from Hi-C or parental phasing; <a href="#s07">section 07</a>): each is meant to contain one full copy of every chromosome.</li>
+    <li><b>Check the cutoffs.</b> The purge_dups README: for species with low heterozygosity the automatic cutoffs can be too high, which removes real sequence. Plot the histogram (<code>scripts/hist_plot.py</code>), and set cutoffs by hand if needed (<code>calcuts -l 5 -m 85 -u 200 PB.stat</code>). Then judge the result with BUSCO (Duplicated should fall, Complete should not) and a Merqury copy-number plot (<a href="#s08">section 08</a>).</li>
+    <li><b>Run time</b> is small next to assembly and polishing: one minimap2 read alignment and one self-alignment.</li>
+  </ul>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># purge_dups, as run on our species B and C assemblies (long reads; use -x map-hifi for HiFi, map-pb for PacBio CLR)</span>
+minimap2 -x map-ont -t 16 genome.nextpolish.fasta reads.fastq.gz | gzip -c &gt; ont.paf.gz
+pbcstat ont.paf.gz                       <span class="c"># → PB.base.cov (depth per base), PB.stat (histogram)</span>
+calcuts PB.stat &gt; cutoffs 2&gt; calcuts.log   <span class="c"># read the log: one-peak or two-peak mode? warnings?</span>
+python3 scripts/hist_plot.py -c cutoffs PB.stat PB.cov.png   <span class="c"># look at it!</span>
+split_fa genome.nextpolish.fasta &gt; genome.split.fa
+minimap2 -x asm5 -DP -t 16 genome.split.fa genome.split.fa | gzip -c &gt; genome.split.self.paf.gz
+purge_dups -2 -T cutoffs -c PB.base.cov genome.split.self.paf.gz &gt; dups.bed 2&gt; purge_dups.log
+get_seqs -e dups.bed genome.nextpolish.fasta    <span class="c"># → purged.fa (kept), hap.fa (removed)</span>
+
+<span class="c"># manual cutoffs: low, mid (half/full border), high</span>
+calcuts -l 5 -m 22 -u 90 PB.stat &gt; cutoffs_manual</pre></div>
+  <p class="tool-note">For a genome of several Gb the README also advises setting minimap2's <code>-I</code> option (index batch size) larger than the assembly so the whole assembly is indexed in one piece; otherwise the depth can come out wrong.</p>
+
+  <div class="note"><b>In our projects</b>
+    <p><b>Species B and C (Flye, pseudohaploid):</b> purge_dups was run with exactly the commands above on the NextPolish file, giving the final <code>purged.fa</code> of each. BUSCO and QV were measured on the file <i>before</i> purging, contig N50 on the file after it; the first written report mixed the two. Keep each number with its file name.</p>
+    <p><b>Species A (hifiasm primary, purged by hifiasm's default level):</b> Merqury's copy-number spectrum shows only about 1 % 2-copy k-mers at the main peak and BUSCO Duplicated is low (a few percent): little false duplication. A purge_dups test was therefore left optional and has not been run. Note also the more than 100 Mb of half-depth contigs with no partner in the assembly: the male's X (and Y). A purge that ignored the partner test would delete them.</p>
+  </div>
+
+  <!-- ===================== C. GAP CLOSING ===================== -->
+  <h3 id="s06-gap-h">C. Closing gaps</h3>
+  <p>A <dfn>scaffold</dfn> is a chain of contigs in known order, with a run of N letters (a <dfn>gap</dfn>) wherever the sequence between two contigs is unknown. Most tools write a <b>fixed</b> number of N, not the real distance: RagTag writes 100 N and ABySS 50 N between contigs, and purge_dups' <code>get_seqs</code> writes 23 N where it cut a duplicate out of the middle of a contig. Gap closers look for reads that start in the sequence on one side of a gap and continue into it, and replace the N with the sequence those reads carry.</p>
+  <p>Why was the gap there in the first place? Usually because the stretch is a repeat: an identical or nearly identical copy exists elsewhere in the genome, so a read lying entirely inside it could come from any copy. A short-read assembler with k-mer length k enters an identical repeat copy only k − 1 bases from each side and stops (<a href="#s03">section 03</a>). The rule that decides whether a gap can be closed is therefore simple: <b>a base inside a repeat can be placed only if the read that carries it is tied to unique sequence next to it</b>, either because the same read reaches into the unique flank (long reads) or because its mate does (paired short reads).</p>
+
+  <section class="tool" aria-labelledby="s06-gap-t">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-gap-t">Which reads can fill the gap?</h3></div>
+    <p class="tool-note">The middle of the scaffold (purple) is a copy of a repeat that also occurs elsewhere in the genome. Unique sequence is on both sides. A read is <b style="color:var(--accent)">tied</b> if it, or its mate, lies at least 100 bases in unique sequence; only tied reads can say what this copy contains. <span style="color:var(--muted)">Grey</span> reads lie inside the repeat with no tie: they could belong to any copy. The bar under the scaffold shows which repeat bases are covered by tied reads.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Read type">
+        <button type="button" data-r="pe" aria-pressed="true">Illumina pairs 2 × 150, insert 350</button><button type="button" data-r="lr" aria-pressed="false">Long reads</button>
+      </div>
+      <label for="s06-gap-R"><span class="tip" title="Length of the repeat copy that the assembler could not get through.">Repeat length (bases)</span><input id="s06-gap-R" type="range" min="50" max="8000" step="10" value="300"><output id="s06-gap-R-o">300</output></label>
+      <label for="s06-gap-cov"><span class="tip" title="Read coverage: on average how many reads cover each base.">Coverage (×)</span><input id="s06-gap-cov" type="range" min="2" max="40" step="1" value="15"><output id="s06-gap-cov-o">15</output></label>
+      <label for="s06-gap-L"><span class="tip" title="Typical length of the long reads (mean of the toy's read-length distribution). Ignored for Illumina pairs.">Long-read mean length (kb)</span><input id="s06-gap-L" type="range" min="1" max="20" step="0.5" value="5"><output id="s06-gap-L-o">5</output></label>
+      <button type="button" class="btn" id="s06-gap-new">New reads</button>
+    </div>
+    <div class="svgbox"><svg id="s06-gap-svg" viewBox="0 0 900 300" width="100%" style="min-width:620px" role="img" aria-label="Reads around a gap at a repeat copy"></svg></div>
+    <div class="readout" id="s06-gap-out"></div>
+  </section>
+
+  <dl class="defs">
+    <dt>TGS-GapCloser</dt><dd>Version 1.2.1. Fills gaps with long reads (or with contigs of another assembly). It aligns them with minimap2, picks reads that bridge a gap (align on both sides), and corrects the candidate fill with Racon (long reads only) or Pilon (with Illumina reads), or not at all (<code>--ne</code>, for already accurate reads such as HiFi). Reads must be <b>FASTA</b>; FASTQ crashes it. Output: <code>&lt;prefix&gt;.scaff_seq</code> and <code>&lt;prefix&gt;.gap_fill_details</code>, which lists for every scaffold which stretches are original (S), still N (N) or newly filled (F).</dd>
+    <dt>LR_Gapcloser</dt><dd>Cuts error-corrected long reads into 300-base tags, aligns the tags with bwa mem, and fills a gap when tags anchor on both sides; 3 iterations by default. Output: <code>iteration-3/gapclosed.fasta</code>.</dd>
+    <dt>Sealer</dt><dd>Part of ABySS (2.3.10). Takes 100 bases on each side of a gap and searches for a path between them through a <span class="tip" title="A compact, probabilistic memory of all k-mers in the reads: it can answer 'have I seen this k-mer?' using a fraction of the memory of a full table, at the cost of rare false 'yes' answers. Explained in section 03.">Bloom filter</span> of all read k-mers (the Konnector algorithm), with several k values in one run (<code>-k64 -k96 …</code>). Because it walks through shared k-mers, it can mix up repeat copies when the repeat is longer than k.</dd>
+    <dt>GapCloser (SOAPdenovo2)</dt><dd>Version 1.12 (2013). Uses read pairs listed in a SOAPdenovo-style config file to extend into gaps from both sides. Maximum read length 155 (<code>-l</code>, default 100). Its manual reports about 200 GB of memory and about one day for a 3 Gb human genome. The fill sequence is "statistically lower" in quality than the flanks; the <code>.fill</code> file says which gaps were closed.</dd>
+  </dl>
+  <div class="note warn"><b>Check what a closer did.</b> A filled gap is a claim, not a fact. Map reads back to the closed assembly and look at the joins: reads should pass through them without clipping, and the depth over the fill should equal the depth on both sides. The fill length is new information; the original N count was a placeholder.</div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Long reads: TGS-GapCloser (reads as FASTA!)</span>
+seqkit fq2fa reads.fastq.gz &gt; reads.fasta
+tgsgapcloser --scaff scaffolds.fasta --reads reads.fasta --output tgs \
+             --racon $(which racon) --tgstype ont --thread 16 &gt; tgs.log 2&gt; tgs.err
+<span class="c">#   → tgs.scaff_seq, tgs.gap_fill_details;  HiFi reads: --ne --tgstype pb --minmap_arg ' -x asm20'</span>
+
+<span class="c"># Short reads: Sealer (Bloom filter of read k-mers; several k in one run)</span>
+abyss-sealer -b20G -k64 -k96 -o sealer -S scaffolds.fasta R1.fq.gz R2.fq.gz
+<span class="c">#   → sealer_scaffold.fa, sealer_merged.fa, sealer_log.txt</span></pre></div>
+
+  <div class="note"><b>In our projects: desmans (<i>Desmana moschata</i>, <i>Galemys pyrenaicus</i>) and the lab's gap closer <code>sineclose</code></b>
+    <p>Both published desman genomes are short-read assemblies, and many of their gaps sit in young SINEs (short interspersed repeats of about 250 bases, present in many nearly identical copies). <i>Galemys</i> (ABySS, k = 100) has 50-N runs in the middle of the element: a 268-base Tal SINE minus 2 × 99 leaves 70 bases in no contig, and the read fills measured 74–109 bases. <i>Desmana</i> (SPAdes k = 99 + MaSuRCA, then RagTag onto <i>Galemys</i>) has 100-N runs at the SINE edges.</p>
+    <p><code>sineclose</code> recruits only read pairs whose mate carries a genome-unique 20-mer from the gap's own flanks, exactly the "tied read" rule of the toy above. Genome-wide on <i>Desmana</i>: 1,123 gaps CLOSED, 1,503 closed with low confidence, 28,758 PARTIAL, 13,057 FAILED (no unique anchor); contig N50 rose from 43.3 to 62.7 kb. On <i>Galemys</i>, with one 13× library: 9,883 closed, contig N50 64.5 → 82.3 kb. On a test with a known answer (the long-read assembly of our species B as the truth, simulated 30× read pairs, about two thousand real breaks) sineclose closed about 70 % of the gaps, nearly all of them exactly; Sealer about half, of which a little over half exactly; <span class="tip" title="MindTheGap: another short-read gap filler that walks through read k-mers.">MindTheGap</span> about a third, fewer than one in ten of them exactly.</p>
+    <p><b>Duplicated copies:</b> in <i>Desmana</i>, the MaSuRCA contigs on both sides of a gap each contained the whole SINE copy, and RagTag joined them with 100 N, so the same copy is written twice. sineclose recognises this as CLOSED_OVERLAP: 19,250 such gaps genome-wide. Removing the second copy is not always right: in <i>Galemys</i>, 37 of 62 such merges removed a real second copy, so that patch is not used. And not all <i>Desmana</i> merges are safe (about 470 have clipped reads at the junction). Gaps without a SINE end mostly in <span class="tip" title="LINE-1: a long interspersed repeat, up to about 6 kb, with many copies in mammal genomes.">L1</span> (37.6 %) or <span class="tip" title="Endogenous retrovirus class 1: remains of old retrovirus infections, several kb long.">ERV1</span> (9.6 %) elements, far longer than a read pair can bridge; those need long reads. None of 26 long-read assemblies of related mammals (two <i>Talpa</i>, hedgehog, 22 bats) has an N-run at young SINEs.</p>
+  </div>
+</section>

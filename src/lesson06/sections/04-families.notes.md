@@ -1,0 +1,46 @@
+# s04 Families, subfamilies and consensus sequences: notes
+
+Written 2026-10-31. Lab repositories were shallow-cloned (public GitHub) and read; nothing was modified.
+
+## Sources (URL, version, what was taken)
+
+| Source | Version | Taken from it |
+|---|---|---|
+| SINEderella https://github.com/Toki-bio/SINEderella | commit f19fcf1 (2026-10-30) | docs/AIM.md (subject = interspersed copies with unique flanks; outputs: loci list + HTML page with alignment links, conclusions, copy numbers, leak, divergence; produced every run without manual checking). MANUAL.md §4 (architecture; bank canonicalisation; satellite screen inside step 1; step 4 measures divergence against the search consensus), §5.1/§3 (commands, `--add`, `--exclude`, run_YYYYMMDD_HHMMSS), §6 (sear `0.8 65 50`, sample 30000, SubFam bin 50; README table still says 0.9), §6.1.1-6.1.3 (manual review of SubFam output, MSA-viewer, SINEClusterer test: 2-way split right, 9 subfamilies collapsed into 2), §6.1.6 (family/subfamily definitions; two-stage design "not yet implemented"; flat assignment), §6.1.7 (step1c_deplete, bin 20), §7 (asSINEment: 10 cycles, unanimous, 0.45 x min(10,count)-th best bitscore), §8 (sim_ratio, LEAK runner >= 90 %, CONFLICT, soft assignment), §9 (divergence histogram = 100 - %identity, nucleotide frequency plot). docs/VERDICTS.md (SINE / grey / not_SINE; step 7 50-bp steps up to 1 kb; "A test that could not be done is not a pass"; plates drawn from SINE loci). README (results/report.html; tools list). |
+| SubFam https://github.com/Toki-bio/SubFam | 1.5.1 (SubFam.sh VERSION), commit 8f5cef3 (2026-10-31) | README: k-mer (k=6) weighted-Jaccard UPGMA ordering (port of ViewAlign kmer-tree.js), `-m` = mafft --retree 0 --reorder; chunks round(total/N), N=50; plurality -p 0.36 (18 of 50), lower case <= half; L-INS-i <= 300, two refinement rounds <= 1000, --auto beyond; outputs aln/cons/chunks.tsv/chunkstats.tsv; options -n -p -t -o -x -r -e; threshold argument; simulated benchmark (8 subfamilies, 2000 copies, 3/8/15 %: SubFam -n 50 8/8, 8/8, 7/8 with 40 rows); limitations; scope ("does not define groups"). |
+| SINE_consensus https://github.com/Toki-bio/SINE_consensus | commit 29719f5 (2026-03-13) | sine_consensus.sh source: subsample 100, max 50 iterations, min 5, stability 0.01 (Hamming change), -t 50 (gaps in denominator), -c 30 (min non-gap coverage), ties -> gap, anchor phase after 3 iterations ramping to 50 %, -k keeps trace/log, output NAME_consensus.fasta. README option table describes the older rule (gaps excluded, -g/-c 50): discrepancy noted on the page, script used. sine_pairwise_consensus.sh header: MAFFT --op 5 per copy, -t 50 gaps in denominator, -c 30, -j 4; README "when to use" table (high-copy families). |
+| ViewAlign https://github.com/Toki-bio/MSA-viewer (live https://toki-bio.github.io/MSA-viewer/) | RELEASE_VERSION 1.33.3 in script.js, commit 3e45bf7 (version.json 7ac8214, 2026-10-31) | README: view modes, windowing above ~100,000 residues, Canvas above 5 million, prompt above 500 seqs and 3000 columns; subfamily clustering; starter example (40 SINE copies, 4 groups; file name and link omitted, internal sample code). manual.html §4.2 (Group by k-mer: tree cut, auto = most stable group count; Peel (diagnostic columns); Min diagnostic columns default 2; groups of at least 3), clustering panel description (Group by k-mer / Find SNP groups / Show 2D), Reorder by similarity (k-mer UPGMA, k default 6). peel.js: diagnostic column = one character (gap counts) in >= fIn (0.9) of members and <= fOut (0.02) of outsiders. |
+| SINEplot https://github.com/Toki-bio/SINEplot | commit 75d166b (2026-03-27) | README + SINEplot.py: input ssearch36 -m 8 field 12 (max per pair), subfamily names < 15 chars, MDS from self-score minus cross-score, weighted-centroid placement, confidence = best/self, conflict ratio = 2nd/1st, tiers < 0.50 / 0.50-0.85 / >= 0.85, command lines. The repo description says "divergence"; the tool plots bitscore affinities (stated on the page). |
+| RepeatModeler https://github.com/Dfam-consortium/RepeatModeler | master commit 14798c7 (2026-06-11) | MultAln.pm `buildConsensusFromArray`: "Correct for missed CpG calls", CG hypothesis boosted when copies show TG/CA (CGparam 12; comment "Previously set at 14. Seems to overestimate in very old elements"); vertebrates 70-80 % CpG methylated (POD). |
+| COSEG https://www.repeatmasker.org/COSEGDownload.html | 0.2.4 (2024-07-30) | "automatically identifies repeat subfamilies using significant co-segregating mutations"; credits Alkes Price (original code), Andy Siegel (p-value method). No paper cited on the page. |
+| Price, Eskin, Pevzner 2004 Genome Res 14:2245-52, doi:10.1101/gr.2693004 (PubMed 15520288) | abstract | novel method to identify and statistically validate 213 Alu subfamilies; RepBase Update listed 31; >1 million Alu copies. The link "COSEG grew from Price's code" is the download page's credit; the page does not claim COSEG = the 2004 method. |
+| Vassetzky et al. 2021 IJMS 22:9897 doi:10.3390/ijms22189897; Kosushkin et al. 2026 BMC Biol 24 doi:10.1186/s12915-026-02550-6; Kosushkin et al. 2022 Biology 11:1403 doi:10.3390/biology11101403 | PubMed abstracts (via project facts sheet) | B2/Dip/Ves subfamilies distinguished by relatively long indels; Urop_b/c 24-nt tandem duplication; Can a1, a2, b1, b2, b2 (less b1) active. |
+
+## Project facts used ("In our projects" notes and lab-practice statements)
+From the lesson's project-facts sheet only:
+- Owner's family/subfamily definitions (also public in SINEderella MANUAL §6.1.6).
+- SubFam 30,000 copies -> ~600 rows; species A minus-bank de novo alignments 600 rows each (internal lab log).
+- Timema (stick insect) lab notes, unpublished: adjacent chunks share a subfamily 0.916 vs 0.313 random (550 chunks); three identical asSINEment runs on 20,000 copies changed the winner of 17 copies. Labelled as lab notes, unpublished, on the page.
+- Consensus creep 203 -> 252 -> 269 bp when iterating the final call (lab notes).
+- Decisions only from alignments; subfamily consensuses drawn as clustering (UPGMA, p-distance), not phylogeny (owner's position in the lab).
+- Species A bank (internal lab log, unpublished): five consensuses of one family; more than a million loci per genome, about five in six firmly assigned, most to one subfamily. Exact values withheld until publication.
+- SINEderella env THREADS, flank 50 left / 70 right on plates, "nothing is discarded" in step 3, assembly check never blocks (lab notes on SINEderella, consistent with MANUAL).
+
+## Interactive (04-families.js)
+Toy: random 72-bp source with exactly one CpG (columns 41-42). Lineage A = source; B = A + transitions at columns 12 and 57; C = B + changes at 28 and 64 (substitution chosen to avoid creating a new CpG). 8/7/5 copies. Per-copy private rate uniform 3-16 %, substitutions 2/3 transitions; diagnostic columns spared from private mutation (said on page). CpG: C->T and G->A independently with q = min(0.9, 6 x rate). Rows shuffled. Seeded RNG (mulberry32); "New copies" changes the seed.
+Readouts: split by up to 4 columns; per picked column, "backing" = other columns whose bases follow the picked column one-to-one in every class of >= 3 copies with <= 1 exception (toy rule); per group consensus (plurality, upper case > half, lower case otherwise, n on tie); identity grouping = p-distance UPGMA (average linkage) cut at 3 groups, with diagnostic columns per group (>= 90 % in, <= 2 % out, one exception each side; groups and remainders < 3 not tested). Divergence plot: per copy, mismatches to own group consensus vs to all-20 consensus (n columns excluded).
+CpG-aware toggle (toy rule): call CG when >= 2 copies read CG and >= 10 % TG and >= 10 % CA.
+Tested with playwright (8 seeds): split by 12 -> 12/8 groups, backed by 57; 12+28 -> three true lineages, backed by 57 and 64; 41 -> unbacked; identity grouping -> 18 + 1 + 1 in all 8 seeds (lineages mixed). Over 30 seeds the plain all-20 consensus lost the CpG in 29; the CpG-aware rule restored it in 24 and created no false CpG elsewhere. No page errors at 1100 and 420 px.
+
+## Not verified / left out / open doubts
+- The lab project notes describe SubFam as mafft --retree 0 + EMBOSS cons -plurality 18; the current public SubFam (1.5.1) orders by k-mer tree by default and reimplements cons in awk. The page follows the current code.
+- SINE_consensus README vs script disagree on the gap rule; the page follows the script.
+- SINEderella README says hit length >= 0.9; MANUAL and code use 0.8; page says so.
+- SINEplot "divergence" in the repo description vs score map in the code: page describes the code.
+- COSEG algorithm details (which mutations, p-value method) not read from source; described only at download-page level.
+- MAFFT L-INS-i described only as "accurate, slow"; no MAFFT documentation quoted beyond what SubFam's README states.
+- Weighted Jaccard formula in the tooltip verified in SubFam kmer_order.c header: 1 - sum(min)/sum(max).
+- Peeling success numbers on Timema (from lab notes) deliberately not used: not in the project-facts sheet.
+
+## Final review 2026-10-31
+- No page changes; SubFam defaults (-p 0.36, k = 6, version 1.5.1) and SINE_consensus defaults (-t 50, -c 30) re-checked in the scripts.

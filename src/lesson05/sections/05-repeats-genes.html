@@ -1,0 +1,165 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Methylation across repeats, genes and the genome</h2>
+  <p class="lede">Sections <a href="#s03">03</a> and <a href="#s04">04</a> ended with a <span class="tip" title="bedMethyl: a table with one row per genomic position (here: per CpG). Among its columns are the number of reads with a valid call (column 10), the percent modified (column 11) and the number of reads called modified (column 12). modkit pileup writes it.">bedMethyl</span> table: for every CpG, how many reads saw it and what fraction of them were methylated. A table of 20-30 million rows says little by itself. This section puts it next to the annotation of <a href="../03-annotation/">lesson 3</a>: genes, promoters, transposable elements and satellites. You will see the typical vertebrate pattern, learn to draw a profile around gene starts and a plot of methylation against transposon age, and see where the short-read methods go blind and long reads do not.</p>
+
+  <div class="note warn"><b>Our data cannot be used here yet.</b> As section <a href="#s02">02</a> explains, none of the lab's long-read data sets that we have checked has methylation calls: the species A reads came as plain FASTQ without raw signal, and a re-call was not possible. The patterns below are therefore taken from published human and comparative studies, the figures are a <b>toy genome</b>, and the practice commands use a small public bedMethyl file that ships with modkit.</div>
+
+  <h3>The genome-wide picture in mammals</h3>
+  <p>In most mammalian cells, most CpGs are methylated. Ziller et al. (2013), with 42 whole-genome <span class="tip" title="Bisulfite sequencing: the classical method. Bisulfite turns unmethylated C into U (read as T); methylated C stays C. Reads are short (Illumina), so repeats are hard to map. WGBS = whole-genome bisulfite sequencing.">bisulfite</span> data sets from 30 human cell and tissue types, put it at 70-80 % of all CpGs, outside germ cells and early embryos. The small rest is not spread evenly: it sits in short, CpG-dense stretches that are almost free of methylation. Plotted as a histogram of per-CpG methylation, a mammalian genome therefore has a tall peak near 100 % and a small second peak near 0 %: the distribution is <dfn>bimodal</dfn>. Gershman et al. (2022) saw exactly this with nanopore reads of the human cell line HG002 (median 75 % methylation, "with a secondary peak of unmethylated CpGs").</p>
+  <p>The cell type matters. The same study found the other cell line, CHM13 (from a <span class="tip" title="Hydatidiform mole: an abnormal pregnancy tissue with two copies of the father's genome and none of the mother's. The cell line CHM13 comes from one and was used for the first complete human genome.">hydatidiform mole</span>), "dramatically hypomethylated" at a median of 36.8 %. For a wild animal this means: write down the tissue, and compare samples only from the same tissue (section <a href="#s06">06</a>).</p>
+
+  <h3>Genes: unmethylated promoters, methylated bodies</h3>
+  <dl class="defs">
+    <dt>CpG islands</dt><dd>Stretches where CpG is not depleted. The classical definition (Gardiner-Garden &amp; Frommer 1987) is at least 200 bp with G+C of 50 % or more and an observed/expected CpG ratio over 0.6; Takai &amp; Jones (2002) proposed a stricter one (over 500 bp, G+C at least 55 %, ratio at least 0.65) that excludes most Alu SINEs. Islands sit at the 5' ends of all housekeeping genes and many tissue-specific genes, and they are "predominantly nonmethylated" (Deaton &amp; Bird 2011). A methylated island means a silenced gene.</dd>
+    <dt>Promoters without islands</dt><dd>Gardiner-Garden &amp; Frommer found islands at all housekeeping genes but only at "many" tissue-specific genes; the rest have CpG-poor promoters. With few CpGs there, a promoter value rests on few sites and is noisy.</dd>
+    <dt>Gene bodies</dt><dd>Inside transcribed genes, methylation is high, and highest in actively transcribed genes: "low promoter methylation and high gene-body methylation in highly expressed genes" (Ball et al. 2009). Gene-body methylation is old: Zemach et al. (2010) found it conserved between plants and animals across 17 eukaryotes, while the targeting of methylation to transposons was not conserved.</dd>
+  </dl>
+  <p>The usual way to show this is a <dfn>metaplot</dfn> (meta-profile): line up all genes at their <span class="tip" title="TSS, transcription start site: the first base of the gene's RNA. Taken from the gene models of lesson 3 (the start of the first exon, on the gene's own strand).">transcription start site</span> (TSS), turn genes on the minus strand around so that upstream is always to the left, and average methylation in small distance bins. A mammalian profile dips to near zero at TSSs with islands and climbs back to high values in the gene body.</p>
+
+  <h3>Repeats: methylated, and the young ones carry the signal</h3>
+  <p>Methylation of CpG in transposable elements keeps them silent; Zhou et al. (2020) argue that this is what lets genomes accommodate TEs at all, and across 53 genomes they found that larger genomes have more TEs and fewer CpGs (lower CpG observed/expected) in both TEs and host DNA. The price is mutation: methylated C in CpG turns into T by deamination much faster than other bases change (<a href="../03-annotation/#s04">lesson 3, section 04</a>, the CpG rule of repeat landscapes). So the <b>age</b> of a copy decides how much methylation it can show:</p>
+  <ul>
+    <li><b>Young copies</b> are nearly identical to their source and keep almost all their CpGs. They carry a dense methylation signal. In the human genome the youngest L1s (L1Hs) show a methylation peak at their 5' end followed by a hypomethylated (less methylated than its surroundings) TSS (Hoyt et al. 2022), and Ewing et al. (2020) found young L1s demethylated in liver cancer and, in some normal tissues, at L1 copies that were expressed; <span class="tip" title="SVA: a young, composite retrotransposon family of apes and humans (named after its SINE, VNTR and Alu parts); it is copied by the L1 machinery.">SVA</span> retrotransposons were "near-universally methylated".</li>
+    <li><b>Old copies</b> have lost most of their CpGs to C→T changes. Hoyt et al. describe older, truncated elements with "low CpG content and higher divergence". Their few remaining CpGs may still be methylated, but there are too few of them for a precise per-copy value.</li>
+    <li><b>Satellites</b> (tandem arrays, <a href="../03-annotation/#s04">lesson 3, section 04</a>). In the complete human genome, active alpha-satellite arrays have "generally high CpG methylation" and beta and gamma satellites dense methylation (Altemose et al. 2022). Inside each active array the long-read maps found a stretch of reduced methylation, the <span class="tip" title="Centromere dip region (CDR): a stretch of lower CpG methylation inside the active alpha-satellite array of a human centromere. It marks where the kinetochore (the protein structure that attaches the chromosome to the spindle) sits.">centromere dip region</span> (CDR), where the centromere protein CENP-A is most enriched (Altemose et al. 2022; Gershman et al. 2022). The toy below has one such dip in its satellite.</li>
+  </ul>
+
+  <h3>Mappability: why repeats were a blind spot, and how long reads help</h3>
+  <p>A methylation value is only as good as the placement of the reads behind it. A 150-bp read from a young L1 copy matches hundreds of places equally well; the aligner gives it a <span class="tip" title="MAPQ, mapping quality: the aligner's confidence that a read sits at the right place, on a log scale (MAPQ 10 = 1 in 10 chance of being wrong, 0 = equally good elsewhere). Reads with low MAPQ are normally thrown away before counting.">mapping quality</span> (MAPQ) of 0, and it is discarded. Its CpGs get no data, or worse, data pooled from many copies. On the complete human genome, the 165 Mb that short reads cannot map at all were "enriched in SDs and satellite DNA" (<span class="tip" title="SD, segmental duplication: a stretch of more than about 1 kb that is present two or more times in the genome with very high identity.">segmental duplications</span>), and nanopore reads measured 3.18 million more CpGs (about 10 %) than short-read bisulfite data (Gershman et al. 2022). For centromeres the authors used reads longer than 50 kb.</p>
+  <p>The rule is simple: a read is placed uniquely if it contains enough differences from every other copy, <b>or</b> if it is long enough to run out of the repeat into the unique DNA on both sides. Long reads do the second. Two settings in the tools follow from this:</p>
+  <ul>
+    <li><b>Filter by MAPQ before the pileup.</b> modkit pileup uses primary alignments only, but its help (v0.6.4) has no mapping-quality option, so filter the BAM first (<code>samtools view -q 10</code>). methylartist filters at MAPQ 10 by default (<code>-q/--min_mapq</code>).</li>
+    <li><b>Require reads that leave the repeat.</b> <code>methylartist segmeth --excl_ambig</code> ignores reads that align entirely within a segment, so only reads anchored in flanking DNA count. Use it when you score TE copies.</li>
+  </ul>
+
+  <div class="tool" id="s05-gen-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-gen-h">A toy genome: genes, islands, transposons and a satellite</h3></div>
+    <p class="tool-note">An <b>invented</b> 2-Mb chromosome with 40 genes, about 370 transposon copies of three families and a satellite array. Every CpG gets a true methylation level from simple rules (island near 0 %, active gene body high, and so on; listed in the notes). Reads are then "sequenced": each CpG gets a random number of reads around the chosen depth, scaled by the share of reads of the chosen length that could be placed there uniquely. Toy rule: a read over a repeat copy is placed if it carries at least 3 differences from the closest other copy, or if it reaches at least 100 bp into the unique DNA on either side of the copy. The track, the histogram and the metaplot are computed from these simulated counts, the way you would compute them from a real bedMethyl file.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Read length" id="s05-rl1">
+        <button type="button" data-l="150" aria-pressed="false">150 bp</button>
+        <button type="button" data-l="2000" aria-pressed="false">2 kb</button>
+        <button type="button" data-l="15000" aria-pressed="true">15 kb</button>
+        <button type="button" data-l="60000" aria-pressed="false">60 kb</button>
+      </div>
+      <label>Depth<output id="s05-depv">20×</output><input type="range" id="s05-dep" min="2" max="60" step="1" value="20"></label>
+      <label>Minimum valid reads per CpG<output id="s05-mcv">5</output><input type="range" id="s05-mc" min="1" max="20" step="1" value="5"></label>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Jump to a place in the toy genome" id="s05-jump">
+        <button type="button" data-j="hk" aria-pressed="true">active gene with island</button>
+        <button type="button" data-j="ts" aria-pressed="false">silenced gene (methylated island)</button>
+        <button type="button" data-j="l1" aria-pressed="false">young L1-like copy</button>
+        <button type="button" data-j="sat" aria-pressed="false">satellite array</button>
+      </div>
+      <label>Window start<output id="s05-posv"></output><input type="range" id="s05-pos" min="0" max="1940" step="1" value="0"></label>
+    </div>
+    <div class="svgbox"><svg id="s05-trk" viewBox="0 0 760 230" width="100%" style="min-width:560px" role="img" aria-label="Genome browser view of a 60-kb window: genes, CpG islands, transposon copies and per-CpG methylation"></svg></div>
+    <div class="legend" id="s05-trk-leg"></div>
+    <div class="readout" id="s05-trk-out" aria-live="polite"></div>
+
+    <h3 id="s05-hist-h">Per-CpG methylation, whole toy genome</h3>
+    <div class="svgbox"><svg id="s05-hist" viewBox="0 0 760 210" width="100%" style="min-width:560px" role="img" aria-label="Histogram of percent methylation per CpG"></svg></div>
+    <div class="readout" id="s05-hist-out" aria-live="polite"></div>
+
+    <h3 id="s05-meta-h">Metaplot around the TSS</h3>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Turn minus-strand genes around?" id="s05-strand">
+        <button type="button" data-s="1" aria-pressed="true">strand-aware (correct)</button>
+        <button type="button" data-s="0" aria-pressed="false">ignore gene strand (mistake)</button>
+      </div>
+    </div>
+    <div class="svgbox"><svg id="s05-meta" viewBox="0 0 760 250" width="100%" style="min-width:560px" role="img" aria-label="Average CpG methylation in 200-bp bins from 5 kb upstream to 5 kb downstream of the TSS, by gene group"></svg></div>
+    <div class="legend" id="s05-meta-leg"></div>
+    <div class="readout" id="s05-meta-out" aria-live="polite"></div>
+  </div>
+  <p>Things to try: drop the reads to 150 bp and watch the young L1 copy and the satellite go grey (no data), while genes are untouched. Lower the depth to 3× with a minimum of 1 read: the histogram breaks into spikes at 0, 33, 50, 67 and 100 %, because with two or three reads no other fractions are possible. Switch the metaplot to "ignore gene strand": the gene-body side and the upstream side get mixed, and the dip becomes a symmetric valley.</p>
+
+  <h3>Recipes: intersecting a bedMethyl file with the annotation</h3>
+  <p>Inputs: the CpG bedMethyl from section <a href="#s03">03</a>, made with both strands combined; the gene models from <a href="../03-annotation/#s06">lesson 3, section 06</a> (or projected genes, <a href="../03-annotation/#s07">section 07</a>); the RepeatMasker <code>.out</code> table from <a href="../03-annotation/#s04">lesson 3, section 04</a>. All must use the same assembly and the same sequence names.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 0. pileup from a MAPQ-filtered BAM (modkit 0.6.4, samtools 1.25); see section 03</span>
+samtools view -b -q 10 -o reads.q10.bam reads.bam &amp;&amp; samtools index reads.q10.bam
+modkit pileup reads.q10.bam sample.cpg.bed --cpg --combine-strands \
+    --modified-bases 5mC 5hmC --combine-mods --ref genome.fa --log-filepath pileup.log
+sort -k1,1 -k2,2n sample.cpg.bed | bgzip &gt; sample.cpg.bed.gz &amp;&amp; tabix -p bed sample.cpg.bed.gz
+<span class="c"># bedMethyl columns used below: 2 = CpG start (0-based), 10 = valid reads, 11 = % modified, 12 = modified reads</span></pre></div>
+  <p>With <code>--combine-mods</code>, 5mC and 5hmC are counted together as "modified" (section <a href="#s03">03</a> explains when to keep them apart).</p>
+
+  <h3>1. Average over regions (promoters, gene bodies, islands)</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># genes from a GFF3 into BED (tab-separated: chrom, start-1, end, attributes, ., strand)</span>
+awk -F'\t' 'BEGIN{OFS="\t"} $3=="gene"{print $1,$4-1,$5,$9,".",$7}' genes.gff3 | sort -k1,1 -k2,2n &gt; genes.bed
+<span class="c"># modkit: pooled % = modified calls / valid calls over all CpGs in each region (needs the bgzipped, indexed file)</span>
+modkit stats sample.cpg.bed.gz --regions genes.bed --min-coverage 5 -o genes.stats.tsv
+<span class="c"># bedtools 2.31 alternative: sum modified (col 12) and valid (col 10) calls per region; "." = no CpG with data</span>
+bedtools map -a genes.bed -b sample.cpg.bed.gz -c 12,10 -o sum,sum &gt; genes.meth.tsv</pre></div>
+  <p><code>bedtools map</code> needs both files sorted by position. Pooling counts (sum of modified ÷ sum of valid) weighs each CpG by its depth; averaging the per-CpG percentages (<code>-c 11 -o mean</code>) weighs every CpG equally. Say which one you used.</p>
+  <p>To practise without data of your own: the modkit repository has a small human chromosome-20 CpG bedMethyl and a matching region file, used in its own documentation.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># files from github.com/nanoporetech/modkit, folder tests/resources/</span>
+modkit stats lung_00733-m_adjacent-normal_5mc-5hmc_chr20_cpg_pileup.bed.gz \
+    --regions cpg_chr20_with_orig_names_selection.bed -o ./stats.tsv
+<span class="c"># output: chrom, start, end, name, strand, then count_x, count_valid_x, percent_x for each code (h = 5hmC, m = 5mC)</span></pre></div>
+
+  <h3>2. Metaplot around the TSS</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># a. TSS ± 5 kb; the TSS of a minus-strand gene is its END. Columns: chrom, start, end, name, TSS, strand</span>
+awk 'BEGIN{OFS="\t"} {t=($6=="+")?$2:$3-1; s=t-5000; if(s&lt;0)s=0; print $1,s,t+5001,$4,t,$6}' genes.bed &gt; tss5k.bed
+<span class="c"># b. every CpG in every window (window columns 1-6, then the 18 bedMethyl columns as 7-24)</span>
+bedtools intersect -a tss5k.bed -b sample.cpg.bed.gz -wa -wb &gt; tss_cpg.tsv
+<span class="c"># c. signed distance in gene direction, 200-bp bins, pooled %; CpGs with at least 5 valid reads</span>
+awk -v B=200 '$16&gt;=5 {d=$8-$5; if($6=="-") d=-d; b=int((d+5000)/B); m[b]+=$18; v[b]+=$16}
+  END{for(b in v) printf "%d\t%.1f\t%d\n", b*B-5000, 100*m[b]/v[b], v[b]}' tss_cpg.tsv | sort -k1,1n &gt; tss_profile.tsv</pre></div>
+  <p>The line <code>if($6=="-") d=-d</code> is the "strand-aware" button of the toy. Split <code>genes.bed</code> into groups first (for example by expression, if you have RNA-seq from the same tissue, or "with island / without") and run step c per group. <code>modkit localize</code> does a similar aggregation around the middle of each region (default window 2,000 bp, minimum coverage 3). In the source code we read (commit 5cecc3f, June 2026) the offset is computed in genome direction and not turned around for minus-strand features, so run it separately for <code>+</code> and <code>-</code> genes and flip one result yourself, or use the awk recipe.</p>
+
+  <h3>3. Methylation by transposon age</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># a. RepeatMasker .out (3 header lines) to BED: chrom, start, end, family, % divergence, strand, class</span>
+awk 'BEGIN{OFS="\t"} NR&gt;3 &amp;&amp; $11!~/Simple_repeat|Low_complexity/ {print $5,$6-1,$7,$10,$2,($9=="C")?"-":"+",$11}' \
+    genome.fa.out | sort -k1,1 -k2,2n &gt; te.bed
+<span class="c"># b. per copy: modified and valid calls (columns 8 and 9)</span>
+bedtools map -a te.bed -b sample.cpg.bed.gz -c 12,10 -o sum,sum &gt; te_meth.tsv
+<span class="c"># c. per class and 1-% divergence bin: copies with >= 20 valid calls, pooled %</span>
+awk 'BEGIN{OFS="\t"} $9!="." &amp;&amp; $9&gt;=20 {k=$7"\t"int($5); n[k]++; m[k]+=$8; v[k]+=$9}
+  END{for(k in n) print k, n[k], sprintf("%.1f",100*m[k]/v[k])}' te_meth.tsv | sort -k1,1 -k2,2n &gt; meth_by_div.tsv</pre></div>
+  <p>Column 2 of <code>.out</code> is the raw mismatch percentage, not the Kimura value of the landscape; it ranks copies by age well enough, but for the same scale as your repeat landscape take the Kimura divergence from the <code>.align</code> file (<a href="../03-annotation/#s04">lesson 3, section 04</a>). Also count copies that got <b>no</b> value (<code>"."</code> or fewer than 20 calls) in each bin: if the young bins are empty, the plot says something about mappability, not biology. For per-family plots, <code>methylartist segmeth</code> (v1.6.0) aggregates over a BED of segments (with <code>--excl_ambig</code>, see above) and <code>segplot</code> draws strip, violin or ridge plots; <code>methylartist composite</code> lines up every copy of one family on its consensus sequence, to show which part of the element (for example the 5' promoter of L1) is methylated.</p>
+
+  <div class="tool" id="s05-te-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-te-h">Methylation against transposon divergence, from the toy genome</h3></div>
+    <p class="tool-note">Every transposon copy of the toy genome above, one dot each. <b>Upper plot:</b> pooled methylation of the copy (modified ÷ valid calls of all its CpGs, the recipe above) against its divergence from the consensus. Hollow grey dots at the bottom are copies that got fewer than 20 valid calls. <b>Lower plot:</b> how many CpGs each copy still has, per kb of its length. In the toy, CpG sites decay 6 times faster than other sites (the human Alu and young bat SINE value, see the note below), which is why old copies keep so few.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Read length" id="s05-rl2">
+        <button type="button" data-l="150" aria-pressed="false">150 bp</button>
+        <button type="button" data-l="2000" aria-pressed="false">2 kb</button>
+        <button type="button" data-l="15000" aria-pressed="true">15 kb</button>
+        <button type="button" data-l="60000" aria-pressed="false">60 kb</button>
+      </div>
+      <label style="flex-direction:row;gap:6px;align-items:center" title="Toy switch: the youngest L1-like copies (under 3 % divergence) lose methylation in their 5' region, as Ewing et al. (2020) saw for young L1s in some tissues and in cancer."><input id="s05-esc" type="checkbox" style="width:auto">young L1-like copies switched on in this tissue</label>
+    </div>
+    <div class="svgbox"><svg id="s05-te" viewBox="0 0 760 270" width="100%" style="min-width:560px" role="img" aria-label="Scatter plot: percent methylation of each transposon copy against its divergence from the consensus"></svg></div>
+    <div class="svgbox"><svg id="s05-cpg" viewBox="0 0 760 170" width="100%" style="min-width:560px" role="img" aria-label="Scatter plot: number of CpG sites per copy against divergence"></svg></div>
+    <div class="legend" id="s05-te-leg"></div>
+    <div class="readout" id="s05-te-out" aria-live="polite"></div>
+  </div>
+  <p>What the toy shows: with long reads, every copy gets a value and most sit high, as expected for silenced transposons. With 150-bp reads the left edge of the plot, the young copies, disappears; a short-read study would see methylation only of copies old enough to be told apart, which are also the copies with the fewest CpGs. Tick the box and only long reads reveal that the youngest L1-like copies are the ones that changed.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: reading a methylation map like a street map</summary><div class="in">
+    <p>Think of each CpG as a street lamp that is either off (methylated, the default) or on (unmethylated). Seen from a plane at night, a mammalian genome is mostly dark, with small bright spots: the CpG islands at the doors of genes. That is the bimodal histogram: many dark lamps, a few bright ones, very few half-lit.</p>
+    <p>A metaplot is like standing at the front door of every house in town at once and asking: how bright is it 5 km before the door, at the door, and 5 km into the house? You must turn every house so its door faces the same way (the strand flip), or the hallway and the garden get mixed up.</p>
+    <div class="toy">gene on + strand:   upstream ......[TSS]=====body=====&gt;
+gene on - strand:   &lt;=====body=====[TSS]...... upstream
+after the flip:     upstream ......[TSS]=====body=====&gt;   (d = -(CpG - TSS))</div>
+    <p>Transposons are copies of the same house built at different times. New ones still have all their lamps (CpGs); in old ones most lamps have been ripped out by the CpG→TpG mutation, so you can hardly tell whether the few left are on or off. And with short reads you cannot even tell which of 500 identical new houses you are looking at, so the newest street is missing from the map.</p>
+  </div></details>
+
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><b>Collapsed repeats in the assembly.</b> If many young copies were collapsed into one in the assembly (<a href="../02-assembly/#s06">lesson 2, section 06</a>), the reads of all of them pile onto that one copy, with high depth and a mixed value. Check depth over the copy before trusting it.</li>
+    <li><b>Your individual is not your reference.</b> A CpG of the reference that is TpG in your animal (a SNP, or a C→T change in a young TE copy) has no call; modkit counts such reads as <code>N<sub>diff</sub></code> (column 17) or <code>N<sub>nocall</sub></code> (column 18). Methylation on each parental copy is in section <a href="#s04">04</a>.</li>
+    <li><b>Few CpGs, big noise.</b> A copy with 3 CpGs at 10× has 30 calls; one with 60 CpGs has 600. Set a minimum of valid calls per copy and report how many copies passed.</li>
+    <li><b>Tissue and individual.</b> Promoter and young-TE methylation change between tissues and in disease. One sample shows one state.</li>
+    <li><b>Other animals differ.</b> The mammalian picture (methylated almost everywhere except islands) is not universal: across 17 eukaryotes, gene-body methylation was conserved but the targeting of transposons was not (Zemach et al. 2010), and the CpG-decay footprint in TEs is weaker in fish and an insect than in mammals (note below). Do not assume the mammalian pattern for a new lineage; measure it.</li>
+  </ul>
+
+  <div class="note">
+    <b>In our projects: methylation history written in the repeats.</b> Without any methylation calls, the lab's SINE work already measures the footprint of germline methylation. Substitutions were counted at CpG sites of each SINE family consensus versus all other sites. In young families (non-CpG substitution density under 0.08), CpG sites changed a median 5.8 times faster in <i>Rhinolophus sinicus</i> (up to 8.8 in family r9), 6.3 in <i>Rousettus leschenaultii</i> and 5.8 in human, close to the published Alu value of about 6 (Xing et al. 2004). Old bat families (MEG-T2, MEG-RS and others) have ratios of only 0.9-1.9: their CpGs are already gone. Zebrafish gave 2.7 and the insect <i>Timema</i> 1.5. In the toy above, these old families would be the dots in the lower right of the CpG plot. The code is in the public <a href="https://github.com/Toki-bio/SINE-discriminator">SINE-discriminator</a> repository. Whether our long reads could place young SINE and L1 copies uniquely depends on read length: the reads of species B and C are short on average (<a href="../02-assembly/#s01">lesson 2</a>), enough to span a SINE with flanks but not a full-length L1, while the reads of species A are several times longer; but they carry no methylation calls in any case (section <a href="#s02">02</a>).
+  </div>
+
+  <p class="tool-note"><b>Sources:</b> Gardiner-Garden &amp; Frommer 1987 J Mol Biol 196:261; Takai &amp; Jones 2002 PNAS 99:3740; Ball et al. 2009 Nat Biotechnol 27:361; Zemach et al. 2010 Science 328:916; Deaton &amp; Bird 2011 Genes Dev 25:1010; Ziller et al. 2013 Nature 500:477; Zhou et al. 2020 PNAS 117:19359; Ewing et al. 2020 Mol Cell 80:915; Gershman et al. 2022, Hoyt et al. 2022, Altemose et al. 2022 Science 376; Cheetham et al. 2022 Bioinformatics 38:3109 (methylartist); modkit 0.6.4 documentation; bedtools 2.31 and samtools 1.25 manuals.</p>
+</section>

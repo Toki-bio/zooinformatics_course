@@ -1,0 +1,166 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>How long reads see methylation</h2>
+  <p class="lede">A methyl group on a cytosine does not change the letter: a <span class="tip" title="5mC (5-methylcytosine): a cytosine with a small methyl group (CH3) attached at carbon 5. It pairs with G like a normal C, so copying the DNA or reading only the letters cannot tell it apart.">5mC</span> is still read as C. So a machine that reports only letters cannot see it. Short-read methods solve this with chemistry before sequencing. Long-read machines measure a physical signal while they read each native DNA molecule, and the methyl group nudges that signal. Whether you can ever get methylation out of your data therefore depends on one practical question: <b>did the signal, or a call made from it, survive into the files you received?</b></p>
+
+  <h3>Four ways to see a methyl group</h3>
+  <p>The two long-read platforms most used for methylation measure different things. Bisulfite and EM-seq are the short-read reference methods; they are listed only for comparison (section <a href="#s07">07</a> returns to them as a check).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>What is measured</th><th>How methylation shows up</th><th>What must be kept</th></tr></thead>
+    <tbody>
+      <tr><td><b>Bisulfite sequencing</b> (short reads)</td><td>Letters, after a chemical treatment</td><td>Sodium bisulfite turns unmethylated C into U (read as T); 5mC is not converted and stays C (Frommer et al. 1992). Methylation becomes a C/T difference against the reference.</td><td>The reads themselves (FASTQ is enough)</td></tr>
+      <tr><td><b>EM-seq</b> (short reads)</td><td>Letters, after an enzyme treatment</td><td>Enzymes protect 5mC and <span class="tip" title="5hmC (5-hydroxymethylcytosine): a cytosine carrying a CH2OH group; an oxidised form of 5mC, common in some tissues such as brain.">5hmC</span>, then another enzyme turns unprotected C into U. Same C/T readout as bisulfite but with less DNA damage (Vaisvila et al. 2021). Like bisulfite it does not separate 5mC from 5hmC.</td><td>The reads themselves</td></tr>
+      <tr><td><b>Oxford Nanopore</b> (ONT)</td><td>The electric current through a pore while one DNA strand slides through it</td><td>The current at a methylated C differs slightly from the current at an unmethylated C (Simpson et al. 2017; Rand et al. 2017). A <span class="tip" title="Neural network: a machine-learning model that learns a rule from many examples, here signals from DNA of known methylation.">neural network</span> reads the current around each candidate C and gives a probability.</td><td>The raw signal (<span class="tip" title="pod5: Oxford Nanopore's file format for the raw electrical signal of every read. fast5 is the older format.">pod5</span>, older fast5), or a BAM with modification tags made at basecalling</td></tr>
+      <tr><td><b>PacBio HiFi</b></td><td>The timing of a DNA polymerase as it copies the template strand</td><td>The polymerase pauses differently at a modified template base (Flusberg et al. 2010). A neural network reads the timing around each CpG and gives a probability (Tse et al. 2021; PacBio's jasmine).</td><td>A HiFi BAM with modification tags, or with the <span class="tip" title="Kinetics: per-base timing values (IPD and pulse width) stored as tags in a HiFi BAM. A delivered file may or may not contain them.">kinetics</span> values to call them later</td></tr>
+    </tbody>
+  </table></div>
+  <p>In vertebrate genomes methylation is found mainly at the C of <span class="tip" title="CpG: a C followed directly by a G on the same strand ('p' is the phosphate between them). The opposite strand then also reads CpG, so the site is a pair of Cs, one on each strand.">CpG</span> sites (section <a href="#s01">01</a>), and the standard long-read models for vertebrates look at CpGs. For the instruments themselves see <a href="../02-assembly/#s04">lesson 2, section 04</a>.</p>
+
+  <h3>Nanopore: the current changes at a methylated base</h3>
+  <p>In a nanopore sequencer a protein pore sits in a membrane with a voltage across it. Ions flowing through the pore make a tiny current. A motor protein feeds one DNA strand through the pore, a base at a time. Several neighbouring bases sit in the narrow part of the pore together, so the current at each step depends on a short word of bases, a <span class="tip" title="k-mer: a word of k consecutive bases, for example the 5-mer ACGTA. Here, the group of bases inside the pore that together set the current.">k-mer</span>, not on a single base. The <span class="tip" title="Basecaller: the program that turns the raw signal into letters (A, C, G, T). For Oxford Nanopore this is Dorado.">basecaller</span> turns this staircase of current levels into letters. A methyl group on a C changes the shape and charge inside the pore a little, so every step whose k-mer contains that C sits at a slightly different level. The early methods (Simpson et al. 2017, Rand et al. 2017) showed this with DNA methylated in the test tube; today's models are neural networks trained the same way, on DNA of known methylation.</p>
+  <p>PacBio sees the same methyl group in a different way. The polymerase builds a new strand on the template and each added base gives a flash of light. The <span class="tip" title="IPD (interpulse duration): the time, in camera frames, before a base is added, i.e. the pause between one flash of light and the next.">IPD</span> is the pause before a base is added and the <span class="tip" title="PW (pulse width): how long, in camera frames, the flash for one added base lasts.">pulse width</span> is how long the addition takes (PacBio BAM specification). A modified base in the template changes these times around it.</p>
+
+  <div class="tool explain" id="s02-sig-tool">
+    <div class="tool-head"><span class="tool-tag">Explain</span><h3 id="s02-sig-h">One molecule, with and without a methyl group</h3></div>
+    <p class="tool-note">A <b>toy</b> 12-base stretch with one CpG. In nanopore mode each step is the current of one 5-base word in the pore; in PacBio mode each bar is one added base and the gap before it is the IPD. All levels, shifts and times are <b>invented</b> to show the principle; real k-mer sizes, levels and shifts depend on the pore, chemistry and model. Switch the methyl group on, then raise the noise.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Platform" id="s02-sig-plat">
+        <button type="button" data-p="ont" aria-pressed="true">nanopore: current</button>
+        <button type="button" data-p="pb" aria-pressed="false">PacBio: polymerase timing</button>
+      </div>
+      <div class="seg" role="group" aria-label="Which molecule" id="s02-sig-mol">
+        <button type="button" data-m="u" aria-pressed="false">unmethylated</button>
+        <button type="button" data-m="m" aria-pressed="false">methylated</button>
+        <button type="button" data-m="b" aria-pressed="true">both overlaid</button>
+      </div>
+      <label>measurement noise<output id="s02-sig-nv">low</output><input type="range" id="s02-sig-noise" min="0" max="10" step="1" value="2"></label>
+      <button type="button" class="btn" id="s02-sig-new">read another molecule</button>
+    </div>
+    <div class="svgbox"><svg id="s02-sig-svg" viewBox="0 0 900 270" width="100%" style="min-width:620px" role="img" aria-label="Toy signal trace for 12 bases; with the methyl group on, the steps around the CpG shift"></svg></div>
+    <div class="legend" id="s02-sig-leg"></div>
+    <div class="note" id="s02-sig-out" aria-live="polite"></div>
+  </div>
+
+  <p>A real model does not look at one step. It takes the signal over a window of bases around each candidate site and outputs a probability that the C is modified. Because the shift is small next to the noise, the answer for a single read is a probability, not a yes or no; certainty comes from many reads at the same site (section <a href="#s03">03</a>).</p>
+
+  <div class="tool" id="s02-thr-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-thr-h">From probabilities to calls: where to put the threshold</h3></div>
+    <p class="tool-note">Forty <b>invented</b> reads cover one CpG. Each read is truly methylated or not (filled vs open dot), and the model gives each a probability (horizontal position). Reads right of the threshold are called methylated. Set how methylated the site really is, how well the model separates the two states, and the threshold.</p>
+    <div class="controls">
+      <label>true methylation of the site<output id="s02-thr-fv">70 %</output><input type="range" id="s02-thr-f" min="0" max="100" step="5" value="70"></label>
+      <label>model separation<output id="s02-thr-sv">good</output><input type="range" id="s02-thr-s" min="1" max="5" step="1" value="4"></label>
+      <label>threshold<output id="s02-thr-tv">0.50</output><input type="range" id="s02-thr-t" min="0.05" max="0.95" step="0.05" value="0.5"></label>
+      <button type="button" class="btn" id="s02-thr-new">new reads</button>
+    </div>
+    <div class="svgbox"><svg id="s02-thr-svg" viewBox="0 0 900 214" width="100%" style="min-width:600px" role="img" aria-label="Forty reads placed by their methylation probability; a vertical threshold line splits them into called methylated and called unmethylated"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>truly methylated read</span><span><i style="background:var(--panel);border:2px solid var(--muted);height:8px"></i>truly unmethylated read</span><span><i style="background:var(--bad);height:10px"></i>wrong call</span></div>
+    <div class="readout" id="s02-thr-out" aria-live="polite"></div>
+    <div class="note" id="s02-thr-note" aria-live="polite"></div>
+  </div>
+  <p>Three things to take from the toy. With good separation almost any threshold near 0.5 works. With poor separation, a low threshold produces false methylated calls and a high one misses real ones, so the site's estimated level is pulled towards whichever error dominates. And the threshold is a choice made after calling: Dorado writes the probability itself, and its <code>--modified-bases-threshold</code> only decides which low-probability calls are written to the file (its help text says this applies to all-context models); it "has no effect on the modification probabilities" (Dorado documentation). Section <a href="#s03">03</a> shows how <code>modkit</code> chooses and applies thresholds when it counts reads per site.</p>
+
+  <h3>Calling modified bases with Dorado</h3>
+  <p>For Oxford Nanopore data the basecaller is <b>Dorado</b> (version 2.1.2, 26 August 2026). Modified bases are called <b>during basecalling, from the raw signal</b>: you add a modification model to the basecalling model. Dorado reads only pod5 input; fast5 support was removed in version 1.0.0 (May 2025), and fast5 files must first be converted to pod5. In the source code the modification caller takes chunks of signal, not letters, which is why a FASTQ file cannot be re-called for methylation.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># basecall + 5mC/5hmC at CpG sites, from raw signal (pod5), on a GPU; output: unaligned BAM with MM/ML tags</span>
+dorado basecaller sup,5mCG_5hmCG pod5s/ &gt; calls.bam
+
+<span class="c"># the same, pinning the basecalling model version (the modification model then matches it)</span>
+dorado basecaller sup@v5.2.0,5mCG_5hmCG pod5s/ &gt; calls.bam
+
+<span class="c"># add the move table (signal-to-base map) if other tools will need it later</span>
+dorado basecaller sup,5mCG_5hmCG --emit-moves pod5s/ &gt; calls.bam</pre></div>
+  <p>The first argument is a <span class="tip" title="Model complex: Dorado's short way of naming models: speed (fast, hac or sup), an optional @version, then comma-separated modification models, e.g. sup@v5.2,5mCG_5hmCG,6mA.">model complex</span>: a speed (<code>fast</code>, <code>hac</code> or <code>sup</code>, from fastest to most accurate), an optional <code>@version</code>, then modification models separated by commas. Modification models are tied to the basecalling model version, and only one modification model per base type is allowed (so <code>sup,4mC_5mC,5mC_5hmC</code> is refused: both act on C). For the current <span class="tip" title="R10.4.1: the version of the Oxford Nanopore pore in current flow cells; each model is made for one pore version.">R10.4.1</span> DNA <code>sup@v5.2.0</code> model, the documented modification models are:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Model name</th><th>What it calls</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td><code>5mCG_5hmCG</code></td><td>5mC and 5hmC</td><td>only C in CpG (a <span class="tip" title="Motif model: a model that only looks at sites matching a sequence pattern, here CG.">motif model</span>)</td></tr>
+      <tr><td><code>5mC_5hmC</code></td><td>5mC and 5hmC</td><td>every C (an <span class="tip" title="All-context model: a model that gives a prediction at every position of its base, not only inside a motif.">all-context model</span>)</td></tr>
+      <tr><td><code>4mC_5mC</code></td><td>4-methylcytosine and 5mC</td><td>every C</td></tr>
+      <tr><td><code>6mA</code></td><td>N6-methyladenine</td><td>every A</td></tr>
+    </tbody>
+  </table></div>
+  <p>For a vertebrate genome, <code>5mCG_5hmCG</code> is the usual choice. The output is an unaligned <span class="tip" title="BAM: the compressed binary form of SAM, the standard table of reads. 'Unaligned' means the reads are stored without positions on a genome; alignment comes later.">BAM</span>: one record per read with the letters, qualities and the modification calls in two <span class="tip" title="SAM tags: optional named fields at the end of each read record, written as NAME:TYPE:VALUE, for example MM:Z:C+m?,3,1;">tags</span>, <code>MM</code> and <code>ML</code>. The BAM header line <code>@RG</code> records the basecalling model and the modification model names. Dorado refuses to combine FASTQ output with modification models; its own error message reads <i>"--emit-fastq cannot be used with modbase models as FASTQ cannot store modbase results."</i></p>
+
+  <h3>PacBio: calls made on the instrument</h3>
+  <p>For HiFi reads, the <code>ccs</code> step, run with <code>--hifi-kinetics</code>, stores averaged timing values for each strand of the molecule separately as per-base tags (<code>fi</code>/<code>fp</code> for the forward strand, <code>ri</code>/<code>rp</code> for the reverse). PacBio's <b>jasmine</b> (version 26.1.3) then turns them into calls:</p>
+  <ul>
+    <li>5mC at CpG sites: <b>one call per CpG pair</b>, written on the forward strand, using timing from both strands; if either strand's timing is missing, no 5mC calls are made for that read. Reads with fewer than 2 passes (<code>--min-passes</code>) get no calls.</li>
+    <li>5hmC at CpG sites (strand by strand) and 6mA (for the <span class="tip" title="Fiber-seq: a method that marks accessible, protein-free DNA by adding 6mA with an enzyme before long-read sequencing; the 6mA pattern then shows where proteins sat on the molecule.">Fiber-seq</span> assay) with separate models.</li>
+    <li>Output: the same <code>MM</code>/<code>ML</code> tags as Dorado.</li>
+  </ul>
+  <p>PacBio's Revio page states that "every standard run delivers on-instrument 5mC, 5hmC, and 6mA methylation calling". So a modern HiFi delivery in BAM form normally already carries the calls; the timing values themselves may or may not be kept in the delivered file. For counting calls per CpG, jasmine's README now recommends PacBio's MethBat and calls the older pb-CpG-tools deprecated (section <a href="#s03">03</a>).</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># only needed if your HiFi BAM still has kinetics tags but no calls (bioconda package pbjasmine)</span>
+jasmine movie.hifi_reads.bam movie.jasmine.bam</pre></div>
+
+  <h3>How the calls are written: MM and ML tags</h3>
+  <p>Both platforms use the same two tags, defined in the SAM tags specification (hts-specs). <code>MM</code> says <b>which bases</b> were assessed and <code>ML</code> gives <b>a probability for each</b>. A tag such as <code>MM:Z:C+m?,3,1;</code> reads: base C, on the same strand as the read (<code>+</code>), modification <code>m</code> (5mC), then a list of how many Cs to <b>skip</b> before each called C. <code>ML:B:C,249,4</code> then gives one number from 0 to 255 per called C; the number N means a probability between N/256 and (N+1)/256. The flag after the code says what the skipped Cs mean: <code>.</code> (or nothing) "assume unmodified", <code>?</code> "not assessed, no information". Positions count from the 5′ end of the read as it was sequenced, so the tags do not change when an aligner flips a read to the reverse strand.</p>
+
+  <div class="tool" id="s02-mm-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-mm-h">Decode an MM/ML tag</h3></div>
+    <p class="tool-note">Pick an example or type your own read and tags. The first example is from jasmine's README; the second and third follow the SAM tags specification (the read is our toy). The decoder handles the standard one-letter codes and the <code>.</code>/<code>?</code> flags; it does not handle numeric <span class="tip" title="ChEBI: a public dictionary of chemical compounds; the SAM specification lets a modification be named by its ChEBI number instead of a one-letter code.">ChEBI</span> codes.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Example tags" id="s02-mm-ex">
+        <button type="button" data-e="0" aria-pressed="true">jasmine 5mC (?)</button>
+        <button type="button" data-e="1" aria-pressed="false">spec: skipped = unmodified (.)</button>
+        <button type="button" data-e="2" aria-pressed="false">5mC + 5hmC together</button>
+      </div>
+    </div>
+    <div class="s02-mm-in">
+      <label>read sequence (SEQ, as sequenced)<input type="text" id="s02-mm-seq" spellcheck="false" autocomplete="off"></label>
+      <label>MM tag<input type="text" id="s02-mm-mm" spellcheck="false" autocomplete="off"></label>
+      <label>ML tag<input type="text" id="s02-mm-ml" spellcheck="false" autocomplete="off"></label>
+    </div>
+    <div class="toy s02-mm-read" id="s02-mm-read" aria-live="polite"></div>
+    <div class="legend"><span><i style="background:var(--bad);height:10px"></i>called, high probability</span><span><i style="background:var(--het);height:10px"></i>called, uncertain</span><span><i style="background:var(--good);height:10px"></i>called, low probability</span><span><i style="background:var(--line);height:10px"></i>skipped base of that type</span></div>
+    <div class="tbl"><table id="s02-mm-tab">
+      <thead><tr><th>Position in read</th><th>Base</th><th>Which one of its type</th><th>Modification</th><th>ML value</th><th>Probability</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="note" id="s02-mm-out" aria-live="polite"></div>
+  </div>
+  <p>One practical consequence from jasmine's README: a read where the <code>C+m?</code> block is present but empty was assessed and had no calls to report, while a read with no <code>C+m</code> block at all <b>could not be assessed</b> and is missing data, not evidence of no methylation. A third tag, <code>MN</code>, stores the read length at the time the tags were written; if a later tool shortens the read (hard-clipping) and <code>MN</code> no longer matches, the positions are out of date.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: bold letters in a retyped letter</summary><div class="in">
+    <p>Think of a hand-written letter in which some words are underlined. The underlining is the methylation; the words are the DNA letters. A nanopore or PacBio machine "reads the paper": it can feel the underlining. A basecaller that only outputs letters is a typist who retypes the letter in plain text. The words survive, the underlining is gone, and no amount of rereading the typed copy brings it back.</p>
+    <div class="toy">paper (signal):   the  <span class="s02-ul">CG</span> site in this  <span class="s02-ul">CG</span> island
+typed (FASTQ):    the  CG site in this  CG island        <span class="x">underlining lost</span>
+typed + notes:    the  CG site in this  CG island   MM:Z:C+m?,0,1;  ML:B:C,240,20
+                  "first C: 94 % underlined; third C: 8 %"</div>
+    <p>The MM/ML tags are the typist's notes in the margin: "the first C was underlined, quite sure; the third C probably not". A FASTQ file has no margin. To get the notes, either keep the paper (the raw signal, pod5) so the letter can be read again with a better typist, or ask the typist to write the notes the first time (basecalling with a modification model, delivered as BAM).</p>
+    <p>Bisulfite is a different trick: before typing, you rub the paper with a chemical that turns every <i>non</i>-underlined C into a T. Now the plain typed copy shows methylation as letters, and a plain FASTQ is enough. That is why short-read methylation data can be FASTQ, while long-read methylation data cannot.</p>
+  </div></details>
+
+  <h3>Why a plain FASTQ loses the information</h3>
+  <p>A FASTQ record holds four things: a name, the letters, a separator and one quality character per letter (see <a href="../01-pre-assembly/#qc">lesson 1</a>). There is no field for a probability per base of being modified, and the raw signal is not stored at all. Once reads are delivered only as FASTQ, methylation cannot be recovered from them: there is nothing to re-call. (Methylation can still leave faint traces as extra basecalling errors at modified sites, which can look like <span class="tip" title="SNP (single-nucleotide polymorphism): a position where the two copies of a chromosome, or two individuals, carry different bases.">SNPs</span>; section <a href="#s07">07</a> covers this. That is a nuisance, not a measurement.)</p>
+
+  <div class="tool explain" id="s02-have-tool">
+    <div class="tool-head"><span class="tool-tag">Explain</span><h3 id="s02-have-h">What can I still do with the files I received?</h3></div>
+    <p class="tool-note">Pick what your provider delivered. The answers follow the Dorado and jasmine documentation; for CycloneSEQ they reflect what we could and could not find.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="What you received" id="s02-have">
+        <button type="button" data-h="fq" aria-pressed="true">FASTQ only</button>
+        <button type="button" data-h="ubam" aria-pressed="false">ONT BAM with MM/ML</button>
+        <button type="button" data-h="pod5" aria-pressed="false">ONT pod5 (raw signal)</button>
+        <button type="button" data-h="hifi" aria-pressed="false">HiFi BAM with MM/ML</button>
+        <button type="button" data-h="kin" aria-pressed="false">HiFi BAM with kinetics only</button>
+        <button type="button" data-h="cyc" aria-pressed="false">CycloneSEQ FASTQ</button>
+      </div>
+    </div>
+    <div class="note" id="s02-have-out" aria-live="polite"></div>
+  </div>
+
+  <h3>CycloneSEQ</h3>
+  <p>CycloneSEQ (MGI) is a nanopore platform with its own pore, chemistry and basecaller, and Dorado's model list covers only Oxford Nanopore pores and chemistries. We could not find vendor documentation that describes a modified-base caller or MM/ML output for CycloneSEQ, and an independent first look at CycloneSEQ data (Wick 2024) found the basecalling software not freely available. A 2026 preprint (Liu et al., not peer-reviewed) compared bacterial DNA with and without its natural methylation on CycloneSEQ and ONT: methylated motifs raised substitution errors on both platforms. The authors also tested two research methods that align the raw CycloneSEQ current to a reference and detected a difference at one known methylated bacterial motif; both need the raw signal, and neither is a vendor tool that writes MM/ML tags. So methylation does affect CycloneSEQ reads, but we found no documented, ready-made way to turn it into per-base methylation calls. If your provider offers one, ask for its name, version and output format; until then, treat CycloneSEQ FASTQ as carrying no methylation information.</p>
+
+  <h3>What to ask your sequencing provider to keep</h3>
+  <p>Ask for this <b>before</b> sequencing: none of it is part of a plain FASTQ delivery, and a provider cannot send what it did not keep. A checklist, written from the request our lab sent:</p>
+  <ol class="steps">
+    <li><div><b>The raw signal</b><div class="d">pod5 (or fast5) for every run. It is large (by our rough estimate, roughly ten times the size of the reads themselves), but it is the only thing that allows re-calling with newer models.</div></div></li>
+    <li><div><b>Was a modification model used?</b><div class="d">If yes, the BAM files with MM/ML tags. If no, ask for a re-call with a CpG model (for ONT: <code>sup</code> + <code>5mCG_5hmCG</code>, with <code>--emit-moves</code>), delivered as unaligned BAM. For PacBio: the HiFi BAM with MM/ML tags, not a FASTQ export.</div></div></li>
+    <li><div><b>Run details</b><div class="d">Instrument, flow cell, library kit, basecaller name, model name and version, read filtering, number of flow cells or runs. Without the model name nobody can judge the calls later.</div></div></li>
+    <li><div><b>Run reports</b><div class="d">The sequencing summary and run reports.</div></div></li>
+  </ol>
+
+  <div class="note">
+    <b>In our projects: the reads of species A arrived without methylation.</b> Our long reads of species A (a rodent) were delivered as a single FASTQ. Their headers are not in Dorado style and carry no basecaller model or read-group tags, and we received no pod5. So the lab's plan, to re-basecall with <code>sup</code>, <code>--emit-moves</code> and the <code>5mCG_5hmCG</code> model and get CpG methylation "for free" with <code>modkit pileup</code>, could not run (and our server has no GPU for it). The checklist above is the request we then sent to the provider; no answer about methylation is recorded in our notes. The read-ID style suggests the reads are CycloneSEQ, not ONT, which would rule out Dorado anyway; for two other small mammals (species B and C) the provider confirmed a CycloneSEQ instrument and named a basecall model whose name (our reading) contains no modification model. For the lizard <i>Darevskia armeniaca</i>, our sequencing sheet lists a PacBio HiFi run in a folder labelled "_met", but the read file listed is a FASTQ; we have not checked what the original BAM contained. Section <a href="#s03">03</a> walks through the pipeline we would have run.
+  </div>
+</section>

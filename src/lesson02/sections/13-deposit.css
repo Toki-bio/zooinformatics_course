@@ -1,0 +1,14 @@
+#s13-wrap .toy .c{color:var(--muted);font-weight:400}
+#s13-wrap .s13-fs{border:1px solid var(--line);border-radius:4px;padding:6px 12px 10px;margin:0;display:flex;flex-direction:column;gap:4px;min-width:0;flex:1 1 200px}
+#s13-wrap .s13-fs legend{font:600 11.5px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);padding:0 4px}
+#s13-wrap .controls label.s13-ck{flex-direction:row;align-items:center;gap:7px;min-width:0;font-size:13.5px;color:var(--fg)}
+#s13-wrap .s13-ck input{accent-color:var(--accent);margin:0}
+#s13-wrap .s13-files{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:3px}
+#s13-wrap .readout b.s13-txt{font-family:var(--f-body);font-size:14px;font-weight:600}
+#s13-wrap .s13-bad{color:var(--bad)}
+#s13-wrap .calc label{max-width:100%;min-width:0}
+#s13-wrap #s13-ex{max-width:100%;width:min(100%,460px)}
+#s13-wrap #s13-dec-links code{word-break:break-all}
+#s13-wrap .readout{grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr))}
+#s13-wrap #s13-acc,#s13-wrap #s13-ex{box-sizing:border-box}
+#s13-wrap #s13-plan-in{align-items:stretch}

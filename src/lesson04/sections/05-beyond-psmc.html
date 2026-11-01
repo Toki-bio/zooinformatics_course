@@ -1,0 +1,152 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Beyond PSMC: MSMC2, SMC++, cobraa and SFS methods</h2>
+  <p class="lede">PSMC (<a href="#s03">s03</a>) reads one diploid genome and returns one curve. Other methods read the same genome differently, or need more genomes: MSMC2 compares many haplotypes and two populations, SMC++ uses many unphased genomes, cobraa asks whether the curve is really a size change or old population structure, and site-frequency-spectrum methods summarise a whole sample of animals. This section says what each one needs, what it answers, and why running three of them on one genome is not three independent confirmations.</p>
+
+  <h3>New words for this section</h3>
+  <dl class="defs">
+    <dt>Haplotype</dt><dd>One of the two copies of a chromosome in a diploid animal. One genome = two haplotypes; four animals = eight.</dd>
+    <dt>Phasing</dt><dd>Knowing which allele of every heterozygous site sits on which copy, along the whole chromosome. A normal VCF genotype <code>0/1</code> is <dfn>unphased</dfn>; <code>0|1</code> is phased. Phase comes from trios (parents sequenced), from long reads spanning several heterozygous sites, or statistically from a reference panel. A <dfn>switch error</dfn> is a place where the phase jumps from one copy to the other by mistake.</dd>
+    <dt>Coalescence rate</dt><dd>How fast two lineages, traced back in time, meet in a common ancestor. In one panmictic population the rate is 1/(2<i>N</i><sub>e</sub>) per generation, so the inverse of the rate reads as a population size. <dfn>Cross-coalescence</dfn> is the same rate for one haplotype from population A and one from population B.</dd>
+    <dt>Site frequency spectrum (SFS)</dt><dd>A table of how many SNPs are carried by 1, 2, 3, … of the sampled chromosomes. It needs a sample of individuals; it ignores where the SNPs are along the genome. <dfn>Folded</dfn> SFS counts the rarer allele when the ancestral allele is unknown.</dd>
+    <dt>Composite likelihood</dt><dd>A likelihood made by multiplying pieces that are not truly independent (for example, the same chromosome analysed with different animals as the focus). It works for point estimates, but its raw value overstates the evidence.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why more genomes see more recent time</summary><div class="in">
+    <p>The two copies of a chromosome in one animal usually meet in a common ancestor tens of thousands of generations back. Recent events (the last few thousand generations) are rarely "seen" because few pieces of the genome have such a young common ancestor. Take eight copies from four animals instead: among the 28 possible pairs, the <b>first</b> pair to meet does so much more recently. The original MSMC models exactly this first meeting, so its curve reaches closer to the present (Schiffels &amp; Durbin 2014); MSMC2 instead combines the coalescence rates of all the pairs, which also gains recent resolution.</p>
+    <div class="toy">2 copies   (1 animal)    pairs: 1     first meeting: typically old
+8 copies   (4 animals)   pairs: 28    first meeting: much more recent
+50 copies  (25 animals)  SFS classes: 1..25 (folded)  → rare alleles = recent history</div>
+    <p>The SFS works the same way: a SNP carried by only one of fifty chromosomes is a young mutation, one carried by half of them is old. With one animal the folded spectrum has one class: "heterozygous". That single number is the heterozygosity, and it holds no time information at all.</p>
+  </div></details>
+
+  <h3>The methods side by side</h3>
+  <div class="tbl"><table style="min-width:720px">
+    <thead><tr><th>Method</th><th>Data it needs</th><th>Phasing</th><th>What it estimates</th><th>From one diploid?</th></tr></thead>
+    <tbody>
+      <tr><td><b>PSMC</b> (<a href="#s03">s03</a>)</td><td>One diploid: consensus sequence in 100-bp bins</td><td>no</td><td>Inverse coalescence rate of the two haplotypes over time (read as <i>N</i><sub>e</sub>)</td><td>yes, only this</td></tr>
+      <tr><td><b>MSMC2</b></td><td>1 to about 8 diploids (≤ 16 haplotypes); per-chromosome <span class="tip" title="multihetsep: MSMC's input text format. One line per segregating site: chromosome, position, number of callable sites since the previous segregating site (including this one), and the alleles of every haplotype.">multihetsep</span> files + masks</td><td>for more than one animal and for population pairs: yes</td><td>Coalescence rates within each population and across two populations; their ratio tracks separation</td><td>yes (two haplotypes: PSMC-like)</td></tr>
+      <tr><td><b>SMC++</b></td><td>1 to hundreds of diploids; VCF + mask of uncalled regions</td><td>no ("results independent of phasing")</td><td>Size history (smooth or stepped); clean split time of two populations</td><td>yes (one "distinguished" animal)</td></tr>
+      <tr><td><b>cobraa</b></td><td>One diploid (multihetsep)</td><td>no</td><td>A split into two ancestral populations, an <span class="tip" title="Admixture: two populations that were separate mix again; an admixture pulse is a single such event, after which a fraction γ of the ancestry comes from the second population.">admixture</span> pulse (fraction γ), and the size history; compared with a panmictic fit</td><td>yes, by design</td></tr>
+      <tr><td><b>Stairway Plot 2</b></td><td>SFS from a sample (its example uses 30 sequences = 15 diploids); total callable sites</td><td>no</td><td>Size history from the SFS, without a predefined model</td><td>no</td></tr>
+      <tr><td><b>fastsimcoal2</b></td><td>(Joint) SFS of one or more populations + a model you write</td><td>no</td><td>Parameters of your model (sizes, split times, migration, admixture); compares models</td><td>no</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Sources: each tool's README or manual (versions in the notes file). PSMC, MSMC2, SMC++ and cobraa are <span class="tip" title="Sequentially Markovian coalescent: a hidden Markov model that walks along the genome; the hidden state is the age of the common ancestor of the haplotypes at this position, which changes only at recombinations.">SMC</span> methods: they use where heterozygous sites lie along the genome. Stairway Plot and fastsimcoal2 use only how many there are in each frequency class.</p>
+
+  <h3>MSMC2: many haplotypes, and two populations</h3>
+  <p>MSMC2 (Schiffels &amp; Wang 2020) is the current version of MSMC (Schiffels &amp; Durbin 2014). It estimates the coalescence rate between pairs of haplotypes and combines all pairs you select with <code>-I</code>. Three uses:</p>
+  <ul>
+    <li><b>One diploid.</b> Two haplotypes, one pair: the model is then essentially PSMC (the MSMC2 tutorial calls this "PSMC mode"). It is a second implementation, with its own time intervals, of the same data, not a second data set.</li>
+    <li><b>Several phased diploids of one population.</b> All pairs of haplotypes (<code>-I 0,1,2,3</code>). More haplotypes give more resolution in recent time. The author does not think it "feasible to go beyond 16 haplotypes", and warns that with limited phasing "you will get problems in very recent times". Unphased animals can still be run, pairing only the two haplotypes inside each animal (<code>-I 0-1,2-3</code>).</li>
+    <li><b>Two populations.</b> Three runs: within population 1, within population 2, and across (only pairs with one haplotype from each, plus <code>-s</code> to skip sites with ambiguous phase). <code>combineCrossCoal.py</code> merges them, and the <dfn>relative cross-coalescence rate</dfn> follows.</li>
+  </ul>
+  <div class="formula">RCCR(t) = 2 λ<sub>01</sub>(t) / (λ<sub>00</sub>(t) + λ<sub>11</sub>(t))     ≈ 1: one population   → 0: fully separated</div>
+  <p>λ<sub>00</sub> and λ<sub>11</sub> are the coalescence rates within each population, λ<sub>01</sub> the rate across. The tutorial warns that even a sharp split comes out as a gradual "smear" around the true time, so the midpoint (0.5) is a summary, not the split date. MSMC-IM (Wang et al. 2020) fits an isolation-with-migration model (two populations that split and then keep exchanging migrants; <a href="#s07">s07</a>) to these three rates to estimate gene flow over time.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># msmc-tools: one multihetsep file per chromosome (or contig). Each animal needs a VCF and a mask of</span>
+<span class="c"># the bases it was callable at (BED); an optional mappability mask (unique-mapping regions) applies to all animals.</span>
+generate_multihetsep.py --mask spA.ctg1.callable.bed.gz --mask ctg1.mappability.bed.gz \
+    spA.ctg1.vcf.gz > ctg1.mhs
+<span class="c"># --as_phased treats 0/1 as phased: harmless when only the two haplotypes of one animal are paired</span>
+
+<span class="c"># MSMC2 2.1.4: one diploid; default -p 1*2+25*1+1*2+1*3, 20 EM iterations</span>
+msmc2 -t 8 -o spA.msmc2 ctg*.mhs          <span class="c"># → spA.msmc2.final.txt, .loop.txt, .log</span>
+
+<span class="c"># two phased diploids, one from each population (haplotypes 0,1 | 2,3)</span>
+msmc2 -t 8 -I 0,1 -o popA     all.ctg*.mhs
+msmc2 -t 8 -I 2,3 -o popB     all.ctg*.mhs
+msmc2 -t 8 -I 0-2,0-3,1-2,1-3 -s -o popAB all.ctg*.mhs
+combineCrossCoal.py popAB.final.txt popA.final.txt popB.final.txt > AB.combined.final.txt</pre></div>
+  <p class="tool-note">The third column of a multihetsep line is "the number of called sites since the previous segregating site, including the current site" (tutorial). It carries the mask: without it MSMC2 would read every gap as a long homozygous stretch. Output columns are <code>time_index left_time_boundary right_time_boundary lambda</code>; years = left_time_boundary / μ × g, and <i>N</i><sub>e</sub> = (1/λ) / (2μ) (tutorial; scaling in <a href="#s04">s04</a>). The tutorial reduces the pattern to <code>-p 1*2+15*1+1*2</code> for a single chromosome "to avoid overfitting": fewer free intervals for less data.</p>
+
+  <h3>SMC++: many unphased genomes</h3>
+  <p>SMC++ (Terhorst, Kamm &amp; Song 2017) follows one <dfn>distinguished</dfn> animal along the genome, exactly like PSMC, and adds the allele counts of all other animals at each site (the "undistinguished" sample) as extra frequency information. It needs no phasing, scales to hundreds of genomes, and by default fits a piecewise-constant curve (<code>--spline piecewise</code>, 8 <span class="tip" title="Knots: the time points where the fitted curve may change. A piecewise curve is flat between knots (a staircase); a spline bends smoothly through them.">knots</span> in the source); <code>--spline pchip</code> or <code>cubic</code> gives a smooth curve, as in the paper. With one animal it is a single-genome method with a different model and <span class="tip" title="Regularisation: a penalty that keeps the fitted curve from jumping wildly between neighbouring times; stronger regularisation gives a smoother, less detailed curve.">regularisation</span> from PSMC. Running <code>vcf2smc</code> once per animal with <code>-d</code> makes each animal the distinguished one in turn; <code>estimate</code> then combines them as a composite likelihood (the README suggests 2 to 10 distinguished animals).</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># SMC++ 1.15 (Docker image terhorst/smcpp: a packaged, ready-to-run copy of the program and everything it needs). The VCF must be bgzipped and tabix-indexed (bgzip -c x.vcf > x.vcf.gz; tabix -p vcf x.vcf.gz).</span>
+<span class="c"># Mask = regions that are NOT callable; without it gaps are read as homozygous.</span>
+bedtools complement -i callable.bed -g genome.txt | bgzip > uncallable.bed.gz
+tabix -p bed uncallable.bed.gz
+
+<span class="c"># one run per contig; POP:SAMPLE, where SAMPLE is the sample column name inside the VCF</span>
+smc++ vcf2smc --mask uncallable.bed.gz spA.vcf.gz spA.ctg1.smc.gz ctg1 A:spA
+
+<span class="c"># first positional argument = mutation rate per site per GENERATION</span>
+smc++ estimate -o est/ 5.4e-9 spA.*.smc.gz                      <span class="c"># → est/model.final.json</span>
+smc++ estimate -o est_smooth/ --spline pchip --knots 20 5.4e-9 spA.*.smc.gz
+smc++ plot -g 1 -c spA.png est/model.final.json                  <span class="c"># -g years per generation, -c also writes CSV</span>
+
+<span class="c"># two populations: marginal fits, joint data sets in both orders, then a clean split</span>
+smc++ vcf2smc pop.vcf.gz p12.ctg1.smc.gz ctg1 P1:a1,a2 P2:b1,b2
+smc++ vcf2smc pop.vcf.gz p21.ctg1.smc.gz ctg1 P2:b1,b2 P1:a1,a2
+smc++ split -o split/ P1/model.final.json P2/model.final.json p12.*.smc.gz p21.*.smc.gz</pre></div>
+  <p class="tool-note">From the README: <code>vcf2smc</code> ignores FILTER and QUAL (filter the VCF first), ignores indels, takes the reference allele as ancestral, and treats sites absent from the VCF as homozygous. The FAQ answer to "SMC++ claims that my population crashed in the very recent past" is long runs of homozygosity: a real recent crash, selective sweeps, or uncalled regions not masked. <code>--missing-cutoff</code> (<code>-c</code>) recodes long homozygous runs as missing, "a fairly crude approach" for when a mask is impossible. <code>split</code> fits a clean split: no gene flow after it.</p>
+
+  <h3>cobraa: size change, or old structure?</h3>
+  <p>A PSMC curve is the <dfn>inverse instantaneous coalescence rate</dfn> (IICR) of the two haplotypes. Mazet et al. (2016) showed that it equals a population size only in a panmictic model, and that any structured history has a panmictic size history with exactly the same pairwise coalescence times. From the PSMC curve alone the two cannot be told apart. The toy below shows this.</p>
+  <p>cobraa (Cousins, Scally &amp; Durbin 2025) extends PSMC with an explicit structured model: going forward in time, an ancestral population splits into A and B at time <i>T</i><sub>2</sub>, and they rejoin at <i>T</i><sub>1</sub>, the present lineage taking a fraction γ of its ancestry from B. The authors show that the PSMC transition matrix (how the coalescence time changes between neighbouring positions) "has information that can distinguish a structured model from a panmictic model, even if they have matching coalescence rate profiles". They compare the best structured fit with the best panmictic fit as ΔL = L<sub>S</sub> − L<sub>U</sub>, scanning pairs of <i>T</i><sub>1</sub>, <i>T</i><sub>2</sub>, and found ΔL near 0 for panmictic simulations. The README: "We recommend comparing the fit of the model to a panmictic model as in PSMC, to see if admixture is well supported."</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># cobraa (GitHub, commit ab85ea7). Input: the same multihetsep files as MSMC2; -in takes several files</span>
+<span class="c"># panmictic fit (no -ts/-te: the PSMC model)</span>
+python cobraa.py -in ctg*.mhs -D 32 -b 100 -its 30 -spread_1 0.05 -spread_2 50 -o pan_ | tee pan.log
+<span class="c"># structured fit: admixture at time index 10, split at index 18 (indices into the D intervals)</span>
+python cobraa.py -in ctg*.mhs -D 32 -b 100 -its 30 -spread_1 0.05 -spread_2 50 \
+    -ts 10 -te 18 -gamma_fg 0.2 -o st_10_18_ | tee st_10_18.log
+<span class="c"># "log likelihood for this iteration = ..." is printed every iteration; ΔL = last structured - last panmictic</span></pre></div>
+  <p class="tool-note">Give <code>-D 32</code> explicitly: the README calls 32 the default, but in the code the default is 30. Output <code>&lt;prefix&gt;final_parameters.txt</code>: time boundaries and coalescence rates of A and B; years = time / μ × g, <i>N</i><sub>e</sub> = (1/λ<sub>A</sub>) / μ (README). If heterozygosity is very high (θ, roughly the share of heterozygous bases, &gt; 0.01) reduce the bin size <code>-b</code> so that bins with more than about 3 heterozygous sites are rare (README). Check that the log-likelihoods are finite numbers.</p>
+  <p class="note warn"><b>A better likelihood is not yet evidence.</b> The paper's simulations used constant mutation and recombination rates along the genome; the authors call this assumption false and cite earlier work in which realistic rate variation had "only negligible consequences for SMC-based inference". Real genomes do have regions of higher and lower diversity, and the structured model has 4 more parameters than the panmictic one (37 vs 33 in the paper). In our two rodent genomes (below), structureless simulations with the observed variation of heterozygosity along the genome gained as much log-likelihood from the structured model as the real data did. Simulate your own null, with your genome's variation, before reading ΔL.</p>
+
+  <section class="tool explain" aria-labelledby="s05-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-toy-h">Same PSMC curve, two different worlds</h3></div>
+    <p class="tool-note"><b>World A:</b> <i>n</i> islands of equal, <b>constant</b> size, exchanging migrants (symmetric <span class="tip" title="n-island model: n subpopulations (demes) of the same size; every generation a fraction m of each deme's animals are immigrants from the other demes, chosen at random.">n-island model</span>); both copies of the genome come from an animal on one island. <b>World B:</b> one random-mating population whose size changed over time exactly as the curve says. The curve is the IICR of World A, computed from the two-lineage <span class="tip" title="A Markov chain with two states: both lineages on the same island (they can coalesce, or one can migrate away) and on different islands (one must migrate into the other's island before they can coalesce).">Markov chain</span> (our implementation of the approach in Mazet et al. 2016). PSMC sees only the coalescence times of the two copies, so it returns this curve for both worlds. Time is in units of 2<i>N</i> generations and size in units of <i>N</i>, the diploid size of one island; <i>M</i> = 4<i>Nm</i>.</p>
+    <div class="controls" role="group" aria-label="Structured world">
+      <label for="s05-n"><span>Number of islands <i>n</i></span> <output id="s05-n-o">10</output><input type="range" id="s05-n" min="2" max="50" step="1" value="10"></label>
+      <label for="s05-m"><span>Migration <i>M</i> = 4<i>Nm</i></span> <output id="s05-m-o">1.0</output><input type="range" id="s05-m" min="-1.3" max="1.3" step="0.05" value="0"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">The two genome copies come from
+        <div class="seg" role="group" aria-label="Sampling" id="s05-samp"><button type="button" data-v="s" aria-pressed="true">one island</button><button type="button" data-v="d" aria-pressed="false">two islands</button></div></div>
+      <label for="s05-N"><span>Island size <i>N</i> (for years, g = 1 yr)</span> <output id="s05-N-o">10,000</output><input type="range" id="s05-N" min="3" max="5" step="0.1" value="4"></label>
+    </div>
+    <div class="svgbox" id="s05-sketch"></div>
+    <div class="legend" id="s05-legend"></div>
+    <div class="svgbox" id="s05-fig"></div>
+    <div class="readout" id="s05-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) World A never changed size, yet its curve shows a large ancestral population "declining" to the size of one island: a bottleneck that never happened. (2) Lower <i>M</i> (less migration): the "decline" moves to older times and the "ancestral size" grows. (3) Switch to "two islands", as if one parent came from each island: World A's curve now <b>falls</b> from very large values towards the present, while World B, having one population, cannot change. Comparing animals from different places, or two haplotypes from different populations (MSMC2 cross-coalescence), is one way the two worlds separate. (4) Convert the "decline" to years with the island size: a climatic event at that date would make a convincing but false story (Mazet et al. 2016).</p>
+  </section>
+
+  <h3>SFS methods: a sample of animals, no positions</h3>
+  <p>Methods based on the SFS need several individuals per population: one animal gives a folded spectrum with a single class. They do not need phasing, and SNPs from <span class="tip" title="Methods that sequence a reduced, reproducible part of the genome (e.g. RADseq, genotyping-by-sequencing). Many animals, few loci each.">reduced-representation sequencing</span> can work (Liu &amp; Fu 2020). Their weakness is the opposite of PSMC's: many animals, but no information from linkage along the genome.</p>
+  <ul>
+    <li><b>Stairway Plot 2</b> (Liu &amp; Fu 2015, 2020): fits a size history without a predefined model, from a folded or unfolded SFS. A <dfn>blueprint</dfn> file holds everything: <code>nseq</code> (number of sequences, 2 × diploids), <code>L</code> (all callable sites, including monomorphic ones, where all sampled sequences carry the same base), <code>whether_folded</code>, the SFS itself, <code>mu</code> and <code>year_per_generation</code>. It uses two thirds of the sites to fit (<code>pct_training: 0.67</code>) and the rest to choose the number of change points, repeats this <code>ninput: 200</code> times, and reports the median with 75 % and 95 % pseudo-confidence intervals.</li>
+    <li><b>fastsimcoal2</b> (Excoffier et al. 2013; fsc28, 2023): you write the model (template <code>.tpl</code> with parameter names, search ranges in <code>.est</code>), give the observed (joint) SFS, and it finds the parameters by composite likelihood, computing expected spectra by simulation. Any model can be written: splits, migration matrices, bottlenecks, admixture, unsampled ("ghost") populations. The manual's batch script runs 50 independent estimations per data set; keep the best.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Stairway Plot 2.2 (Java). Edit a copy of the example blueprint, then:</span>
+java -cp stairway_plot_es Stairbuilder sb.blueprint     <span class="c"># writes sb.blueprint.sh</span>
+bash sb.blueprint.sh                                    <span class="c"># results and plots in project_dir</span>
+
+<span class="c"># fastsimcoal2 (fsc28): maximum composite likelihood from the derived-allele SFS (-d) or minor-allele SFS (-m)</span>
+<span class="c"># files: model.tpl, model.est, model_DAFpop0.obs; -n simulations per likelihood, -L EM cycles, -c threads</span>
+fsc28 -t model.tpl -e model.est -d -M -n 100000 -L 40 -c 8 -q</pre></div>
+  <p class="tool-note">fastsimcoal2 options from the fsc28 manual (appendix, command-line options). The observed file name must match the template name; the manual describes the exact naming and the <code>-0</code> option (ignore monomorphic sites, fix one parameter). This section introduces the tools; it does not replace their manuals.</p>
+
+  <section class="tool explain" aria-labelledby="s05-dec-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-dec-h">Which method for my data?</h3></div>
+    <p class="tool-note">Describe your data and your question. The helper applies the requirements stated in each tool's documentation; each line says why. It is a starting point, not a verdict: data quality (<a href="#s02">s02</a>) and the checks in <a href="#s06">s06</a> matter more than the choice of program.</p>
+    <div class="controls" role="group" aria-label="Your data">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Diploid animals per population
+        <div class="seg" role="group" aria-label="Animals per population" id="s05-dn"><button type="button" data-v="1" aria-pressed="true">1</button><button type="button" data-v="2" aria-pressed="false">2 to 4</button><button type="button" data-v="5" aria-pressed="false">5 to 19</button><button type="button" data-v="20" aria-pressed="false">20 or more</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Phased haplotypes?
+        <div class="seg" role="group" aria-label="Phased" id="s05-dp"><button type="button" data-v="no" aria-pressed="true">no</button><button type="button" data-v="yes" aria-pressed="false">yes, reliably</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Populations
+        <div class="seg" role="group" aria-label="Populations" id="s05-dk"><button type="button" data-v="1" aria-pressed="true">one</button><button type="button" data-v="2" aria-pressed="false">two</button></div></div>
+    </div>
+    <div class="controls" role="group" aria-label="Your question">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Question
+        <div class="seg" role="group" aria-label="Question" id="s05-dq" style="flex-wrap:wrap"><button type="button" data-v="size" aria-pressed="true">size history</button><button type="button" data-v="recent" aria-pressed="false">recent history</button><button type="button" data-v="split" aria-pressed="false">when did they split?</button><button type="button" data-v="flow" aria-pressed="false">gene flow?</button><button type="button" data-v="struct" aria-pressed="false">size change or structure?</button></div></div>
+    </div>
+    <div id="s05-dec-out" aria-live="polite"></div>
+  </section>
+
+  <div class="note"><b>In our projects</b>
+    <p>Species A (one male, ONT) and the relative (one male, HiFi): one genome each, so only the single-genome methods were possible. All runs used the placeholder scaling μ = 5.4 × 10<sup>−9</sup> per generation and g = 1 year (<a href="#s04">s04</a>), so any years are illustrative.</p>
+    <p>On species A, PSMC, MSMC2 and SMC++ agreed on the old plateau and differed in the recent part. MSMC2 reproduced the PSMC shape, including the low point and the bump after it, so the shape is not an artefact of PSMC's time intervals; but it reads the same two haplotypes. SMC++ put the recent part higher; its "staircase" was just the default piecewise model, and the pchip spline with 20 knots smoothed it. Our trap: <code>vcf2smc</code> needs the sample name exactly as in the VCF header. The relative gave the same picture with both SMC methods (MSMC2 reproduced its large peak and the low point before it). The MSMC2 binary was not in the <span class="tip" title="conda: a package manager that installs bioinformatics programs from channels such as bioconda.">conda</span> package channel we used; it came with another environment.</p>
+    <p>cobraa: a structured model fitted better than the panmictic one on both genomes (the gain in log-likelihood per Mb was several times larger in the relative than in species A). Simulations <b>without any structure</b> but with heterozygosity varying along the genome as in the real data (a random factor per 500 kb drawn from a <span class="tip" title="A distribution whose logarithm is normal: most values near 1, some several times higher or lower. sigma = 0.4 is the standard deviation of the logarithm.">lognormal</span> distribution, σ = 0.4) gained as much as the larger of the two real gains. The structure test was therefore not informative for these genomes. Heavy repeat masks (roughly half of the genome) removed the structure signal, and a random mask of the same size did the same: the loss came from less data, not from repeats.</p>
+  </div>
+
+  <p class="note"><b>Next.</b> <a href="#s06">s06</a> lists the checks that apply to all these curves (time patterns, ROH masks, call sets, random-mask controls). <a href="#s07">s07</a> covers two species with one genome each: pseudo-diploid PSMC, BPP and gIMble. MSMC2 cross-coalescence does not help there: it needs phased haplotypes, and with <code>-s</code> every heterozygous site of an unphased animal is ambiguous (our reading of the MSMC2 guide).</p>
+</section>

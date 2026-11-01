@@ -1,0 +1,131 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>Finding copies of a known SINE</h2>
+  <p class="lede">You have a <span class="tip" title="Consensus sequence: the 'average' sequence of many copies of one repeat family, made by aligning the copies and taking the most common letter at each position. It stands in for the original, active element.">consensus</span> of a SINE (section <a href="#s01">01</a>), from a database or from your own work. Now you want every copy of it in a genome: where each copy sits, its sequence with a little of the DNA around it, and how many copies there are. This sounds like a routine search. For SINEs it is not, and the reasons decide which tool you use.</p>
+
+  <h3>Why standard search tools miss SINE copies</h3>
+  <p>SINE copies are a hard target for three reasons at once. They are <b>short</b>: the consensus sequences our lab searched in one rodent genome are only about 200 to 270 bp long. Short means a small maximum alignment score, so a match must be nearly perfect to look "significant". They are <b>diverged</b>: every copy has collected its own mutations since it was inserted, and old copies can differ from the consensus at 20-30 % of positions (see the repeat landscapes in <a href="../03-annotation/#s04">lesson 3, section 04</a>). And they are <b>numerous</b>: a successful family can have hundreds of thousands to millions of copies in one genome.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>How it finds candidate matches</th><th>What goes wrong for SINE copies</th></tr></thead>
+    <tbody>
+      <tr><td><b>blastn</b> (NCBI BLAST+)</td><td>Only places that share an exact <span class="tip" title="Word (seed): a run of identical letters that the query and the genome must share exactly before the program tries to align the region at all. BLAST looks up these words in a table instead of comparing every position.">word</span> with the query are aligned. The program's default task, <code>megablast</code>, needs a word of 28 identical bases; <code>-task blastn</code> needs 11; <code>-task dc-megablast</code> uses a discontiguous word (11 matching positions spread over a pattern of 18) meant for more distant matches.</td><td>An old copy with a mutation every 4-5 bases rarely contains 28 identical bases in a row, so megablast never even tries to align it. Shorter words find more, but each word still has to be intact.</td></tr>
+      <tr><td><b>minimap2</b> with the genome as index</td><td>Short words (<span class="tip" title="Minimizers: a sampled subset of the k-mers (words of length k) of a sequence, used by minimap2 as seeds.">minimizers</span>) of the genome are indexed; matches start from shared words.</td><td>Words that occur very often in the genome are dropped as seeds, and the words of a SINE are exactly such words. The sear2k README reports this for a long repeat: indexing the genome found 4 of 73 full-length L1 copies on human chromosome 21.</td></tr>
+      <tr><td><b>RepeatMasker</b></td><td>Searches with a library of consensus sequences (<a href="../03-annotation/#s04">lesson 3, s04</a>).</td><td>Finds only families in its library, names each place by the best-scoring family, and reports fragments of all lengths. Good for annotating a genome; less suited when you want one family's copies with their flanks for your own alignments.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The way out is to drop the word step and compare the consensus with every position of the genome. That is the <dfn>Smith-Waterman</dfn> algorithm (Smith and Waterman, 1981): it finds the best <span class="tip" title="Local alignment: an alignment of the best-matching parts of two sequences, not of their full lengths. Needed here because a SINE copy is a short piece inside a long chromosome.">local alignment</span> between two sequences, scoring every match, mismatch and gap, without any shortcut. It is guaranteed to find the best-scoring match, and it is slow. The program <code>ssearch36</code> from W. R. Pearson's FASTA package (version 36.3.8) runs it with fast processor instructions and adds statistics to every hit.</p>
+
+  <h3>sear: the lab's search, step by step</h3>
+  <p><a href="https://github.com/Toki-bio/sear2k">sear2k</a> is our lab's public <span class="tip" title="Bash: the command-line language of Linux and macOS terminals; a Bash tool is a script of such commands.">Bash</span> tool; its main script is called <code>sear</code>. It takes one consensus and one genome FASTA and runs <code>ssearch36</code> on the genome cut into small pieces. SINEderella (section <a href="#s08">08</a>) runs it in its first step, once for each consensus. What follows is read from the script itself (repository commit <code>923ffb6</code>, October 2026).</p>
+  <ol class="steps">
+    <li><div><b>Cut the genome into overlapping windows</b><div class="d"><code>seqkit sliding -g -s 2000 -W 2500</code>: windows of 2500 bp that start every 2000 bp, so neighbouring windows overlap by 500 bp. Any copy of up to 500 bp therefore lies whole inside at least one window (try it in the box below). The window file is about 1.25 times the size of the genome.</div></div></li>
+    <li><div><b>Split the windows into 20 parts</b><div class="d"><code>seqkit split2 -p 20</code>. The parts are searched one after the other; the parallel work happens inside <code>ssearch36</code>, which uses all processor cores (<code>-T</code>).</div></div></li>
+    <li><div><b>Search each part with ssearch36</b><div class="d">Both strands of every window are compared with the consensus. Output is a table, one line per <span class="tip" title="Hit: one local alignment between the query and a genome sequence that the program reports.">hit</span>: window name, percent identity, coordinates, <span class="tip" title="E-value (expectation value): how many hits with this score or better you would expect by pure chance in a search of this size. 0.001 = very unlikely to be chance; 2 = you would expect about two such chance hits.">E-value</span> and <span class="tip" title="Bit score: the alignment score rescaled by the statistics so that it can be compared between searches. Higher = better.">bit score</span>.</div></div></li>
+    <li><div><b>Merge hits in a window and apply two rules</b><div class="d">Hits on the same strand of one window that touch or overlap are merged (<code>bedtools merge -s</code>). A merged hit is kept when the best <b>identity</b> in it is at least <b>65 %</b> and its longest alignment covers at least <b>0.8 × the consensus length</b> on the genome. Shorter (partial) copies are dropped, not shortened.</div></div></li>
+    <li><div><b>Put the hits back on the chromosomes</b><div class="d">Each window's name ends in <code>_sliding:start-end</code>; <code>sear</code> adds that offset to the hit coordinates. A copy seen in two overlapping windows becomes one interval in a second merge.</div></div></li>
+    <li><div><b>Write the results</b><div class="d">A 7-column <span class="tip" title="BED: a plain-text table of genome intervals: chromosome, start (counted from 0), end, then any extra columns.">BED</span> file (chromosome, start, end, identity %, length, strand, bit score) and a FASTA of every copy with <span class="tip" title="Flanks: the genome DNA just outside a copy, on its left and right. They show where the copy really ends, whether a target-site duplication is present, and they are what makes each locus unique.">flanks</span> of 50 bp on each side (<code>--slop L,R</code> sets other sizes). The files are named after the first three letters of the genome file and the query name, for example <code>gen-dip.bed</code> and <code>gen-dip.bnk</code>.</div></div></li>
+  </ol>
+  <p>Three options change the search. <code>-m</code> (<span class="tip" title="Minus bank: the part of the sequence left over after every hit found so far has been cut out.">minus bank</span>) cuts out every hit found in a part and searches what is left again, round after round, until a round finds nothing. Our reading of why this helps: ssearch36 reports further alignments in the same window only under a stricter E-value cut-off, so a second copy in a window can be left out of the first round. <code>-b N</code> also takes the N best hits by bit score and aligns them with <span class="tip" title="MAFFT: a widely used program for multiple sequence alignment (aligning many sequences at once, column by column).">MAFFT</span>, the consensus as first row, for a quick look. Queries of 1000 bp or longer (LINEs, not SINEs) are switched automatically to <code>minimap2</code> with the roles reversed: the query is indexed and the genome is streamed past it in windows.</p>
+
+  <div class="tool explain" id="s02-win-tool">
+    <div class="tool-head"><span class="tool-tag">Explain</span><h3 id="s02-win-h">Which window holds the whole copy?</h3></div>
+    <p class="tool-note">Ten kilobases of a chromosome cut the way <code>sear</code> cuts it: 2500-bp windows every 2000 bp. Move a copy along and change its length. The rule that the longest alignment must cover 0.8 × the copy length is applied inside each window, before the windows are joined. The behaviour for long copies is <b>our reading of the source code</b>, not a documented feature. (Queries of 1000 bp or more go to minimap2 mode instead, so the slider stops below 1000.)</p>
+    <div class="controls">
+      <label>copy start (bp)<output id="s02-win-posv">1700</output><input type="range" id="s02-win-pos" min="0" max="8500" step="10" value="1700"></label>
+      <label>copy length (bp)<output id="s02-win-lenv">300</output><input type="range" id="s02-win-len" min="100" max="990" step="10" value="300"></label>
+    </div>
+    <div class="svgbox"><svg id="s02-win-svg" viewBox="0 0 900 190" width="100%" style="min-width:600px" role="img" aria-label="Genome windows of 2500 bp every 2000 bp and a SINE copy; windows that contain the whole copy are highlighted"></svg></div>
+    <div class="legend"><span><i style="background:var(--good);height:10px"></i>window holds the whole copy</span><span><i style="background:var(--het);height:10px"></i>window holds a piece long enough to pass</span><span><i style="background:var(--bad);height:10px"></i>piece too short</span><span><i style="background:var(--rep);height:10px"></i>the copy</span></div>
+    <div class="note" id="s02-win-out" aria-live="polite"></div>
+  </div>
+
+  <h3>The ssearch36 command and what its options do</h3>
+  <p>This is the exact call inside <code>sear</code> (the same in all three versions of the script in the repository):</p>
+  <div class="code"><button type="button">copy</button><pre>ssearch36 -g -3 -T $THREADS -Q -n -z 11 -E 2 -w 95 -W 70 -m 8C query.fa part.bnk 3</pre></div>
+  <dl class="defs">
+    <dt><code>-n</code>, <code>-Q</code></dt><dd>Treat the query as DNA; quiet mode (no questions asked).</dd>
+    <dt><code>-T $THREADS</code></dt><dd>Number of threads; <code>sear</code> uses <code>$THREADS</code> if you set it, otherwise all cores.</dd>
+    <dt><code>-m 8C</code></dt><dd>BLAST-like table with comment lines: query, window, % identity, alignment length, mismatches, gap openings, query start and end, window start and end, E-value, bit score. No alignments are printed, so <code>-w 95 -W 70</code> (line width and context width of printed alignments) have no visible effect.</dd>
+    <dt><code>-E 2</code></dt><dd>Report hits with E-value below 2. This is also ssearch36's default for DNA. Note what the E-value is counted against: one part file, not the whole genome (no <code>-Z</code>, which would set the database size by hand).</dd>
+    <dt><code>-z 11</code></dt><dd>Estimate the statistics from <b>shuffled</b> copies of each window. Explained below.</dd>
+    <dt>trailing <code>3</code></dt><dd>The optional third argument of the FASTA programs is the word size (<i>ktup</i>). The guide says only the programs with "fast" in their name use it; Smith-Waterman uses no words.</dd>
+    <dt><code>-g -3</code></dt><dd>Our lab manual and the FASTA36 documentation read this flag differently, and we have not tested which reading is right, so we leave it unexplained here.</dd>
+  </dl>
+  <p>The scores: with its DNA defaults (source code of FASTA 36.3.8j1) ssearch36 gives <b>+5</b> for a match and <b>−4</b> for a mismatch, and charges a gap of k bases 12 + 4k. (<code>sear</code> passes its own <code>-g -3</code>, which may change the per-base part; see above.) A perfect 250-bp copy scores 1250. Random DNA also scores something: in the toy below, shuffled 420-bp windows reach roughly 50-100 against a 150-bp consensus, and in a whole genome the best chance scores are higher, because there are far more places to look.</p>
+
+  <h3>Statistics need care: what <code>-z 11</code> is for</h3>
+  <p>An E-value needs a picture of what scores pure chance produces. By default (<code>-z 1</code>) ssearch36 builds that picture from the scores of the whole library it searched, which works when nearly all library sequences are unrelated to the query. The FASTA guide says so directly: the statistics "assume that the library contains a large sample of unrelated sequences", and if the library contains many <em>related</em> sequences, the parameters should be estimated with <code>-z 11</code> to <code>-z 15</code>. A window bank of a genome full of SINE copies is such a library: a large share of the windows hold a real copy.</p>
+  <p>With <code>-z 11</code>, ssearch36 also scores a randomly shuffled copy of every window (same letters, order destroyed) and fits the chance distribution to those scores. The manual page warns that this means twice as many comparisons. Because the shuffles are random, E-values change a little from run to run, so hits close to the cut-off can appear in one run and not in the next. Two consequences: report counts as "about", and do not expect two identical runs to give identical files. The lab's assignment step (section <a href="#s04">04</a>) repeats its searches and uses exactly this wobble to keep only assignments that survive every repeat.</p>
+  <p>A second point is the size of the search. <code>-E 2</code> means "fewer than two hits this good expected by chance <i>in this part file</i>". For a whole genome, each of the 20 parts can therefore let through a hit or two on score alone; the identity and length rules of step 4 are what removes them (our reasoning from the options, not a measured rate).</p>
+
+  <div class="tool" id="s02-search-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-search-h">Search a toy genome: score threshold, rules and seeds</h3></div>
+    <p class="tool-note">An <b>invented</b> 12-kb genome holds 14 copies of a 150-bp toy SINE: from young (almost no mutations) to very old (more than half of the positions hit by a mutation; some of the mutations are small insertions and deletions), on both strands, some cut short at the 5′ end. The rest is random DNA. The page really aligns the consensus with every window (420-bp windows every 250 bp, a scaled-down version of <code>sear</code>'s windows) using Smith-Waterman with ssearch36's DNA scores (+5/−4, gap 12 + 4 per base), and also scores three shuffled copies of every window, as <code>-z 11</code> does. Move the threshold, switch the rules, then try a seed-based search.</p>
+    <div class="controls">
+      <label>score threshold<output id="s02-thr-v">60</output><input type="range" id="s02-thr" min="20" max="400" step="5" value="60"></label>
+      <div class="seg" role="group" aria-label="sear rules" id="s02-rules">
+        <button type="button" data-r="id" aria-pressed="false">identity ≥ 65 %</button>
+        <button type="button" data-r="len" aria-pressed="false">length ≥ 0.8 × consensus</button>
+      </div>
+      <div class="seg" role="group" aria-label="Search method" id="s02-meth">
+        <button type="button" data-m="sw" aria-pressed="true">Smith-Waterman, every window</button>
+        <button type="button" data-m="11" aria-pressed="false">seed first: word 11</button>
+        <button type="button" data-m="28" aria-pressed="false">seed first: word 28</button>
+      </div>
+      <button type="button" class="btn" id="s02-new">new toy genome</button>
+    </div>
+    <div class="svgbox"><svg id="s02-gen-svg" viewBox="0 0 960 150" width="100%" style="min-width:640px" role="img" aria-label="Toy genome with 14 SINE copies; found copies filled, missed copies outlined, false hits marked below"></svg></div>
+    <div class="svgbox"><svg id="s02-sc-svg" viewBox="0 0 960 230" width="100%" style="min-width:640px" role="img" aria-label="Scores: grey bars are best scores of shuffled windows (chance); dots are the best score of each real copy and of each false hit; the vertical line is the threshold"></svg></div>
+    <div class="legend" id="s02-leg"></div>
+    <div class="readout" id="s02-out" aria-live="polite"></div>
+    <div class="tbl"><table id="s02-tab">
+      <thead><tr><th>Copy</th><th>Mutated</th><th>Length</th><th>Strand</th><th>Best score</th><th>Identity</th><th>Result</th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+  <p>What the toy shows. Young copies score far above anything the shuffled windows reach. The oldest copies score close to the chance range, so any threshold trades missed copies against false hits, and the shuffled scores tell you where chance ends. (The chance count assumes every window were empty; a window that holds a copy reports the copy instead, so fewer false hits appear than the count suggests.) The identity and length rules remove false hits even at a low threshold, but they also remove the oldest copies and every copy that was cut short. With seeds of 28 bases only the young copies are aligned at all, whatever the threshold; seeds of 11 bring back most of the middle-aged ones, but not the oldest. The real <code>blastn</code> also extends hits from the seed instead of aligning the whole window, so in reality it is, if anything, less generous than this toy. Press "new toy genome" a few times: the same ages give different scores, because mutations fall in different places.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: finding a misprinted phrase in a long book</summary><div class="in">
+    <p>Imagine a 3-million-page book in which a 250-letter advertisement was printed a million times, and every reprint added typos. A seed-based search is like using the index at the back: you look up one long exact word from the advert, and only open the pages where that word occurs. If every copy of that word has a typo, you never open the page.</p>
+    <div class="toy">advert (consensus):  <span class="a">the quick brown fox jumps over the lazy dog</span>
+old copy:            the quack brawn fax jumps ovar thi lazy dug
+exact 11-letter words shared: <span class="x">none</span> ("jumps over " is broken by "ovar")
+exact  5-letter words shared: "jumps", " lazy" ...</div>
+    <p>Smith-Waterman is reading every page and comparing it letter by letter with the advert, giving points for each agreeing letter and taking points away for each typo. Slow, but nothing is skipped. Cutting the book into overlapping 2.5-page pieces (the windows) means each piece holds at most one or two copies, so each copy gets its own score.</p>
+    <p>A rough sum for real copies: if 20 % of positions are mutated at random, a given run of 28 bases survives intact with probability 0.8<sup>28</sup> ≈ 0.2 %, so a 250-bp copy with about 220 such runs has well under one intact 28-base word on average. A run of 11 bases survives with 0.8<sup>11</sup> ≈ 8.6 %: about 20 intact words per copy. (Our arithmetic; real mutations are not perfectly random.)</p>
+  </div></details>
+
+  <h3>Copy length: full-length and partial copies</h3>
+  <p>A copy in the BED file is rarely exactly as long as the consensus. Small insertions and deletions change its length; the <span class="tip" title="Poly(A) tail: the run of A bases at the 3′ end of many SINE copies, left by the way they copy themselves through RNA.">poly(A) tail</span> is long in young copies and shortens over generations (Vassetzky et al. 2021, <i>IJMS</i>); and the alignment can stop a few bases short of the true end where the copy has decayed. The flanks are there so that you can see the real ends in an alignment.</p>
+  <p>More important is the 0.8 rule. A copy that is only partly present (cut at its 5′ end when it was inserted, broken by a later insertion or a deletion, or lying at the edge of a contig) is not extracted at all if its longest alignment covers less than 80 % of the consensus. So <code>sear</code>'s count is a count of <b>full-length or nearly full-length copies</b>, not of every SINE-derived fragment. That is deliberate: the downstream steps align copies and compare their flanks, and fragments would break both. You can lower the rule (the third argument, <code>Slf</code>) to see fragments, but then two pieces of one broken insertion can count as two copies, and pieces of other families that share a part with your SINE (a common 5′ head, for example) start to match.</p>
+
+  <h3>Counting copies</h3>
+  <p>What you count is the number of <b>loci</b>: intervals left after all overlapping hits have been merged. Hits from two overlapping windows become one interval inside <code>sear</code>. When you search with several consensus sequences of one family (a <dfn>bank</dfn>: the family's subfamilies, see <a href="#s04">04</a>), the same copy is found by several of them. SINEderella's first step therefore merges the hits of all consensus sequences into one interval per locus before it counts (<span class="tip" title="Strand-aware: a hit on the minus strand is not merged with a touching hit on the plus strand, because these are two different elements lying head to head or tail to tail.">strand-aware</span>), and removes loci inside known <span class="tip" title="Satellite DNA: long arrays of a unit repeated head to tail. Some satellites are built from pieces of SINEs and would otherwise be counted as thousands of SINE copies; see section 06.">satellite</span> regions (<a href="#s06">06</a>). Whenever you quote a copy number, quote the rules with it: which consensus sequences, which identity and length cut-offs, merged how. "1.2 million copies" means little without them.</p>
+  <p>Two more things limit any count. First, a copy can only be found if it is in the assembly: young, nearly identical copies are the ones assemblers collapse or leave out (section <a href="#s07">07</a>). Second, a search finds similarity, not proof. Whether a hit is an inserted SINE with its own unique flanks, a piece of a duplicated region, or a unit of a satellite array is decided later, from alignments (sections <a href="#s04">04</a> and <a href="#s05">05</a>).</p>
+
+  <h3>Commands</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># install the programs sear needs (bioconda versions on 2026-10-31: fasta3 36.3.8i, seqkit 2.14.0, bedtools 2.31.1, samtools 1.25)</span>
+conda create -n sear -c conda-forge -c bioconda fasta3 seqkit bedtools samtools mafft minimap2
+conda activate sear
+git clone https://github.com/Toki-bio/sear2k.git
+export PATH="$PWD/sear2k:$PATH"
+
+<span class="c"># one consensus per query file; work in the directory where the windows may be written</span>
+sear dip.fa genome.fa                    <span class="c"># defaults: Slf 0.8, identity 65 %, flanks 50 bp</span>
+sear -k dip.fa genome.fa 0.8 65 50       <span class="c"># the same rules written out, keeping the window files for the next query (SINEderella's call)</span>
+sear --slop 50,70 dip.fa genome.fa       <span class="c"># 50 bp left flank, 70 bp right flank</span>
+sear -b 100 dip.fa genome.fa             <span class="c"># also align the 100 best hits with MAFFT</span>
+sear -m dip.fa genome.fa                 <span class="c"># minus-bank rounds: search what is left after cutting out the hits</span>
+
+<span class="c"># outputs: gen-dip.bed (chrom, start, end, identity %, length, strand, bit score) and gen-dip.bnk (FASTA with flanks)</span>
+wc -l gen-dip.bed                        <span class="c"># number of loci found for this consensus</span></pre></div>
+  <ul>
+    <li><b>One consensus per file.</b> The script measures the query length by reading the whole query file; with two sequences in it the length rule goes wrong. Split a bank first (SINEderella does this itself).</li>
+    <li><b>One genome per directory.</b> The window files are reused when they already exist in the working directory, whatever genome they came from.</li>
+    <li><b>Underscores in sequence names</b> are handled: the script works on a copy with <code>_</code> replaced and restores the names in the output.</li>
+    <li><b><code>-s N</code></b> stops once N hits have been found. Useful for a quick look; the result is then not the whole genome.</li>
+  </ul>
+
+  <div class="note">
+    <b>In our projects: one SINE family in two rodents.</b> In the genomes of species A and a close relative (a published chromosome-level genome) we searched with five consensus sequences of one tRNA-derived SINE family (one from <span class="tip" title="SINEBase: a public database of SINE families and their consensus sequences.">SINEBase</span> and four published subfamilies) using SINEderella, whose first step is <code>sear</code> with the rules above. The search found more than a million loci in each genome, and the two counts were within a few percent of each other. The later assignment step (<a href="#s04">04</a>) gave a firm subfamily to about five in six of them, and one subfamily alone took most of the firm calls.
+  </div>
+</section>

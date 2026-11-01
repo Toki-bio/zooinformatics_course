@@ -1,0 +1,128 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Satellites and young SINEs in assemblies</h2>
+  <p class="lede">The two kinds of repeat this lesson is about are exactly the two kinds that genome assemblers handle worst. Young SINE copies are nearly identical, so short-read assemblies stop at them. Satellite arrays are many identical monomers in a row, so assemblies shrink them, break them or lose them. Before you count copies, measure arrays or call a SINE "absent" at a locus, you have to know what the assembly did to these regions. This section shows why it happens, how to measure an array from reads instead of from the assembly, and how to check an assembly with reads.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>array</dt><dd>One satellite <span class="tip" title="Locus: one place in the genome">locus</span>: many copies of a <dfn>monomer</dfn> (the repeated unit) lying head to tail. Section <a href="#s06">06</a> explains monomers and arrays.</dd>
+    <dt>collapsed repeat</dt><dd>A region where the genome has several copies but the assembly holds fewer, often only one. All the reads from all the copies then pile onto the few copies that are left.</dd>
+    <dt>read depth</dt><dd>The number of reads that cover a base after the reads are <span class="tip" title="Mapping: finding for each read the place in the assembly where it fits best, and writing that place into a BAM file">mapped</span> back to the assembly. Over normal single-copy DNA it is close to the average coverage (<a href="../01-pre-assembly/#basics">lesson 1</a>).</dd>
+    <dt>spanning read</dt><dd>A read that starts in unique DNA on one side of a repeat, runs through the whole repeat and ends in unique DNA on the other side. One such read shows the repeat's real length directly.</dd>
+    <dt>N-run (gap)</dt><dd>A run of the letter N in a <span class="tip" title="Contigs put in order and joined with runs of N; lesson 2, section 03">scaffold</span>: sequence the assembler knows is there but could not write out.</dd>
+  </dl>
+
+  <h3>Why young SINEs stop short-read assemblies</h3>
+  <p>A short-read assembler cuts reads into <span class="tip" title="Substrings of length k taken from the reads">k-mers</span> and joins k-mers that overlap (a <span class="tip" title="A network of k-mers: an arrow joins two k-mers when the last k − 1 letters of one are the first k − 1 letters of the other">de Bruijn graph</span>, <a href="../02-assembly/#s03">lesson 2, section 03</a>). When thousands of SINE copies are identical, every copy gives the same k-mers, and the graph merges them all into one path with thousands of entries and exits. The assembler cannot tell which exit belongs to which entry, so it stops. The contig coming from the left ends <b>k − 1 bases inside the copy</b>, the contig from the right does the same from the other end, and the middle of the copy is in no contig. The calculator in lesson 2 shows this for real k values.</p>
+  <p>Age decides which copies cause it. An old copy has collected its own mutations since it was inserted (section <a href="#s04">04</a>), so its k-mers are unique and the assembler walks straight through. Only copies of the youngest, still nearly identical <span class="tip" title="A group of copies within a SINE family that share the same diagnostic differences from the other groups; section 04">subfamilies</span> break the assembly. Long reads (PacBio HiFi about 15 kb, Oxford Nanopore often longer; <a href="../02-assembly/#s04">lesson 2, section 04</a>) are 50 or more times longer than a 300-base SINE, so every copy is crossed by many reads and the problem disappears.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: a contig that stops inside a young copy</summary><div class="in">
+    <p>Toy genome with two copies of a young SINE (identical, in purple) and one old copy (two mutations, in red), k = 6:</p>
+    <div class="toy">genome    ...TTGCA<span class="h">GGCTCAGTGG</span>ACCTA ... GATCC<span class="h">GGCTCAGTGG</span>TTAGC ... CCATG<span class="h">GG<span class="x">A</span>TCAG<span class="x">C</span>GG</span>TCAAT...
+contig 1  ...TTGCA<span class="h">GGCTC</span>        ← stops 5 (= k − 1) bases in: the next 6-mer, GGCTCA, occurs in both young copies
+contig 2               <span class="h">AGTGG</span>ACCTA ...  ← the other side, also 5 bases deep
+old copy  ...CCATG<span class="h">GG<span class="x">A</span>TCAG<span class="x">C</span>GG</span>TCAAT...  ← its 6-mers are unique: assembled straight through</div>
+    <p>Each contig ends k − 1 bases into the young copy. A scaffolder that later joins contig 1 and contig 2 puts an N-run between them, so the scaffold reads "flank, start of a SINE, NNNN, end of a SINE, flank". The bases of the young copy are not missing from the reads; the assembler just could not place them.</p>
+  </div></details>
+
+  <h3>Why satellite arrays shrink or vanish</h3>
+  <p>A satellite array is the same problem in its worst form: the repeat is not scattered but stacked. In a de Bruijn graph identical monomers make a <b>loop</b>: the path can go round once, ten times or a thousand times, and nothing in the k-mers says how many. In a long-read assembly (<span class="tip" title="Overlap–layout–consensus: reads are compared with each other, overlapping reads are joined, and the final sequence is the majority of the reads; lesson 2, section 04">overlap–layout–consensus</span>) the same thing happens when no read is longer than the array: two reads that both lie inside the array overlap in many ways, and the assembler cannot tell how far apart they really are. What you get in the assembly is one of these:</p>
+  <ul>
+    <li><b>Collapsed:</b> the array is written with fewer monomers than it has, sometimes one. All reads from the array map to that short piece, so its read depth is many times the average.</li>
+    <li><b>Broken:</b> contigs end inside or at the edge of the array, and the array is cut into pieces or into a contig end plus an N-run.</li>
+    <li><b>Set aside:</b> the array is assembled as a separate small contig made only of monomers, with no unique flank. It cannot be placed on a chromosome and ends up among the small <span class="tip" title="Scaffolds that could not be put on any chromosome; chromosome-level assemblies list them separately">unplaced scaffolds</span>, or is removed.</li>
+  </ul>
+  <p>The last case matters more than it seems. Many projects remove contigs below a size cut-off before publishing, and those small contigs are exactly where satellite DNA collects. So a published assembly can hold far less of a satellite than the animal does. SINE-derived satellites of squamates are probably subtelomeric, that is, near chromosome ends (Vassetzky, Kosushkin &amp; Ryskov 2023).</p>
+
+  <!-- ===== ARRAY TOY ===== -->
+  <section class="tool explain" aria-labelledby="s07-arr-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-arr-h">An array, the reads, and what the assembly says</h3></div>
+    <p class="tool-note">The toy genome has unique DNA on both sides (grey) and one satellite array of identical monomers (purple) in the middle. Reads of one fixed length start at random places. A read counts as <b>spanning</b> when it covers the whole array plus at least 100 bases of unique DNA on each side (a toy rule; real assemblers want several such reads). If at least one read spans the array, the toy assembly is <b>resolved</b> at its true length. If none does, it is <b>collapsed</b>: the assembly breaks at the array and keeps one monomer, and all array reads pile on it. Below, the array length is estimated from read depth alone, which works in both cases.</p>
+    <div class="controls">
+      <label for="s07-arr-n">monomers in the array <output id="s07-arr-no">40</output><input type="range" id="s07-arr-n" min="2" max="200" step="1" value="40"></label>
+      <label for="s07-arr-m">monomer length (bases) <output id="s07-arr-mo">170</output><input type="range" id="s07-arr-m" min="50" max="1000" step="10" value="170"></label>
+      <label for="s07-arr-r">read length <output id="s07-arr-ro">150</output><input type="range" id="s07-arr-r" min="0" max="11" step="1" value="0"></label>
+      <label for="s07-arr-c">coverage (×) <output id="s07-arr-co">30</output><input type="range" id="s07-arr-c" min="2" max="60" step="1" value="30"></label>
+      <label for="s07-arr-b"><span class="tip" title="A what-if, not a measured value: how much more (+) or less (−) the library covers the array than the rest of the genome. Real libraries can cover repeats unevenly, for example through PCR and GC content (lesson 1).">depth bias over the array</span> <output id="s07-arr-bo">0 %</output><input type="range" id="s07-arr-b" min="-50" max="50" step="5" value="0"></label>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Read presets" id="s07-arr-pre">
+        <button type="button" data-r="0" data-c="30" aria-pressed="true">short reads 150</button>
+        <button type="button" data-r="6" data-c="15" aria-pressed="false">HiFi ~15 kb, 15×</button>
+        <button type="button" data-r="10" data-c="10" aria-pressed="false">ultra-long 100 kb, 10×</button>
+      </div>
+      <button type="button" class="btn" id="s07-arr-new" style="align-self:center">new random reads</button>
+    </div>
+    <div class="svgbox" id="s07-arr-fig"></div>
+    <div class="legend"><span><i style="background:var(--err)"></i>unique DNA</span><span><i style="background:var(--rep)"></i>array monomers</span><span><i style="background:var(--good)"></i>spanning read</span><span><i style="background:var(--het)"></i>read that ends inside the array</span><span><i style="background:var(--bad)"></i>collapsed copy / gap</span></div>
+    <div class="readout" id="s07-arr-out"></div>
+    <div id="s07-arr-verdict" class="tool-note"></div>
+    <p class="tool-note"><b>How the depth estimate works.</b> Every read base that falls on the array is counted (in a collapsed assembly these are the reads that pile onto the one monomer). Divided by the average coverage, that gives the array length in bases; divided by the monomer length, the number of monomers. The range is the middle 95 % of up to 400 repeats of the same sampling, so it shows the luck of the draw. The bias slider adds an error that no amount of repeating removes. Things to try: (1) short reads, 40 monomers: collapsed, but the depth estimate is close. (2) Push the bias to −30 %: the estimate is now wrong by about 30 %, and the range does not warn you. (3) HiFi with 200 monomers of 170 bases (34 kb): no read spans it; raise the read length. (4) HiFi with 40 monomers: resolved, but the depth estimate is poor, because only a few dozen long reads touch the array. With long reads, read the length off a spanning read; depth works best with many short reads.</p>
+  </section>
+
+  <h3>Measuring an array: from the assembly, from depth, from k-mers</h3>
+  <p>There are three ways to know how long an array is, and they fail in different ways.</p>
+  <ol class="steps">
+    <li><div><b>Read it off the assembly</b><div class="d">Only trustworthy when the array is resolved: reads span it, or at least the assembly is checked with reads (next part). An array that touches a contig end or an N-run gives only a lower bound: "at least this long".</div></div></li>
+    <li><div><b>Read depth</b><div class="d">Map the reads to the assembly, add up the depth over the array (or over the collapsed copy), and divide by the average depth of single-copy DNA:
+      <div class="formula" style="margin-top:6px">copies ≈ depth over the repeat ÷ average single-copy depth<br>array length ≈ (read bases on the array) ÷ (average coverage)</div>
+      This works whether the array was collapsed or not. Its limits: random sampling (small for long arrays at good coverage, as in the toy), uneven library coverage (a bias that repeating does not reveal), and reads that map equally well to several places, which aligners report with <span class="tip" title="Mapping quality: the aligner's confidence that the read belongs at this place. 0 means it fits equally well elsewhere.">mapping quality</span> 0 and many depth tools then skip. And when one satellite family has many arrays in the genome, depth on a collapsed consensus tells you the total of all arrays, not the length of any one of them.</div></div></li>
+    <li><div><b>k-mer counts</b><div class="d">No mapping needed. Count, in the raw reads, the k-mers that come from the monomer. A k-mer that occurs once in a <span class="tip" title="One copy of each chromosome (one of the two parental sets)">haploid</span> genome is seen about as often as the k-mer coverage of the main peak in the spectrum (<a href="../01-pre-assembly/#km">lesson 1</a>); a monomer k-mer seen 400 times as often lies in about 400 copies. Monomers in real arrays are not quite identical, so take the middle value (median) over all k-mers of the monomer. Comparing k-mer counts in reads and in the assembly is also how Merqury's copy-number spectrum finds collapsed repeats (<a href="../02-assembly/#s08">lesson 2, section 08</a>).</div></div></li>
+  </ol>
+
+  <details class="simple"><summary>Simple explanation with examples: depth as a copy counter</summary><div class="in">
+    <p>Say your reads give 30× coverage. Over a single-copy gene, about 30 reads cover each base. Now take a satellite array of 50 identical monomers of 170 bases that the assembly collapsed into one monomer. Reads from all 50 monomers map to that one monomer, so its depth is about 50 × 30 = 1,500.</p>
+    <div class="toy">single-copy gene     depth   30   → 30 ÷ 30 =  1 copy
+collapsed monomer    depth 1500   → 1500 ÷ 30 = 50 copies  → about 50 × 170 = 8,500 bases of array
+same, library covers repeats 20 % less: depth 1200 → 40 copies  <span class="x">(wrong, and nothing in the data says so)</span></div>
+    <p>The same arithmetic with k-mers: if 21-mers from single-copy DNA are seen about 25 times and a monomer 21-mer is seen 1,250 times, there are about 1,250 ÷ 25 = 50 copies of it.</p>
+  </div></details>
+
+  <h3>Checking the assembly with reads</h3>
+  <p>The assembly is a hypothesis; the reads are the evidence. For SINE and satellite regions the checks are:</p>
+  <ul>
+    <li><b>Spanning reads.</b> Map long reads to the assembly and ask for reads whose alignment starts before the array and ends after it. One accurate spanning read shows the array's length and structure directly. If the array in the read is longer than in the assembly, the assembly collapsed it. The limit is coverage: at 10–15× only some arrays happen to be spanned (try it in the toy).</li>
+    <li><b>Depth along the assembly.</b> Collapsed regions have depth that is a multiple of the average; falsely duplicated regions have half. HMM-Flagger (v1.2.0) reads the read alignments (its quick start uses HiFi), models the depth along the assembly with a <span class="tip" title="Hidden Markov model: a statistical model that walks along the sequence and decides, window by window, which hidden state (here: correct, collapsed, duplicated, erroneous) best explains the observed depth">hidden Markov model</span> and labels every part as erroneous, falsely duplicated, haploid (correct) or collapsed.</li>
+    <li><b>Mixed bases in the reads.</b> In a collapsed region the reads come from several copies that differ at a few positions, so at those positions the reads disagree. Vollger et al. (2019) used such <span class="tip" title="Paralogous sequence variants: positions where copies of a duplicated region differ from each other">paralogous sequence variants</span> to pull collapsed segmental duplications apart. Their script NucFreq plots the most common and the second most common base at each position of the read alignments; a second base carried by many reads is either a heterozygous site or a sign of collapsed copies, and a run of such positions in one region is suspect (its README flags regions where the second base is in at least 10 % of reads at 5 or more positions within 500 bases).</li>
+    <li><b>k-mers.</b> Merqury compares k-mer counts in the reads with copy numbers in the assembly (<a href="../02-assembly/#s08">lesson 2, section 08</a>). VerityMap (ablab) is built to map HiFi or Nanopore reads to assemblies of very long tandem repeats such as centromeres and reports likely errors from rare k-mers.</li>
+    <li><b>Empty sites need proof.</b> For presence/absence of SINEs (section <a href="#s05">05</a>), "no SINE here" is only an observation when the region is assembled. A gap or a contig end at the insertion site looks like an absence. Only a read that runs from one flank to the other through the empty site proves it.</li>
+  </ul>
+
+  <h3>What the lab's tools do at assembly gaps and edges</h3>
+  <ul>
+    <li><b>SINEderella</b> runs <code>assembly_qc.sh</code> before step 1 (skip it with <code>SKIP_ASSEMBLY_QC=1</code>). It reports the share of N in the whole assembly, the share of N in the first and last 500 bases of every scaffold (N-padded scaffold edges give false SINE hits, says the script's header), <a href="../01-pre-assembly/#n50">N50</a> and the share of short scaffolds, flags each as ok / caution / warn and gives a verdict SOLID, CAUTION or WARN. Its satellite stage takes satellite arrays out of the SINE analysis as loci, writes them to their own tables and never deletes them (section <a href="#s06">06</a>).</li>
+    <li><b>CLsat_workflow</b> grows each satellite locus outward from a seed until the satellite signal is lost. By default it stops at a scaffold boundary and records that as the reason (<code>past_scaffold_start</code> / <code>past_scaffold_end</code>); such an array is only "at least this long". For orthology it takes 600 bases of flank on each side and classes each flank as unique, telomeric, low-complexity or <b>scaffold-truncated</b>; only unique flanks are compared between assemblies.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <ul>
+      <li><b>Desmans (<i>Galemys pyrenaicus</i>, <i>Desmana moschata</i>), short-read assemblies.</b> Many N-runs and contig ends sit inside young copies of the talpid SINE family Tal, about k − 1 bases deep, and some scaffold joins carry the same young SINE on both sides of an N-run, because the scaffolder joined two contigs that each ended in a copy. The reads are there: when the missing middles were restored, the reads covered them at about the depth of the flanks. In 26 long-read assemblies of related mammals there were no N-runs at young SINEs. Numbers are in <a href="../02-assembly/#s03">lesson 2, section 03</a>.</li>
+      <li><b>Rock lizards (<i>Darevskia</i>), satellite CLsat (work not yet published).</b> We measure the amount of CLsat directly from raw reads and compare it with the assemblies. The two can differ a lot: in one draft assembly most of the satellite sat in the small contigs that a size cut-off removed, and another assembly held almost none of one CLsat family although the animal's reads hold it. Our current approach is "reads first": find the long reads that contain the satellite and use the ones that cross a whole array to define its ends. Most satellite reads lie entirely inside arrays, and the number of arrays that get a spanning read is limited by coverage. Published so far: in a survey of 56 squamate genomes, SINE-derived satellites were highly diverse in geckos but rare in <i>Darevskia</i> (Vassetzky, Kosushkin &amp; Ryskov 2023).</li>
+    </ul>
+  </div>
+
+  <h3>Command lines</h3>
+  <p>Syntax checked against the current manuals (samtools 1.25, minimap2 2.31, Jellyfish 2.3.1, HMM-Flagger 1.2.0). Coordinates and file names are examples.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. Map HiFi reads to the assembly (map-hifi = PacBio HiFi preset; use lr:hq for accurate Nanopore)</span>
+minimap2 -ax map-hifi -t 16 asm.fa hifi.fq.gz | samtools sort -@ 8 -o hifi.bam
+samtools index hifi.bam
+
+<span class="c"># 2. Spanning reads for an array at scaf12:200001-206800, with 1 kb of flank on each side
+#    pos / endpos = first / last reference base of the alignment (samtools filter expressions)</span>
+samtools view -c -F 0x904 -e 'pos <= 199000 &amp;&amp; endpos >= 207800' hifi.bam scaf12:200001-206800
+<span class="c">#   -F 0x904 drops unmapped, secondary and supplementary alignments; -c only counts</span>
+
+<span class="c"># 3. Depth over the array vs over unique flank (-a also prints zero-depth positions)</span>
+samtools depth -a -r scaf12:200001-206800 hifi.bam | awk '{s+=$3} END {print s/NR}'
+samtools depth -a -r scaf12:190001-199000 hifi.bam | awk '{s+=$3} END {print s/NR}'
+<span class="c">#   ratio of the two = how many times more reads the array region attracts (collapse factor)
+#   -Q sets a minimum mapping quality: leave it out: reads of a repeat that is present several times in the assembly map with quality 0, and -Q 1 drops them</span>
+
+<span class="c"># 4. k-mer copy number of a monomer, assembly-free: count only the monomer's 21-mers in the raw reads</span>
+jellyfish count -m 21 -s 100M -C -t 16 -o sat.jf --if monomer.fa &lt;(zcat R1.fq.gz) &lt;(zcat R2.fq.gz)
+jellyfish dump -c sat.jf | sort -k2,2n | awk '{a[NR]=$2} END {print "median count", a[int((NR+1)/2)]}'
+<span class="c">#   copies ≈ median count ÷ k-mer coverage of the main (homozygous) peak from lesson 1</span>
+
+<span class="c"># 5. Whole-assembly depth classes (erroneous / duplicated / haploid / collapsed) with HMM-Flagger:
+#    follow the three steps in the Flagger README (bam2cov, then hmm_flagger, in its Docker image)</span></pre></div>
+  <p class="tool-note"><b>Pitfalls.</b> (1) Do not filter reads by mapping quality before measuring depth over repeats: where the assembly holds several copies, the reads you need are the ones that map ambiguously. (2) Long reads come in a spread of lengths, so a few reads are much longer than the median; spanning depends on those, not on the median. (3) An array at a scaffold end or next to an N-run has no measured length, only a minimum. (4) Depth on a consensus measures all arrays of that family together. (5) Before calling an assembly "satellite-poor", count the satellite in the raw reads.</p>
+</section>

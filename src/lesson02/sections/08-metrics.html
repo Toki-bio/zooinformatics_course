@@ -1,0 +1,233 @@
+<section aria-labelledby="s08">
+  <h2 id="s08"><span class="n">08</span>Measuring assembly quality</h2>
+  <p class="lede">An assembler always produces a FASTA file, even from bad data. This section shows how to decide whether that file is any good. Quality has three separate sides, often called the <dfn>3C</dfn>: <b>contiguity</b> (how few pieces), <b>correctness</b> (how few errors) and <b>completeness</b> (how much of the genome is there). One number never covers all three, so a report always needs at least one measure of each.</p>
+
+  <dl class="defs">
+    <dt>Contiguity</dt><dd>How long the pieces are. Measured by N50, NG50, auN, number of contigs and gaps. Tools: <span class="tip" title="A fast summary tool from the Vertebrate Genomes Project; reads FASTA, FASTQ and GFA (assembly graph) files.">gfastats</span>, <span class="tip" title="QUality ASsessment Tool: tables and plots of assembly statistics; with a reference it also counts misassemblies.">QUAST</span>, <code>seqkit stats</code>.</dd>
+    <dt>Correctness</dt><dd>Are the bases right, and are the pieces joined in the right order? Measured from the reads: Merqury <span class="tip" title="Quality value: the error rate on the Phred scale. QV 30 = 1 error per 1,000 bases, QV 40 = 1 per 10,000, QV 50 = 1 per 100,000.">QV</span> and k-mer spectra; reads mapped back to the assembly (Inspector, CRAQ, Flagger; part 4 below); the Hi-C contact map.</dd>
+    <dt>Completeness</dt><dd>How much of the genome is in the file. Measured by k-mer completeness (Merqury), conserved genes (<a href="#s10">BUSCO, section 10</a>), and the assembly size compared with the expected genome size.</dd>
+  </dl>
+
+  <p class="note warn"><b>First rule: write down which file each number belongs to.</b> Assemblers write several FASTA files (primary, alternate, hap1, hap2), and pipelines write one after every step (raw, polished, purged, scaffolded). A QV from one file and an N50 from another do not describe one assembly. In our report on species B and C (two unpublished small-mammal genomes), BUSCO and QV had been measured on the polished file but size and N50 on the later purged file, and the first draft mixed them. In the species A project (an unpublished rodent genome), every "hifiasm" number first sent to collaborators came from haplotype 1, because a script picked the first matching file name (<a href="#s07">section 07</a> explains the file names). Check the sequence names inside the file before you report anything.</p>
+
+  <!-- ================= CONTIGUITY ================= -->
+  <h3>1 · Contiguity: how many pieces, and how long</h3>
+  <p>Lesson 1 explains N50, L50, NG50 and auN with an interactive ruler (<a href="../01-pre-assembly/#n50">lesson 1, Measuring contiguity</a>). Here we add what matters once you have a real assembly.</p>
+  <ul>
+    <li><b>Contigs and scaffolds.</b> A <dfn>contig</dfn> is a stretch of sequence with no unknown bases. A <dfn>scaffold</dfn> is a chain of contigs joined in a known order, with runs of <code>N</code> (unknown bases) between them. These N-runs are called <dfn>gaps</dfn>. An assembly without scaffolding has contigs only, and its contig N50 equals its scaffold N50. After Hi-C scaffolding (<a href="#s05">section 05</a>) the scaffold N50 can jump from megabases to whole chromosomes while the contig N50 stays the same. Always report both.</li>
+    <li><b>Gap length is often a placeholder.</b> Many scaffolders write a fixed number of N (100 is common) when the true distance is unknown. Count the gaps, but do not read their length as a measured distance.</li>
+    <li><b>NG50 instead of N50 when comparing assemblies.</b> NG50 uses the expected genome size as the ruler, so an assembly cannot look better by dropping small contigs or worse by carrying duplicated copies. Give the tool the expected haploid size from GenomeScope or a close relative.</li>
+    <li><b>auN</b> is the area under the Nx curve (Σ length² ÷ Σ length). QUAST's manual recommends it over N50 when you want a single number, because it uses the whole curve and does not jump when one contig is joined or broken.</li>
+    <li><b>Length cut-offs differ between tools.</b> QUAST ignores contigs shorter than 500 bp by default (<code>--min-contig</code>), and its <code>--large</code> mode raises this to 3,000 bp. seqkit and gfastats count every sequence. So the same file gives slightly different N50 values in different tools. State the cut-off.</li>
+  </ul>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># gfastats 1.3.x: contig, scaffold and gap statistics; NG50 when the expected size is given</span>
+gfastats asm.fa 2500000000
+gfastats asm.fa 2500000000 --nstar-report        <span class="c"># full N10..N100 and NG table</span>
+gfastats asm.p_ctg.gfa --discover-paths          <span class="c"># hifiasm GFA graphs have no paths defined</span>
+
+<span class="c"># QUAST 5.3: --large = mammal-size settings (contigs &gt;= 3 kb); --split-scaffolds adds a version broken at runs of &gt;= 10 N</span>
+quast.py asm.fa --large --est-ref-size 2500000000 -t 16 -o quast_asm
+
+<span class="c"># seqkit: quick table with N50 (and N90 with -N 90)</span>
+seqkit stats -a -T asm.fa</pre></div>
+
+  <p>gfastats prints contig and scaffold blocks separately. Part of its report on a tiny test file from its repository:</p>
+  <div class="toy"># scaffolds: 5            Scaffold N50: 15    Scaffold auN: 12.00
+# contigs: 8              Contig N50: 12      Contig auN: 8.50
+# gaps in scaffolds: 6    Total gap length in scaffolds: 10</div>
+  <p style="font-size:14.5px">Five scaffolds contain six gaps, which break them into eight contigs. If the contig and scaffold lines are identical, the assembly has no gaps (no scaffolding was done).</p>
+
+  <div class="note"><b>In our projects: species B and C (QUAST, contigs ≥ 3 kb; values rounded).</b> Both are contig-level (no Hi-C, no scaffolding), so there are no gaps: QUAST reports 0.00 N per 100 kb.
+    <div class="tbl" style="margin-top:8px"><table style="min-width:520px">
+      <thead><tr><th>metric</th><th>species B</th><th>species C</th></tr></thead>
+      <tbody>
+        <tr><td>N50</td><td>a few hundred kb</td><td>less than half of B's</td></tr>
+        <tr><td>NG50</td><td>slightly below N50</td><td>slightly below N50</td></tr>
+        <tr><td>N90</td><td>about a fifth of N50</td><td>about a quarter of N50</td></tr>
+        <tr><td>auN</td><td>about 1.3 × N50</td><td>about 1.3 × N50</td></tr>
+        <tr><td>L50</td><td>a few thousand contigs</td><td>more than twice B's</td></tr>
+      </tbody></table></div>
+    <p style="margin-top:8px">NG50 is slightly below N50 because QUAST's "estimated reference length" is a little larger than the assemblies. C has about 10× long-read coverage against roughly 25× for B, and its N50 is less than half of B's. For comparison, the species A hifiasm primary assembly has about a thousand contigs, a contig N50 above 10 Mb and an L50 of a few dozen contigs, from reads with a read N50 about four times longer.</p>
+  </div>
+
+  <!-- ================= QV ================= -->
+  <h3>2 · Correctness of the bases: Merqury QV</h3>
+  <p><dfn>Merqury</dfn> checks an assembly against the k-mers of the reads, without any reference genome. The idea is simple. Count all k-mers in accurate reads of the same animal (lesson 1, <a href="../01-pre-assembly/#km">step 3</a>). Then cut the assembly into k-mers too. A true assembly k-mer must occur in the reads. An assembly k-mer that <b>never occurs in the reads</b> most likely contains an error. These are called <dfn>asm-only k-mers</dfn>.</p>
+  <p>One wrong base spoils all k-mers that overlap it, up to k of them. Merqury therefore converts the share of asm-only k-mers into a per-base error rate with the formula below (Rhie et al. 2020; the same lines are in <code>eval/qv.sh</code> of Merqury 1.4.1):</p>
+  <div class="formula" style="white-space:normal;line-height:1.9">P(a k-mer is correct) = 1 − K<sub>asm-only</sub> ÷ K<sub>total</sub><br>P(a base is correct) = (1 − K<sub>asm-only</sub> ÷ K<sub>total</sub>)<sup>1/k</sup><br>error rate E = 1 − (1 − K<sub>asm-only</sub> ÷ K<sub>total</sub>)<sup>1/k</sup><br>QV = −10 × log<sub>10</sub>(E)</div>
+  <p style="font-size:14.5px">K<sub>total</sub> is the number of k-mers in the assembly, and K<sub>asm-only</sub> the number of those missing from the reads. Both are counted with repeats (a k-mer present three times counts three times).</p>
+
+  <section class="tool" aria-labelledby="s08-qv-h">
+    <div class="tool-head"><span class="tool-tag">Calculator</span><h3 id="s08-qv-h">From asm-only k-mers to QV</h3></div>
+    <div class="calc">
+      <label>asm-only k-mers<input id="s08-qa" type="number" min="0" step="1" value="682359"></label>
+      <label>all assembly k-mers<input id="s08-qt" type="number" min="1" step="1" value="123511626"></label>
+      <label>k<input id="s08-qk" type="number" min="11" max="51" step="1" value="18" style="width:70px"></label>
+    </div>
+    <div class="readout" id="s08-qout"></div>
+    <p class="tool-note">The default numbers are the <i>Arabidopsis thaliana</i> Col-0 haplotype in Merqury's own tutorial (k = 18), which reports QV 35.1183 and error rate 0.000307729. Change K<sub>asm-only</sub> and watch the QV: halving the number of errors raises QV by about 3.</p>
+  </section>
+
+  <p><b>What Merqury QV cannot see.</b> The method assumes two things: that every true k-mer of the genome is in the reads, and that the reads hold few false k-mers. The Merqury paper states both limits. If coverage is low, true k-mers are missing from the reads and QV is <b>underestimated</b>. If the reads carry many errors, an erroneous assembly k-mer may also be found among the read errors, and QV is <b>overestimated</b>. Two practical consequences follow:</p>
+  <ul>
+    <li><b>Use accurate reads from the same animal.</b> The Merqury authors recommend Illumina short reads (PacBio HiFi also works; the EBP standard names "Illumina or PacBio CCS", CCS being HiFi). The EBP also advises reads independent of those used to build the assembly. Reads also used for polishing make the QV less independent: the polisher has already made the assembly agree with them.</li>
+    <li><b>Systematic errors are invisible.</b> If the reads themselves make the same mistake at the same place every time, the wrong assembly k-mer is present in the reads, so Merqury counts it as correct. Nanopore-type reads miscount long runs of one base (<dfn>homopolymers</dfn>, e.g. CCCCCC), and they do it repeatedly at the same tract. QV from such reads misses these errors.</li>
+    <li><b>QV says nothing about missing sequence.</b> It only penalises wrong k-mers. A file that holds half of the genome, with no errors in that half, gets a perfect QV. That is why completeness is measured separately.</li>
+  </ul>
+  <p>Merqury also writes the positions of asm-only k-mers (<code>*_only.bed</code>, <code>*_only.wig</code>). Load them in a genome browser: errors that cluster in one place often mark a misassembly, not scattered base errors.</p>
+
+  <div class="note"><b>In our projects: QV numbers and how far to trust them.</b>
+    <ul style="margin-top:6px">
+      <li><b>Species B and C, short-read 21-mers.</b> In both, QV rose by about 3 units from Medaka to NextPolish (the error rate roughly halved); C stayed a few units below B, and both stayed below QV 40. These were measured on the polished file before purge_dups, with the same short reads that NextPolish used for polishing, so they are not independent in the EBP sense. They are still useful for the before-and-after comparison: the error rate halved while BUSCO did not change.</li>
+      <li><b>Species A, long-read 21-mers.</b> No short reads exist for this animal, so Merqury was run with the long reads, which carry about 1 % errors. The hifiasm primary scored a far higher QV than the Flye + Medaka assembly. This ranks the two assemblies, but it is not an absolute accuracy. A separate estimate from variant calling on the same reads gave a QV in the low 40s. That estimate counts only errors that the reads contradict, so the true error rate can only be higher.</li>
+      <li><b>Homopolymers.</b> In species A exons, hundreds of indels contradicted by the reads were found, about nine in ten of them in homopolymers. In the mitochondrial genome, at a depth of thousands, the read majority itself undercalls a C-run in one gene, and polishing with the same reads keeps the error. Merqury with these reads cannot detect such sites. This is why Illumina reads of the same animal were judged necessary for gene-level work.</li>
+      <li><b>QV vs completeness.</b> Species A hap1 had almost the primary's QV but a BUSCO about 8 points lower: its bases were as accurate as the primary's, but sequence was missing.</li>
+    </ul>
+  </div>
+
+  <!-- ================= COMPLETENESS + SPECTRA ================= -->
+  <h3>3 · Completeness and copy number from k-mers: the spectra-cn plot</h3>
+  <p><dfn>k-mer completeness</dfn> is the reverse question: what share of the reliable read k-mers is found in the assembly? Merqury first removes the low-count error k-mers from the read set (it finds the cut-off between the error peak and the first true peak automatically). What remains are called <dfn>solid k-mers</dfn>:</p>
+  <div class="formula">k-mer completeness = solid read k-mers found in the assembly ÷ all solid read k-mers × 100 %</div>
+  <p>A primary (pseudohaploid) assembly keeps only one copy of each heterozygous region, so it cannot contain the other allele's k-mers and its completeness stays below 100 % even when nothing is wrong. In Merqury's tutorial each of two <i>A. thaliana</i> haplotype assemblies scores about 84 %, and the two together score 98.3 %.</p>
+
+  <p>The <dfn>spectra-cn plot</dfn> (copy-number spectrum) joins both views. It is the read k-mer spectrum from lesson 1, with each k-mer coloured by <b>how many times it occurs in the assembly</b>: grey = 0 times (read-only), red = once, blue = twice, green = 3, purple = 4, orange = more than 4. A thin bar at the very left (x = 0) shows asm-only k-mers, the errors. The x-axis is how often the k-mer occurs in the reads; on it, heterozygous k-mers form a peak at the single-copy coverage <i>c</i>, homozygous k-mers at 2<i>c</i>, and a two-copy repeat at 4<i>c</i>.</p>
+
+  <section class="tool explain" aria-labelledby="s08-sp-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-sp-h">Toy spectra-cn plot: break the assembly and watch the colours</h3></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Assembly type"><button type="button" id="s08-mode-p" aria-pressed="true">Primary (one copy)</button><button type="button" id="s08-mode-d" aria-pressed="false">Both haplotypes</button></div>
+      <button type="button" class="btn" id="s08-reset" style="align-self:center">Perfect assembly</button>
+    </div>
+    <div class="controls">
+      <label><span class="tip" title="How much of the genome differs between the two parental copies. Sets the size of the peak at c.">Heterozygosity</span><input type="range" id="s08-het" min="0" max="100" value="45"><output id="s08-heto">45</output></label>
+      <label><span class="tip" title="In a two-haplotype assembly: regions where only one parental copy was assembled. In a primary assembly this is the normal state, so the slider is off.">One haplotype missing (%)</span><input type="range" id="s08-mh" min="0" max="100" value="0"><output id="s08-mho">0</output></label>
+      <label><span class="tip" title="Regions that are in the assembly twice. In a primary assembly this usually means the second parental copy (a haplotig) was kept as a separate contig.">False duplication (%)</span><input type="range" id="s08-fd" min="0" max="100" value="0"><output id="s08-fdo">0</output></label>
+      <label><span class="tip" title="Repeat copies that are identical in the genome but were assembled as one copy.">Collapsed repeats (%)</span><input type="range" id="s08-cr" min="0" max="100" value="0"><output id="s08-cro">0</output></label>
+      <label><span class="tip" title="Regions absent from the assembly altogether, for example where no reads assembled.">Region missing, both copies (%)</span><input type="range" id="s08-mr" min="0" max="60" value="0"><output id="s08-mro">0</output></label>
+      <label><span class="tip" title="Base accuracy of the assembly on the Phred scale. Lower QV = more asm-only k-mers in the bar at x = 0.">Base accuracy (QV)</span><input type="range" id="s08-qv" min="20" max="60" value="45"><output id="s08-qvo">45</output></label>
+    </div>
+    <div class="legend" id="s08-leg"></div>
+    <div class="svgbox"><svg id="s08-svg" viewBox="0 0 760 330" width="100%" style="min-width:560px" role="img" aria-label="Toy Merqury spectra-cn plot"></svg></div>
+    <div class="readout" id="s08-sout"></div>
+    <div id="s08-explain" style="font-size:14px"></div>
+    <p class="tool-note"><b>The model.</b> A toy diploid genome with single-copy k-mer coverage <i>c</i> = 13: heterozygous k-mers (one parent only) peak at 13, homozygous k-mers at 26, a family of two-copy repeats at 52; sequencing errors make the grey wall on the left. Each slider moves k-mers from their expected colour to another one, exactly as the matching fault does. "False-duplication k-mers" is computed the way Merqury's <code>false_duplications.sh</code> does it: among k-mers below 1.5 × the position of the red peak, the share present twice or more in the assembly.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: reading a real spectra-cn plot</summary><div class="in">
+    <p>Read the plot peak by peak, and ask for each one: which colour <i>should</i> it be?</p>
+    <div class="toy">peak     where (reads)   primary assembly          both haplotypes (hap1+hap2)
+het      c               half <span class="x">grey</span>, half red     red   (each allele once)
+hom      2c              red   (once)              blue  (once per haplotype)
+repeat   4c, 6c ...      blue, green ...            purple, orange ...
+errors   left wall       grey                       grey
+asm-only bar at x = 0    should be tiny             should be tiny</div>
+    <ul>
+      <li><b>Grey under the het peak (at c) in a primary assembly</b> is normal: the other allele is not supposed to be there. In a two-haplotype assembly it means one haplotype is incomplete.</li>
+      <li><b>Grey under the hom peak (at 2c)</b> is never normal: sequence present in both parents is missing from the assembly.</li>
+      <li><b>Blue under the hom peak in a primary assembly</b> means false duplication: a region was assembled twice, usually because the second parental copy was kept as an extra contig. purge_dups (<a href="#s06">section 06</a>) removes these.</li>
+      <li><b>Red at 4c, 6c</b> (or blue at 4c in a two-haplotype assembly) means repeat copies were collapsed into fewer copies than the reads say.</li>
+      <li><b>A tall bar at x = 0</b> means many base errors; polishing should shrink it.</li>
+    </ul>
+    <p><b>spectra-asm</b> is the companion plot for two files (hap1 + hap2, or primary + alternate). It colours read k-mers by <i>which</i> file they occur in: only in the first, only in the second, or in both. For a good pair, the het peak (c) is split between "only in hap1" and "only in hap2", and the hom peak (2c) is "in both".</p>
+  </div></details>
+
+  <div class="note"><b>In our projects: the species A primary.</b> Its copy-number spectrum (long-read 21-mers) has one main peak; the heterozygous shoulder at about half that depth is not resolved. Around the main peak, only about 1 % of the k-mers are present twice in the assembly and nearly all the rest once: little false duplication, in line with a low BUSCO Duplicated (a few percent). Its k-mer completeness is above 90 %, and hap1 alone reaches several points less. The primary is several percent larger than the Flye + Medaka assembly and the published genome of a close relative, and the k-mers do not explain the difference; purge_dups was left as an optional test.</div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. read k-mers (accurate reads of the same animal); k = 21 suits mammal-size genomes</span>
+meryl count k=21 threads=16 R1.fastq.gz R2.fastq.gz output reads.meryl
+$MERQURY/best_k.sh 2500000000        <span class="c"># optional: suggested k for this genome size</span>
+
+<span class="c"># 2a. one assembly (primary / pseudohaploid)</span>
+$MERQURY/merqury.sh reads.meryl asm.fa out_pri
+<span class="c"># 2b. two assemblies: stats for each and for both together, plus spectra-asm</span>
+$MERQURY/merqury.sh reads.meryl hap1.fa hap2.fa out_dip
+
+<span class="c"># 3. false-duplication share from a spectra-cn histogram</span>
+$MERQURY/eval/false_duplications.sh out_pri.asm.spectra-cn.hist</pre></div>
+  <ul style="font-size:14.5px">
+    <li><code>out.qv</code>: assembly, asm-only k-mers, all k-mers, QV, error rate. <code>out.&lt;asm&gt;.qv</code>: the same per sequence.</li>
+    <li><code>out.completeness.stats</code>: assembly, k-mer set, solid k-mers found, all solid k-mers, completeness %.</li>
+    <li><code>*.spectra-cn.{st,fl,ln}.png</code> (stacked, filled and line versions of the plot), <code>*.spectra-asm.*.png</code>, <code>*_only.bed</code> and <code>*_only.wig</code> (error positions).</li>
+    <li>Merqury needs meryl, Java, R (argparse, ggplot2, scales), bedtools and samtools. Database names must end in <code>.meryl</code>. Its tutorial says a 3 Gb genome takes up to 8 hours on 24 cores on one machine. The bioconda package is version 1.3; the README recommends the newer 1.4.1 from GitHub.</li>
+  </ul>
+
+  <!-- ================= READ MAPPING ================= -->
+  <h3>4 · Correctness of the structure: map the reads back</h3>
+  <p>k-mers see short errors. Wrong joins, collapsed repeats and missing pieces are larger than a k-mer, and show up when you <b>map the reads back to the assembly</b> and look at how they lie.</p>
+  <ul>
+    <li><b>Mapping rate.</b> Almost all reads of the same animal should map. A low rate means missing sequence (or contamination in the reads). <code>samtools flagstat</code> prints it.</li>
+    <li><b>Coverage along the assembly.</b> Most of the assembly should sit near the median depth. Regions at <b>half</b> depth are a single haplotype, a falsely duplicated copy, or a sex chromosome present once (X or Y in a male). Regions at <b>double</b> depth or more are collapsed repeats. <code>samtools coverage</code> gives depth per sequence.</li>
+    <li><b>Clipped reads.</b> At a wrong join, reads stop aligning partway and the rest of each read is "clipped" off. Many clipped reads at one point mark a <dfn>breakpoint</dfn>.</li>
+    <li><b>Hi-C contact map.</b> For scaffolded assemblies, the Hi-C heatmap is the main check for wrong joins and inversions between contigs (<a href="#s05">section 05</a>).</li>
+  </ul>
+  <p>Three tools turn these signals into lists of suspicious regions. Each is reference-free.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Input</th><th>What it reports</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Inspector</b> v1.0.1</td><td>assembly + long reads (CLR, HiFi, nanopore or mixed)</td><td>structural errors (expansion, collapse, haplotype switch, inversion) and small-scale errors; a QV; mapping rate</td><td>evaluates contigs ≥ 10 kb by default and looks for structural errors only in contigs ≥ 1 Mb; <code>inspector-correct.py</code> can fix errors. Last update in the repository: August 2024.</td></tr>
+      <tr><td><b>CRAQ</b></td><td>assembly + short reads and/or long reads (or BAM files)</td><td>small regional errors (CRE) and structural errors (CSE) from clipped reads, heterozygous sites, and an index AQI per sequence and overall</td><td>the authors class AQI &gt; 90 as reference quality, 80–90 high, 60–80 draft, &lt; 60 low. Without long reads, structural errors are hardly detected.</td></tr>
+      <tr><td><b>HMM-Flagger</b> v1.2.0</td><td>a <span class="tip" title="BAM: the binary file of read alignments written by minimap2 + samtools sort.">BAM</span> of long reads mapped to a <b>dual or diploid</b> assembly (hap1 + hap2 together)</td><td>each window labelled Err (erroneous), Dup (falsely duplicated), Hap (correct) or Col (collapsed)</td><td>presets for PacBio HiFi, ONT R9 and ONT R10; replaces Flagger v0.4.0; distributed as a <span class="tip" title="A packaged, ready-to-run software environment; run with the docker command.">Docker image</span>.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># reads back to the assembly (long reads; use -x sr for Illumina pairs)</span>
+minimap2 -ax map-ont -t 16 asm.fa reads.fq.gz | samtools sort -@8 -o asm.bam
+samtools index asm.bam
+samtools flagstat asm.bam                  <span class="c"># mapping rate</span>
+samtools coverage -q 20 asm.bam &gt; cov.tsv  <span class="c"># per sequence: numreads, covbases, coverage, meandepth ...</span>
+
+<span class="c"># Inspector (long reads)</span>
+inspector.py -c asm.fa -r reads.fq.gz -o inspector_out/ --datatype nanopore -t 16
+
+<span class="c"># CRAQ with both read types (pre-sorted BAMs are recommended)</span>
+craq -g asm.fa -sms long_sorted.bam -ngs short_sorted.bam</pre></div>
+
+  <div class="note"><b>In our projects: depth tells the sex.</b> In the species A primary, about three quarters of 10-kb windows lie at 0.75–1.25 × the median depth. More than 100 Mb of contigs sit at half depth and have no counterpart elsewhere in the assembly; most of their alignment to the published genome of a close relative falls on one chromosome. These are the single X (and Y) of a male, not an assembly error. Half depth alone cannot tell a sex chromosome from a haplotig; the missing partner copy and the alignment can (<a href="#s12">section 12</a>).</div>
+
+  <!-- ================= COMPLETENESS ================= -->
+  <h3>5 · Completeness: genes, size, chromosome ends</h3>
+  <ul>
+    <li><b>Conserved genes.</b> BUSCO counts how many of a fixed set of genes expected once in every species of a group are found complete, fragmented or missing (<a href="#s10">section 10</a>). It complements k-mers: k-mers see every base but not genes; BUSCO sees genes, but only a few thousand of them.</li>
+    <li><b>Size against expectation.</b> Compare the assembly length with the GenomeScope estimate and with a published relative. Much larger suggests false duplication or contamination (<a href="#s09">section 09</a>); much smaller suggests collapsed repeats or missing sequence. Remember that k-mer estimates from long reads tend to be low (lesson 1).</li>
+    <li><b>Telomeres.</b> A chromosome assembled end to end carries the telomere repeat (TTAGGG in vertebrates) at both ends. The EBP standard includes "&gt; 50 % telomere/telomere-like structure completeness" among its additional criteria.</li>
+  </ul>
+  <div class="note"><b>In our projects.</b> The species B and C assemblies are about a fifth larger than the 2 Gb guess given to Flye; that guess was never checked against a published genome size. The species A primary is about a tenth larger than its GenomeScope estimate and several percent larger than the published genome of a close relative. Of its hundreds of contigs ≥ 200 kb, none carries a telomere repeat at both ends and only a few percent at one end: long contigs, but not yet whole chromosomes.</div>
+
+  <!-- ================= STANDARDS ================= -->
+  <h3>6 · Putting it together: the EBP standard</h3>
+  <p>The Earth BioGenome Project (EBP) "Report on Assembly Standards" (version 7.0, January 2026) sets a minimum reference standard of <b>6.C.Q40</b> for eukaryotes with large genomes. The notation comes from the Vertebrate Genomes Project (Rhie et al. 2021), where the first number is log<sub>10</sub> of the contig NG50 and the second log<sub>10</sub> of the scaffold NG50; "C" in place of the second number means chromosome-scale scaffolds. Lesson 1 shows how to read it (<a href="../01-pre-assembly/#vgp">lesson 1, The VGP route</a>). The full EBP minimum:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>criterion</th><th>EBP minimum</th><th>measured with</th></tr></thead>
+    <tbody>
+      <tr><td>contig N50</td><td>≥ 1 Mb ("6")</td><td>gfastats, QUAST</td></tr>
+      <tr><td>scaffolds</td><td>chromosome-scale ("C"); &gt; 90 % of sequence assigned to candidate chromosomes</td><td>Hi-C map (section 05)</td></tr>
+      <tr><td>base accuracy</td><td>&lt; 1 error per 10,000 bases (Q40)</td><td>Merqury QV</td></tr>
+      <tr><td>false duplications</td><td>&lt; 5 %</td><td>Merqury spectra-cn, purge_dups</td></tr>
+      <tr><td>k-mer completeness</td><td>&gt; 90 %</td><td>Merqury</td></tr>
+      <tr><td>conserved genes</td><td>&gt; 90 % complete and single copy (e.g. BUSCO)</td><td>BUSCO (section 10)</td></tr>
+      <tr><td>transcripts</td><td>&gt; 90 % of transcripts from the same organism mappable</td><td><span class="tip" title="RNA-seq: short reads of the animal's RNA (expressed genes). Iso-Seq: PacBio long reads of whole RNA molecules.">RNA-seq or Iso-Seq</span> mapping</td></tr>
+    </tbody>
+  </table></div>
+
+  <details class="simple"><summary>Simple explanation with examples: scoring our own assemblies</summary><div class="in">
+    <div class="toy">assembly                   contig N50      first no.  scaffolds   QV (method)                      verdict
+species B                  NG50 100s of kb <span class="x">5</span>          none        below 40 (short reads, used in polishing)   below 6.C.Q40
+species C                  NG50 100s of kb <span class="x">5</span>          none        lower still (same)                 below 6.C.Q40
+species A primary          N50 above 10 Mb <span class="a">7</span>          none        above 50 (long reads: relative only)  contig part met; no C; Q unknown</div>
+    <p>The log<sub>10</sub> of a few hundred thousand lies between 5 and 6, so the first number for B and C is 5. Without scaffolds the second number equals the first, so neither has a "C". For species A the contig part (7 = at least 10 Mb) passes, BUSCO (above 95 %) passes, but there is no chromosome-scale scaffolding, and its QV cannot be stated honestly until short reads of the same animal are counted.</p>
+    <p>The lesson: one strong number (N50 above 10 Mb) does not make a reference genome. Each criterion needs its own evidence.</p>
+  </div></details>
+
+  <h3>A minimal quality report</h3>
+  <ol class="steps">
+    <li><div><b>Name the file</b><div class="d">Path, step (raw, polished, purged, scaffolded), and which product (primary, hap1, hap2). Check sequence names.</div></div></li>
+    <li><div><b>Contiguity</b><div class="d">Total length, number of contigs and scaffolds, contig N50 and NG50 (state the expected size used), scaffold N50, number of gaps, largest sequence. gfastats or QUAST.</div></div></li>
+    <li><div><b>Bases</b><div class="d">Merqury QV with the read type and k; say whether the reads were also used for polishing.</div></div></li>
+    <li><div><b>k-mers</b><div class="d">k-mer completeness and the spectra-cn plot; false-duplication share.</div></div></li>
+    <li><div><b>Genes</b><div class="d">BUSCO C [S, D], F, M with lineage and version (section 10).</div></div></li>
+    <li><div><b>Reads back</b><div class="d">Mapping rate, depth distribution, flagged regions (Inspector, CRAQ or Flagger); Hi-C map if scaffolded.</div></div></li>
+    <li><div><b>Contamination</b><div class="d">FCS-GX result (section 09).</div></div></li>
+  </ol>
+</section>

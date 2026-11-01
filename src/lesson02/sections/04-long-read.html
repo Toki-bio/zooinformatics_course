@@ -1,0 +1,232 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>Assembling long reads</h2>
+  <p class="lede">A long read is thousands to hundreds of thousands of bases long. One read can run straight through a repeat that would cut a short-read assembly into pieces. This section shows why that works, how long-read assemblers are built, which assembler to choose for which reads, and what files come out.</p>
+
+  <!-- ============ the core idea ============ -->
+  <h3>Why read length beats repeats</h3>
+  <p>An assembler joins reads by finding where they <dfn>overlap</dfn> (the end of one read matches the start of another). Inside a repeat this fails: a read that lies entirely within a copy of the repeat matches every copy equally well, so the assembler cannot tell which copy it came from. The assembly breaks there, and all copies are usually <span class="tip" title="Merged into one sequence: the assembly keeps one copy of the repeat instead of several.">collapsed</span> into one.</p>
+  <p>The fix is a read that <dfn>bridges</dfn> the copy: it starts in unique sequence on one side, runs through the whole repeat, and ends in unique sequence on the other side. Then there is no doubt where that copy belongs. So the rule of thumb is simple: <b>a repeat copy is resolved only if some reads are longer than the repeat plus a safe overlap on each side</b>. With short reads the same rule applies to k-mers (the <span class="tip" title="A de Bruijn contig can run only k − 1 bases into an identical repeat copy from each side; see section 03.">k − 1 rule</span> in <a href="#s03">section 03</a>).</p>
+
+  <section class="tool" aria-labelledby="s04-rp-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-rp-h">Read length vs repeat length</h3></div>
+    <p style="font-size:14px">A toy genome: five unique stretches of 20 kb (grey) separated by four identical copies of one repeat (purple). Reads are drawn at random positions with a realistic spread of lengths (a few long, many short). A copy counts as <b style="color:var(--good)">bridged</b> when at least one read covers it plus 1 kb of unique sequence on both sides. Each unbridged copy breaks the assembly. Move the sliders, or load a toy read profile modelled on one of our projects (rounded values).</p>
+    <div class="seg" role="group" aria-label="Presets" style="align-self:flex-start">
+      <button type="button" id="s04-p-b" aria-pressed="false" title="Toy values like species B: short CycloneSEQ reads, median 1.5 kb, about 25x">B-like</button><button type="button" id="s04-p-c" aria-pressed="false" title="Toy values like species C: longer CycloneSEQ reads, median 2 kb, about 10x">C-like</button><button type="button" id="s04-p-a" aria-pressed="true" title="Toy values like species A: median 5 kb, about 35x">A-like</button>
+    </div>
+    <div class="slider-row"><span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-rl">median read length</label><input type="range" id="s04-rl" min="0.5" max="40" step="0.1" value="5" style="width:min(100%,240px)"><output id="s04-rlo" class="mono" style="white-space:nowrap">5 kb</output></span>
+      <span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-rr">repeat length</label><input type="range" id="s04-rr" min="0.5" max="30" step="0.5" value="6" style="width:min(100%,240px)"><output id="s04-rro" class="mono" style="white-space:nowrap">6 kb</output></span>
+      <span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-rc">coverage</label><input type="range" id="s04-rc" min="2" max="40" step="1" value="35" style="width:min(100%,240px)"><output id="s04-rco" class="mono" style="white-space:nowrap">35×</output></span></div>
+    <div class="svgbox" id="s04-rp-fig"></div>
+    <div class="legend"><span><i style="background:var(--muted)"></i>unique sequence</span><span><i style="background:var(--rep)"></i>repeat copy</span><span><i style="background:var(--good)"></i>read that bridges a copy</span><span><i style="background:var(--err)"></i>read that ends inside or too close</span><span><i style="background:var(--accent)"></i>resulting contig</span></div>
+    <div class="readout" id="s04-rp-out"></div>
+    <p class="tool-note">Things to try: set the repeat to 6 kb and switch between <b>B-like</b> and <b>A-like</b>. Then keep the A-like read lengths and lower the coverage to 10×: fewer reads means fewer lucky long ones. The randomness is fixed, so the same settings always give the same picture. Real assemblers need several bridging reads, not one, so real genomes break more easily than this toy.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: overlaps, layout, consensus</summary><div class="in">
+    <p>Most long-read assemblers follow three steps, called <dfn>overlap–layout–consensus (OLC)</dfn>. Take three short "reads" from the sentence <code>THE_CAT_SAT_ON_THE_MAT</code>:</p>
+    <div class="toy">read 1:  THE_CAT_SAT
+read 2:        T_SAT_ON_TH
+read 3:              ON_THE_MAT
+
+<span class="a">overlap</span>  1→2: "T_SAT"   2→3: "ON_TH"
+<span class="a">layout</span>   1 → 2 → 3
+<span class="a">consensus</span> THE_CAT_SAT_ON_THE_MAT</div>
+    <ol class="steps">
+      <li><div><b>Overlap</b><div class="d">Find every pair of reads whose ends match. Comparing every read with every other in full would take forever, so tools first compare short sampled k-mers called <span class="tip" title="From each window of w consecutive k-mers, keep only the 'smallest' one (by a fixed ordering). Two reads that share sequence keep the same minimizers there, so matching minimizers point to candidate overlaps quickly.">minimizers</span>, and only then check the candidates.</div></div></li>
+      <li><div><b>Layout</b><div class="d">Put the overlaps into a graph: each read is a node, each overlap an arrow. If read 1 overlaps 2, 2 overlaps 3, and 1 also overlaps 3, the arrow 1→3 adds nothing and is removed (<span class="tip" title="Removing an arrow A→C when the path A→B→C already says the same thing.">transitive reduction</span>). What remains is a <dfn>string graph</dfn>. A stretch of the graph without branches becomes a <dfn>unitig</dfn>; contigs are built from unitigs.</div></div></li>
+      <li><div><b>Consensus</b><div class="d">Line up all reads along the path and take the majority base at each position. Errors in single reads are outvoted.</div></div></li>
+    </ol>
+    <p>A repeat shows up as a branch: the path enters the repeat from two places and leaves to two places, and only a read that bridges the repeat says which exit belongs to which entrance. That is exactly the slider box above.</p>
+  </div></details>
+
+  <!-- ============ read types ============ -->
+  <h3>Read types and why accuracy matters</h3>
+  <p>Long reads differ in two things: how long they are and how many errors they carry. Accuracy is written as a <span class="tip" title="Phred quality: Q = −10·log10(error rate). Q10 = 10 % errors, Q20 = 1 %, Q30 = 0.1 %.">Q value</span>: Q20 means 1 error in 100 bases, Q30 one in 1,000.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Read type</th><th>What it is</th><th>Error rate</th><th>Assemble with</th></tr></thead>
+    <tbody>
+      <tr><td><b>PacBio HiFi</b></td><td>The same circular DNA molecule is read several times and the passes are merged into one accurate read (about 15 kb, see lesson 1)</td><td>&lt;1 %</td><td>hifiasm, Verkko, Flye <code>--pacbio-hifi</code></td></tr>
+      <tr><td><b>ONT R10.4.1 simplex</b></td><td>One strand read once on the current Oxford Nanopore pore (<span class="tip" title="R10.4.1 is the pore version; Kit 14 is the matching library chemistry. 'Simplex' = one strand only.">R10.4.1, Kit 14</span>)</td><td>&lt;3 % (Flye's R10 default)</td><td>hifiasm <code>--ont</code>, Flye <code>--nano-hq</code>, NextDenovo, Shasta</td></tr>
+      <tr><td><b>ONT duplex</b></td><td>Both strands of the same molecule read one after the other and combined</td><td>accurate enough to be used like HiFi in Verkko</td><td>Verkko <code>--hifi</code></td></tr>
+      <tr><td><b>ONT ultra-long (UL)</b></td><td>Special library preparation that keeps DNA very long (&gt;100 kb reads, see <a href="../01-pre-assembly/#qc">lesson 1</a>)</td><td>like simplex</td><td>added to HiFi in Verkko <code>--nano</code> or hifiasm <code>--ul</code></td></tr>
+      <tr><td><b>Older ONT (R9 and earlier)</b>, PacBio CLR</td><td>Earlier chemistries</td><td>up to 15–20 %</td><td>Flye <code>--nano-raw</code> / <code>--pacbio-raw</code>, NextDenovo</td></tr>
+      <tr><td><b>CycloneSEQ</b> (our species B and C, probably A)</td><td>A different nanopore platform. No assembler has a dedicated mode for it</td><td>not listed; our reads averaged about Q16 (≈2–3 %)</td><td>choose the mode by measured error rate</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Why accuracy decides haplotypes.</b> A diploid animal carries two copies of each chromosome, which differ at <span class="tip" title="Positions where the mother's and the father's copy carry different bases. Their share is the heterozygosity from GenomeScope (lesson 1).">heterozygous sites</span>, for example one site in 200 at 0.5 % heterozygosity. When an assembler compares two reads, it sees two kinds of difference: real ones (the reads come from different parents' copies) and sequencing errors. If errors are much rarer than real differences, reads can be sorted into two haplotypes. If errors are as common as real differences, they cannot, and the two copies get merged or tangled.</p>
+
+  <section class="tool explain" aria-labelledby="s04-hp-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-hp-h">Can reads tell the two parental copies apart?</h3></div>
+    <p style="font-size:14px">Two reads overlap over a stretch of the genome. Count the positions where they disagree. If both come from the same parental copy, every disagreement is a sequencing error. If they come from different copies, the heterozygous sites add real disagreements on top. The curves show how many disagreements you would expect in each case. When the two curves overlap, a single pair of reads cannot tell which case it is.</p>
+    <div class="seg" role="group" aria-label="Read accuracy presets" style="align-self:flex-start">
+      <button type="button" id="s04-q30" aria-pressed="false" title="0.1 % errors">Q30</button><button type="button" id="s04-q20" aria-pressed="false" title="1 % errors">Q20</button><button type="button" id="s04-q17" aria-pressed="true" title="About the mean read quality of our CycloneSEQ reads: about 2 % errors">Q17</button><button type="button" id="s04-q10" aria-pressed="false" title="10 % errors, like older nanopore reads">Q10</button>
+    </div>
+    <div class="slider-row"><span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-he">read error rate</label><input type="range" id="s04-he" min="0.05" max="15" step="0.05" value="2" style="width:min(100%,240px)"><output id="s04-heo" class="mono" style="white-space:nowrap">2 %</output></span>
+      <span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-hh">heterozygosity</label><input type="range" id="s04-hh" min="0.05" max="2" step="0.05" value="0.5" style="width:min(100%,240px)"><output id="s04-hho" class="mono" style="white-space:nowrap">0.50 %</output></span>
+      <span style="display:inline-flex;align-items:center;gap:8px"><label for="s04-ho">overlap length</label><input type="range" id="s04-ho" min="1" max="20" step="1" value="5" style="width:min(100%,240px)"><output id="s04-hoo" class="mono" style="white-space:nowrap">5 kb</output></span></div>
+    <div class="svgbox" id="s04-hp-fig"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>same parental copy (errors only)</span><span><i style="background:var(--het)"></i>different copies (errors + heterozygous sites)</span></div>
+    <div class="readout" id="s04-hp-out"></div>
+    <p class="tool-note">This toy compares one pair of reads. Real assemblers (for example hifiasm's error correction) look at many reads at once and keep only differences that several reads agree on, which separates haplotypes at higher error rates than this toy suggests. The direction is the same: <b>fewer errors, longer overlaps and higher heterozygosity all make separation easier</b>. Species A's heterozygosity was moderate, well below 1 %.</p>
+  </section>
+
+  <p><b>Read correction</b> lowers the error rate before assembly. It aligns each read against the other reads from the same region and fixes positions where the read disagrees with the rest. The danger is that a correction step that ignores haplotypes "fixes" real heterozygous sites too. The current tools are therefore <dfn>haplotype-aware</dfn>: they keep a difference when several reads share it.</p>
+  <ul>
+    <li><b>hifiasm</b> corrects reads itself, in 3 rounds by default (<code>-r 3</code>), and with <code>--ont</code> also uses the base quality values, so it needs FASTQ input.</li>
+    <li><b>Dorado <code>correct</code></b> (ONT's tool; it runs the <span class="tip" title="Haplotype-aware ERRor cOrrection: a deep-learning model that corrects R10.4.1 reads using overlapping reads, keeping heterozygous differences.">HERRO</span> model) is for R10.4.1 reads with an average length of at least 10 kb and preferably ≥30× coverage. ONT recommends a machine with &gt;64 CPU cores, &gt;256 GB RAM and a GPU with &gt;32 GB memory. The output is FASTA (quality values are lost), used for example as the accurate reads in Verkko.</li>
+    <li><b>NextDenovo</b> corrects the longest reads (its "seeds") with its own module NextCorrect, then assembles them.</li>
+  </ul>
+  <p>Why not use an exact k-mer method, as for short reads? At 3 % errors only (0.97)<sup>30</sup> ≈ 40 % of 30-mers in a read are error-free (Shasta's documentation makes this point), so most k-mers are wrong. Long-read tools therefore use approximate matches, short k-mers, or correct the reads first.</p>
+
+  <!-- ============ assemblers ============ -->
+  <h3>The assemblers</h3>
+  <p>Each tool builds a slightly different graph. You do not need the details to run them, but the graph type explains what each one is good at.</p>
+  <dl class="defs">
+    <dt>hifiasm</dt><dd>Corrects reads with haplotype awareness, then builds a string graph in which the two haplotypes stay separate as "bubbles" (two parallel paths). From this graph it writes a <span class="tip" title="One set of contigs covering the genome once; where haplotypes differ, one of them is picked. See section 07.">primary assembly</span> and two partly phased haplotype assemblies. It removes duplicated haplotype copies itself (<code>-l</code>, purge level), so a separate purge_dups run is usually not needed (<a href="#s06">section 06</a>). Designed for HiFi; since version 0.21 it also takes ONT simplex R10 reads with <code>--ont</code> (marked "beta" in its help text; hifiasm 0.25.0 is the current release). Can add ultra-long reads (<code>--ul</code>), Hi-C or parental reads for full phasing.</dd>
+    <dt>Flye</dt><dd>First joins reads greedily into rough long sequences (<dfn>disjointigs</dfn>), then builds a <dfn>repeat graph</dfn> from them using approximate matches, which tolerate read errors. Every repeat longer than the minimum overlap is collapsed into one edge of the graph; Flye then uses reads that bridge a repeat to untangle it. Produces <b>one collapsed (haploid) assembly</b>: where the two parental copies differ, it picks one, and may report very different stretches as alternative contigs. Works with noisy and accurate reads alike. Current version 2.9.6 (May 2025).</dd>
+    <dt>Verkko</dt><dd>A pipeline for <dfn>telomere-to-telomere (T2T)</dfn> assembly. It builds a graph from accurate reads (HiFi, ONT duplex, or HERRO/hifiasm-corrected simplex), then threads ONT ultra-long reads through it to resolve long repeats. Phases with parental (trio) or Hi-C data. Needs Snakemake and several helper programs; easiest via conda.</dd>
+    <dt>NextDenovo</dt><dd>"Correct then assemble" with a string graph, for noisy ONT or PacBio CLR reads. Its documentation says it is optimised for seed reads (the longest 30–45× of data) of at least 10 kb; with shorter reads it "may produce unexpected results". Version 2.5.2.</dd>
+    <dt>Shasta</dt><dd>Assembler optimised for ONT reads. Stores reads in <span class="tip" title="Each run of identical bases is stored as one base plus a count, so ACCCT becomes A C T with counts 1 3 1. Errors in homopolymer length then do not break matches.">run-length encoding</span> and finds overlaps through short marker k-mers. Needs uncompressed input and a ready-made <code>--config</code> matching the reads (there are R10.4.1 raw and HERRO configurations). Version 0.14.0.</dd>
+    <dt>Raven</dt><dd>OLC assembler for uncorrected long reads, with built-in <span class="tip" title="Racon: a model-free long-read polisher (section 06).">Racon</span> polishing. Small and quick; last code change in 2023.</dd>
+    <dt>wtdbg2</dt><dd>Cuts reads into 1,024-bp pieces and merges similar pieces into a <dfn>fuzzy Bruijn graph</dfn>. Very fast, but last updated in 2020, and its README warns that ONT assemblies may come out smaller than the true genome.</dd>
+    <dt>Canu</dt><dd>The classic correct-trim-assemble pipeline (and HiCanu for HiFi). Its README now says Canu has reached <b>end of life</b> and recommends Flye, hifiasm or Verkko instead.</dd>
+  </dl>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Your reads</th><th>First choice</th><th>Also worth running</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td>HiFi only</td><td>hifiasm</td><td>Flye <code>--pacbio-hifi</code></td><td>primary + 2 partly phased haplotypes</td></tr>
+      <tr><td>HiFi + ONT ultra-long (+ Hi-C or parents)</td><td>Verkko or hifiasm <code>--ul</code></td><td>the other one</td><td>near-T2T, phased with Hi-C / trio</td></tr>
+      <tr><td>ONT R10.4.1 simplex, N50 ≥ 10 kb</td><td>hifiasm <code>--ont</code></td><td>Flye <code>--nano-hq</code>; Dorado correct → Verkko</td><td>hifiasm: primary + haplotypes; Flye: one collapsed set</td></tr>
+      <tr><td>Short or noisy long reads (N50 a few kb, ≲Q15)</td><td>Flye</td><td>NextDenovo if seeds reach 10 kb</td><td>one collapsed set, then polish (<a href="#s06">06</a>)</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:14px;color:var(--muted)">The table is our reading of each tool's documentation, not a benchmark. When in doubt, run two assemblers and compare them with the metrics of <a href="#s08">section 08</a> and BUSCO (<a href="#s10">section 10</a>); with long reads this is affordable.</p>
+
+  <!-- ============ commands ============ -->
+  <h3>Running them</h3>
+  <p>The main options are explained below the commands. <code>2&gt; file.log</code> saves the progress messages; keep these logs, they contain the coverage and k-mer estimates you will need later.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># ---- hifiasm (0.25.0) ----</span>
+<span class="c"># HiFi reads, heterozygous animal (default: purge level 3, writes primary + hap1 + hap2)</span>
+hifiasm -o sp.asm -t 32 hifi.fq.gz 2&gt; sp.asm.log
+<span class="c"># ONT R10 simplex reads (FASTQ required: base qualities are used)</span>
+hifiasm -o sp.ont -t 64 --ont -f38 --telo-m CCCTAA ont.fq.gz 2&gt; sp.ont.log
+<span class="c"># primary + alternate instead of hap1/hap2; -l0 for inbred or homozygous animals</span>
+hifiasm -o sp.asm -t 32 --primary hifi.fq.gz 2&gt; sp.pri.log
+<span class="c"># HiFi + ultra-long ONT + Hi-C: the full combination</span>
+hifiasm -o sp.asm -t 32 --ul ul.fq.gz --h1 hic_R1.fq.gz --h2 hic_R2.fq.gz hifi.fq.gz 2&gt; sp.hic.log
+
+<span class="c"># ---- Flye (2.9.6) ----</span>
+flye --nano-hq ont.fq.gz --out-dir flye_ont --threads 32       <span class="c"># R10 / Q20-class nanopore</span>
+flye --nano-raw ont.fq.gz --out-dir flye_raw --threads 32      <span class="c"># older, noisier nanopore</span>
+flye --pacbio-hifi hifi.fq.gz --out-dir flye_hifi --threads 32
+<span class="c"># less RAM: first stage uses only the longest 40x of reads (needs --genome-size)</span>
+flye --nano-hq ont.fq.gz -g 2.7g --asm-coverage 40 -o flye_ont -t 32
+flye --nano-hq ont.fq.gz -o flye_ont -t 32 --resume            <span class="c"># continue after a crash</span>
+
+<span class="c"># ---- ONT read correction, then Verkko ----</span>
+dorado correct ont.fq.gz --to-paf &gt; overlaps.paf               <span class="c"># CPU part: all-vs-all overlaps</span>
+dorado correct ont.fq.gz --from-paf overlaps.paf &gt; corrected.fasta   <span class="c"># GPU part (input .gz must be <span class="tip" title="bgzip: block gzip, a gzip variant that allows jumping to any position in the file; made with bgzip from htslib.">bgzip</span>, not plain gzip)</span>
+verkko -d verkko_asm --hifi corrected.fasta --nano ul.fq.gz
+
+<span class="c"># ---- NextDenovo (2.5.2): settings in a config file ----</span>
+ls ont.fq.gz &gt; input.fofn   <span class="c"># fofn = "file of file names": one read file per line</span>
+cp NextDenovo/doc/run.cfg . <span class="c">   # edit: read_type = ont, genome_size = 2.7g, job_type = local</span>
+nextDenovo run.cfg          <span class="c">   # result: 01_rundir/03.ctg_graph/nd.asm.fasta</span>
+
+<span class="c"># ---- Shasta (0.14.0): uncompressed input, configuration by read type ----</span>
+shasta --input ont.fasta --config Nanopore-r10.4.1_e8.2-400bps_sup-Raw-Jan2025 --threads 32</pre></div>
+
+  <dl class="defs">
+    <dt><code>-o</code> / <code>--out-dir</code></dt><dd>hifiasm: the <span class="tip" title="All output files start with this text, e.g. sp.asm.bp.p_ctg.gfa">prefix</span> of every output file. Flye: a folder.</dd>
+    <dt><code>-t</code> / <code>--threads</code></dt><dd>CPU threads. Both tools default to 1, so always set it. On a shared server use half the cores or fewer (see <a href="#s02">section 02</a>).</dd>
+    <dt><code>-f38</code> (hifiasm)</dt><dd>Size of the <span class="tip" title="A compact bit table that remembers which k-mers were already seen, so k-mers seen only once (mostly errors) are never stored in the real counting table. See section 03.">Bloom filter</span> used while counting k-mers: it takes 2<sup>(f−3)</sup> bytes, so the default <code>-f37</code> = 16 GB and <code>-f38</code> = 32 GB. The manual recommends 37 for human, 38–39 for genomes much larger than human, and <code>-f0</code> for small genomes.</dd>
+    <dt><code>-l</code> (hifiasm)</dt><dd>Purge level for duplicated haplotype copies: 0 = off (use for inbred or homozygous samples), 1 = light, 2/3 = aggressive. Default 3 (0 in trio mode). The README warns that purging "may introduce <span class="tip" title="Misassembly: a place where the assembler joined two pieces of sequence that are not neighbours in the genome.">misassemblies</span>".</dd>
+    <dt><code>--primary</code> (hifiasm)</dt><dd>Write a primary and an alternate assembly (<code>p_ctg</code> + <code>a_ctg</code>) instead of hap1 + hap2. <code>-l0</code> does the same. See <a href="#s07">section 07</a>.</dd>
+    <dt><code>--telo-m</code> (hifiasm)</dt><dd>Telomere motif, written as the 5′-end repeat. Vertebrates, including mammals, use <code>CCCTAA</code> (the reverse complement of TTAGGG); other groups can differ, so look up yours. Helps keep telomeres at contig ends.</dd>
+    <dt><code>--hg-size</code> / <code>--hom-cov</code> (hifiasm)</dt><dd>Haploid genome size, or the homozygous coverage, if hifiasm misjudges coverage from its k-mer plot. The log line <code>homozygous read coverage threshold</code> tells you what it chose; if that is not near your real coverage, the assembly may be too large or too small.</dd>
+    <dt><code>--nano-hq</code> vs <code>--nano-raw</code> (Flye)</dt><dd>Read type sets Flye's internal error model. Flye's table: <code>--nano-hq</code> for "Guppy5+ SUP or Q20 (&lt;5 % error)", with R10 (&lt;3 %) as its default since 2.9.6; <code>--nano-raw</code> for older data with 10–15 % (up to 20 %) errors. Pick by the error rate you measured in lesson 1, not by the instrument name.</dd>
+    <dt><code>-g</code> / <code>--genome-size</code> (Flye)</dt><dd>Optional since Flye 2.8; needed only with <code>--asm-coverage</code>, and otherwise only used for coverage estimates.</dd>
+    <dt><code>--min-overlap</code> (Flye)</dt><dd>Chosen automatically from the read length distribution (reads N90), typically 3–10 kb and down to 1 kb for short reads. Flye expects &gt;10× coverage and read N90 over 1 kb (5 kb+ recommended); it will not work with reads shorter than 1 kb.</dd>
+  </dl>
+
+  <h3>How long and how much memory</h3>
+  <p>Numbers from the tools' own documentation (single machine):</p>
+  <ul>
+    <li><b>hifiasm</b>, mouse 2.6 Gb, HiFi 25×: 4.8 h with 48 threads, 76 GB RAM (an old version, 0.12). Human HiFi 32–36×: about 7–8 h, 114–137 GB.</li>
+    <li><b>Flye</b>, human: ~450 GB RAM for ONT and ~140 GB for HiFi (FAQ); human ONT 35× took 3,100 CPU hours. Memory grows with genome size × coverage; <code>--asm-coverage 40</code> lowers it.</li>
+    <li><b>wtdbg2</b>, human ONT 36×: 31 h, 222 GB. <b>Dorado correct</b>: GPU needed (see above).</li>
+  </ul>
+  <p>hifiasm saves its corrected reads and overlaps as <code>*.bin</code> files. A second run with the same <code>-o</code> prefix reuses them and finishes much faster (for example to switch to <code>--primary</code>). Delete the bins, or use <code>-i</code>, if you changed the reads or upgraded hifiasm.</p>
+
+  <!-- ============ outputs ============ -->
+  <h3>What comes out</h3>
+  <p>Both main tools write the assembly as a <dfn>GFA</dfn> file (Graphical Fragment Assembly): a text file in which lines starting with <code>S</code> hold the sequences (segments) and lines starting with <code>L</code> the links between them. Flye also writes FASTA; for hifiasm you convert.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>File</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><code>prefix.bp.p_ctg.gfa</code></td><td>hifiasm <b>primary contigs</b> (names <code>ptg</code> + six digits + <code>l</code> or <code>c</code>). The one to evaluate first.</td></tr>
+      <tr><td><code>prefix.bp.hap1.p_ctg.gfa</code>, <code>prefix.bp.hap2.p_ctg.gfa</code></td><td>Two <b>partly phased</b> haplotype sets (<code>h1tg…</code>, <code>h2tg…</code>); switches between parents can occur inside contigs.</td></tr>
+      <tr><td><code>prefix.p_ctg.gfa</code> + <code>prefix.a_ctg.gfa</code></td><td>Primary and <b>alternate</b> contigs, written with <code>--primary</code> or <code>-l0</code> (no <code>bp.</code> in the name).</td></tr>
+      <tr><td><code>prefix.hic.hap1/hap2.p_ctg.gfa</code>, <code>prefix.dip.hap1/hap2…</code></td><td>Fully phased sets from Hi-C or trio mode.</td></tr>
+      <tr><td><code>prefix.r_utg.gfa</code>, <code>p_utg.gfa</code></td><td>Unitig graphs (raw / small bubbles removed): for inspection in <span class="tip" title="A program that draws assembly graphs from GFA files.">Bandage</span>, not for analysis.</td></tr>
+      <tr><td><code>*.noseq.gfa</code>, <code>*lowQ.bed</code>, <code>*.bin</code></td><td>Graphs without sequence (for drawing), low-quality regions, saved corrections/overlaps.</td></tr>
+      <tr><td><code>flye_out/assembly.fasta</code></td><td>Flye contigs (<code>contig_1</code> …). Without <code>--scaffold</code> there are no gaps.</td></tr>
+      <tr><td><code>flye_out/assembly_info.txt</code></td><td>One line per contig: length, coverage, circular (Y/N), repetitive (Y/N), multiplicity, alternative group, graph path.</td></tr>
+      <tr><td><code>flye_out/assembly_graph.gfa</code></td><td>Flye's final repeat graph.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The last letter of a hifiasm contig name says whether it is linear (<code>l</code>) or circular (<code>c</code>). In an animal genome the mitochondrion is the circular molecule to expect, but it does not always come out as one circular contig (see the species A box below and <a href="#s11">section 11</a>).</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># GFA → FASTA: print every S line as a FASTA record (hifiasm FAQ)</span>
+awk '/^S/{print "&gt;"$2; print $3}' sp.asm.bp.p_ctg.gfa &gt; sp.asm.p_ctg.fa
+<span class="c"># the same with gfatools, wrapped at 60 bases per line</span>
+gfatools gfa2fa -l 60 sp.asm.bp.p_ctg.gfa &gt; sp.asm.p_ctg.fa
+
+<span class="c"># ALWAYS check which assembly a FASTA really is, by its headers</span>
+grep -m 3 '&gt;' sp.asm.p_ctg.fa            <span class="c"># ptg… = primary; h1tg… / h2tg… = haplotype 1 / 2</span>
+<span class="c"># and name input files explicitly in scripts, never with a wildcard:</span>
+<span class="c"># ls sp.asm*.p_ctg.gfa lists bp.hap1… BEFORE bp.p_ctg…</span></pre></div>
+
+  <div class="note warn">
+    <h3 style="margin-bottom:8px">In our projects: the wildcard that picked the wrong assembly (species A)</h3>
+    <p style="margin-bottom:10px">We assembled species A, an unpublished rodent genome (long reads only, roughly 40×, read N50 above 10 kb), with hifiasm 0.25.0 <code>--ont --telo-m CCCTAA -f38</code> on 64 threads. A follow-up script picked "the first <code>*.p_ctg.gfa</code>" with a wildcard. Alphabetically <code>bp.hap1.p_ctg.gfa</code> comes before <code>bp.p_ctg.gfa</code>, so every "hifiasm" number first sent to collaborators (BUSCO and N50, both lower than the primary's) was haplotype 1. The FASTA called <code>…p_ctg.fa</code> had the same size as hap1 and headers <code>h1tg…</code>. When the real primary was finally evaluated, it was the best assembly we had:</p>
+    <div class="tbl"><table style="min-width:440px">
+      <thead><tr><th>Assembly</th><th>Contigs</th><th>Contig N50</th><th>BUSCO complete</th></tr></thead>
+      <tbody>
+        <tr><td><b>hifiasm primary</b> (<code>bp.p_ctg</code>)</td><td>fewest</td><td><b>above 10 Mb</b></td><td><b>highest, above 95 %</b></td></tr>
+        <tr><td>Flye 2.9.5 + Medaka 2.2.2</td><td>several times more</td><td>about 10 times shorter</td><td>about 1 point lower</td></tr>
+        <tr><td>hifiasm hap1, no scaffolding</td><td>about 3 times more</td><td>about 4 times shorter</td><td>about 9 points lower</td></tr>
+        <tr><td>published relative (chromosome level)</td><td>chromosome scaffolds</td><td>chromosome-sized (scaffold)</td><td>about 1 point lower</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-block:10px">Three lessons. Check headers before you report numbers. The haplotype sets of a hifiasm run without Hi-C or parental data are only partly phased and need not be complete: hap1 lost BUSCO genes as <i>missing</i>, not fragmented. And hifiasm <code>--ont</code> gave nearly ten times the N50 of Flye even though only about a fifth of the reads were above Q20. These reads were probably CycloneSEQ rather than ONT (the read IDs match a CycloneSEQ run report; not confirmed by the provider), so a nanopore mode worked on them, but the ONT-specific polishing models are questionable (<a href="#s06">section 06</a>).</p>
+    <p>One more thing to expect: the mitochondrial genome came out as one contig made of several tandem copies of the circle, a known artefact of assembling a circular molecule (<a href="#s11">section 11</a>).</p>
+  </div>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects: short reads and low coverage (species B and C)</h3>
+    <p style="margin-bottom:10px">For species B and C, two unpublished small-mammal genomes, we had CycloneSEQ reads (first labelled "ONT" in our notes, corrected later), assembled with Flye 2.9.5 <code>--nano-raw --genome-size 2g</code> on 16 threads (about a day for B), then Medaka, NextPolish and purge_dups.</p>
+    <div class="tbl"><table style="min-width:520px">
+      <thead><tr><th></th><th>species B</th><th>species C</th></tr></thead>
+      <tbody>
+        <tr><td>read N50</td><td>under 3 kb</td><td>about twice B's</td></tr>
+        <tr><td>long-read coverage (bases ÷ assembly length)</td><td>roughly 25×</td><td>about 10×</td></tr>
+        <tr><td>contig N50</td><td>a few hundred kb</td><td>less than half of B's (more contigs)</td></tr>
+        <tr><td>BUSCO complete</td><td>above 90 %</td><td>about 10 points lower</td></tr>
+      </tbody>
+    </table></div>
+    <p style="margin-block:10px">C had longer reads but only about 10× (Flye's own log said a little less); Flye's FAQ says coverage below 10× is not recommended, and C came out with less than half the N50 and about 10 points less BUSCO. An early report quoted higher long-read coverages for both; those numbers had no source and were wrong. B, with roughly 25× but a read N50 under 3 kb, still reached only a few hundred kb, against more than 10 Mb for species A with reads about four times longer: read length limits contiguity, as in the slider box above.</p>
+    <p>Two choices we would now make differently. By Flye's own read-type table, reads with ≈2–3 % errors belong in <code>--nano-hq</code>, not <code>--nano-raw</code> (we have not tested whether it changes the result). And the 2 Gb genome size was a guess; the assemblies came out about a fifth larger.</p>
+  </div>
+
+  <h3>Common pitfalls</h3>
+  <ul>
+    <li><b>Wrong read type.</b> Check the platform from the read headers and the error rate from lesson 1 before choosing a mode or a polishing model.</li>
+    <li><b>Mixing up assembly files.</b> Name files explicitly, check contig names, and write next to every number which file it came from.</li>
+    <li><b>Expecting two haplotypes from Flye.</b> Flye gives one collapsed set. hifiasm hap1/hap2 without Hi-C or parental reads are partly phased (<a href="#s07">section 07</a>).</li>
+    <li><b>Too little coverage.</b> Below ~10× contigs fall apart; HiFi needs about 13× per haplotype according to the hifiasm FAQ.</li>
+    <li><b>Reads too short for the tool.</b> NextDenovo wants ≥10-kb seeds; Dorado correct wants an average of ≥10 kb; Flye drops reads under 1 kb, and hifiasm <code>--ont</code> drops reads under 1 kb and below mean Q10 by default (<code>--rl-cut</code>, <code>--sc-cut</code>).</li>
+    <li><b>Reusing old hifiasm <code>*.bin</code> files</b> after changing reads or version: the release notes recommend rerunning ONT assemblies from scratch.</li>
+  </ul>
+  <p>Next: long-read contigs are ordered into chromosomes with Hi-C (<a href="#s05">section 05</a>), polished and purged (<a href="#s06">section 06</a>), and the products are explained in <a href="#s07">section 07</a>.</p>
+</section>

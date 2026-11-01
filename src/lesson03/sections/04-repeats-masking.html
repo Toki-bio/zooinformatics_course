@@ -1,0 +1,197 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>Repeats III: masking and repeat landscapes</h2>
+  <p class="lede">Section <a href="#s03">03</a> gave you a library: one <span class="tip" title="Consensus sequence: the 'average' sequence of many copies of one repeat family, made by aligning the copies and taking the most common letter at each position. It approximates the original, active element.">consensus</span> per repeat family. Now every copy of every family has to be found in the assembly, written into a table and marked in lowercase. The same search also tells you how old each copy is, which gives the <dfn>repeat landscape</dfn> of the genome. At the end of the section: fast programs that mask repeats without any library, and programs that find <span class="tip" title="Tandem repeat: copies of a unit sitting directly next to each other, head to tail: CACACACA or a 180-bp satellite repeated 10,000 times. Different from interspersed repeats (transposable elements), whose copies are scattered around the genome.">tandem repeats</span>.</p>
+
+  <h3>Three kinds of tool</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Kind</th><th>Tools here</th><th>Needs a library?</th><th>What you get</th></tr></thead>
+    <tbody>
+      <tr><td><b>Library-based search</b></td><td>RepeatMasker</td><td>Yes: Dfam and/or your own (<a href="#s03">03</a>)</td><td>Every copy with family name, class, position in the consensus and divergence. Masked genome. Input for landscapes.</td></tr>
+      <tr><td><b>Counting-based masking</b></td><td>WindowMasker, Red</td><td>No</td><td>Masked genome only: "repeat or not", no names, no classes, no ages.</td></tr>
+      <tr><td><b>Tandem-repeat finders</b></td><td>TRF, ULTRA, TRASH, TideCluster</td><td>No</td><td>Arrays of head-to-tail copies with their unit (<dfn>period</dfn>), copy number and consensus unit.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>RepeatMasker: how it works</h3>
+  <p>RepeatMasker (Smit, Hubley &amp; Green; current version 4.2.6, October 2026) compares the genome with every consensus in a library and keeps the best matches. It is the standard for interspersed repeats. It ships <b>without</b> a repeat library: you give it one.</p>
+  <ol class="steps">
+    <li><div><b>Choose the library</b><div class="d">Either <code>-species &lt;clade&gt;</code>: RepeatMasker extracts from <span class="tip" title="Dfam: an open database of transposable-element families (seed alignments, profile HMMs and consensus sequences). Release 4.0 is split into a small root file plus per-clade partition files, managed by the program FamDB.">Dfam</span> all families known from that clade and its ancestors (for example <code>-species rodentia</code>). Or <code>-lib my_library.fa</code>: your own FASTA of consensus sequences, with names written <code>&gt;family#class/subclass</code> so the classes can be counted. Only curated Dfam families are used unless you add <code>-uncurated</code>.</div></div></li>
+    <li><div><b>Align the consensus sequences to the genome</b><div class="d">The alignment program is called the <dfn>search engine</dfn>. <span class="tip" title="RMBlast: a version of NCBI blastn changed for RepeatMasker (it accepts RepeatMasker's scoring matrices and its complexity-adjusted scores). The recommended default.">RMBlast</span> is the default. <span class="tip" title="nhmmer: a program from the HMMER package that searches DNA with profile hidden Markov models (HMMs) instead of single consensus sequences. A profile HMM records which base is expected at each position and how variable that position is. Used with Dfam's HMM files.">nhmmer</span> (<code>-engine hmmer</code>) uses Dfam's profile <span class="tip" title="Hidden Markov model: a statistical model of a sequence family, built from an alignment of many copies.">HMMs</span> instead and is more sensitive but much slower. Each match gets a <span class="tip" title="Smith-Waterman score: the score of a local alignment (matches add points, mismatches and gaps subtract). RepeatMasker adjusts it down for low-complexity sequence such as AT-rich stretches.">Smith-Waterman score</span>; matches below the cut-off (225 for most repeats, <code>-cutoff</code> with your own library) are dropped. There is no divergence cut-off: a match can be less than 60 % identical and still be kept.</div></div></li>
+    <li><div><b>Peel off the young layer first</b><div class="d">With <code>-species</code> and a mammal clade the search runs in stages. Young, full-length insertions are cut out of the sequence first, so that the older element they landed in can be aligned in one piece. Many related consensus sequences match the same place; the best score wins the name.</div></div></li>
+    <li><div><b>Find simple repeats and low-complexity DNA</b><div class="d">RepeatMasker runs TRF (Tandem Repeats Finder, described below) itself, in two passes, for units of up to 10 bp (source code of 4.2.6). It also marks <span class="tip" title="Low-complexity DNA: stretches with very uneven base composition, e.g. a 100-bp stretch that is more than 87 % A+T or more than 89 % G+C (RepeatMasker's rule).">low-complexity</span> stretches. Satellites with longer units are found only if they are in the library.</div></div></li>
+    <li><div><b>Clean up the annotation</b><div class="d">The script <code>ProcessRepeats</code> joins fragments of one insertion that were split by later insertions or by deletions, gives them one shared ID, and writes the output files.</div></div></li>
+  </ol>
+
+  <h3>Which library for a non-model mammal?</h3>
+  <p>The RepeatMasker help is frank: most species are not yet covered by the repeat databases, and many entries are far from complete. A de novo library (<a href="#s03">03</a>) has the families of your species but often with weak class labels. The help file shows how to put both into one FASTA: export the Dfam families of your clade with <code>famdb.py</code> and append your own consensus sequences, then run with <code>-lib</code>.</p>
+
+  <h3>Command lines</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># install (bioconda has 4.2.4; 4.2.6 is on GitHub); Dfam partitions are downloaded separately with FamDB</span>
+conda create -n rm -c conda-forge -c bioconda repeatmasker
+conda activate rm
+
+<span class="c"># A. Dfam only, by clade (needs the FamDB partition that covers your clade)</span>
+RepeatMasker -species rodentia -engine rmblast -pa 8 -xsmall -a -gff -dir rm_dfam genome.fa
+
+<span class="c"># B. Dfam families of the clade + your own de novo library in one FASTA</span>
+famdb.py -i Libraries/famdb families --format fasta_name --ancestors --descendants \
+    'rodentia' --include-class-in-name &gt; dfam_rodentia.fa
+cat dfam_rodentia.fa my_species-families.fa &gt; combined.fa
+RepeatMasker -lib combined.fa -engine rmblast -pa 8 -xsmall -a -gff -dir rm_comb genome.fa</pre></div>
+  <dl class="defs">
+    <dt><code>-pa 8</code></dt><dd>Run 8 search jobs at once. Each RMBlast job uses 4 cores, so <code>-pa 8</code> needs about 32 cores (nhmmer: 2 per job). Long contigs are cut into 60-kb pieces with 2-kb overlaps (<code>$fragmentSize</code> and <code>$overlapLen</code> in the 4.2.6 script), so even one big contig runs in parallel.</dd>
+    <dt><code>-xsmall</code></dt><dd>Write repeats in lowercase, the rest in capitals (soft-masking, see <a href="#s01">01</a>). Without it repeats are replaced by <code>N</code> (hard-masking); <code>-x</code> uses <code>X</code>.</dd>
+    <dt><code>-a</code></dt><dd>Also write every alignment to a <code>.align</code> file. Needed for repeat landscapes. A large file; compress it with gzip (the landscape script reads <code>.align.gz</code>).</dd>
+    <dt><code>-s</code> / <code>-q</code> / <code>-qq</code></dt><dd>Slow: finds 0-5 % more repeat DNA, 2.5 times slower. Quick: misses 5-10 %, 3-4 times faster. Rush: misses 10-25 % (figures from the help file, measured on mammals). The settings change the seed word length (how long an exact word match must be before an alignment is tried); they have less effect on nhmmer.</dd>
+    <dt><code>-nolow</code></dt><dd>Do not mask simple repeats and low-complexity DNA. The help file suggests it when the masked sequence will be used to look for exons.</dd>
+    <dt><code>-noint</code></dt><dd>Only simple repeats and low-complexity DNA. Useful to see <span class="tip" title="Microsatellite (simple sequence repeat): a tandem repeat of a very short unit, 1-6 bp, such as (CA)n or (TTA)n.">microsatellites</span> that the full run hides inside the <span class="tip" title="Poly-A tail: the run of A bases at the 3' end of many SINE and LINE copies, left by the way they copy themselves through RNA.">poly-A tails</span> of SINEs and LINEs.</dd>
+    <dt><code>-gff</code>, <code>-dir</code></dt><dd>Extra GFF file; output folder (default: next to the input file).</dd>
+  </dl>
+  <p><b>Time.</b> The help file benchmarks 1 Mb of human sequence in 15 seconds on 16 cores with RMBlast and Dfam 3.9, and says run time grows in proportion to length. That gives, as a rough extrapolation, about 3,000 × 15 s ≈ 12-13 hours for a 3-Gb mammal genome on 16 cores; nhmmer took ten times longer in the same benchmark (2 min 30 s per Mb).</p>
+
+  <h3>The output files</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>File</th><th>Content</th></tr></thead>
+    <tbody>
+      <tr><td><code>genome.fa.out</code></td><td>The annotation table: one line per repeat copy (or fragment). Explained in the box below.</td></tr>
+      <tr><td><code>genome.fa.masked</code></td><td>The genome with repeats lowercased (<code>-xsmall</code>) or replaced by N.</td></tr>
+      <tr><td><code>genome.fa.tbl</code></td><td>Summary: GC level, bases masked, and number of elements, bp and % of sequence for each class (SINEs, LINEs, LTR elements, DNA elements, Unclassified, Satellites, Simple repeats, Low complexity).</td></tr>
+      <tr><td><code>genome.fa.align</code></td><td>With <code>-a</code>: each alignment of genome to consensus. Under each: <code>Kimura (with divCpGMod) = …</code>, the divergence used for landscapes.</td></tr>
+      <tr><td><code>genome.fa.cat.gz</code></td><td>Raw matches before <code>ProcessRepeats</code>. Keep it: running <code>ProcessRepeats</code> on it rebuilds <code>.out</code> and <code>.tbl</code> with other options in a small fraction of the original run time.</td></tr>
+      <tr><td><code>genome.fa.out.gff</code></td><td>With <code>-gff</code>: the same annotation in GFF.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tool explain" id="s04-out-tool">
+    <div class="tool-head"><span class="tool-tag">Explain</span><h3 id="s04-out-h">Reading a <code>.out</code> line, column by column</h3></div>
+    <p class="tool-note">Three <b>toy</b> lines (invented names and positions) in the exact layout of a RepeatMasker <code>.out</code> file. Point at, tap or tab to any value. Note how the three "position in repeat" columns change order between a <code>+</code> line and a <code>C</code> line.</p>
+    <div class="toy" id="s04-out-pre" aria-describedby="s04-out-exp"></div>
+    <div class="note" id="s04-out-exp" aria-live="polite">Point at a value in the table above.</div>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: masking is like highlighting a book</summary><div class="in">
+    <p>Imagine a book in which the same 300-word advertisement has been printed 100,000 times, each copy with a few typos added by later reprints. You want to read the story. You take a list of known advertisements (the library), find every printed copy, even damaged ones, and highlight it in grey (lowercase). The story stays readable; the adverts are marked, not cut out.</p>
+    <div class="toy">story text ... <span class="h">buy now cheap watchs best prise</span> ... more story
+library:     <span class="a">buy now cheap watches best price</span>
+differences:                   <span class="x">^</span>          <span class="x">^</span>      2 typos in 32 letters ≈ 6 % divergence</div>
+    <p>Copies with few typos were printed recently; copies with many typos are old. Counting how many copies have 1, 2, 3 … % typos tells you when the advertising campaigns happened. That count is the repeat landscape.</p>
+    <p>Hard-masking would black out the adverts completely (N). The gene finders of <a href="#s06">section 06</a> want the grey highlight, because some real sentences (exons) overlap an advert.</p>
+  </div></details>
+
+  <h3>Common pitfalls with RepeatMasker</h3>
+  <ul>
+    <li><b>Gene families in the library.</b> A de novo library can contain consensus sequences built from multi-copy genes (for example olfactory receptors or zinc-finger genes). RepeatMasker then masks those genes as "repeats", and gene prediction later misses them. Clean the library against proteins first (<a href="#s03">03</a>; EDTA, for example, takes a CDS file "to purge gene sequences in the TE library"). Even with Dfam, the help file warns that real genes derived from transposable elements can be partly masked.</li>
+    <li><b>Simple repeats hide inside elements.</b> Microsatellites that grew out of SINE or LINE poly-A tails are reported as part of the element. Run <code>-noint</code> separately if you need every microsatellite.</li>
+    <li><b>Only short units count as "Simple_repeat".</b> The internal TRF passes look for units up to 10 bp. A 180-bp satellite is masked only if your library contains it; otherwise use a tandem-repeat finder (below).</li>
+    <li><b>Masked bases and class totals differ.</b> The help file says the "bases masked" line of <code>.tbl</code> and the sum of the classes need not agree exactly (masking uses the raw matches; very short fragments are masked but not annotated).</li>
+    <li><b>Old versions had silent bugs.</b> Before 4.2.6, a long file path (about 260 characters) made TRF crash inside RepeatMasker and simple repeats were silently missing. From 4.1.1 to 4.2.2 the staged search was not applied to rodents (lower sensitivity). Write the version into your methods.</li>
+  </ul>
+
+  <h3 id="s04-land-h">Repeat landscapes: how old are the copies?</h3>
+  <p>When a transposable element inserts, the new copy is identical to its source. From then on it collects random mutations at the neutral rate. Its <dfn>divergence</dfn> from the family consensus therefore grows with age. A histogram of how many bases of the genome sit at 0-1 %, 1-2 %, 2-3 % … divergence, stacked by repeat class, is a <dfn>repeat landscape</dfn>. Peaks at low divergence are recent bursts of activity; broad humps at 20-30 % are ancient families.</p>
+  <p>Two corrections make the raw percentage a better clock:</p>
+  <dl class="defs">
+    <dt>Kimura 2-parameter</dt><dd>A position can mutate twice (A→G→A), and the second hit hides the first. The <span class="tip" title="Kimura 2-parameter (K2P) distance: a formula that estimates the true number of substitutions per site from the observed fractions of transitions (p) and transversions (q): K = −½ ln[(1 − 2p − q)·√(1 − 2q)]. It is larger than the raw mismatch fraction, more so for old copies.">Kimura 2-parameter</span> formula estimates the true number of changes from the observed <span class="tip" title="Transition: a change between the two purines (A↔G) or the two pyrimidines (C↔T). The most common kind of point mutation.">transitions</span> (p) and <span class="tip" title="Transversion: a change between a purine and a pyrimidine (for example A↔C or G↔T).">transversions</span> (q): <code>K = −½ ln[(1 − 2p − q)·√(1 − 2q)]</code>. Gap positions are not counted.</dd>
+    <dt>CpG rule</dt><dd>In the dinucleotide CG (<span class="tip" title="CpG: a C followed by a G on the same strand. In mammals the C of CpG is usually methylated, and methylated C turns into T by deamination much faster than other bases change. So CpG sites in a repeat decay very fast.">CpG</span>), methylated C mutates to T very fast, so CpG-rich young elements look older than they are. RepeatMasker's rule, at each CpG site of the consensus: two transitions count as one; a single transition counts as 1/10; transversions count normally. The help says this applies to organisms with CpG methylation (mammals do).</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. RepeatMasker must have been run with -a (alignments)</span>
+<span class="c"># 2. per-family and per-class divergence summary (reads the Kimura line under each alignment)</span>
+calcDivergenceFromAlign.pl -s genome.divsum genome.fa.align.gz
+<span class="c"># 3. landscape as an HTML page; -g = genome size in bp (or -twoBit genome.2bit, which excludes Ns)</span>
+createRepeatLandscape.pl -div genome.divsum -g 2992238030 -t "my genome" &gt; genome_landscape.html</pre></div>
+  <p>Both scripts are in the <code>util/</code> folder of RepeatMasker. The <code>.divsum</code> file has two parts: the bp-weighted mean Kimura divergence of each family, and a table of bp per class in 1-% bins from 0 to 70 %. Simple repeats and low-complexity DNA get no divergence. To turn divergence into years you need a neutral substitution rate per year for your lineage, which is a separate assumption, so many papers show divergence only.</p>
+
+  <div class="tool" id="s04-land-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-land-h2">Build a toy landscape from simulated copies</h3></div>
+    <p class="tool-note">Three <b>invented</b> families. Each copy is simulated base by base: it receives random mutations according to its age (2 of 3 mutations are transitions), and at CpG sites transitions happen faster by the factor you set. Each copy is then scored against its consensus with the same calculation RepeatMasker uses. Switch the measure and watch the peaks move. "True age" is the number of mutations per normal (non-CpG) base that the simulation actually applied.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Divergence measure" id="s04-land-seg">
+        <button type="button" data-m="raw" aria-pressed="false">raw mismatch %</button>
+        <button type="button" data-m="k2p" aria-pressed="false">Kimura</button>
+        <button type="button" data-m="cpg" aria-pressed="true">Kimura + CpG rule</button>
+      </div>
+      <label>CpG transitions faster by<output id="s04-land-cpgv">10×</output><input type="range" id="s04-land-cpg" min="1" max="20" step="1" value="10"></label>
+    </div>
+    <div class="svgbox"><svg id="s04-land-svg" viewBox="0 0 760 300" width="100%" style="min-width:560px" role="img" aria-label="Toy repeat landscape: base pairs per 1 percent divergence bin, stacked by family"></svg></div>
+    <div class="legend" id="s04-land-leg"></div>
+    <div class="readout" id="s04-land-out"></div>
+  </div>
+  <p>What the toy shows: raw mismatch percentages squeeze the old family to the left (multiple hits are invisible); Kimura spreads it back to its true age. The CpG-rich SINE-like family looks older than it is under plain Kimura when CpG transitions are fast; the CpG rule pulls it back. The CpG-poor L1-like family hardly changes.</p>
+
+  <div class="note">
+    <b>In our projects: RepeatMasker on species A.</b> The Hiller lab annotated the assembly of our rodent species A (not yet published, so no name or exact numbers here) with RepeatMasker and a RepeatModeler2 de novo library (family names like <code>rnd-1_family-5</code>); the exact versions and options of that run are not recorded in our files. In the soft-masked genome about half of the bases are lowercase. Summing the per-family table gives a few per cent more than that; the reason for the gap is not checked (overlapping rows are one possibility, the help-file warning above another). By class, "Unknown" is the largest (more than a third of the genome), and over a hundred of its families, together more than a tenth of the genome, turned out to be SINEs (<a href="#s03">03</a>); LINEs (all L1) follow with roughly a tenth, while LTR elements, simple repeats and DNA transposons each cover only a few per cent or less. The largest single family is an L1 covering about 5 % of the genome at a low mean divergence, a young and recently active family. Weighted by length, LINEs have the lowest mean divergence of the classes, and LTR and Unknown families the highest. Which divergence measure the table holds (raw or Kimura) is not recorded, so compare such numbers only with each other.
+  </div>
+
+  <h3>Fast masking without a library: WindowMasker and Red</h3>
+  <p>Both programs count <span class="tip" title="k-mer: a word of k letters taken from the sequence (see lesson 1).">k-mers</span> (<a href="../01-pre-assembly/#km">lesson 1</a>) in the assembly itself. A stretch made of words that occur thousands of times is called repetitive. They are fast and need no curated library, but they give no family names, no classes and no divergence, so no landscape.</p>
+  <h3>WindowMasker (NCBI)</h3>
+  <p>Part of the NCBI C++ toolkit; the bioconda <code>blast</code> package installs it. It works in two stages. <b>Stage 1</b> (<code>-mk_counts</code>) counts every word of length <dfn>unit</dfn> in the genome and on its reverse strand. The unit length is chosen from the genome size; the code picks 15 for a 2-3 Gb genome. Words rarer than the 90th percentile are not stored, and thresholds are set at the 99th, 99.5th and 99.8th percentiles of the counts. <b>Stage 2</b> (<code>-ustat</code>) slides a window of five overlapping units along each sequence, scores it as the average count of its units, and masks windows whose score is above a threshold set at the 99.5th percentile of word counts; gaps between masked windows are filled if every base lies in a window above the 99th-percentile value. <code>-dust true</code> adds the <span class="tip" title="DUST: an algorithm that marks low-complexity sequence (for example ATATAT or AAAAAA) by counting repeated triplets in a window. Used by BLAST.">DUST</span> low-complexity filter.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># stage 1: word counts, once per genome</span>
+windowmasker -mk_counts -in genome.fa -out genome.wm_counts
+<span class="c"># stage 2: mask; fasta output = lowercase repeats</span>
+windowmasker -ustat genome.wm_counts -in genome.fa -dust true -outfmt fasta -out genome.wm.fa
+<span class="c"># or intervals: "START - END", 0-based, per sequence</span>
+windowmasker -ustat genome.wm_counts -in genome.fa -dust true -outfmt interval -out genome.wm.txt</pre></div>
+  <p>WindowMasker ignores the case of the input: all input is treated as unmasked. NCBI's eukaryotic annotation pipeline masks human and mouse with RepeatMasker and Dfam, and <b>all other species with WindowMasker</b>, so if NCBI annotated your animal, that <span class="tip" title="RefSeq: NCBI's curated reference set of genomes, transcripts and proteins; NCBI annotates many new animal genomes itself.">RefSeq</span> annotation was made on a WindowMasker-masked genome.</p>
+  <h3>Red (REpeat Detector)</h3>
+  <p>Red (Girgis 2015; version 2.0, code last changed 2018) also counts k-mers and compares each count with what a background model built from shorter words predicts, but then <b>trains itself</b>: it labels likely repeat and non-repeat regions from these scores and trains a <span class="tip" title="Hidden Markov model: here a model with 'repeat' and 'non-repeat' states that learns what score patterns each state produces, then labels every base of the genome.">hidden Markov model</span> on them, then scans the whole genome with that model. This is the "machine learning" in its description; no external training data are needed. Output is soft-masked.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Red reads every .fa file in a directory</span>
+mkdir red_in red_msk red_rpt &amp;&amp; ln -s "$PWD/genome.fa" red_in/genome.fa
+Red -gnm red_in -msk red_msk -rpt red_rpt -frm 2 -cor 16
+<span class="c"># red_msk/genome.msk = soft-masked FASTA; red_rpt/genome.rpt = repeat intervals (-frm 2: name, start, end; 0-based, end exclusive)</span></pre></div>
+  <p><b>When to use which.</b> RepeatMasker with a good library when you want to know what the repeats are, how much of each, and how old (what genome papers report). WindowMasker or Red when you only need a mask quickly, for example before gene prediction of a draft, before a BLAST search, or as a cross-check: bases masked by Red but not by RepeatMasker can point to families missing from your library.</p>
+
+  <h3 id="s04-trf-h">Tandem repeats: TRF</h3>
+  <p><span class="tip" title="Tandem Repeats Finder by Gary Benson (1999). Current code: version 4.10.0 release candidate on GitHub (Benson-Genomics-Lab/TRF); 4.09.1 is the last full release.">Tandem Repeats Finder</span> (TRF) finds arrays of head-to-tail copies without being told the unit. It spots pairs of identical short words that sit the same distance <i>d</i> apart again and again, tests statistically whether that looks like a tandem repeat of period <i>d</i>, then aligns the stretch to a consensus unit and scores it. It finds units of 1 to 2000 bp. Seven numbers follow the file name:</p>
+  <div class="code"><button type="button">copy</button><pre>trf genome.fa 2 7 7 80 10 50 500 -d -h          <span class="c"># the README's "recommended parameters"</span>
+trf genome.fa 2 5 7 80 10 50 2000 -d -h         <span class="c"># the README's Quick Start line: milder mismatch penalty, units up to 2000 bp</span>
+trf genome.fa 2 7 7 80 10 50 2000 -d -h -l 6    <span class="c"># chromosome-scale satellite arrays: allow arrays up to 6 Mb</span></pre></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Value</th><th>Name</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>2</code></td><td>Match</td><td>Points for each base that agrees with the consensus unit.</td></tr>
+      <tr><td><code>7</code></td><td>Mismatch</td><td>Penalty for a disagreeing base. 3 is permissive, 7 strict.</td></tr>
+      <tr><td><code>7</code></td><td>Delta</td><td>Penalty for an insertion or deletion.</td></tr>
+      <tr><td><code>80</code></td><td>PM</td><td>Expected % identity between neighbouring copies (80 or 75; the detection statistics exist only for these).</td></tr>
+      <tr><td><code>10</code></td><td>PI</td><td>Expected % indels between copies (10 or 20). 75/20 gives similar results but can take ten times longer.</td></tr>
+      <tr><td><code>50</code></td><td>Minscore</td><td>Report arrays with an alignment score of at least 50, e.g. 25 perfectly matching bases (5 copies of a 5-mer).</td></tr>
+      <tr><td><code>500</code></td><td>MaxPeriod</td><td>Largest unit to report (1-2000).</td></tr>
+      <tr><td><code>-d</code>, <code>-h</code></td><td>options</td><td><code>-d</code> writes a plain-text <code>.dat</code> file (one line per array: start, end, period, copies, consensus size, % matches, % indels, score, A C G T %, entropy, consensus unit, sequence). <code>-h</code> stops the HTML pages (thousands for a genome) and switches <code>-d</code> on. <code>-m</code> writes a masked FASTA (N).</td></tr>
+      <tr><td><code>-l 6</code></td><td>max length</td><td>Longest array expected, in millions of bp; default 2. TRF's own help says the human genome hg38 needs <code>-l 6</code>; more needs more memory.</td></tr>
+    </tbody>
+  </table></div>
+  <p>TRF reports one array at up to three period sizes (a (CA)<sub>n</sub> array can also appear as period 4 and 6). Remove these overlaps before you count satellite content.</p>
+
+  <div class="tool" id="s04-trf-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-trf-h2">A toy tandem-repeat finder</h3></div>
+    <p class="tool-note">A random sequence with one tandem array in the middle. Set the unit length, the number of copies and how many bases of the copies have mutated, then the TRF-style mismatch penalty and Minscore. The toy tries every period 1-60: it finds the longest stretch where bases mostly equal the base one period later, builds a consensus unit by majority, scores every base against that unit (+2 per match, minus the penalty per mismatch) and keeps the best-scoring part. It reports the shortest period that scores within 10 % of the best. <b>Simplified</b>: no insertions or deletions, and none of TRF's statistical detection rules.</p>
+    <div class="controls">
+      <label>Unit length (period)<output id="s04-trf-pv">12 bp</output><input type="range" id="s04-trf-p" min="2" max="50" step="1" value="12"></label>
+      <label>Copies<output id="s04-trf-cv">8</output><input type="range" id="s04-trf-c" min="2" max="15" step="1" value="8"></label>
+      <label>Mutated bases in copies<output id="s04-trf-mv">10 %</output><input type="range" id="s04-trf-m" min="0" max="40" step="1" value="10"></label>
+      <label>Minscore<output id="s04-trf-sv">50</output><input type="range" id="s04-trf-s" min="20" max="200" step="5" value="50"></label>
+      <div class="seg" role="group" aria-label="Mismatch penalty" id="s04-trf-mm">
+        <button type="button" data-v="3" aria-pressed="false">mismatch 3</button>
+        <button type="button" data-v="5" aria-pressed="false">5</button>
+        <button type="button" data-v="7" aria-pressed="true">7</button>
+      </div>
+    </div>
+    <div class="toy" id="s04-trf-seq" aria-label="Toy sequence with the detected array marked"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>true array (simulated)</span><span><i style="background:var(--bad)"></i>mutated base</span><span><i style="background:var(--het)"></i>detected by the toy (underlined)</span></div>
+    <div class="svgbox"><svg id="s04-trf-svg" viewBox="0 0 760 220" width="100%" style="min-width:560px" role="img" aria-label="Best score for every tried period, with the Minscore line"></svg></div>
+    <div class="readout" id="s04-trf-out"></div>
+  </div>
+  <p>Things to try: raise the mutation level until the array drops under Minscore; switch the penalty to 3 and the array is found again, but so are short junk "repeats" in the random flanks at low periods. Watch the bars at twice and three times the true period: real TRF reports those too.</p>
+
+  <h3>Other tandem-repeat tools</h3>
+  <dl class="defs">
+    <dt>ULTRA</dt><dd>Olson &amp; Wheeler 2024, current release v1.2.0 on GitHub (TravisWheelerLab/ULTRA), 1.2.1 on bioconda. Uses a <span class="tip" title="Hidden Markov model: here a model with a background state and repeat states for each period, which labels each base as part of a repeat or not.">hidden Markov model</span>; the RepeatMasker help file names it as another option next to TRF. It reports where the unit changes inside an array (<dfn>subrepeats</dfn>), can estimate its own false-discovery rate by shuffling (<code>--fdr</code>) and tune itself to an unusual base composition (<code>--tune</code>). Default maximum period 100; for satellites set <code>-p 500</code> or more. Example from its README: <code>ultra --read_all -p 500 -t 8 -i 3 -d 3 -o out.tsv genome.fa</code>; <code>--mask masked.fa</code> writes lowercase masking.</dd>
+    <dt>TRASH</dt><dd>Tandem Repeat Annotation and Structural Hierarchy (Wlodzimierz et al. 2023), built for centromeric satellites. It scores windows by their share of repeated k-mers, finds the period, maps every monomer, and can find <span class="tip" title="Higher-order repeat (HOR): a block of several different monomers that is itself repeated as a unit, as in human alpha satellite.">higher-order repeats</span>. Output: monomer and array tables (CSV) and GFF. The authors now point to TRASH_2 (GitHub vlothec/TRASH_2, rewritten, "early-development", needs R, MAFFT and nhmmer: <code>TRASH.R -f genome.fa -o outdir -p 16</code>; units 7-1000 bp by default).</dd>
+    <dt>TideCluster</dt><dd>Novák and colleagues (GitHub kavonrtep/TideCluster, version 1.22.3, October 2026). Finds arrays with TideHunter (a tandem-repeat finder first written for noisy long reads), groups arrays from all over the genome into families (default: at least 75 % identity over 80 % of the shorter array), optionally names them with RepeatMasker and a satellite library, and builds family consensus units with <span class="tip" title="TAREAN (TAndem REpeat ANalyzer): a k-mer-based method from the RepeatExplorer2 project that rebuilds the monomer consensus of a satellite. It was first made for unassembled short reads; TideCluster applies it to array sequences from the assembly.">TAREAN</span>. Reports per-array monomer size and higher-order structure. Default minimum array length 5 kb (<code>-m</code>). Example: <code>TideCluster.py run_all -c 32 -f genome.fa -pr mygenome</code>; <code>--long</code> searches units up to 25 kb.</dd>
+  </dl>
+  <p>Rule of thumb: TRF or ULTRA for microsatellites and a first genome-wide table; TideCluster when you want satellite <b>families</b> across the genome; TRASH for monomers and higher-order structure of centromeric arrays. A satellite can be built from a piece of a SINE, so the same stretch may be called "SINE" by RepeatMasker and "satellite" by a tandem finder; both are right.</p>
+
+  <div class="note">
+    <b>In our projects: three lessons about tandem repeats and masks.</b> (1) For the satellite study (CLsat workflow) TRF ran on whole genomes with <code>2 5 7 80 10 50 2000</code>, keeping units of 80-300 bp with at least 10 copies as satellite candidates. (2) In the published genome of a close relative of our species A, most of the handful of most heterozygous 100-bp windows lay in (TA)<sub>n</sub>, (GT)<sub>n</sub> or (CT)<sub>n</sub> microsatellites: the reads showed two array lengths, and the variant caller wrote that length difference as a run of false "SNVs" (single-base variants) (a small fraction of a per cent of the heterozygous calls sat in such evenly spaced runs, more in that genome than in species A). Mask or filter tandem repeats before counting heterozygosity (<a href="#s09">09</a>). (3) When we tested masks before demographic analysis, a RepeatMasker mask cut a <span class="tip" title="Population-size peak: the highest point of the curve of past effective population size that PSMC estimates from one genome (demography comes in a later lesson).">population-size peak</span> of that genome roughly in half, but a <b>random mask of the same size</b> also lowered it clearly. Much of the effect was simply less data. Always compare a mask with a size-matched random mask.
+  </div>
+</section>

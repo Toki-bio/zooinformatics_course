@@ -1,0 +1,176 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>Discovering new SINEs</h2>
+  <p class="lede">Section 02 searched a genome with a SINE you already had. Here there is nothing to start from: no <span class="tip" title="Consensus: for each column of an alignment of many copies, the most common base. It stands for the whole family.">consensus</span> exists for your species. Discovery has four jobs: find places that look like SINE copies, group them and make first consensuses, check where the head came from, and find the true ends of the element. The last two are where most mistakes are made.</p>
+
+  <h3>What a SINE leaves in the genome</h3>
+  <p>Programs that look for new SINEs use four kinds of signal (the parts are described in <a href="#s01">section 01</a>). None of them is proof on its own.</p>
+  <dl class="defs">
+    <dt>A pol III promoter in the head</dt><dd>A tRNA-derived head carries the <span class="tip" title="A box and B box: two short internal promoter motifs of tRNA genes, recognised by RNA polymerase III (pol III). 5S rRNA genes have an A box, an intermediate element and a C box instead of a B box.">A box and B box</span>. They are short patterns (5-11 bases) and occur by chance in any genome, so a box is "an indication, not a proof"; 5S-derived heads have no B box at all.</dd>
+    <dt>A tail at the 3′ end</dt><dd>Often a <span class="tip" title="Poly(A) tail: a run of A at the 3′ end of the element. It is longest in young copies and shortens with time.">poly(A) tail</span> or another simple repeat, sometimes after a pol III <span class="tip" title="Terminator: a short run of T where pol III stops. The shortest reported in the B2, Ves and Dip SINEs are TCTTT (B2) and TATTT (Ves, Dip).">terminator</span>. In B2, Dip and Ves SINEs young copies have long tails that shorten over generations (Vassetzky et al. 2021).</dd>
+    <dt>Target site duplications</dt><dd><span class="tip" title="Target site duplication (TSD): a short stretch of genome DNA (often 5-20 bp) that appears on both sides of an inserted copy, because the insertion site was cut in a staggered way and the gaps were filled in.">TSDs</span> on both sides of a copy. They erode with age, some SINE families do not make them, and other elements make them too. In our lab they are a bonus fact a person can look at, never a criterion.</dd>
+    <dt>Many copies with unique flanks</dt><dd>The defining property. A SINE is an interspersed repeat: the same element sits in thousands of different places, so the copies agree with each other while the DNA around each copy (its <span class="tip" title="Flank: the genome sequence on either side of a copy, outside the element itself.">flanks</span>) is unique. A <span class="tip" title="Segmental duplication: a long stretch of DNA copied once or a few times within a genome, together with any SINE inside it.">segmental duplication</span> or a tandem array also has many copies, but there the neighbourhood was copied too.</dd>
+  </dl>
+
+  <h3>Three ways to collect candidates</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Approach</th><th>What it looks for</th><th>Used by</th><th>Blind spot</th></tr></thead>
+    <tbody>
+      <tr><td><b>Faint similarity</b> to known SINEs</td><td>Short pieces of any known SINE, matched with a sensitive aligner</td><td>SINE-de-novo-genome-scan (lab)</td><td>A family that shares nothing with any SINE in the database</td></tr>
+      <tr><td><b>Structure</b></td><td>A box, then B box 25-50 bp later, then a tail, with TSDs around (the SINE-Finder pattern)</td><td>AnnoSINE_v2 mode 2, SINE_Scan</td><td>Heads without a B box (5S), worn boxes; many chance matches</td></tr>
+      <tr><td><b>Profiles</b> of known families</td><td><span class="tip" title="Profile hidden Markov model (profile HMM): a statistical description of an alignment of a family, position by position, used by HMMER to find distant members.">Profile HMMs</span> of known SINE families</td><td>AnnoSINE_v2 mode 1</td><td>Only families related to those in its HMM set</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>SINE-de-novo-genome-scan (our lab)</h3>
+  <p>The lab's discovery tool (<a href="https://github.com/Toki-bio/SINE-de-novo-genome-scan">github.com/Toki-bio/SINE-de-novo-genome-scan</a>) starts from one premise, written in its README: many SINEs share at least limited similarity with some known SINE, so even a faint match is a lead. It cuts a database of known SINE consensuses (for example from <span class="tip" title="SINEBase (sines.eimb.ru): a database of SINE families and their consensus sequences, organised by taxon.">SINEBase</span>) into short pieces and looks for each piece in the genome.</p>
+  <ol class="steps">
+    <li><div><b>Remove near-duplicates</b><div class="d">The SINE database is reduced at 95 % identity with <span class="tip" title="vsearch: a fast program for clustering and comparing sequences. Clustering keeps one representative (the centroid) per group of similar sequences.">vsearch</span> (the README gives the tool and the cutoff, no script).</div><div class="t">SINEs.fa → SINEBase.nr95.fa</div></div></li>
+    <li><div><b>Shred, region-aware</b> (<code>01_sanitize_shred.sh</code>)<div class="d">Each SINE is cut into 50-bp pieces. Head and tail are diagnostic, so they are cut finer: bases 1-150 every 10 bp; the middle (151 to length−100, only for SINEs longer than 250 bp) every 25 bp; the last 99 bp (only for SINEs longer than 150 bp) every 25 bp. Each piece keeps its origin in the name, for example <code>&gt;SINE_ID|5p:11-60</code>.</div></div></li>
+    <li><div><b>Drop simple pieces, cluster</b> (<code>02_filter_lc_cluster_nr85.sh</code>)<div class="d">Pieces with a run of one base, two bases or three bases longer than 15 bp are removed; the rest are clustered at 85 % on both strands and only the centroids are kept.</div></div></li>
+    <li><div><b>Scan</b> (<code>sine_scan.sh</code>)<div class="d">The genome is cut into 100-Mb chunks; every chunk is searched with all pieces using <span class="tip" title="ssearch36: full Smith-Waterman local alignment from the FASTA36 package. Slow but sensitive; it finds short, diverged matches that fast seed-based tools miss.">ssearch36</span>. A hit is kept at ≥ 65 % identity when the aligned length is ≥ 90 % of the piece.</div></div></li>
+    <li><div><b>Merge into candidate loci</b><div class="d">Each hit is widened by 50 bp on both sides (<code>FLANK=50</code>); widened hits on the same strand that overlap or touch become one <span class="tip" title="Locus (plural loci): one place in the genome, here one candidate copy.">locus</span>, so hits up to 100 bp apart join. (The README says "within 500 bp"; the code uses the 50-bp padding.) The loci are written as <span class="tip" title="BED: a plain-text table of genome intervals: sequence name, start (counted from 0), end, then optional name, score and strand.">BED</span> and FASTA.</div><div class="t">merged_loci.bed, merged_loci.fa</div></div></li>
+    <li><div><b>Hand over</b><div class="d">The candidates go to <span class="tip" title="SubFam (Toki-bio): orders copies so that similar ones sit together (a k-mer tree; older versions used MAFFT), cuts the ordered list into chunks of 50 and makes one consensus per chunk.">SubFam</span>, which sorts them, cuts the sorted list into chunks and makes one consensus per chunk (<a href="#s04">section 04</a>). These loci are anchors grown into candidates, not verified elements.</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 0. reduce the SINE database at 95 % (the README names vsearch and 0.95; this is one way to do it)</span>
+vsearch --cluster_fast SINEs.fa --id 0.95 --centroids SINEBase.nr95.fa
+<span class="c"># 1-2. shred and filter</span>
+bash 01_sanitize_shred.sh SINEBase.nr95.fa SINEBase.nr95
+bash 02_filter_lc_cluster_nr85.sh SINEBase.nr95.fragments.norm.fa 8
+<span class="c"># 3. scan; MIN_ID, MIN_COV and FLANK are environment variables (defaults 65, 0.90, 50)</span>
+<span class="c">#    at most 8 chunks at once, 4 ssearch36 threads each (the script's defaults)</span>
+MAX_CONCURRENT=8 SSEARCH_THREADS=4 bash sine_scan.sh genome.fa SINEBase.nr95.fragments.nr85.fa
+<span class="c"># results: sine_search_out/genome/merged_loci.bed and merged_loci.fa</span></pre></div>
+
+  <p><b>Mask what you know, scan what is left.</b> In a rodent genome the known SINEs hit everywhere, and the scan slows down. The <dfn>minus bank</dfn> trick removes every locus of the known families first and scans only the rest of the genome, so new families are not buried under a million copies of an old one. <code>sine_scan.sh</code> accepts such a file (headers in the form <code>chrom:start-end()</code>, as <span class="tip" title="bedtools: a toolkit for genome intervals. bedtools complement gives the parts of the genome not covered by a BED file; bedtools getfasta cuts those parts out as FASTA.">bedtools getfasta</span> writes them) and maps hits back to the original genome given in <code>TARGET_GENOME</code>:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># minus.fa = the genome without the loci of known families (pieces of at least 100 bp)</span>
+TARGET_GENOME=genome.fa bash sine_scan.sh minus.fa SINEBase.nr95.fragments.nr85.fa</pre></div>
+
+  <div class="note"><b>In our projects: two rodents</b>
+    <p style="margin-top:6px">In species A and its close relative the known SINE family has more than a million loci per genome (<a href="#s02">section 02</a>). A scan of the whole genome with that family included was projected to take many hours, so a 10 % sample was scanned first. Then all loci of the known family were masked out: the scan of the remaining genome (the minus bank) was about ten times faster and gave tens of thousands of candidates per genome. After dropping single copies, 30,000 random candidates per species went into SubFam, which made 600 chunk consensuses each, ready to open in <span class="tip" title="ViewAlign: the lab's browser-based alignment viewer (Toki-bio/MSA-viewer).">ViewAlign</span>. Our project log marks these as preliminary, pending manual review: the alignments are where a person starts looking, not a list of new SINEs.</p>
+  </div>
+
+  <h3>AnnoSINE_v2</h3>
+  <p>AnnoSINE_v2 (Liao, Sun and Ou 2024, <i>Mobile DNA</i>; code at <a href="https://github.com/liaoherui/AnnoSINE_v2">github.com/liaoherui/AnnoSINE_v2</a>) extends AnnoSINE, a tool built for plant genomes (Li et al. 2022), to animals and to large genomes. It has three modes: <code>1</code> profile HMM search, <code>2</code> structure search, <code>3</code> both. The structure search uses <span class="tip" title="SINE-Finder (Wenke et al. 2011, Plant Cell): a Python script that looks for the pattern A box [GA][CGA]TGG, 25-50 bp spacer, B box GTTC[AG]A, 20-500 bp spacer, a run of at least 6 A or T, with TSDs searched in the 40 bp on either side.">SINE-Finder</span>. Then each candidate passes a chain of filters:</p>
+  <ol class="steps">
+    <li><div><b>TSD search</b> in the flanks of each candidate.</div></div></li>
+    <li><div><b>Copy number and boundary</b><div class="d">The candidate plus 100 bp on each side is searched against the genome. A position belongs to the element if at least 15 % of the hits cover it (<code>-c 0.15</code>). The first and last base of the widened sequence must be covered by at most one hit, which means the flanks must be unique. Candidates whose new ends move too far from the old ones (<code>-s</code>) are dropped.</div></div></li>
+    <li><div><b>Head type</b><div class="d"><span class="tip" title="blastn: the nucleotide search program of NCBI BLAST+.">blastn</span> against a built-in set of 954 tRNA, 712 5S rRNA and 63 7SL RNA sequences. A candidate with a near-perfect hit (<span class="tip" title="E-value: how many hits this good one would expect by chance in a search of this size. The smaller, the less likely chance is.">E-value</span> below 1e-15) is thrown out as a real RNA gene; the others are labelled by their best hit: tRNA, 5S_rRNA, 7SL_RNA or Unknown.</div></div></li>
+    <li><div><b>Other repeats out</b><div class="d">Candidates made mostly of tandem repeats (<span class="tip" title="TRF (Tandem Repeats Finder): finds a short unit repeated head-to-tail. See lesson 3, section 04.">TRF</span>) and candidates flanked by inverted repeats (<span class="tip" title="IRF (Inverted Repeats Finder): finds two inverted copies of the same sequence. Inverted repeats around a short element suggest a MITE, a small DNA transposon, not a SINE.">IRF</span>) are removed; <span class="tip" title="CD-HIT: clusters similar sequences and keeps one representative per cluster.">CD-HIT</span> removes redundancy; RepeatMasker then annotates the genome with the library.</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre>conda install -c bioconda annosine2
+<span class="c"># mode 3 = HMM + structure; -a 2 = plant AND animal HMMs (the default -a 0 uses only plant HMMs)</span>
+AnnoSINE_v2 -t 16 -a 2 3 genome.fa annosine_out
+<span class="c"># main outputs in annosine_out/: Seed_SINE.fa (non-redundant library), Step7_cluster_output.fasta</span></pre></div>
+  <p><b>Check two defaults.</b> <code>-a</code> is <code>0</code>, which searches only the 88 plant SINE profiles; for an animal use <code>-a 1</code> (118 animal profiles from <span class="tip" title="Dfam: an open database of transposable element families with consensus sequences and profile HMMs (lesson 3, section 02).">Dfam</span>) or <code>-a 2</code> (both). And the README and the code disagree: the README lists a minimum copy number of 20 (<code>-minc</code>) and a maximum boundary shift of 80 (<code>-s</code>), the current code sets 1 and 50. Set them yourself and write them down. In our 10 % sample of species A and its close relative, AnnoSINE_v2 (mode 3, <code>-a 2</code>) gave several hundred to about a thousand seeds per genome in a couple of hours each, and the seeds were added to the scan candidates before SubFam.</p>
+
+  <h3>SINE_Scan</h3>
+  <p>SINE_Scan (Mao and Wang 2017, <i>Bioinformatics</i>; version 1.1.1 of 2016 is the last on <a href="https://github.com/maohlzj/SINE_Scan">github.com/maohlzj/SINE_Scan</a>; Perl, BioPerl and Python 2) combines the structure, the copy number and what its authors call the hallmark of transposition. Module 1 finds candidates with an extended SINE-Finder that also knows 7SL and 5S heads. Module 2 verifies them. Module 3 classifies them and annotates the genome. Its verification is the clearest written form of the "unique flanks" idea:</p>
+  <ul>
+    <li>for each candidate, the genome copies are collected (at least 5, <code>-n</code>), and from each copy it takes the 60-bp left flank, the first and last 25 bp of the element and the 60-bp right flank (<code>-F 60</code>, <code>-E 25</code>);</li>
+    <li>these pieces are aligned with <span class="tip" title="MUSCLE: a multiple sequence alignment program (Edgar).">MUSCLE</span>, and a per-column alignment quality score (SAQ) is averaged over the left flank, the element ends and the right flank;</li>
+    <li>a candidate passes if the flanks score at most 0.6 and the ends at least 0.75 (<code>-S</code>, <code>-I</code>), or if the ends beat both flanks by at least 0.3 (<code>-D</code>).</li>
+  </ul>
+  <p>Its user guide shows example alignments of a good SINE and of typical false candidates (no drop in alignment quality at the ends; probably a <span class="tip" title="MITE: miniature inverted-repeat transposable element, a small non-autonomous DNA transposon with terminal inverted repeats.">MITE</span>, a <span class="tip" title="Helitron: a DNA transposon that moves by rolling-circle replication.">Helitron</span> or a <span class="tip" title="Solo LTR: a single long terminal repeat left behind when the two LTRs of a retrotransposon recombined and the inside was lost.">solo LTR</span>) and asks the user to inspect them by eye. A head is assigned to tRNA, 7SL or 5S at ≥ 60 % similarity and ≥ 60 % overlap with the RNA (<code>-t 0.6</code>, <code>-r 0.6</code>).</p>
+
+  <h3>Where did the head come from: tRNA, 7SL or 5S?</h3>
+  <p>Every SINE head descends from a pol III gene: usually a tRNA, sometimes a 7SL RNA or a 5S rRNA (<a href="#s01">section 01</a>). The field's test is similarity to the real RNA genes, not motifs: SINEBase calls a head tRNA-, 5S- or 7SL-derived at ≥ 60 % identity over ≥ 60 nt (Vassetzky and Kramerov 2013). The 7SL case is not only primate business: the shrew mole <i>Uropsilus gracilis</i> carries about 280,000 copies of a <span class="tip" title="Dimeric SINE: one made of two similar head units joined together, like primate Alu.">dimeric</span>, 7SL-derived SINE, Urop (Kosushkin et al. 2026).</p>
+  <p><b>Why gene finders are the wrong judge.</b> Two standard tools recognise these RNAs, and both are tuned to keep SINE copies <i>out</i> of gene lists. <span class="tip" title="tRNAscan-SE: the standard program that finds tRNA genes in genomes, with covariance models of tRNA structure; version 2.0 also scores each hit against isotype-specific models (one per amino acid).">tRNAscan-SE</span> reports a tRNA only from 20 <span class="tip" title="Bit score: an alignment score rescaled so that it can be compared between searches; higher is better.">bits</span> by default. <span class="tip" title="Rfam: a database of RNA families, each described by a covariance model (a profile that models both sequence and base pairing). Infernal's cmscan searches sequences against it.">Rfam</span> accepts a hit only above each family's <span class="tip" title="Gathering threshold (GA): the bit score cut-off Rfam curators set for each family; hits below it are not reported as members.">gathering threshold</span>: 29 bits for tRNA, 38 for 5S rRNA, 70 for the 299-position metazoan 7SL (SRP) model (Rfam 15.1). A head that has decayed for millions of years, or that keeps only part of 7SL, often stays below. So "not found by Rfam" means "not detected at threshold", never "not tRNA-derived".</p>
+  <p><b>What works: a score against a null.</b> Align the head with a set of real tRNA genes (for mammals, for example, a <span class="tip" title="GtRNAdb: the genomic tRNA database, with tRNA gene sets predicted by tRNAscan-SE for many genomes.">GtRNAdb</span> set) with ssearch36. Then shuffle the head 20 times, keeping its base composition, and search again. A head counts when its real score beats every shuffle; the best-matching tRNA gives the likely amino acid (the <span class="tip" title="Isotype: the amino acid a tRNA carries. The anticodon of an old SINE head has often mutated, so the isotype is better read from which tRNA gene matches best overall.">isotype</span>). This is how SINEderella's head check (<code>tools/trna_heads.sh</code>) works, with Rfam and tRNAscan-SE as extra columns.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># heads.fa = the consensuses (and each part of a composite SINE); tRNAs.fa = tRNA genes of a related genome</span>
+<span class="c"># -m 8: tabular output; -E 10: keep even weak hits (the null decides, not the E-value)</span>
+ssearch36 -3 -m 8 -E 10 heads.fa tRNAs.fa &gt; real.m8
+<span class="c"># 20 shuffles that keep the dinucleotide composition (-d), fixed seed for reproducibility</span>
+esl-shuffle -d -N 20 --seed 42 heads.fa &gt; shuf.fa
+ssearch36 -3 -m 8 -E 10 shuf.fa tRNAs.fa &gt; shuf.m8
+<span class="c"># extra columns: all Rfam families (tRNA, 5S, 7SL ...) and tRNAscan-SE with a lower cutoff</span>
+cmscan -E 1 --tblout cm.tbl Rfam.cm heads.fa
+<span class="c"># -X 10: report from 10 bits (default 20); --detail: isotype-model scores</span>
+tRNAscan-SE -E -H --detail -X 10 -o trnascan.out -f trnascan.ss heads.fa</pre></div>
+
+  <section class="tool" aria-labelledby="s03-head-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-head-h">Does this head beat its shuffles?</h3></div>
+    <p class="tool-note">A toy SINE (100 nt) whose first 72 nt descend from a toy tRNA gene. Raise the age: more and more bases of the head change. The figure aligns the SINE with the tRNA (<span class="tip" title="Local alignment (Smith-Waterman): the best-scoring matching stretch of two sequences, ignoring the parts that do not match.">local alignment</span>, ssearch36's default DNA scores: match +5, mismatch −4, gap −12 to open, −4 per base) and does the same for 20 shuffled copies of the SINE. Each dot is one shuffle; the bar is the real score. Then switch the reference to an unrelated tRNA: the control.</p>
+    <div class="controls">
+      <label for="s03-hd"><span class="tip" title="Share of head bases changed since the SINE arose from the tRNA (substitutions plus a few one-base insertions and deletions).">Head age (changed bases)</span><output id="s03-hdo">20 %</output><input type="range" id="s03-hd" min="0" max="70" step="1" value="20"></label>
+      <div class="seg" role="group" aria-label="Reference tRNA">
+        <button type="button" id="s03-ref1" aria-pressed="true">source tRNA</button><button type="button" id="s03-ref2" aria-pressed="false">unrelated tRNA (control)</button>
+      </div>
+      <button type="button" class="btn" id="s03-reshuf" style="align-self:auto">New shuffles</button>
+    </div>
+    <div class="svgbox" id="s03-hfig"></div>
+    <div class="readout" id="s03-hout"></div>
+    <p id="s03-hmsg" style="font-size:14px" aria-live="polite"></p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li>The toy tRNA is a fixed random 72-nt sequence; the control is another one. They are not real tRNAs.</li>
+        <li>Each head base is substituted with probability equal to the age; one in ten changes is a one-base insertion or deletion instead.</li>
+        <li>Score = best local alignment (Smith-Waterman with affine gaps, the scores above). Raw scores, not bits.</li>
+        <li>Shuffles here only keep the counts of A, C, G and T. Real runs keep the dinucleotide counts (<code>esl-shuffle -d</code>), a stricter null, because <span class="tip" title="CpG: a C followed by a G. In vertebrate DNA these sites mutate many times faster than other sites (section 04).">CpG</span> and AT-rich stretches change scores.</li>
+        <li>Verdicts copy SINEderella's report: <b>tRNA</b> = beats every shuffle and passes 60 % over 60 nt; <b>tRNA?</b> = beats every shuffle but fails 60/60; <b>none detected</b> otherwise.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <div class="note"><b>In our projects: degraded heads</b>
+    <p style="margin-top:6px">In a lab test on SINE consensuses of the bat <i>Rhinolophus sinicus</i> (unpublished), every unit had a tRNA-Ile head, 73-93 % identical over 66-75 nt, with scores of 39-82 bits against at most 29 bits for the shuffles. Rfam missed 4 of these heads and tRNAscan-SE missed 2; the search against tRNA genes with the shuffle null found all of them. That result is for these bat SINEs only; it shows the method, not a rule for every family.</p>
+  </div>
+
+  <h3>Where does the SINE end? Extend until the flanks are unique</h3>
+  <p>A discovery tool rarely gets the ends right. A scan hit from a 50-bp piece stops wherever the piece stopped; a consensus made from chunk consensuses can be cut short or run into a tail of variable length. The fix is the same idea as the extend-align-trim curation of lesson 3 (<a href="../03-annotation/#s03">lesson 3, section 03</a>): take the copies with more sequence beyond the current end and see how far they still agree. Inside the element, copies resemble each other; past its end each copy sits in its own unique place, and similarity falls to the level of two random pieces of genome. That level must be <i>measured</i>, not assumed.</p>
+  <p>SINEderella does this in <code>step7_boundary_refine.sh</code>:</p>
+  <ol class="steps">
+    <li><div><b>Measure the background</b><div class="d">300 random 70-bp windows of the genome, 2,000 random pairs, plain (ungapped) identity. It keeps the mean and the share of pairs that are <i>elevated</i>, more than 45 % identical.</div></div></li>
+    <li><div><b>Step outward</b><div class="d">For each subfamily and each side, a 50-bp window is taken just past the copies' end, then 50 bp further, and so on, up to 1,000 bp. Each time 150 random pairs of copies are compared in that window.</div></div></li>
+    <li><div><b>Stop at background</b><div class="d">The boundary is the first window where the elevated share is no more than background + 5 percentage points. Subfamilies with fewer than 7 copies are not tested.</div></div></li>
+  </ol>
+  <p>Why the share of elevated pairs and not the mean identity? The script's own comment explains: a mean is blind to a mixed population. If half of the copies go on (a longer subgroup) and half are already in unique flank, the mean can fall near background although a real conserved group is still there. On real data (a SINE subfamily of the hedgehog <i>Erinaceus europaeus</i>) the mean-based version called the boundary at 50 bp; the true boundary, found by the share test and confirmed by eye, was at 100-150 bp. A second trap is noted there too: the 100 best-scoring copies are the least diverged ones and stay similar much further out than a random sample, so SINEderella tests the two populations separately. Since October 2026 SINEderella's step 1 also moves locus ends before extraction, walking 10-bp steps outward while the copies of a group still share 10-letter words, up to 100 bp.</p>
+
+  <section class="tool" aria-labelledby="s03-ext-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-ext-h">Step outward until the flanks look random</h3></div>
+    <p class="tool-note">Sixteen copies of a toy SINE, aligned at their start. The candidate locus ends at the blue line: the scan hit stopped 20 bp before the end of the SINE body. After the body comes a poly(A) tail of different length in every copy, then unique genome. Press <b>Step out 10 bp</b>: a new window is revealed and every pair of copies (120 pairs) is compared in it. The bars give the share of <i>elevated</i> pairs, the dots the mean identity; the dashed lines are thresholds from 300 random windows of the toy genome. Then switch on the longer subgroup and compare the two stop rules.</p>
+    <div class="controls">
+      <label for="s03-dv"><span class="tip" title="Share of bases changed in each copy since insertion. Old copies agree less with each other, also inside the SINE.">Copy age (divergence)</span><output id="s03-dvo">10 %</output><input type="range" id="s03-dv" min="2" max="40" step="1" value="10"></label>
+      <div class="seg" role="group" aria-label="Stop rule">
+        <button type="button" id="s03-rf" aria-pressed="true">share of elevated pairs</button><button type="button" id="s03-rm" aria-pressed="false">mean identity</button>
+      </div>
+      <label for="s03-sub" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s03-sub"> <span class="tip" title="Six of the sixteen copies carry an extra 20-bp piece after the body, before their tail, like a longer subfamily.">a subgroup is 20 bp longer</span></label>
+      <label for="s03-tru" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s03-tru"> <span class="tip" title="Shade the bases that really belong to the SINE (body, extra piece, tail). In real data you do not have this.">show the true SINE</span></label>
+    </div>
+    <div class="slider-row"><button type="button" class="btn" id="s03-step" style="align-self:auto">Step out 10 bp</button><button type="button" class="btn" id="s03-run" style="align-self:auto;background:transparent;color:var(--accent)">Run the rule</button><button type="button" class="btn" id="s03-new" style="align-self:auto;background:transparent;color:var(--accent)">New copies</button><button type="button" class="btn" id="s03-back" style="align-self:auto;background:transparent;color:var(--accent)">Back to the start</button></div>
+    <div class="svgbox" id="s03-xaln"></div>
+    <div class="svgbox" id="s03-xchart"></div>
+    <div class="legend" id="s03-xleg"></div>
+    <div class="readout" id="s03-xout"></div>
+    <p id="s03-xmsg" style="font-size:14px" aria-live="polite"></p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li>A random 40-bp end of a SINE body; each copy gets a poly(A) tail of 6-14 A and then random unique flank. With the subgroup on, six copies carry an extra random 20-bp piece between body and tail. All bases of the SINE change with the chosen divergence. No gaps, so columns line up as long as tails have the same length.</li>
+        <li>Windows are 10 bp (SINEderella: 50 bp). Pair identity = identical bases ÷ 10, without alignment, as in step 7. Elevated pair = more than 45 % identical (the step 7 cutoff), which in a 10-bp window means 5 or more identical bases.</li>
+        <li>Background: 300 random 10-bp windows of the toy genome, 2,000 random pairs. Share rule: stop at the first window with an elevated share of at most background + 5 points (step 7). Mean rule: stop at the first window with a mean identity of at most background mean + 10 points; this is our toy stand-in for the older mean-based version, not its exact threshold.</li>
+        <li>The toy genome has equal amounts of A, C, G and T. Real genomes are AT-rich and contain other repeats, so their background is higher and noisier: one more reason to measure it in the genome you study.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why a SINE ends where the flanks become unique</summary><div class="in">
+    <p>Imagine the same printed leaflet glued into thousands of different books, each time on a different page. If you photocopy each leaflet with some of the page around it, all copies agree inside the leaflet and disagree just outside it: one shows a recipe, another a map, another a poem. The edge of the leaflet is where the photocopies stop agreeing.</p>
+    <p>Two things make the edge blurry. Old leaflets are faded (diverged copies), so even the inside agrees less. And some leaflets carry a stamp of different length at the bottom (the poly(A) tail), so the very last line lands at a slightly different place in each copy.</p>
+    <p>A third case is the trap: some leaflets are a longer edition. Looking only at the average, you see half the copies agreeing and half not, and the average looks almost like "no agreement". Counting how many pairs still agree well shows that a group is still going.</p>
+  </div></details>
+
+  <h3>The expert still decides</h3>
+  <p>All three tools end in alignments that someone has to read. SINE_Scan's guide asks for inspection by eye; AnnoSINE_v2 can draw its alignments (<code>-f y</code>); our lab works from alignments in <a href="https://toki-bio.github.io/MSA-viewer/">ViewAlign</a>, and the project's rule is that a decision needs an alignment to look at. A public database is no shortcut either: we do not treat Dfam's human library as ground truth, because it contains fragments, 7SL RNA itself, mixtures of families and families with a single copy.</p>
+  <div class="note"><b>In our projects: boundaries are hard</b>
+    <p style="margin-top:6px">In an internal test (lab notes, unpublished), our boundary criterion, given the expert's own start and end positions, rebuilt his consensuses exactly. Asked to find the boundaries itself, it agreed with him for 1 of 6 families. This is why SINEderella's aim asks for a workflow that produces the SINE loci and the report with alignments by itself, reproducibly, and why, for now, a new family still passes an expert's eye before it enters the bank. Two published discoveries show the end product: the <span class="tip" title="Ther1 (also called MIR): an ancient tRNA-derived SINE family, first described in mammals; Squam3 descends from it.">Ther1</span>-derived SINE Squam3 of scaled reptiles (Vassetzky et al. 2021) and Urop of the shrew mole (Kosushkin et al. 2026).</p>
+  </div>
+
+  <h3>A short checklist</h3>
+  <ul>
+    <li>Candidates come from at least one of the three approaches; record the database, version and thresholds.</li>
+    <li>Mask the families you already know before you look for new ones (minus bank).</li>
+    <li>Group with SubFam and read the alignments (<a href="#s04">section 04</a>).</li>
+    <li>Test the head against tRNA, 5S and 7SL genes with a shuffle null; report "not detected", never "not derived".</li>
+    <li>Set the ends where copy pairs fall to a <i>measured</i> background; check that the flanks are unique (<a href="#s05">section 05</a>).</li>
+    <li>Do not pre-filter tandem repeats away before searching: some real SINEs are next to satellites or gave rise to them (<a href="#s06">section 06</a>).</li>
+  </ul>
+</section>

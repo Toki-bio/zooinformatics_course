@@ -1,0 +1,260 @@
+<section aria-labelledby="s11" id="s11-wrap">
+  <h2 id="s11"><span class="n">11</span>Mitochondrial genomes and NUMTs</h2>
+  <p class="lede">Every whole-genome dataset of an animal also contains its mitochondrial genome, at a read depth hundreds of times higher than the nuclear genome. Nuclear assemblers handle it badly, so it is assembled with its own tools, checked, and then removed from the nuclear assembly. Copies of mitochondrial DNA that sit inside the nuclear chromosomes (NUMTs) are the main trap on the way.</p>
+
+  <h3>Why the mitogenome is special in a whole-genome dataset</h3>
+  <dl class="defs">
+    <dt>Small and circular</dt>
+    <dd>The <dfn>mitogenome</dfn> (mitochondrial genome, mtDNA) of a mammal is one circular molecule of about 16–17 kb. The house mouse mitogenome, for example, is 16,299 bp. Mammal mitogenomes carry the standard 37 genes: 13 <span class="tip" title="CDS = coding sequence: the part of a gene that is translated into protein">protein-coding genes</span>, 22 <span class="tip" title="tRNA (transfer RNA): small RNAs that carry amino acids to the ribosome. Each is named by its amino acid, e.g. tRNA-Phe for phenylalanine.">tRNA</span> genes, 2 <span class="tip" title="rRNA (ribosomal RNA): the RNA part of the ribosome; the mitochondrial ones are 12S and 16S.">rRNA</span> genes, plus the non-coding <dfn>control region</dfn> (CR, also called D-loop), where replication starts.</dd>
+    <dt>Many copies per cell</dt>
+    <dd>A cell has two copies of each nuclear chromosome but hundreds to thousands of copies of the mtDNA. Their number depends on the tissue and the DNA extraction. Reads are sampled from all DNA in the tube, so the mitogenome gets 100–1000× more reads per base than a nuclear region.</dd>
+    <dt>In the k-mer spectrum</dt>
+    <dd>Mitochondrial k-mers are few but extremely frequent, so they sit in the thin high-copy tail at the far right of the spectrum, not in a peak (lesson 1, <a href="../01-pre-assembly/#gp">read the spectrum</a> and <a href="../01-pre-assembly/#ct">screen for organelle DNA</a>).</dd>
+    <dt>Different genetics</dt>
+    <dd>It is inherited from the mother only, does not recombine, and uses its own <span class="tip" title="the table that says which three-base codon means which amino acid; NCBI numbers them, the vertebrate mitochondrial one is table 2">genetic code</span>. One animal can carry more than one mtDNA variant at once (<dfn>heteroplasmy</dfn>).</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: how much mtDNA is in the reads</summary><div class="in">
+    <p>Take a long-read dataset like that of our species A (an unpublished rodent genome), in round numbers: it gives the nuclear genome about 40× depth (read bases ÷ genome size). Reads of the animal's own mtDNA cover the mitogenome thousands of times deep, say about 5,000×. Dividing, 5,000 ÷ 40 ≈ 125: there were on the order of a hundred mtDNA copies for every haploid nuclear genome in that DNA sample.</p>
+    <div class="toy">nuclear region       depth   <span class="a">~40×</span>
+own mtDNA            depth <span class="h">~5,000×</span>   = 40 × ~125 copies per haploid genome
+
+share of all bases:  16.5 kb × 5,000  ≈  0.08 Gb
+                     ~100 Gb total    →  under 0.1 % of the data</div>
+    <p>So the mtDNA is a tiny fraction of the data, yet every base of it is read thousands of times. That is exactly what confuses assemblers built for 30–60× data, and it is why a dedicated tool can assemble it from a small subset of reads.</p>
+  </div></details>
+
+  <h3>What nuclear assemblers do to it</h3>
+  <ul>
+    <li><b>Multimer contigs.</b> A circle has no ends, so an assembler can walk around it several times. MitoHiFi's authors write that mitogenomes "are typically assembled redundantly, resulting in multicopy mitogenome contigs". In the hifiasm primary assembly of our species A, one contig is several tandem copies of the mitogenome, differing by at most a couple of bases.</li>
+    <li><b>Split and scattered.</b> The same assembly had no single clean mitochondrial contig but dozens of mostly mitochondrial contigs (from a few kb to several mitogenome lengths, more than a megabase in total) that have to be removed from the nuclear set.</li>
+    <li><b>Holes in repeats.</b> The control region often has tandem repeats. The published mitogenomes of our species A all contain N (unknown bases), a large share of them in the control region. In our long-read data the control region carries a long tandem repeat that is missing from the published sequences, whose control regions are partly N.</li>
+    <li><b>Mixed with NUMTs.</b> Nuclear copies of mtDNA can be assembled into, or mistaken for, the real mitogenome (below).</li>
+  </ul>
+  <p>Therefore the mitogenome is assembled separately, with a tool that expects one small circle at high depth, then circularised, rotated to a standard start, annotated and checked gene by gene. The mitochondrial contigs found in the nuclear assembly are removed afterwards (see <a href="#s09">s09</a> for screening and <a href="#s08">s08</a> for quality metrics).</p>
+
+  <!-- ============ coverage toy ============ -->
+  <section class="tool explain" aria-labelledby="s11-cov-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s11-cov-h">Read depth of mtDNA, nuclear DNA and a NUMT</h3></div>
+    <p style="font-size:14px">The plot shows read depth along a toy nuclear contig that contains a NUMT (a nuclear copy of a piece of mtDNA) between two stretches of ordinary nuclear sequence. The dashed line is the depth of the real mitogenome. The depth axis is logarithmic: each grid line is 10× the one below.</p>
+    <div class="controls">
+      <label for="s11-cov-c">Nuclear depth <output id="s11-cov-co">35×</output><input type="range" id="s11-cov-c" min="5" max="80" step="1" value="35"></label>
+      <label for="s11-cov-m">mtDNA copies per cell <output id="s11-cov-mo">300</output><input type="range" id="s11-cov-m" min="20" max="4000" step="10" value="300"></label>
+      <label for="s11-cov-n">Copies of this NUMT in the haploid genome <output id="s11-cov-no">1</output><input type="range" id="s11-cov-n" min="1" max="300" step="1" value="1"></label>
+      <label for="s11-cov-i">NUMT identity to the mtDNA <output id="s11-cov-io">94 %</output><input type="range" id="s11-cov-i" min="70" max="100" step="0.5" value="94"></label>
+      <div class="seg" role="group" aria-label="Is the real mitogenome in the mapping reference?"><button type="button" id="s11-cov-ref1" aria-pressed="true">mtDNA in reference</button><button type="button" id="s11-cov-ref0" aria-pressed="false">mtDNA left out</button></div>
+    </div>
+    <div class="svgbox" id="s11-cov-fig"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>nuclear reads</span><span><i style="background:var(--rep)"></i>NUMT (collapsed copies)</span><span><i style="background:var(--bad)"></i>mtDNA reads mis-mapped onto the NUMT</span><span><i style="background:var(--het)"></i>real mtDNA depth</span></div>
+    <div class="readout" id="s11-cov-out"></div>
+    <p class="tool-note"><b>Toy rules.</b> mtDNA depth = nuclear depth × copies per cell ÷ 2 (a diploid cell has two nuclear copies). Identical NUMT copies are merged into one place by the assembler, so their reads pile up there: depth = copies × nuclear depth. When the real mitogenome is missing from the reference, a read mapper puts mtDNA reads on the most similar sequence it can find; the toy assumes it accepts them if the NUMT is at least 90 % identical. Real mappers have their own thresholds.</p>
+    <p style="font-size:14px"><b>What to take away.</b> (1) A NUMT has nuclear depth (times its copy number), not mitochondrial depth. (2) It differs from the real mtDNA, and the readout shows how many differences one read sees: a 150-bp read over a young NUMT often has none, so it cannot tell the two apart, while a 10-kb read has many and usually reaches into the nuclear flank. (3) Always keep the real mitogenome in the reference when you map reads, or its reads will pile onto NUMTs and look like a strange, very deep nuclear locus.</p>
+  </section>
+
+  <!-- ============ tools ============ -->
+  <h3>Tools to assemble and annotate a mitogenome</h3>
+  <p>All of them start from a <dfn>seed</dfn> or <dfn>reference</dfn>: a known mitochondrial sequence (often of a related species) used to pick out the mitochondrial reads from the whole dataset. Versions below are those in the tools' own repositories in October 2026.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Reads</th><th>How it works</th><th>Main output</th></tr></thead>
+    <tbody>
+      <tr><td><b><span class="tip" title="MitoHiFi: the mitogenome pipeline of the Darwin Tree of Life project, built for PacBio HiFi data.">MitoHiFi</span></b> 3.2 <span class="tag l">long</span></td><td>PacBio HiFi reads (<code>-r</code>) or finished contigs (<code>-c</code>)</td><td>Maps reads to a related mitogenome with minimap2, drops reads longer than that mitogenome (a rough NUMT filter), assembles the rest with hifiasm. Or, with <code>-c</code>, finds mitochondrial contigs in your assembly by BLAST. Then circularises, annotates (<span class="tip" title="MitoFinder: a program that finds and names mitochondrial genes by comparing them with a reference mitogenome.">MitoFinder</span> by default, MITOS2 with <code>--mitos</code>), rotates to start at tRNA-Phe and picks one representative.</td><td><code>final_mitogenome.fasta</code>, <span class="tip" title="GenBank flatfile: a text file with the sequence plus its annotated features (genes, tRNAs), the format GenBank shows records in."><code>.gb</code></span>, coverage and annotation plots, <code>contigs_stats.tsv</code></td></tr>
+      <tr><td><b>GetOrganelle</b> 1.8 <span class="tag s">short</span></td><td>Illumina paired or single reads</td><td>Starting from seed sequences, recruits matching reads in successive rounds (<code>-R</code>, default 10 for <code>animal_mt</code>) using a <span class="tip" title="the length of the exact match used to recruit a read; GetOrganelle estimates it automatically">word size</span> <code>-w</code>, assembles them with SPAdes over a list of k values (<code>-k</code>), and searches the <span class="tip" title="Assembly graph: the network of contig pieces and their possible connections that an assembler builds before choosing paths (sections 03-04). A complete mitogenome is a path that returns to its start.">assembly graph</span> for the circular path.</td><td><code>*.path_sequence.fasta</code> (the file name and the log say whether the circle was completed; incomplete results are named <code>*scaffolds*path_sequence.fasta</code>), <code>*.selected_graph.gfa</code>, <code>get_org.log.txt</code></td></tr>
+      <tr><td><b>NOVOPlasty</b> 4.3 <span class="tag s">short</span></td><td>Raw (untrimmed, only adapter-removed) Illumina reads</td><td><span class="tip" title="start from a known piece, find reads overlapping its end, add their next bases, repeat">Seed-and-extend</span>: grows the seed by overlapping reads (<code>K-mer</code> overlap, default 33) until the expected size (<code>Genome Range</code>, default 12000–20000 for mito) closes the circle. Can also call heteroplasmy.</td><td>circularised FASTA + log</td></tr>
+      <tr><td><b>MITObim</b> 1.9.1 <span class="tag s">short</span></td><td>Illumina (in principle other platforms)</td><td>"Baiting and iterative mapping": maps reads to a reference with the <span class="tip" title="MIRA: an older assembler and mapper for small genomes; no longer developed.">MIRA</span> assembler, extends, repeats. Depends on MIRA 4.0.2; last updated 2018.</td><td>iteration folders with the growing sequence</td></tr>
+      <tr><td><b>MitoZ</b> 3.6 <span class="tag s">short</span></td><td>Illumina</td><td>One command from FASTQ to annotated mitogenome (<code>mitoz all</code>): subsamples reads, assembles (MEGAHIT or others), keeps mitochondrial contigs of the required taxon, annotates. The author notes that a smaller subsample (0.3–1 Gb) can give a circular result where 12 Gb did not.</td><td><code>*.mitogenome.fa</code>, GenBank file, <code>summary.txt</code>, circle plot</td></tr>
+      <tr><td><b>MITOS2</b> 2.1 <span class="tag">annotation</span></td><td>a finished mitogenome</td><td>Finds protein, tRNA and rRNA genes in a metazoan mitogenome. Recommended through the Galaxy web server (<a href="../01-pre-assembly/#gx">lesson 1</a>; usegalaxy.eu, where our desman mitogenome was annotated); also a command line, <code>runmitos.py</code>.</td><td><span class="tip" title="GFF: a tab-separated text format with one line per feature (gene, tRNA, ...): sequence name, start, end, strand, type.">GFF</span> annotation and protein FASTA (the files MitoHiFi reads from it)</td></tr>
+      <tr><td><b>ReadExtend</b> <span class="tag">our lab</span></td><td>any reads converted to FASTA</td><td>Short Bash script: finds reads that contain the end of a seed, aligns them, adds the next bases, repeats (details below).</td><td>one extended FASTA sequence</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># --- long reads (HiFi): MitoHiFi ---</span>
+findMitoReference.py --species "Mus musculus" --outfolder ref/ --min_length 14000   <span class="c"># downloads e.g. ref/&lt;acc&gt;.fasta + .gb</span>
+mitohifi.py -r hifi.fa -f ref/&lt;acc&gt;.fasta -g ref/&lt;acc&gt;.gb -t 16 -o 2 -p 80   <span class="c"># from reads</span>
+mitohifi.py -c asm.p_ctg.fa -f ref/&lt;acc&gt;.fasta -g ref/&lt;acc&gt;.gb -t 16 -o 2 -p 80   <span class="c"># from your contigs</span>
+<span class="c">#   -o 2  = vertebrate mitochondrial code. The default is 1 (standard code): always set it.</span>
+<span class="c">#   -p 80 = keep contigs with >=80 % of their length matching the reference (default 50; README advises 80-90 for vertebrates)</span>
+
+<span class="c"># --- short reads: GetOrganelle ---</span>
+get_organelle_config.py --add animal_mt                     <span class="c"># once: seed + label databases</span>
+get_organelle_from_reads.py -1 R1.fq.gz -2 R2.fq.gz -R 10 -k 21,45,65,85,105 -F animal_mt -o mito_go/
+<span class="c">#   if it fails: rerun with a related mitogenome as seed, -s related_mito.fasta</span>
+
+<span class="c"># --- short reads: NOVOPlasty (all settings live in config.txt; copy the example from the repo) ---</span>
+<span class="c">#   Type = mito, Genome Range = 12000-20000, K-mer = 33, Seed Input = seed.fasta, Forward/Reverse reads = raw reads</span>
+perl NOVOPlasty4.3.5.pl -c config.txt
+
+<span class="c"># --- short reads: MitoZ (example from its tutorial) ---</span>
+mitoz all --outprefix S1 --thread_number 16 --clade Chordata --genetic_code 2 \
+  --species_name "Mus musculus" --fq1 R1.fq.gz --fq2 R2.fq.gz --fastq_read_length 151 \
+  --data_size_for_mt_assembly 3,0 --assembler megahit --kmers_megahit 59 79 99 \
+  --memory 50 --requiring_taxa Chordata                     <span class="c"># 3,0 = subsample 3 Gb, no minimum</span>
+
+<span class="c"># --- annotation: MITOS2 on the command line (reference data from Zenodo record 4284483) ---</span>
+mkdir -p mitos_out
+runmitos.py -i mito.fa -c 2 -o mitos_out -R refdata/ -r refseq89m   <span class="c"># refseq89m = metazoan set</span>
+
+<span class="c"># --- rotate a circular sequence to a new start (e.g. the first base of tRNA-Phe) ---</span>
+seqkit restart -i 1234 mito.fa &gt; mito.rotated.fa</pre></div>
+
+  <h3>Finishing a mitogenome</h3>
+  <ol class="steps">
+    <li><div><b>Check that it is a circle</b><div class="d">A correctly assembled circle, written as a line, repeats its own start at its end when the assembler overshoots. MitoHiFi tests this by BLASTing the sequence against itself: a self-match of at least 220 bp (<code>--circular-size</code>) that starts within 40 bp of the beginning (<code>--circular-offset</code>) and lies at the end means it circularises; the repeated end is removed and the check is run again until no overlap is found. MitoZ writes the end overlap to <code>*.overlap_information</code>. A multimer contig such as the one in our species A assembly has to be reduced to one unit; we cut out the units and compared them (they differed by 0–2 bases).</div></div></li>
+    <li><div><b>Rotate to a standard start</b><div class="d">A circle has no natural position 1. MitoHiFi rotates the final mitogenome to begin at tRNA-Phe, so every result starts at the same gene and positions can be compared between animals. For other tools, rotate it yourself (<code>seqkit restart</code>, above) to the start used by the reference you compare with.</div></div></li>
+    <li><div><b>Annotate with the right genetic code</b><div class="d">Use NCBI table 2 for vertebrates (<code>-o 2</code> in MitoHiFi, <code>-c 2</code> in MITOS2, <code>--genetic_code 2</code> in MitoZ); invertebrates use table 5 and others.</div></div></li>
+    <li><div><b>Check every protein-coding gene for frameshifts and stops</b><div class="d">A <dfn>frameshift</dfn> is an inserted or deleted base (not a multiple of 3) that scrambles all codons after it; it usually creates an early stop codon. In the real mtDNA all 13 genes must read through. MitoHiFi flags a gene whose translation has a stop (<code>*</code>) between two amino acids. An early stop means either an assembly error or a NUMT.</div></div></li>
+    <li><div><b>Look at the control region separately</b><div class="d">Tandem repeats there can be longer than short reads and can differ in length between mtDNA molecules of the same animal (length heteroplasmy). Count repeat units in reads that span the whole repeat, not in the assembly alone.</div></div></li>
+  </ol>
+
+  <details class="simple"><summary>Simple explanation with examples: the vertebrate mitochondrial code and a homopolymer frameshift</summary><div class="in">
+    <p>Four codons mean different things in vertebrate mitochondria (NCBI table 2) than in the standard code (table 1):</p>
+    <div class="toy">codon   standard (1)   vertebrate mito (2)
+TGA     <span class="x">stop</span>           <span class="a">Trp (W)</span>
+AGA     Arg (R)        <span class="x">stop</span>
+AGG     Arg (R)        <span class="x">stop</span>
+ATA     Ile (I)        <span class="a">Met (M)</span></div>
+    <p>Annotate a real mitogenome with code 1 and every TGA becomes a false stop, so intact genes look broken. That is why the code must be set explicitly.</p>
+    <p><b>A homopolymer error.</b> A <dfn>homopolymer</dfn> is a run of one base (AAAAA, CCCCC). Nanopore-type long reads often miscount such runs. One missing base shifts the reading frame:</p>
+    <div class="toy">true     ATG <span class="a">CCC CCC</span> TAC GGA ...   →  M P P Y G ...
+read     ATG CCC CC<span class="x">T ACG GA</span>…      →  M P P <span class="x">T …</span>  (frame lost from here; usually a stop follows soon)</div>
+    <p>In our species A mitogenome (a long-read depth of thousands) the assembled unit had frameshifts in three protein-coding genes; the read consensus (<span class="tip" title="samtools consensus: writes, for every position, the base most reads agree on."><code>samtools consensus</code></span>) removed them. In a fourth gene a C-run stayed unresolved: about half of the reads say C5, about a third C6 and the rest C4. C5 gives an internal stop, so C6 was taken as probable (it matches the published <span class="tip" title="GenBank: NCBI's public archive of submitted DNA sequences (section 13). A record is cited by its accession, e.g. NC_005089 for the house mouse mitogenome.">GenBank</span> records with the same flanks), and <span class="tip" title="Sanger sequencing: the classic method that reads one PCR product of up to ~1 kb with very few errors and no homopolymer problem.">Sanger</span> primers were designed to settle it. Lesson: even thousands of reads do not fix a systematic homopolymer error; the codon check finds it.</p>
+  </div></details>
+
+  <!-- ============ ReadExtend ============ -->
+  <h3>ReadExtend: walking along a sequence read by read</h3>
+  <p><b>What it is.</b> <a href="https://github.com/Toki-bio/ReadExtend">Toki-bio/ReadExtend</a> is our lab's small Bash script (one file named <code>script</code>, 282 lines, two commits of 18 September 2025; its help text calls it <code>readwalk.sh</code>). It extends a known sequence (the seed) to the left, right or both sides using raw reads, without assembling the whole dataset. The header describes its purpose as "extending across repeats, gaps, or scaffold breaks", and its example extends a SINE. It needs only <span class="tip" title="a fast command-line toolkit for FASTA/FASTQ files">seqkit</span>, <span class="tip" title="a multiple sequence alignment program">MAFFT</span>, <span class="tip" title="awk and grep: standard Unix text tools; grep finds lines that match a pattern, awk picks and computes on columns.">awk and grep</span>. There is no README yet. <b>Everything below comes from reading the code at <span class="tip" title="A commit is one saved version of the code in git; 7a2903a is the short ID of the latest version on GitHub.">commit</span> <code>7a2903a</code> on GitHub, not from running the script.</b> The author may have a newer local copy that behaves differently.</p>
+  <p><b>The algorithm, step by step</b> (rightward; leftward is the mirror image):</p>
+  <ol class="steps">
+    <li><div><b>Prepare</b><div class="d">Shuffle the reads (<code>seqkit shuffle</code>) and cut them into 20 parts (<code>seqkit split -p 20</code>). The query of round 1 is the whole seed.</div></div></li>
+    <li><div><b>Find reads that contain the query</b><div class="d">Search part after part with <code>seqkit grep -s -i -m 2 -p "$query"</code>: by sequence, ignoring case, allowing up to 2 mismatches, on both strands (seqkit's default). Stop searching once the number of hits reaches <code>--maxhits</code> (default 30).</div></div></li>
+    <li><div><b>Align</b><div class="d">Put the query first, add the hit reads, and align them with <code>mafft --adjustdirection --reorder</code> (reverse-strand reads are flipped).</div></div></li>
+    <li><div><b>Take the next piece</b><div class="d">In the query's row, count the gap columns after its last base. Cut the next <code>--flank</code> columns (default 20) from every read, remove gaps, drop pieces shorter than 5 bases, sort by length and keep the <b>longest</b> one. There is no voting between reads.</div></div></li>
+    <li><div><b>Repeat</b><div class="d">That piece is appended to the extension and becomes the new query. Stop after <code>--rounds</code> rounds (default 5), or when no read contains the query, or when no piece can be cut. Finally write left extension + seed + right extension as one FASTA record.</div></div></li>
+  </ol>
+
+  <section class="tool explain" aria-labelledby="s11-rx-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s11-rx-h">A read walk around a toy mitogenome with one NUMT</h3></div>
+    <p style="font-size:14px">The toy mitogenome is a 120-bp circle (real ones are about 16,500 bp). Reads are 24 bp long: 60 reads tile the circle, and, if switched on, 17 reads come from a nuclear locus holding a NUMT, a copy of circle positions 41–100 with 3 substitutions, flanked by nuclear sequence. The seed is circle positions 1–12. Each round does what the script does: find reads containing the query (allowing mismatches), cut the next bases after it from every read, keep the longest piece. Green = same as the mtDNA at that position; red = different (NUMT allele or nuclear DNA).</p>
+    <div class="controls">
+      <label for="s11-rx-f"><span>Piece length per round (<code>--flank</code>)</span> <output id="s11-rx-fo">8</output><input type="range" id="s11-rx-f" min="4" max="12" step="1" value="8"></label>
+      <label for="s11-rx-h2"><span>Hit limit (<code>--maxhits</code>)</span> <output id="s11-rx-ho">10</output><input type="range" id="s11-rx-h2" min="2" max="30" step="1" value="10"></label>
+      <label for="s11-rx-m">Mismatches allowed <output id="s11-rx-mo">1</output><input type="range" id="s11-rx-m" min="0" max="2" step="1" value="1"></label>
+      <label for="s11-rx-r"><span>Rounds (<code>--rounds</code>)</span> <output id="s11-rx-ro">20</output><input type="range" id="s11-rx-r" min="1" max="40" step="1" value="20"></label>
+      <div class="seg" role="group" aria-label="NUMT reads"><button type="button" id="s11-rx-n1" aria-pressed="true">NUMT reads on</button><button type="button" id="s11-rx-n0" aria-pressed="false">off</button></div>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s11-rx-step">Next round</button>
+      <button type="button" class="btn" id="s11-rx-run">Run to the end</button>
+      <button type="button" class="btn" id="s11-rx-reset">Reset</button>
+      <button type="button" class="btn" id="s11-rx-shuf">Reshuffle reads</button>
+    </div>
+    <div class="svgbox" id="s11-rx-fig"></div>
+    <div class="toy" id="s11-rx-seq"></div>
+    <div class="readout" id="s11-rx-out"></div>
+    <div class="tbl"><table style="min-width:520px"><thead><tr><th>round</th><th>query</th><th>hits (mt / NUMT locus)</th><th>piece kept</th><th>from</th></tr></thead><tbody id="s11-rx-log"></tbody></table></div>
+    <p class="tool-note"><b>Differences from the real run.</b> The toy searches one strand only (seqkit searches both and MAFFT flips reverse reads), and finds the next bases by position in the read instead of by an alignment. Ties between equally long pieces are broken by read order; in the real script that order comes from the shuffle and from MAFFT's <code>--reorder</code>. The real script always allows 2 mismatches; with the toy's short queries 2 is very loose, so the default here is 1. "Reshuffle" changes the read order, as a different <code>seqkit shuffle</code> seed would (by default seqkit shuffles the same way every time).</p>
+    <p style="font-size:14px"><b>What to watch.</b> With NUMT reads on, try a few reshuffles: when the query falls inside the NUMT-like stretch, NUMT reads are hits too, and if one of them gives the longest piece the walk copies a NUMT allele (red) or leaves the mitogenome into nuclear DNA. Nothing in the script notices this. It also does not notice when it has gone all the way around the circle: it keeps going until the rounds run out.</p>
+  </section>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># prepare one-line FASTA (the script reads only the 2nd line of each record, see limitations)</span>
+seqkit fq2fa reads.fq.gz | seqkit seq -w 0 &gt; reads.fa
+seqkit seq -w 0 seed.fa &gt; seed1.fa
+<span class="c"># run from the folder that holds the inputs: the script cd's into --workdir and opens ../reads.fa</span>
+bash ReadExtend/script -r reads.fa -s seed1.fa -o extended.fa --right --rounds 5 --maxhits 30 --flank 20 --threads 8
+<span class="c"># → extended.fa: one record "&gt;extended_extended" = left extension + seed + right extension
+#   the work folder ./readwalk_tmp (alignments of every round) is deleted on exit</span></pre></div>
+
+  <p><b>When to use it.</b> For a whole mitogenome use a dedicated assembler: GetOrganelle or NOVOPlasty for short reads, MitoHiFi for HiFi reads. ReadExtend is a light tool for a local question: extend a known piece (a SINE, a contig end, a gap edge) by a few dozen bases, using a read set you already have, and look at the reads it found. Its strength is transparency: every round is a small alignment that you can inspect. Its weakness, shared by every seed-and-extend method, is that it follows whatever reads match, including NUMT reads.</p>
+  <div class="note warn"><b>Problems found by reading the code at commit 7a2903a.</b> They were not confirmed by a test run, and a newer local copy may already fix some of them. Each has a simple fix.
+    <ol style="margin:6px 0 0;padding-left:20px">
+      <li><b>Only the first line of each record is used.</b> Reads are taken with <code>grep -A1 "^&gt;"</code> and the aligned seed with <code>awk 'NR==2'</code>. seqkit (default <code>-w 60</code>) and MAFFT 7.526 (default <code>linelength=60</code>) wrap their output at 60 characters, so, as far as we can tell from the code, each read contributes at most its first 60 bases and alignment columns after 60 are not seen. Fix: <code>-w 0</code> on the seqkit calls and <code>--linelength -1</code> on MAFFT.</li>
+      <li><b>The hit counter is not reset between rounds.</b> <code>NumberHits</code> is set once before the loop, so if round 1 reaches <code>--maxhits</code>, round 2 searches nothing and the walk stops after one piece. Fix: set it to 0 at the start of each round.</li>
+      <li><b>The query row may not be first.</b> <code>--reorder</code> lets MAFFT reorder sequences, but the gap count is read from the first sequence of the output. Fix: drop <code>--reorder</code> (input order keeps the seed first).</li>
+      <li><b>FASTQ input does not work</b> although the help says FASTA/FASTQ (headers are searched with <code>^&gt;</code>). Convert with <code>seqkit fq2fa</code>.</li>
+      <li><b>Left and right are not symmetric.</b> Rightward adds <code>--flank</code> bases per round; leftward takes the whole overhang left of the query.</li>
+      <li><b>Longest piece, not consensus.</b> One read with an error, or from a NUMT, can decide the next query. A majority vote over the pieces would be safer.</li>
+      <li><b>No circle or ambiguity check, relative paths only</b> (inputs and output are opened as <code>../</code>file), and intermediate files are deleted.</li>
+    </ol>
+  </div>
+
+  <!-- ============ NUMTs ============ -->
+  <h3>NUMTs: mitochondrial DNA inside the nucleus</h3>
+  <p><dfn>NUMTs</dfn> (nuclear mitochondrial DNA segments, said "new-mights") are pieces of mtDNA that were inserted into nuclear chromosomes. Once inside, a NUMT evolves like other non-functional nuclear DNA: it collects mutations, frameshifts and stop codons, and can be copied again. Young NUMTs are almost identical to the real mtDNA; old ones are diverged fragments.</p>
+  <p><b>Why they matter.</b></p>
+  <ul>
+    <li><b>PCR and barcoding.</b> Primers designed for mtDNA can amplify a NUMT instead of, or together with, the real gene. The desman manuscript states that NUMTs "can be inadvertently amplified during PCR, leading to erroneous conclusions in population genetics or phylogenetics".</li>
+    <li><b>False heteroplasmy.</b> Reads from a NUMT that map to the mitogenome look like a second mtDNA variant in the same animal. Sequencing errors can do the same: in our species A data all candidate heteroplasmic sites at low frequency (around a tenth of the reads) were C&gt;T or G&gt;A changes, nearly all seen on one strand only, i.e. systematic read errors, not real variants.</li>
+    <li><b>False phylogenies.</b> A NUMT sequence placed in a tree as if it were mtDNA represents the mtDNA of the ancestor at the time of insertion, not the animal's own lineage.</li>
+    <li><b>Assembly confusion.</b> NUMT reads can be assembled into the mitogenome (seed-and-extend tools follow them, see the toy above), and mtDNA reads can pile onto NUMTs (see the depth toy).</li>
+  </ul>
+
+  <details class="simple"><summary>Simple explanation with examples: how to tell a NUMT from the real mtDNA</summary><div class="in">
+    <div class="toy">                    real mtDNA                NUMT
+read depth          <span class="h">hundreds-thousands ×</span>      <span class="a">nuclear</span> (× copy number)
+flanks in reads     none (circle)             <span class="a">unique nuclear DNA</span>
+protein genes       all 13 read through       <span class="x">frameshifts, early stops</span>
+pN/pS               low (~0.1)                ~1 (no selection)
+vs related mtDNA    lineage of this animal    lineage of an ancestor</div>
+    <p><dfn>pN/pS</dfn> compares the rate of amino-acid-changing differences to silent ones. A working gene keeps it low because most protein changes are harmful; a dead copy changes freely, so it is close to 1.</p>
+    <p>The most direct proof is a long read that runs from the mitochondrial-like sequence into unique nuclear sequence on one or both sides. A real mtDNA molecule has no such flanks.</p>
+  </div></details>
+
+  <p><b>How to find NUMTs in an assembly.</b></p>
+  <ol class="steps">
+    <li><div><b>Assemble the real mitogenome first</b><div class="d">and remove its contigs (including multimers) from the nuclear assembly. Otherwise the search reports the mitogenome itself as the biggest "NUMT". In the desman work the true mitochondrial contig of <i>Talpa europaea</i> (OZ077416.1) had to be removed from its assembly before the search.</div></div></li>
+    <li><div><b>Search the nuclear assembly with the mitogenome</b><div class="d">with BLAST (sensitive) or minimap2 (fast). Sensitivity differs a lot: for the published genome of a rodent closely related to our species A, <code>blastn</code> (<span class="tip" title="E-value: how many hits this good you would expect by chance in a database of this size; smaller = more trustworthy.">E-value</span> &lt; 10<sup>−5</sup>, <span class="tip" title="Low-complexity filter (DUST): BLAST normally masks simple repeats such as ATATAT; -dust no turns this off.">low-complexity filter</span> off) found several hundred matches forming more than a hundred loci and covering nearly all of the mitogenome, while minimap2 with default settings reported only a few dozen hits. Because the mitogenome is circular but stored as a line, a NUMT that spans its position 1 is split into two hits; merge them.</div></div></li>
+    <li><div><b>Measure each hit</b><div class="d">length, identity to the mtDNA (young = high identity = PCR risk), which genes it covers. Align the hits to the mitogenome (MAFFT) and summarise the identity.</div></div></li>
+    <li><div><b>Check with reads and codons</b><div class="d">Long reads that cross into nuclear flanks confirm that a hit is nuclear; depth tells the copy number (identical copies are collapsed in the assembly). A codon-level check (frameshifts, stops, pN/pS with the code-2 table) tells a pseudogene from a functional gene.</div></div></li>
+  </ol>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 0) remove the real mitochondrial contig(s) from the assembly</span>
+seqkit grep -v -f mito_contig_ids.txt asm.fa &gt; nuclear.fa
+
+<span class="c"># 1a) sensitive: BLAST the mitogenome against the nuclear assembly</span>
+makeblastdb -in nuclear.fa -dbtype nucl
+blastn -query mito.fa -db nuclear.fa -evalue 1e-5 -dust no -num_threads 16 -outfmt 6 &gt; numt_hits.tsv
+
+<span class="c"># 1b) fast: minimap2 (as in the desman analysis; mitogenome = target, scaffolds = query)</span>
+minimap2 mito.fa nuclear.fa &gt; numt_hits.paf
+<span class="c">#   PAF columns: 1 scaffold, 2 scaffold length, 3-4 hit start-end on the scaffold, 6 mitogenome, 8-9 start-end on it, 10 matching bases, 11 alignment length</span>
+awk '$2 &gt;= 20000' numt_hits.paf &gt; numt_hits.long_scaffolds.paf   <span class="c"># keep scaffolds of at least 20 kb (filter on column 2)</span>
+
+<span class="c"># 2) depth over a candidate NUMT, with the real mitogenome kept in the reference</span>
+samtools depth -a -r scaffold_12:1000000-1016000 reads_vs_asm_plus_mito.bam | awk '{s+=$3} END{print s/NR}'</pre></div>
+
+  <h4>Worked example 1: NUMTs in desmans and other talpids</h4>
+  <p>The manuscript on the genome of the Russian desman (<i>Desmana moschata</i>; draft "Hidden and Endangered: Genome Sequencing Uncovers the History of the Russian Desman's Population Decline") assembled the desman mitogenome from the same Illumina data by mapping reads with BWA-MEM to the mitogenomes of the Pyrenean desman (NC_008156.1) and the Hainan mole (NC_063097.1), checking the consensus in <span class="tip" title="IGV (Integrative Genomics Viewer): a desktop program that shows reads aligned to a reference.">IGV</span>, and annotating it with MITOS2 on Galaxy. For NUMTs, each species' mtDNA was mapped to its own nuclear assembly with minimap2 (default settings), scaffolds shorter than 20 kb were to be excluded, hits were realigned to the mtDNA with MAFFT, and identity was summarised with <code>esl-alistat</code> (HMMER package). The result (supplementary table of the draft):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Species</th><th>NUMTs (N)</th><th>Total length, bp</th><th>Max length, bp</th><th>mtDNA covered</th><th>Identity to mtDNA*</th></tr></thead>
+    <tbody>
+      <tr><td><i>Desmana moschata</i></td><td>145</td><td>21,050</td><td>2,441</td><td>74 %</td><td>89 %</td></tr>
+      <tr><td><i>Galemys pyrenaicus</i></td><td>30</td><td>9,031</td><td>2,040</td><td>51 %</td><td>85 %</td></tr>
+      <tr><td><i>Talpa europaea</i></td><td>27</td><td>79,844</td><td>18,570</td><td>98 %</td><td>88 %</td></tr>
+      <tr><td><i>Talpa occidentalis</i></td><td>26</td><td>48,642</td><td>14,672</td><td>93 %</td><td>86 %</td></tr>
+      <tr><td><i>Condylura cristata</i></td><td>32</td><td>17,067</td><td>3,179</td><td>71 %</td><td>92 %</td></tr>
+      <tr><td><i>Uropsilus gracilis</i></td><td>2</td><td>608</td><td>553</td><td>4 %</td><td>71 %</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:13.5px;color:var(--muted)">* Labelled "Divergence" in the draft table, but the values are the average identity reported by <code>esl-alistat</code> (89 % identity = about 11 % divergence).</p>
+  <p>Every species carries NUMTs, and the short-read desman assembly has many short ones (average 145 bp) while the long-read <i>Talpa europaea</i> assembly holds long ones up to 18.6 kb. Part of that contrast may come from the assemblies rather than the animals: long NUMTs are easier to keep intact in a long-read assembly.</p>
+  <div class="note"><b>Caveats found when the commands were reconstructed from the shell history (useful for anyone reusing the method).</b>
+    <ul style="margin:6px 0 0">
+      <li>The "scaffolds ≥ 20 kb" filter was applied to the hit's <i>end coordinate</i> on the scaffold, not to the scaffold length. It therefore dropped hits in the first 20 kb of every scaffold. Filter on PAF column 2 instead (as in the command above).</li>
+      <li>The read-coverage step used <code>samtools view -N</code>, which takes a file of read <i>names</i>, with a BED file of regions. The "selected" BAM was effectively unfiltered, so the coverage figure may be inflated. <code>samtools view -L regions.bed</code> is the option for regions.</li>
+      <li>Nothing was checked at read or codon level, so these are mtDNA-like nuclear hits; whether they are pseudogenes was not tested.</li>
+      <li>minimap2 with default settings misses short and old NUMTs (compare the BLAST and minimap2 numbers above), so the counts are lower bounds.</li>
+    </ul>
+  </div>
+
+  <h4>Worked example 2: a young NUMT family in our species A</h4>
+  <p>PCR of the mtDNA of species A failed in the lab, and the question was whether something unusual hides in its mtDNA. The long-read genome answered with a NUMT story:</p>
+  <ul>
+    <li><b>Two mtDNA types in the reads.</b> The animal's own mtDNA belongs to one published mitochondrial lineage ("lineage 1", over 99 % identical to a GenBank record). A second sequence, over 99 % identical to a published record of another lineage ("lineage 2") but only about 94 % to the animal's own mtDNA, is also in the reads at high depth.</li>
+    <li><b>Lineage 2 is nuclear.</b> Of thousands of uniquely placed lineage-2 reads, more than 99 % sit on nuclear contigs, and most extend at least 1 kb into unique nuclear flank. The assembly holds dozens of full-length copies on dozens of contigs, more than 99 % identical to each other: a recently amplified NUMT family. Their read depth implies a few hundred copies; identical copies were collapsed by the assembler.</li>
+    <li><b>They are pseudogenes.</b> In a codon-level check (<span class="tip" title="MACSE: an aligner for protein-coding DNA that keeps codons in frame and marks frameshifts and stop codons.">MACSE</span> alignment, code 2) every family copy has frameshifts and premature stops, pN/pS is about 1, and all copies share one premature stop codon: they descend from one insertion. The published GenBank mitogenomes of the species have no frameshifts or stops and pN/pS far below 1, so they are real mtDNA.</li>
+    <li><b>A footprint in published data.</b> In published lineage-2 mitogenomes, the N bases fall where the nuclear family differs from lineage 2 several times more often than expected by chance: NUMT reads mixed into those assemblies, and conflicting positions were called N.</li>
+    <li><b>PCR consequence.</b> Primers that match lineage 2 would prefer this many-copy nuclear family. The standard primers tested (Cytb, COI, 16S, 12S, CR) had the same mismatch counts on both lineages, so they do not explain the failures; the lab's own primers still have to be checked.</li>
+    <li><b>Method lesson.</b> Dozens of near-identical NUMT copies in the same multiple alignment as the real genes outvoted them: MACSE placed the family's indel as a frameshift into every mitogenome. Align each sequence pairwise to the reference instead.</li>
+  </ul>
+
+  <div class="note"><b>In our projects.</b> Species A (hifiasm primary, long reads): no single clean mitochondrial contig, dozens of mostly mitochondrial contigs to remove, one of them a multimer; mtDNA depth more than a hundred times the nuclear depth; a long control-region repeat whose length varies between reads; homopolymer frameshifts in the assembled mitogenome fixed by read consensus, one C-run left for Sanger. The reads are labelled ONT in our notes but are probably CycloneSEQ (see <a href="#s01">s01</a>). The published genome of a close relative: more than a hundred NUMT loci by BLAST; the most similar, a copy of under 1 kb at over 99 % identity, is a PCR risk. Desman and five other talpids: 2–145 NUMTs per assembly by minimap2. Sources: our project notes, the desman manuscript draft and its supplementary table.</div>
+</section>

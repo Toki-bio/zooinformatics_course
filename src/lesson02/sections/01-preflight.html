@@ -1,0 +1,218 @@
+<section aria-labelledby="s01" id="s01-wrap">
+  <h2 id="s01"><span class="n">01</span>Pre-flight check: what lesson 1 must have told you</h2>
+  <p class="lede">An <span class="tip" title="Assembler: a program that joins millions of sequencing reads into longer continuous sequences (contigs) that rebuild the genome.">assembler</span> runs for one to several days and its output decides months of later work. Before starting it, write down about ten numbers from lesson 1. Each one points to a different tool, a different setting, or extra data you still need to order. If a number is missing or bad, it is cheaper to find out now than after a week of computing.</p>
+
+  <p>This section is the go/no-go list. For each item: where the number comes from, which values are fine, and what a bad value changes. Then a form where you type your own values and get a verdict with a suggested route. Then a table of what our own projects had at this point and what happened to them.</p>
+
+  <h3>The items, one by one</h3>
+  <ol class="steps">
+    <li><div>
+      <b>What machine made the reads</b>
+      <p class="d">Assemblers have a separate mode for each read type, and <span class="tip" title="Polisher: a program that corrects remaining wrong letters in a finished assembly by aligning reads back to it (section 06).">polishers</span> use error models trained on one machine type. Do not trust file names. Look at the first line of the FASTQ file (the read name) and at the provider's run report: <code>zcat reads.fq.gz | head -n 1</code>. A <span class="tip" title="The read name: the text after @ on the first line of each 4-line FASTQ record. Its format depends on the sequencing machine and the software that wrote it.">read header</span> that does not look like the machine you were told about is a reason to ask the provider before anything else.</p>
+      <p class="t">Decides: assembler mode (s04), polishing model (s06).</p>
+    </div></li>
+    <li><div>
+      <b>Genome size, two ways</b>
+      <p class="d">The <a href="../01-pre-assembly/#gp">k-mer estimate</a> (GenomeScope) and an <a href="../01-pre-assembly/#dm">independent figure</a>: flow cytometry, a C-value database, or the assembly length of a close relative. k-mer estimates come out too small when high-copy repeats fall outside the fitted model, and twice too large or half too small when the model takes the wrong peak. When the two disagree by more than about 10 %, find out why before you go on (10 % is this course's rule of thumb, not a tool's threshold).</p>
+      <p class="d">The size is used later as the expected assembly length, as the divisor for coverage, for <span class="tip" title="Like N50, but the halfway point is measured on the expected genome size instead of the assembly's own length. See lesson 1, N50 section.">NG50</span>, and for duplicate-removal cutoffs. <span class="tip" title="Flye: a widely used assembler for long reads (section 04).">Flye</span> no longer needs <code>--genome-size</code> (optional since version 2.8) except together with <code>--asm-coverage</code>.</p>
+      <p class="t">GenomeScope 2.0 README · Flye USAGE.md, "Estimated genome size"</p>
+    </div></li>
+    <li><div>
+      <b>Heterozygosity</b>
+      <p class="d">The share of positions where the two chromosome copies differ (GenomeScope's "het"). It decides whether the two copies of each region come out as one <span class="tip" title="Contig: one continuous stretch of assembled sequence with no unknown bases. An assembly is a set of contigs.">contig</span> or as two.</p>
+      <ul>
+        <li><b>Very low (around 0.1 % or less), or an inbred animal.</b> A <span class="tip" title="Collapsed assembly: one sequence per genome region; where the two parental copies differ, the assembler keeps one of them (section 07).">collapsed assembly</span> is fine. Flye's FAQ says contiguity is not a problem at ~0.1 %. For inbred or homozygous genomes the README of <span class="tip" title="hifiasm: an assembler for accurate long reads (PacBio HiFi and, since version 0.21, recent Oxford Nanopore reads); section 04.">hifiasm</span> says to switch off its duplicate removal with <code>-l0</code>.</li>
+        <li><b>Typical diploid (a few tenths of a percent to about 1 %).</b> hifiasm removes duplicates by itself. After Flye, expect to run <span class="tip" title="A tool that finds contigs that are a second-haplotype copy of another contig (or overlap it) using read depth and self-alignment, and removes them from the primary assembly.">purge_dups</span> (<a href="#s06">s06</a>).</li>
+        <li><b>High (above ~1.5 %, lesson 1's rule of thumb).</b> The two copies separate into different contigs, so the <span class="tip" title="Primary assembly: the main set of contigs, meant to hold every region of the genome once (section 07).">primary assembly</span> carries both copies of many regions. Flye's FAQ: it "will likely recover alternative haplotypes, but will not phase them", and contiguity drops. Plan duplicate removal, and <span class="tip" title="Hi-C: read pairs that join DNA pieces lying close together in the nucleus; used to build whole chromosomes (section 05) and to separate the parental copies (section 07).">Hi-C</span> or parental reads for <span class="tip" title="Assigning each piece of sequence to the chromosome copy (haplotype) it came from: the mother's or the father's.">phasing</span> (<a href="#s07">s07</a>).</li>
+      </ul>
+      <p class="d">purge_dups' own README warns of the opposite trap: in a species with low heterozygosity its automatic cutoffs can come out too high, so it removes too much and the assembly ends up smaller than expected. Check the cutoffs by eye.</p>
+      <p class="t">Flye FAQ.md "Are diploid genomes supported?" · hifiasm README · purge_dups README "Limitation"</p>
+    </div></li>
+    <li><div>
+      <b>Ploidy</b>
+      <p class="d">How many copies of each chromosome a cell carries (from a chromosome count, or <a href="../01-pre-assembly/#gp">Smudgeplot</a>). hifiasm's FAQ: its contig modules "are designed for diploid samples"; for polyploids only its <span class="tip" title="Unitig graph: the assembly graph before the assembler decides how to walk through branch points. hifiasm writes it as *.r_utg.gfa and *.p_utg.gfa.">unitig graphs</span> are lossless. Flye always collapses copies into one. A triploid or tetraploid needs a specialised route that this lesson does not cover. GenomeScope 2.0 models up to hexaploid (6 copies).</p>
+      <p class="t">hifiasm docs faq.rst "Are polyploid genomes supported?" · GenomeScope 2.0 README</p>
+    </div></li>
+    <li><div>
+      <b>Coverage, separately for each kind of data</b>
+      <p class="d">Total bases of that data type ÷ haploid genome size. Get total bases from <code>seqkit stats -a -T</code> (column <code>sum_len</code>), not from the order form. What the tools' own documents ask for:</p>
+      <ul>
+        <li><b>Flye (any long reads):</b> "satisfying assembly contiguity with 30x+ PacBio / ONT reads, if the read length is sufficient"; "you might have success with 20-30x"; "below 10x is not recommended".</li>
+        <li><b>hifiasm (HiFi):</b> "Usually &gt;=13x HiFi reads per haplotype", so at least ~26× for a diploid.</li>
+        <li><b>VGP (Galaxy training):</b> "at least 30✕ PacBio HiFi coverage &amp; around 60✕ Hi-C coverage" for diploids, and up to 60× HiFi for highly repetitive regions.</li>
+        <li><b>GenomeScope (short reads for profiling):</b> "at least 15x coverage of the haploid genome", otherwise the fit is poor or does not converge.</li>
+        <li><b>Short-read assembly:</b> ABySS's README gives its k advice for "2x150bp reads and 40x coverage".</li>
+      </ul>
+      <p class="t">Flye FAQ.md "What is minimum read coverage" · hifiasm faq.rst · <span class="tip" title="GTN: the Galaxy Training Network, the tutorial site of the Galaxy platform. VGP: the Vertebrate Genomes Project.">GTN VGP tutorial</span> · GenomeScope 2.0 README · ABySS README</p>
+    </div></li>
+    <li><div>
+      <b>Read length (long reads)</b>
+      <p class="d">Read <span class="tip" title="N50: half of all bases are in reads at least this long. N90: 90 % of all bases are in reads at least this long. Same calculation as contig N50 (lesson 1), applied to reads.">N50</span> and N90 from NanoPlot or <code>seqkit stats -a -N 50,90</code>. A repeat longer than your reads cannot be crossed by any single read, so read length caps contig length. Flye "expects ... reads N90 over 1kb (5kb+ recommended)" and "will not work with reads shorter than 1kb"; it picks its minimum overlap from the read N90 (typically 3–10 kb). hifiasm in <code>--ont</code> mode drops reads shorter than 1,000 bases by default (<code>--rl-cut</code>).</p>
+      <p class="t">Flye FAQ.md, USAGE.md "Minimum overlap length" · hifiasm 0.25.0 CommandLines.cpp</p>
+    </div></li>
+    <li><div>
+      <b>Read accuracy</b>
+      <p class="d">Usually given as a <span class="tip" title="Phred quality: Q = −10 × log10(error rate). Q10 = 1 error in 10 bases, Q20 = 1 in 100, Q30 = 1 in 1,000.">Phred Q</span> value. It decides which assembler and which mode:</p>
+      <ul>
+        <li><b><span class="tip" title="PacBio HiFi: long reads (about 15–20 kb) made accurate by reading the same circular DNA molecule several times (lesson 1).">PacBio HiFi</span></b>, under 1 % error (Q20 and better): hifiasm; Flye <code>--pacbio-hifi</code>.</li>
+        <li><b><span class="tip" title="ONT = Oxford Nanopore Technologies. R10 (R10.4.1) is its current pore version, R9 the previous one; older pores give more errors.">ONT R10</span></b> reads: Flye <code>--nano-hq</code> ("Expected error rate is &lt;3%"); hifiasm <code>--ont</code> (from version 0.21.0, "ONT <span class="tip" title="Simplex: each DNA molecule is read along one strand only. Duplex reads both strands and is more accurate.">simplex</span> R10 reads", FASTQ only; it drops reads with a mean quality below Q10 by default, <code>--sc-cut</code>).</li>
+        <li><b>ONT R9 with <span class="tip" title="Guppy: ONT's earlier basecaller (the program that turns the pore's electric signal into letters). Version 5 and later give more accurate reads; its successor is dorado.">Guppy5+</span></b>: Flye <code>--nano-hq --read-error 0.05</code> (under 5 % error).</li>
+        <li><b>Older ONT</b> (R7 to early R9): Flye <code>--nano-raw</code>, 10–15 % error expected.</li>
+      </ul>
+      <p class="d">Other nanopore-type machines (for example <span class="tip" title="CycloneSEQ: a nanopore-type long-read platform (one of our long-read data sets came from a CycloneSEQ instrument) that is not made by Oxford Nanopore.">CycloneSEQ</span>) are not named in these documents. Choose the mode by the measured error rate, and do not use a polishing or <span class="tip" title="Variant caller: a program that lists positions where the reads differ from a reference sequence. Long-read callers such as Clair3 use a neural-network model trained on one platform.">variant-calling</span> model trained on a different machine.</p>
+      <p class="t">Flye USAGE.md "Supported Input Data" · hifiasm README, release 0.21.0 notes, CommandLines.cpp</p>
+    </div></li>
+    <li><div>
+      <b>Foreign DNA</b>
+      <p class="d">An extra GC peak in the reads, or a k-mer bump at an odd coverage (<a href="../01-pre-assembly/#ct">lesson 1, step 5</a>). Remove reads of a known contaminant before assembly, or remove contigs afterwards. Screen the finished assembly in any case (<a href="#s09">s09</a>).</p>
+    </div></li>
+    <li><div>
+      <b>Organelles</b>
+      <p class="d">Mitochondrial DNA is present in hundreds to thousands of copies per cell, so it shows as a thin k-mer tail at very high coverage. Assemblers build it as extra contigs, sometimes several genome lengths joined in a row, and nuclear copies of mitochondrial DNA (NUMTs) sit in the nuclear assembly. Plan to assemble it separately and to remove mitochondrial contigs from the nuclear set (<a href="#s11">s11</a>).</p>
+    </div></li>
+    <li><div>
+      <b>Repeat content</b>
+      <p class="d">GenomeScope reports the genome length and the unique length; the difference is the repeat share. With short reads, every repeat copy longer than about one read breaks the contigs (the k − 1 rule in <a href="#s03">s03</a>), so a repeat-rich genome assembled from short reads gives short contigs whatever the coverage. Long reads that span the repeats are the only real fix.</p>
+    </div></li>
+    <li><div>
+      <b>Extra data for chromosomes and haplotypes</b>
+      <p class="d"><span class="tip" title="Hi-C: chromatin is cross-linked inside the nucleus, cut and re-joined, then sequenced as short read pairs. Pairs that join two places show which pieces of DNA lie close together in the nucleus, mostly on the same chromosome.">Hi-C</span> reads, or short reads of both parents (<span class="tip" title="Trio: the animal plus its mother and father. k-mers found only in one parent mark the reads inherited from that parent.">trio</span>). hifiasm's FAQ: with parental data its trio assemblies "should be always preferred", otherwise Hi-C mode is best; with long reads only, the haplotype sets are "not fully-phased". Without Hi-C (or a similar map) you get contigs, not chromosomes, and you cannot reach the "C" of the Earth BioGenome Project standard 6.C.Q40 (<a href="../01-pre-assembly/#vgp">lesson 1</a>; section 08). Order Hi-C now, from the same animal, while tissue is still available (<a href="#s05">s05</a>, <a href="#s07">s07</a>).</p>
+      <p class="t">hifiasm faq.rst "Which types of assemblies should I use?" · EBP assembly standards v7.0</p>
+    </div></li>
+  </ol>
+
+  <details class="simple"><summary>Simple explanation with examples: why read accuracy decides so much</summary><div class="in">
+    <p>Q is just a short way to write an error rate. Q10 means 1 wrong base in 10, Q20 1 in 100, Q30 1 in 1,000. Every 10 points is ten times fewer errors.</p>
+    <p>Almost every assembly and profiling step works with k-mers (lesson 1). A k-mer is useful only if all of its k bases are right. With an error rate e, the chance that k bases in a row are all correct is (1 − e)<sup>k</sup>. For k = 21:</p>
+    <div class="toy">mean read quality   errors per base   21-mers with no error
+Q10                 1 in 10           <span class="x">11 %</span>   most k-mers are noise
+Q15                 1 in 32           <span class="h">51 %</span>
+Q20                 1 in 100          <span class="a">81 %</span>
+Q30                 1 in 1,000        <span class="a">98 %</span></div>
+    <p>This is why GenomeScope wants "relatively low error" reads such as Illumina, and why an assembler must be told what kind of reads it gets: noisy reads have to be corrected or handled with looser matching before overlaps can be trusted.</p>
+    <div class="slider-row">
+      <label for="s01-q">Mean read quality Q: <output id="s01-qo">15</output></label>
+      <input id="s01-q" type="range" min="5" max="40" step="0.5" value="15">
+      <label for="s01-qk">k: <output id="s01-qko">21</output></label>
+      <input id="s01-qk" type="range" min="11" max="51" step="2" value="21" style="width:min(100%,220px)">
+    </div>
+    <div class="svgbox"><svg id="s01-qsvg" viewBox="0 0 760 120" width="100%" style="min-width:560px" role="img" aria-label="Share of error-free k-mers at the chosen quality"></svg></div>
+    <p class="tool-note" id="s01-qtxt"></p>
+    <p>A caution: "mean Q" is not computed the same way by every tool. seqkit's <code>AvgQual</code> converts each base's Q to an error probability, averages those, and converts back; averaging the Q numbers directly gives a higher, flattering value.</p>
+  </div></details>
+
+  <section class="tool" aria-labelledby="s01-form-h">
+    <div class="tool-head"><span class="tool-tag">Checklist</span><h3 id="s01-form-h">Your go/no-go sheet</h3></div>
+    <p class="tool-note">Type your values, or load a toy example modelled on one of our projects (rounded values, not the real data). Leave a field empty if you do not know it: that is itself a finding. Thresholds come from the tools' documents listed above; the few marked "course rule of thumb" are ours.</p>
+    <div class="calc" role="group" aria-label="Load an example">
+      <span class="seg" id="s01-presets">
+        <button type="button" data-p="spa" aria-pressed="false">A-like</button>
+        <button type="button" data-p="spb" aria-pressed="false">B-like</button>
+        <button type="button" data-p="spc" aria-pressed="false">C-like</button>
+        <button type="button" data-p="spd" aria-pressed="false">D-like</button>
+        <button type="button" data-p="dmo" aria-pressed="false"><i>Desmana</i> R8</button>
+        <button type="button" data-p="vgp" aria-pressed="false">textbook</button>
+      </span>
+    </div>
+    <p class="tool-note" id="s01-pnote"></p>
+    <div class="calc">
+      <label title="Haploid genome size from GenomeScope (k-mers), in billions of bases (Gb). 1 Gb = 1,000 Mb."><span class="tip">k-mer size estimate (Gb)</span><input id="s01-gk" type="number" min="0" step="any"></label>
+      <label title="An independent size: flow cytometry, a C-value from a database, or the assembly length of a close relative (Gb)."><span class="tip">Independent size (Gb)</span><input id="s01-gf" type="number" min="0" step="any"></label>
+      <label title="GenomeScope's heterozygosity, in percent (0.5 means 1 difference per 200 bases between the two chromosome copies)."><span class="tip">Heterozygosity (%)</span><input id="s01-het" type="number" min="0" step="any"></label>
+      <label title="Copies of each chromosome per cell: 2 for most animals.">Ploidy<select id="s01-pl"><option value="">unknown</option><option value="1">1 (haploid)</option><option value="2" selected>2 (diploid)</option><option value="3">3</option><option value="4">4 or more</option></select></label>
+      <label title="GenomeScope: (genome length − unique length) ÷ genome length, in percent. Optional."><span class="tip">Repeats (%)</span><input id="s01-rep" type="number" min="0" max="100" step="any"></label>
+    </div>
+    <div class="calc">
+      <label title="Illumina / MGI / other short reads: total bases ÷ haploid genome size."><span class="tip">Short-read coverage (×)</span><input id="s01-sr" type="number" min="0" step="any"></label>
+      <label title="Which kind of long reads you have.">Long-read type<select id="s01-lt">
+        <option value="none">none</option>
+        <option value="hifi">PacBio HiFi</option>
+        <option value="r10">ONT R10 (simplex)</option>
+        <option value="r9">ONT R9, Guppy5+ or newer basecaller</option>
+        <option value="old">ONT older (R7, early R9)</option>
+        <option value="cyc">CycloneSEQ (nanopore-type, not ONT)</option>
+        <option value="clr">PacBio CLR (older, not HiFi)</option>
+      </select></label>
+      <label title="Long-read bases ÷ haploid genome size."><span class="tip">Long-read coverage (×)</span><input id="s01-lr" type="number" min="0" step="any"></label>
+      <label title="Read N50 in thousands of bases (kb), from NanoPlot or seqkit stats -a."><span class="tip">Read N50 (kb)</span><input id="s01-n50" type="number" min="0" step="any"></label>
+      <label title="Mean read quality as a Phred value (Q), from NanoPlot or seqkit AvgQual."><span class="tip">Mean Q</span><input id="s01-q2" type="number" min="0" step="any"></label>
+    </div>
+    <div class="calc">
+      <label title="Hi-C read bases ÷ haploid genome size. 0 if none."><span class="tip">Hi-C coverage (×)</span><input id="s01-hic" type="number" min="0" step="any"></label>
+      <label style="flex-direction:row;gap:6px;align-items:center" title="Short reads of the mother and the father are available."><input id="s01-trio" type="checkbox" style="width:auto">parents' reads</label>
+      <label style="flex-direction:row;gap:6px;align-items:center" title="Lesson 1 step 5: an extra GC peak, an odd k-mer bump, or Kraken2 hits to microbes."><input id="s01-ct" type="checkbox" style="width:auto">signs of foreign DNA</label>
+    </div>
+    <div class="calc">
+      <label title="Total bases in a read file, in Gb (seqkit stats sum_len ÷ 10^9). Converted with the genome size above."><span class="tip">Helper: Gb of reads</span><input id="s01-gb" type="number" min="0" step="any"></label>
+      <span class="tool-note" id="s01-gbout">→ enter a genome size first</span>
+    </div>
+
+    <p id="s01-overall" style="font-family:var(--f-display);font-size:18px;font-weight:700"></p>
+    <div class="tbl s01-tbl"><table>
+      <thead><tr><th style="width:26px"></th><th>item</th><th>your value</th><th>what it means</th></tr></thead>
+      <tbody id="s01-rows"></tbody>
+    </table></div>
+    <h3>Suggested route</h3>
+    <div class="svgbox"><svg id="s01-route" viewBox="0 0 960 140" width="100%" style="min-width:680px" role="img" aria-label="Suggested assembly route"></svg></div>
+    <ul id="s01-routetxt" style="font-size:14px"></ul>
+    <div class="legend"><span><i style="background:var(--good)"></i>fine</span><span><i style="background:var(--het)"></i>go, with a caveat</span><span><i style="background:var(--bad)"></i>no-go until fixed</span><span><i style="background:var(--err)"></i>not given / for information</span></div>
+  </section>
+
+  <h3>Commands for the numbers you still miss</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># which machine? read names of the first 3 reads</span>
+zcat reads.fq.gz | awk 'NR%4==1' | head -n 3
+
+<span class="c"># total bases (sum_len), read N50 and N90, Q20(%), Q30(%), AvgQual; -j = threads</span>
+seqkit stats -a -T -N 50,90 -j 8 reads.fq.gz &gt; reads.stats.tsv
+
+<span class="c"># coverage = total bases / haploid genome size (here 2.7 Gb)</span>
+awk -F'\t' 'NR==2{printf "%.1fx\n", $5/2.7e9}' reads.stats.tsv     <span class="c"># column 5 = sum_len</span></pre></div>
+  <p class="tool-note">seqkit 2.x, <code>stats</code> subcommand: <code>-a</code> all statistics, <code>-T</code> tab-separated, <code>-N</code> extra N-values. Check the column order in the header line of your version before relying on <code>$5</code>.</p>
+
+  <h3>What our projects had going in, and what it implied</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>project</th><th>data at the start</th><th>size / heterozygosity known?</th><th>what it implied</th><th>what happened</th></tr></thead>
+    <tbody>
+      <tr><td><b>Species B</b><br>a small mammal, male</td>
+        <td>Long reads labelled "ONT", in fact CycloneSEQ: roughly 25×, read N50 under 3 kb. Short reads (2×150) about 30×.</td>
+        <td>No size estimate; Flye was given a round guess. Heterozygosity not recorded.</td>
+        <td>Coverage below Flye's "30x+" but above 20×; short reads limit contig length; ONT-trained models do not fit these reads.</td>
+        <td>Flye <code>--nano-raw</code>, <span class="tip" title="Medaka: ONT's polishing tool; it corrects an assembly with a neural-network model trained on one ONT chemistry and basecaller.">Medaka</span> (ONT R10.4.1 model: questionable), <span class="tip" title="NextPolish: a polisher that uses short reads (section 06).">NextPolish</span>, purge_dups. Contig N50 of a few hundred kb, <span class="tip" title="BUSCO: the share of a fixed list of conserved single-copy genes that is found complete in the assembly (section 10).">BUSCO</span> above 90 %. Contigs only.</td></tr>
+      <tr><td><b>Species C</b><br>a small mammal</td>
+        <td>CycloneSEQ at about 10×, with longer reads than B. Short reads about 30×.</td>
+        <td>As B.</td>
+        <td>At Flye's "not recommended below 10x" line: expect fragments.</td>
+        <td>Same pipeline. Contig N50 less than half of B's, BUSCO about ten points lower, <span class="tip" title="QV: base accuracy on the Phred scale, measured with Merqury. QV 30 = 1 error per 1,000 bases, QV 40 = 1 per 10,000 (section 08).">QV</span> lower than B's.</td></tr>
+      <tr><td><b>Species A</b><br>a rodent, male</td>
+        <td>Long reads only: roughly 40×, read N50 above 10 kb, mean quality below Q20, and only a minority of reads above Q20. Written as ONT R10.4.1; read names and a run report point to CycloneSEQ (not confirmed by the provider).</td>
+        <td>GenomeScope on the long reads: a size a little below the assembly and a published relative's genome, moderate heterozygosity, about 1 % read error. Flye got a much smaller number by mistake: GenomeScope's <em>unique</em> length, not the genome size.</td>
+        <td>Long, fairly accurate reads at good coverage: try hifiasm <code>--ont</code> as well as Flye. No short reads: no independent QV, <span class="tip" title="Homopolymer: a run of one repeated letter, such as CCCCCC. Nanopore-type reads often get its length wrong (section 06).">homopolymer</span> errors stay. No Hi-C: no chromosomes.</td>
+        <td>hifiasm primary: contig N50 above 10 Mb, BUSCO above 95 % (Flye + Medaka: contigs about ten times shorter). Exon homopolymer errors led to the decision to add Illumina short reads; Hi-C recommended for chromosomes.</td></tr>
+      <tr><td><b>Species D</b><br>a small mammal, female</td>
+        <td>Illumina 2×150 only. The data appear as four "lane" files of identical size per direction.</td>
+        <td>Not checked before assembly. Coverage was reported in the hundreds; if the four lane files are copies of one another it is four times lower. This is not yet checked.</td>
+        <td>Short reads only: short contigs in a mammal whatever the depth; check read counts against the order first; plan memory (s02).</td>
+        <td><span class="tip" title="SPAdes: a short-read assembler based on a k-mer (de Bruijn) graph (section 03).">SPAdes</span> <code>--careful</code> with small k values and a 256 GB memory limit: died of memory in read error correction. SPAdes' manual advises against <code>--careful</code> for "large and medium-size eukaryotic genomes".</td></tr>
+      <tr><td><b><i>Desmana moschata</i></b><br>R8 (published <span class="tip" title="GCA_ numbers are GenBank assembly accessions: the public ID of a deposited genome assembly.">GCA_051107935.1</span>)</td>
+        <td>Illumina PCR libraries; ~89× read coverage (median k-mer coverage 31).</td>
+        <td>Not part of this record.</td>
+        <td>Short reads only: every young, near-identical <span class="tip" title="SINE: short interspersed element, a 100–500-base mobile DNA element present in thousands of nearly identical copies in a mammal genome.">SINE</span> copy longer than about 2 × (k − 1) leaves a hole.</td>
+        <td>SPAdes (k = 99, <code>--isolate</code>) + MaSuRCA (a second short-read assembler), <span class="tip" title="RagTag: orders and joins contigs by aligning them to a related species' genome, writing 100 N between joined contigs.">RagTag</span> onto <i>Galemys</i>: contig N50 43.3 kb; 19,250 SINE copies written twice at RagTag joins.</td></tr>
+      <tr><td><b><i>Galemys pyrenaicus</i></b><br>(published GCA_019455555.1)</td>
+        <td>PCR-free 350 and 550 bp libraries plus 5 kb and 9 kb <span class="tip" title="Mate pairs: short read pairs whose two reads lie a known long distance apart (here 5 or 9 kb) in the genome. They link contigs into scaffolds (contigs put in order, with runs of the letter N standing for the unknown sequence between them) but carry no sequence for the gap.">mate pairs</span>, one animal.</td>
+        <td>Not part of this record.</td>
+        <td>Mate pairs help scaffolding but do not fill repeats.</td>
+        <td><span class="tip" title="ABySS: a short-read assembler based on a k-mer graph (section 03).">ABySS</span> 2.1.5, k = 100: contig N50 64.5 kb; <span class="tip" title="A run of 50 letters N written where the sequence is unknown. ABySS always writes the same number, so the length is a placeholder, not a measurement.">50-N placeholders</span> in the middle of young SINEs.</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="note"><b>In our projects</b>
+    <ul>
+      <li><b>Check the machine from the reads.</b> Species B and C files were called "ONT"; the read names start with a run ID, and the provider confirmed CycloneSEQ. Species A reads carry the run ID of a CycloneSEQ run report. The ONT models used later on these reads (Medaka, <span class="tip" title="Clair3: a variant caller for long reads; it uses a neural-network model trained on one sequencing platform and basecaller.">Clair3</span>) are therefore questionable.</li>
+      <li><b>Compute coverage yourself.</b> An early report gave the long-read coverage of B and C with no source, and both values were too high; read bases ÷ assembly length gave lower ones.</li>
+      <li><b>Know what a "size" file holds.</b> The species A value passed to Flye was GenomeScope's unique length (about two thirds of the genome); harmless for Flye, which uses it only for coverage estimates, but it would be wrong as an NG50 ruler or for coverage.</li>
+      <li><b>k-mer sizes from long reads run low.</b> Species A's size from long-read k-mers was a few percent below its Flye + Medaka assembly and below the published chromosome-level genome of a close relative.</li>
+      <li><b>A guess is not an estimate.</b> Species B and C were started with a round "2g"; both assemblies came out about a fifth larger, and the guess was never checked against a published size.</li>
+    </ul>
+  </div>
+</section>

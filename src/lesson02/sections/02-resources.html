@@ -1,0 +1,184 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>System requirements: RAM, CPU, disk and time</h2>
+  <p class="lede">An assembler that runs out of memory after two days has cost two days. Before you start one, estimate how much memory, how many processor cores, how much disk space and how much time it will need, and check that the machine has them free at the moment.</p>
+
+  <div class="note warn">
+    <h3 style="margin-bottom:6px">Why this comes first: a run that died</h3>
+    <p>The short reads of species D (one of our unpublished small-mammal genomes) went into SPAdes with a 256 GB memory limit (<code>-m 256</code>), 16 threads and three small k values. Even after the reads had been downsampled, the run stopped in its first step, read error correction, with "OS return value: 12". Code 12 is the Linux "out of memory" error. No assembly came out of that run.</p>
+  </div>
+
+  <h3>The five resources</h3>
+  <dl class="defs">
+    <dt>RAM (memory)</dt>
+    <dd>The working memory the program keeps its data in while it runs. Assemblers hold large tables (of k-mers, overlaps or graphs) in RAM. If a program asks for more RAM than is free, Linux either kills it (the <span class="tip" title="Out-Of-Memory killer: the part of the Linux kernel that ends a process when the machine has no memory left">OOM killer</span>) or starts moving memory to disk (<span class="tip" title="Disk space used as overflow memory. Disk is thousands of times slower than RAM, so a program that swaps slows to a crawl and slows everyone else too">swap</span>), which makes everything on the machine crawl. RAM is the resource most often in short supply.</dd>
+    <dt>Cores and threads</dt>
+    <dd>A <dfn>core</dfn> is one processing unit of the CPU. A <dfn>thread</dfn> is one stream of work a program runs; with <code>-t 16</code> it runs up to 16 at once, ideally one per core. A <dfn>CPU-hour</dfn> (core-hour) is one core busy for one hour: 16 threads for 10 hours use up to 160 CPU-hours.</dd>
+    <dt>Disk</dt>
+    <dd>Space for the input reads, for the <span class="tip" title="Files a program writes while it works and needs later in the same run, such as read alignments, overlap tables or corrected reads. Many are deleted at the end; some are kept so that the run can be resumed">intermediate files</span> written during the run, and for the results. The peak during the run is often many times larger than the final assembly.</dd>
+    <dt>Wall time</dt>
+    <dd>The time on the clock from start to finish (as on a wall clock). It is CPU-hours divided by the threads that are actually busy, plus waiting for the disk.</dd>
+    <dt>GPU</dt>
+    <dd>A <span class="tip" title="Graphics Processing Unit: a processor with thousands of small cores, used here to run neural-network models">graphics processor</span>. Most assemblers do not use one. Neural-network tools do: <span class="tip" title="dorado: Oxford Nanopore's current program for basecalling (turning the pore signal into letters), read correction and polishing.">dorado</span> (basecalling, read correction, polishing) and, optionally, Medaka. A GPU has its own memory (<span class="tip" title="Video RAM: the memory on the GPU card itself, separate from the computer's RAM">VRAM</span>), and that sets how large a batch it can process.</dd>
+  </dl>
+
+  <h3>Why memory grows with genome size, coverage, errors and heterozygosity</h3>
+  <p>Most assemblers start by counting or indexing k-mers (<a href="../01-pre-assembly/#basics">lesson 1</a>). Memory follows the number of <em>different</em> k-mers they must keep, not the genome size alone. A clean haploid genome gives about one different k-mer per base. Each difference between the two parental copies (a heterozygous site) adds up to k new k-mers. Each sequencing error also adds up to k new k-mers, and these are almost all seen only once. The number of error k-mers grows with the amount of reads, so coverage and error rate multiply each other.</p>
+
+  <section class="tool explain" aria-labelledby="s02-km-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-km-h">How many different k-mers does the assembler see?</h3></div>
+    <p class="tool-note">A rough count with three sources of k-mers. Pick a read type, then move the sliders. The bars share one scale.</p>
+    <div class="seg" role="group" aria-label="Read type preset" id="s02-km-preset">
+      <button type="button" data-p="sr" aria-pressed="true">Illumina, 0.3 % errors</button>
+      <button type="button" data-p="ont" aria-pressed="false">Long reads, Q15 (3.2 %)</button>
+      <button type="button" data-p="hifi" aria-pressed="false">HiFi, Q30 (0.1 %)</button>
+    </div>
+    <div class="controls">
+      <label for="s02-km-g">Genome size (Gb)<input type="range" id="s02-km-g" min="0.1" max="10" step="0.1" value="2.5"><output id="s02-km-go">2.5</output></label>
+      <label for="s02-km-c">Coverage (×)<input type="range" id="s02-km-c" min="5" max="100" step="1" value="30"><output id="s02-km-co">30</output></label>
+      <label for="s02-km-e"><span class="tip" title="Share of read bases that are wrong. Phred quality Q means an error rate of 10^(-Q/10): Q15 = 3.2 %, Q20 = 1 %, Q30 = 0.1 %">Read error rate (%)</span><input type="range" id="s02-km-e" min="0" max="10" step="0.05" value="0.3"><output id="s02-km-eo">0.3</output></label>
+      <label for="s02-km-h2"><span class="tip" title="Share of positions where the maternal and paternal copies differ (from GenomeScope, lesson 1)">Heterozygosity (%)</span><input type="range" id="s02-km-h2" min="0" max="2" step="0.05" value="0.5"><output id="s02-km-ho">0.5</output></label>
+      <label for="s02-km-k">k<input type="range" id="s02-km-k" min="15" max="63" step="2" value="21"><output id="s02-km-ko">21</output></label>
+    </div>
+    <div class="svgbox" id="s02-km-fig"></div>
+    <div class="readout" id="s02-km-out"></div>
+    <p style="font-size:14px">With noisy long reads the error k-mers outnumber the genome's own k-mers many times over. Assemblers deal with this in different ways. Flye counts k-mers first and keeps only the "solid" ones, those seen often enough to be unlikely errors. hifiasm puts a <span class="tip" title="A compact bit table that answers 'have I seen this k-mer before?' using a fixed amount of memory. It can say 'yes' wrongly now and then, but never 'no' wrongly">Bloom filter</span> in front of its k-mer counter, so k-mers seen only once are dropped before they take space. ABySS 2 holds its whole k-mer table in Bloom filters. These are simplified counts: repeats lower the genome bar, and an error near a read's end touches fewer than k k-mers.</p>
+    <details class="simple"><summary>Simple explanation with examples: why one error costs up to k k-mers</summary><div class="in">
+      <p>Take k = 5 and a read with one wrong base (red). Every 5-letter window that covers the wrong base is a k-mer the genome does not have:</p>
+      <div class="toy">genome  ACGTTGCAAC
+read    ACGT<span class="x">A</span>GCAAC
+windows ACGT<span class="x">A</span>   CGT<span class="x">A</span>G   GT<span class="x">A</span>GC   T<span class="x">A</span>GCA   <span class="x">A</span>GCAA   → 5 false k-mers from 1 error</div>
+      <p>A 2.5 Gb genome read to 25× with 3 % errors has 62.5 billion read bases and about 2 billion errors. Each error gives up to 21 false 21-mers: tens of billions of false k-mers against 2.5 billion real ones. With HiFi reads (0.1 % errors) the false k-mers drop below the number of real ones, and most of them are seen only once, so a filter removes them.</p>
+      <p>A heterozygous site works the same way, but the "error" is real: the second parental copy gives up to k k-mers of its own, each seen at about half the coverage.</p>
+    </div></details>
+  </section>
+
+  <p>Overlap-based long-read assemblers (Canu, NextDenovo, hifiasm, Flye in its later steps; all described in <a href="#s04">section 04</a>) also store which reads overlap which. That table grows with the number of reads and with repeats. The tools' own documentation therefore states memory per amount of input:</p>
+  <ul>
+    <li><b>Flye:</b> "Memory consumption grows linearly with genome size and reads coverage". Human assemblies take about 450 GB of RAM with ONT reads and about 140 GB with HiFi reads; memory is lower for more accurate reads.</li>
+    <li><b>Shasta:</b> about 4 to 6 bytes of RAM per input base, around 1 TB for a human genome at 60×.</li>
+    <li><b>NextDenovo:</b> each read-correction job needs about (total input bases ÷ 4) bytes; each alignment job 32 to 64 GB.</li>
+    <li><b>hifiasm:</b> the published table gives 68 to 137 GB for 2.2 to 3.1 Gb genomes at 22 to 36× HiFi, and 463 GB for a 9.5 Gb frog genome.</li>
+    <li><b>ABySS 2:</b> the Bloom filter budget <code>B</code> follows genome size: <code>B=50G</code> for human (3.1 Gb), <code>B=2G</code> for <i>Caenorhabditis elegans</i> (~101 Mb).</li>
+  </ul>
+
+  <h3>Why disk use explodes</h3>
+  <p>Count three things separately: the inputs, the peak of intermediate files, and what you keep.</p>
+  <ol class="steps">
+    <li><div><b>Inputs</b><div class="d">Compressed FASTQ in our projects took about 0.53 bytes per base for Illumina NovaSeq reads and about 0.87 bytes per base for the long reads (two long-read data sets, both close to that value). Uncompressed FASTQ takes a little over 2 bytes per base, one for the letter and one for its quality. Many tools decompress to a temporary file or a database first.</div></div></li>
+    <li><div><b>Intermediates</b><div class="d">Canu's FAQ: a human genome at 40 to 50× PacBio or Nanopore "typically requires 1-2TB of space at the peak"; plan for 3 TB (200 GB for HiFi). MaSuRCA lists 5 TB of disk for a mammal. SPAdes checkpoints (<code>--checkpoints all</code>) "may take ... a significant amount of disk space". Every <span class="tip" title="Polishing: correcting remaining base errors in an assembly by aligning reads to it (section 06)">polishing</span> round writes a <span class="tip" title="Binary Alignment Map: the compressed file of where each read aligns on the assembly">BAM</span> of all reads; <code>samtools sort</code> writes temporary files next to it unless you point <code>-T</code> elsewhere. hifiasm saves its corrected reads and overlaps as <code>*.bin</code> files so a rerun can skip that work.</div></div></li>
+    <li><div><b>Outputs</b><div class="d">A FASTA file takes about 1 byte per base: a hifiasm primary assembly of about 3 Gb is a <code>.gfa</code> file of about 3 GB (<span class="tip" title="Graphical Fragment Assembly: a text format holding the contig sequences plus the links between them">GFA</span>, hifiasm's output format). A haplotype-resolved run writes two or three assemblies of that size. Keep the logs; they are tiny and they record what was run.</div></div></li>
+    <li><div><b>Reference databases</b><div class="d">The <span class="tip" title="FCS-GX: NCBI's tool that finds DNA of other organisms (bacteria, fungi, human) in an assembly.">FCS-GX</span> contamination database needs 470 GiB of disk (<a href="#s09">section 09</a>); BUSCO lineage sets are downloaded into <code>busco_downloads/</code> in the current folder unless you give <code>--download_path</code>.</div></div></li>
+  </ol>
+  <p class="note"><b>Measure instead of guessing.</b> When the docs give no number (for example the size of a BAM), run the step on a 1 % random subsample of the reads (<code>seqkit sample -p 0.01</code>), look at the file sizes with <code>du -sh</code>, and multiply by 100. For memory and time, wrap the command in <code>/usr/bin/time -v</code>: its line "Maximum resident set size" is the peak RAM in kilobytes. Memory and time of assemblers do not scale exactly linearly, so treat a subsample run as a lower bound.</p>
+
+  <h3>Threads and wall time</h3>
+  <p>Doubling the threads does not halve the wall time. Every program has steps that run on one thread (reading input, writing output, some graph steps), and threads wait for the disk and for each other. The share of the work that can run in parallel sets the limit. This is known as <dfn>Amdahl's law</dfn>.</p>
+
+  <section class="tool explain" aria-labelledby="s02-am-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-am-h">More threads, less benefit</h3></div>
+    <p class="tool-note">A toy job that takes 100 hours on one thread. Set what share of it can run in parallel and how many threads you give it.</p>
+    <div class="controls">
+      <label for="s02-am-p"><span class="tip" title="The fraction of the work that can be split among threads. The rest runs on one thread whatever you do">Parallel share (%)</span><input type="range" id="s02-am-p" min="50" max="100" step="0.5" value="97"><output id="s02-am-po">97</output></label>
+      <label for="s02-am-t">Threads<input type="range" id="s02-am-t" min="1" max="128" step="1" value="16"><output id="s02-am-to">16</output></label>
+    </div>
+    <div class="svgbox" id="s02-am-fig"></div>
+    <div class="readout" id="s02-am-out"></div>
+    <p style="font-size:14px"><b>Real numbers.</b> hifiasm's README lists CPU time and wall time at 48 threads. For human <span class="tip" title="HG002: a much-studied human individual whose genome is used as a benchmark by most assembly tools.">HG002</span> it is 305.4 CPU-hours and 7.7 hours of wall time: 305.4 ÷ 7.7 ≈ 40 threads busy on average out of 48. For mouse, 172.9 ÷ 4.8 ≈ 36 of 48. At the other extreme, Medaka on our species B used about 2 cores' worth of CPU (~200 %) even with 16 threads: its slow step is neural-network inference, and its README suggests splitting that step by contig into separate jobs (<code>medaka inference --regions</code>) instead of adding threads.</p>
+  </section>
+
+  <section class="tool" aria-labelledby="s02-es-h">
+    <div class="tool-head"><span class="tool-tag">Estimator</span><h3 id="s02-es-h">Rough needs for one assembler run</h3></div>
+    <p class="tool-note"><b>Rough, order-of-magnitude only.</b> Every number is scaled linearly from a figure in the tool's own documentation or from one of our runs; the source of each number is written next to it. Where the documentation gives no figure, the estimator says so instead of guessing. Hover over a field to see what it means.</p>
+    <div class="calc">
+      <label for="s02-es-g" title="Haploid genome size in billions of bases (Gb), for example from GenomeScope or a C-value database"><span class="tip">Genome size (Gb)</span><input id="s02-es-g" type="number" min="0.01" max="40" step="any" value="2.5" title="Haploid genome size in billions of bases (Gb)"></label>
+      <label for="s02-es-c" title="Read coverage: total read bases divided by genome size"><span class="tip">Coverage (×)</span><input id="s02-es-c" type="number" min="1" max="500" step="any" value="25" title="Read coverage: total read bases divided by genome size"></label>
+      <label for="s02-es-d" title="Which reads go into the assembler"><span class="tip">Read type</span><select id="s02-es-d" title="Which reads go into the assembler">
+        <option value="sr">Illumina / MGI short reads</option>
+        <option value="ontraw" selected>Nanopore / CycloneSEQ, ~Q15</option>
+        <option value="ontq20">Nanopore R10, Q20+</option>
+        <option value="hifi">PacBio HiFi</option>
+      </select></label>
+      <label for="s02-es-a" title="Assemblers that accept this read type"><span class="tip">Assembler</span><select id="s02-es-a" title="Assemblers that accept this read type"></select></label>
+      <label for="s02-es-t" title="Threads you will give the run (-t). On a shared server, use your fair share, not all cores"><span class="tip">Threads</span><input id="s02-es-t" type="number" min="1" max="512" step="1" value="16" title="Threads you will give the run"></label>
+      <label for="s02-es-r" title="RAM that is free on the machine now (free -g, column 'available'), in GB"><span class="tip">Free RAM (GB)</span><input id="s02-es-r" type="number" min="1" max="8000" step="1" value="500" title="RAM that is free on the machine now, in GB"></label>
+    </div>
+    <div class="svgbox" id="s02-es-fig"></div>
+    <div class="tbl"><table style="min-width:560px"><thead><tr><th style="width:18%">What</th><th style="width:24%">Estimate</th><th>Where the number comes from</th></tr></thead><tbody id="s02-es-out"></tbody></table></div>
+    <p class="tool-note" id="s02-es-note"></p>
+  </section>
+
+  <h3>Per-tool reference</h3>
+  <p>What each tool's own documentation says about resources, and how to limit or resume it. The assemblers are described in <a href="#s03">sections 03</a> and <a href="#s04">04</a>, the polishers and purge_dups in <a href="#s06">section 06</a>, YaHS in <a href="#s05">section 05</a>, Merqury in <a href="#s08">section 08</a>. "Not stated" means the documentation I read gives no figure; it does not mean the need is small. Versions are those current on 2026-10-31.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Memory</th><th>CPU and time</th><th>Disk and GPU</th><th>Limit or resume</th></tr></thead>
+    <tbody>
+      <tr><td><b>hifiasm</b><br><span class="tag">0.25.0</span></td><td>68–137 GB for 2.2–3.1 Gb genomes at 22–36× HiFi; 463 GB for 9.5 Gb frog. The initial Bloom filter takes 2<sup>(f−3)</sup> bytes: 16 <span class="tip" title="GiB (gibibyte) = 2^30 bytes, about 1.07 GB. Tools differ in whether they print GB or GiB; the difference is 7 %.">GiB</span> at the default <code>-f37</code>, 32 GiB at <code>-f38</code>.</td><td>Mouse 2.6 Gb × 25: 172.9 CPU-h, 4.8 h at 48 threads. Human: 6.9–8.2 h at 48 threads.</td><td>Saves <code>*.ec.bin</code> and <code>*.ovlp.*.bin</code>; size not stated. No GPU.</td><td>Reuses the <code>*.bin</code> files automatically on a rerun with the same <code>-o</code>; <code>-i</code> forces a fresh start. <code>-f0</code> for small genomes; <code>-f38</code>/<code>-f39</code> to save k-mer counting memory in genomes much larger than human.</td></tr>
+      <tr><td><b>Flye</b><br><span class="tag">2.9.6</span></td><td>Grows linearly with genome size and coverage. Human: ~450 GB (ONT), ~140 GB (HiFi). <code>--asm-coverage 40</code> uses only the longest 40× of reads for the first, memory-heaviest stage.</td><td>Mammal at 40× ONT: "typically finishes within 3-4 days using 30 threads". Human HiFi 30×: 780 CPU-h.</td><td>Not stated. No GPU.</td><td><code>--resume</code> continues from the last completed stage; <code>--resume-from</code> one of <code>assembly, consensus, repeat, trestle, polishing</code>.</td></tr>
+      <tr><td><b>Verkko</b><br><span class="tag">2.3.2</span></td><td>Set per stage; the largest fixed default is 128 GB (combining overlaps). Values used are written to <code>verkko.yml</code>.</td><td>Not stated. Per-stage defaults set threads and hours, changeable with <code>--&lt;stage&gt;-run CPUS MEM_GB HOURS</code>.</td><td>Not stated. No GPU. Runs as a <span class="tip" title="A workflow manager: it runs each step as a separate job and knows which output files already exist">Snakemake</span> workflow, locally or on a cluster (<code>--grid</code>).</td><td>Rerun the same command; check first with <code>--snakeopts "--dry-run"</code> which steps would run again.</td></tr>
+      <tr><td><b>NextDenovo</b><br><span class="tag">2.5.2</span></td><td>Each alignment job 32–64 GB; each correction job ~(total input bases ÷ 4) bytes. Set the number of parallel jobs from your RAM.</td><td>Not stated. "The bottlenecks of NextDenovo are minimap2 and IO."</td><td>Not stated; <code>usetempdir</code> on a local SSD reduces waiting for the disk. No GPU.</td><td>"Simply run the same command again."</td></tr>
+      <tr><td><b>Shasta</b><br><span class="tag">0.14.0</span></td><td>~4–6 bytes per input base for best speed (~1 TB for human at 60×). With less RAM, <code>--memoryMode filesystem --memoryBacking disk</code> works but is much slower; results do not change.</td><td>Human 60× in about 4 h on a 64-core (128 virtual CPU) machine with 1952 GB RAM.</td><td>Works in memory; disk only for input and output. No GPU.</td><td>Resume option not described in the pages I read.</td></tr>
+      <tr><td><b>Canu</b><br><span class="tag">2.3</span></td><td>At least 64 GB on one node; 16 GB per node on a cluster.</td><td>Mammal: 10,000–25,000 CPU-h from raw reads; 1,000–2,000 CPU-h with HiFi.</td><td>Human at 40–50×: 1–2 TB at the peak; plan 3 TB (200 GB for HiFi). No GPU.</td><td>Rerun "the exact same command"; Canu checks what is done and continues.</td></tr>
+      <tr><td><b>SPAdes</b><br><span class="tag">4.3.0</span></td><td><code>-m</code> sets a hard limit in GB (default 250); SPAdes stops if it reaches it. No figure for large genomes in the docs.</td><td>Not stated. Default 16 threads (<code>-t</code>).</td><td>Error-correction temporary files go to <code>--tmp-dir</code>. Checkpoints can take "a significant amount of disk space". No GPU.</td><td><code>--continue -o DIR</code> resumes from the last checkpoint (after error correction, after each k, after mismatch correction); <code>--restart-from k55</code> allows changing options.</td></tr>
+      <tr><td><b>ABySS 2</b><br><span class="tag">2.3.10</span></td><td>Bloom filter mode (recommended): <code>B=50G</code> for human, <code>B=500G</code> for 20 Gb spruce. Check that the reported false-positive rate is 5 % or less (<code>v=-v</code>).</td><td>Threads with <code>j=</code> (default 2). Not stated.</td><td>Not stated. No GPU.</td><td><code>abyss-pe</code> is a <span class="tip" title="A recipe file for the program make, which runs only the steps whose output files are missing or out of date">Makefile</span>: <code>-C dir</code> runs in a folder, <code>-n</code> lists what would run.</td></tr>
+      <tr><td><b>MEGAHIT</b><br><span class="tag">1.2.9</span></td><td><code>-m</code> defaults to 0.9: 90 % of the machine's total RAM. Halts if the reads or k-mers do not fit.</td><td>Not stated. <code>-t</code> defaults to every logical processor of the machine.</td><td><code>--tmp-dir</code> for temporary files. No GPU.</td><td><code>--continue -o out</code>. Threads default to all logical processors. On a shared server always set <code>-t</code> and <code>-m</code> (your share, in bytes).</td></tr>
+      <tr><td><b>MaSuRCA</b><br><span class="tag">4.1.4</span></td><td>Mammal (up to 3 Gb): 512 GB; insect (up to 500 Mb): 128 GB.</td><td>Mammal, Illumina only: 15–20 days on 32+ cores; long reads add 50–100 %.</td><td>Mammal: 5 TB. No GPU.</td><td>Delete the failed files, rerun <code>masurca config.txt</code>, run the new <code>assemble.sh</code>; it runs only the missing steps.</td></tr>
+      <tr><td><b>Medaka</b><br><span class="tag">2.2.2</span></td><td>Not stated.</td><td><span class="tip" title="Running the trained neural network on the read alignments to decide the consensus base at each position">Inference</span> is the slow step; split it by contig with <code>--regions</code> to run several jobs at once.</td><td>GPU optional (uses the PyTorch neural-network library). Out of GPU memory: lower <code>-b</code>; <code>-b 100</code> suits 11 GB GPUs.</td><td>The three steps (<code>mini_align</code>, <code>medaka inference</code>, <code>medaka sequence</code>) can be run separately.</td></tr>
+      <tr><td><b>dorado correct</b><br><span class="tag">2.1.2 (1.4 docs)</span></td><td>"&gt; 256GB" system memory recommended; lower with <code>--index-size 4G</code>.</td><td>"&gt; 64 cores" recommended.</td><td><b>GPU with &gt; 32 GB VRAM</b> recommended; the input index needs up to 10 GB of disk. Only model: <code>herro-v1</code>, for ONT R10.4 reads.</td><td><code>--to-paf</code> (CPU-only overlaps) then <code>--from-paf</code> on a GPU node; <code>--resume-from corrected.fasta.fai</code>.</td></tr>
+      <tr><td><b>dorado polish</b><br><span class="tag">2.1.2 (1.4 docs)</span></td><td><code>--batchsize</code> controls GPU memory (auto by default).</td><td><code>--threads</code> for everything except inference.</td><td>One or more GPUs, or the CPU. Needs a BAM whose <code>@RG</code> header names the basecaller model.</td><td>Haploid only: it does not phase.</td></tr>
+      <tr><td><b>NextPolish</b><br><span class="tag">1.4.1</span></td><td>Not stated.</td><td>Not stated (our species B run: more than a day at 16 threads, <code>task = best</code>).</td><td>A BAM per round. No GPU.</td><td>"Simply run the same command again."</td></tr>
+      <tr><td><b>purge_dups</b><br><span class="tag">1.2.6</span></td><td>Not stated; set by the <span class="tip" title="minimap2: the standard program for aligning long reads, or whole assemblies, to a sequence.">minimap2</span> steps (<code>-I</code> loads at most 8 G bases of the target per index batch by default).</td><td>Not stated.</td><td>Two <span class="tip" title="Pairwise mApping Format: minimap2's plain-text table of alignments, one line per alignment">PAF</span> files (reads to assembly, assembly to itself). No GPU.</td><td>Separate commands; rerun the failed one.</td></tr>
+      <tr><td><b>YaHS</b> + <span class="tip" title="Hi-C: read pairs from DNA pieces that touched inside the nucleus; mapped to contigs, they show which contigs lie on the same chromosome (section 05)">Hi-C</span> mapping<br><span class="tag">1.2.2</span></td><td>"Might be very high when the genome size is large and at the same time the contig number is large"; then start at a lower resolution (<code>-r</code>). <span class="tip" title="bwa: a widely used aligner for short reads; bwa index prepares the assembly for it.">bwa index</span>: 5 GB for a human genome. <span class="tip" title="samtools: a toolkit for alignment (SAM/BAM) files; sort orders the alignments by position or read name."><code>samtools sort</code></span>: 768 MiB per thread by default (<code>-m</code>).</td><td>YaHS: under 5 minutes for human with ~45× Hi-C. Mapping the Hi-C reads takes far longer.</td><td>Hi-C BAM: measure on a subsample. No GPU.</td><td>Reuse the <code>.bin</code> file YaHS writes to skip input conversion.</td></tr>
+      <tr><td><b>meryl</b> / Merqury<br><span class="tag">1.4.2 / 1.4.1</span></td><td>meryl uses all RAM by default and counts in batches when memory is full: set <code>memory=</code> (GB).</td><td>Up to 64 CPUs by default: set <code>threads=</code>; Merqury: <code>OMP_NUM_THREADS</code>.</td><td>A <code>.meryl</code> folder of 128 files. No GPU.</td><td>Count per file, then <code>meryl union-sum</code>.</td></tr>
+      <tr><td><b>BUSCO</b><br><span class="tag">6.1.0</span></td><td>Not stated; Metaeuk uses less memory than miniprot (the default for eukaryote genomes).</td><td>Uses <b>one CPU unless <code>-c</code></b> is given.</td><td>Datasets go to <code>busco_downloads/</code> (<code>--download_path</code>); <code>--offline</code> for no internet. No GPU.</td><td><code>-r</code> restarts a partial run; <code>--opt-out-run-stats</code>.</td></tr>
+      <tr><td><b>FCS-GX</b><br><span class="tag">0.5.5</span></td><td><b>512 GiB</b> of shared memory to hold the database; without it, runs can be up to 10,000 times slower.</td><td>Up to 48 cores; human genome 6 min 57 s with the database in RAM.</td><td><b>470 GiB</b> for the database. No GPU.</td><td>Copy the database to a RAM disk (<code>/dev/shm</code>) for repeated runs.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Running on a shared server without hurting anyone</h3>
+  <ol class="steps">
+    <li><div><b>Look before you start</b><div class="d"><code>nproc</code> (threads), <code>free -g</code> (RAM; read the "available" column), <code>df -h</code> (free disk on each filesystem), <code>top</code> or <code>htop</code> (who is running what).</div></div></li>
+    <li><div><b>Write big files to the scratch disk, never to /home</b><div class="d"><span class="tip" title="A large disk area meant for big working files, usually not backed up. Its name varies: /staging, /scratch, /data">Scratch</span> filesystems are large; <code>/home</code> is usually small and shared by every account. A full <code>/home</code> stops everyone's conda, pip and login scripts. Start each job with <code>cd /scratch/dir || exit 1</code> on its own line, so a failed <code>cd</code> stops the job instead of letting it write into the home folder.</div></div></li>
+    <li><div><b>Move the caches too</b><div class="d">Package managers (<span class="tip" title="conda and pip install bioinformatics programs and keep downloaded packages in a cache folder">conda, pip</span>) and container tools (<span class="tip" title="Apptainer, formerly Singularity, runs a program packed with all its dependencies in one image file; images are cached">Apptainer</span>) write caches into your home folder (<code>~</code>) by default. Point them at scratch with environment variables: <code>TMPDIR</code>, <code>CONDA_PKGS_DIRS</code>, <code>XDG_CACHE_HOME</code> (pip respects it), <code>APPTAINER_CACHEDIR</code>.</div></div></li>
+    <li><div><b>Set every limit explicitly</b><div class="d">Some tools take everything by default: MEGAHIT 90 % of RAM and all threads, meryl all RAM and up to 64 CPUs, dorado correct all threads. Others take too little: BUSCO one CPU. Give each its <code>-t</code>/<code>threads=</code> and a memory limit (<code>-m</code>, <code>memory=</code>, <code>B=</code>, <code>-s</code>).</div></div></li>
+    <li><div><b>Be polite with <code>nice</code> and <code>ionice</code></b><div class="d"><code>nice -n 19</code> gives the job the lowest CPU priority (niceness runs from −20, most favoured, to 19, least). <code>ionice -c 3</code> puts it in the "idle" disk class: it gets disk time only when no other program has asked for it for a while. Neither limits memory.</div></div></li>
+    <li><div><b>Make the run survive a dropped connection, and record what it used</b><div class="d"><code>nohup … &amp;</code> (or a <span class="tip" title="tmux and screen keep a terminal session running on the server after you disconnect; you can reattach to it later."><code>tmux</code>/<code>screen</code> session</span>) keeps the job running after you log out. <code>/usr/bin/time -v -o run.time.txt</code> writes peak memory and wall time to a file. Read the first lines of the log right after starting; an error there means the job is not doing what you think.</div></div></li>
+    <li><div><b>Before relaunching a corrected run, stop the old one</b><div class="d">Find its process ID with <code>ps -u $USER -f</code> and stop it by that ID (<code>kill PID</code>), then check it is gone. Never kill by program name: other people may be running the same program.</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. what is free right now?</span>
+nproc; free -g; df -h /scratch /home
+
+<span class="c"># 2. keep data, temporary files and caches off /home</span>
+export TMPDIR=/scratch/$USER/tmp
+export CONDA_PKGS_DIRS=/scratch/$USER/conda_pkgs
+export XDG_CACHE_HOME=/scratch/$USER/cache
+export APPTAINER_CACHEDIR=/scratch/$USER/apptainer
+mkdir -p "$TMPDIR" "$CONDA_PKGS_DIRS" "$XDG_CACHE_HOME" "$APPTAINER_CACHEDIR" /scratch/$USER/asm
+cd /scratch/$USER/asm || exit 1
+
+<span class="c"># 3. low priority, survives logout, records peak RAM and time</span>
+nohup nice -n 19 ionice -c 3 /usr/bin/time -v -o flye.time.txt \
+    flye --nano-raw reads.fq.gz --out-dir flye_out --genome-size 2.5g --threads 16 \
+    &gt; flye.stdout 2&gt; flye.stderr &amp;
+sleep 60; tail flye.stderr flye_out/flye.log   <span class="c"># read the start of the log now</span>
+
+<span class="c"># 4. afterwards: peak memory (kB) and wall time</span>
+grep -E 'Maximum resident|Elapsed' flye.time.txt
+
+<span class="c"># explicit limits for tools that otherwise take everything (or too little)</span>
+megahit -1 R1.fq.gz -2 R2.fq.gz -o megahit_out -t 16 -m 200e9      <span class="c"># -m in bytes</span>
+meryl count k=21 threads=16 memory=64 R1.fq.gz R2.fq.gz output reads.meryl
+spades.py --isolate -1 R1.fq.gz -2 R2.fq.gz -o spades_out -t 16 -m 400 --tmp-dir "$TMPDIR"
+busco -i asm.fa -m genome -l mammalia_odb10 -c 16 -o busco_asm --download_path /scratch/$USER/busco_downloads</pre></div>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects</h3>
+    <ul>
+      <li><b>Machines.</b> DRAGEN: 64 cores, 503 GB RAM. therioserver: 128 cores, ~499 GiB RAM, with a "half cores only" policy (64 threads). Both are a little under the 512 GiB that FCS-GX asks for; I could not find a record of FCS-GX having been run on either.</li>
+      <li><b>Species B, on DRAGEN at 16 threads with <code>nice -n 19</code> and <code>ionice -c 3</code></b> (a mammal-size genome, CycloneSEQ long reads at roughly 25×): Flye about a day, Medaka about half a day (at ~200 % CPU; time followed the number of contigs more than the amount of reads), NextPolish more than a day (<code>task = best</code>, two iterations of its short-read modules; <a href="#s06">section 06</a>). Flye's run came to fewer than 10 thread-hours per Gb of reads, well below the scaling in Flye's FAQ; peak memory was not recorded.</li>
+      <li><b>Species A, on therioserver with 64 threads.</b> hifiasm was run with <code>-f38</code>, a 32 GiB Bloom filter. k-mer counting with jellyfish needed a 40G hash (<code>-s 40G</code>); a 10G hash was too small.</li>
+      <li><b>Species D.</b> SPAdes ran out of memory under a 256 GB limit during read error correction, after downsampling.</li>
+      <li><b>Memory requested on the Monsoon cluster</b> for <i>Darevskia mixta</i> (~16× NovaSeq): ABySS 120 GB, MEGAHIT 240 GB, SPAdes 470 GB (a 500 GB node). These are requests, not measured peaks. On mouse reads at 32×, ABySS took 5.4 h and MEGAHIT 8 h.</li>
+      <li><b>The aligner matters more than the hardware.</b> A <span class="tip" title="RagTag joins or patches contigs using another assembly; it needs a whole-genome aligner underneath">RagTag</span> patch of the species A assembly with the aligner nucmer was stopped after almost a week; the same patch with minimap2 finished in minutes.</li>
+    </ul>
+  </div>
+</section>

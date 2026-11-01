@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use these course materials, please cite them as below."
+title: "Zooinformatics: practical genomics for zoologists"
+type: dataset
+authors:
+  - family-names: Kosushkin
+    given-names: Sergei
+license: CC-BY-4.0
+repository-code: "https://github.com/Toki-bio/zooinformatics_course"
+url: "https://toki-bio.github.io/zooinformatics_course/"
+date-released: 2026-10-31
+keywords:
+  - genomics
+  - genome assembly
+  - genome annotation
+  - bioinformatics education
+  - zoology

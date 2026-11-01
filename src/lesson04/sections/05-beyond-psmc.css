@@ -1,0 +1,5 @@
+#s05-wrap .s05-dh{border-left:3px solid var(--line);padding:2px 10px;margin:14px 0 4px;font-size:14px}
+#s05-wrap .s05-dl{margin:0 0 6px;padding-left:22px;font-size:14px}
+#s05-wrap .s05-dl li+li{margin-top:5px}
+#s05-wrap #s05-dq{flex-wrap:wrap}
+@media (max-width:600px){#s05-wrap .seg button{padding:5px 8px}}

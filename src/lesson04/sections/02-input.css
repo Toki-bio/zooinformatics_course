@@ -1,0 +1,10 @@
+#s02-wrap .s02-ck{flex-direction:row;align-items:center;gap:6px;min-width:auto}
+#s02-wrap .s02-segwrap{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+#s02-wrap .s02-k{color:var(--het);font-weight:600}
+#s02-wrap .s02-n{color:var(--muted);opacity:.7}
+#s02-wrap .s02-bad{color:var(--bad)}
+#s02-wrap .s02-good{color:var(--good)}
+#s02-wrap .s02-verdict{font-size:14px;margin-top:8px}
+#s02-wrap .s02-verdict p{margin:4px 0}
+#s02-wrap #s02-psmcfa{max-height:none}
+#s02-wrap .readout .tool-note{display:block;font-size:12.5px;margin-top:2px}

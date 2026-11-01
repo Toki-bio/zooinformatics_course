@@ -1,0 +1,195 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Two species: divergence time and gene flow</h2>
+  <p class="lede">With one genome from each of two sister species you can ask two questions the single-genome curves of the earlier sections cannot answer: when did the two species stop exchanging genes, and did they exchange any afterwards? The idea is simple. A copy of a chromosome from species X and a copy from species Y can only trace back to a common ancestor before the species split, unless genes crossed between them later. How far back their shared ancestry lies, along the whole genome, holds the split time and the traces of gene flow. This section shows four ways to read it (hPSMC, MSMC2 cross-coalescence, BPP and gIMble), what each needs and assumes, and how far apart their answers were for our two rodent genomes.</p>
+
+  <h3>The words we need</h3>
+  <dl class="defs">
+    <dt>Coalescence</dt><dd>Following two copies of a stretch of DNA back in time until they meet in one ancestral copy. The time back to that meeting is the <dfn>coalescence time</dfn>. Inside one population it is, on average, 2N<sub>e</sub> generations for a diploid population of effective size N<sub>e</sub> (see <a href="#s01">s01</a> and <a href="#s03">s03</a>).</dd>
+    <dt>Split time (divergence time)</dt><dd>The time when the ancestral population divided into the two species and, in the simplest model, gene exchange stopped. It is younger than the average coalescence time of the two species' DNA, because after the split the two copies still have to wait in the ancestral population before they meet.</dd>
+    <dt>Gene flow (migration)</dt><dd>Genes moving from one species into the other after the split, by hybridisation and backcrossing. Models describe it either as a steady trickle (<dfn>isolation with migration</dfn>, IM) or as a single pulse (<dfn>introgression</dfn>). The rate <i>m</i> is the share of a population's genes that come from the other species each generation; <i>N·m</i> is the number of immigrant genomes per generation.</dd>
+    <dt>Pseudo-diploid (hybrid) genome</dt><dd>An artificial "F1 hybrid" made in the computer by pairing one haploid copy of species X with one haploid copy of species Y, position by position. Every difference between the two copies is treated as a heterozygous site.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: two villages that stopped marrying</summary><div class="in">
+    <p>Imagine one village that split into two over a river 1,000 years ago, after which nobody crossed. Pick one person from each side and trace their family trees back: their nearest shared ancestor must have lived before the split, so more than 1,000 years ago, and in the old village it took some extra time on top of that, depending on how big the old village was. Do this for many independent pieces of the genome and you get a whole distribution of meeting times, none of them younger than 1,000 years.</p>
+    <p>Now suppose that a few people still crossed the river each generation. Some pieces of the two genomes then share an ancestor who lived after the split, on whichever side. Those young meetings blur the sharp edge at 1,000 years: the edge moves toward the present and becomes a slope. The more crossers, the more blurred; with one or more crossers per generation, the two villages look like one (Cahill et al. 2016 found no detectable split in that case).</p>
+    <div class="toy">species X copy   ACGTTAGC<span class="h">A</span>TGACCTTAGACG<span class="h">T</span>TAGGATCCAG<span class="h">C</span>TACAGG
+species Y copy   ACGTTAGC<span class="h">G</span>TGACCTTAGACG<span class="h">C</span>TAGGATCCAG<span class="h">T</span>TACAGG
+                         <span class="h">^</span>             <span class="h">^</span>            <span class="h">^</span>   differences = "heterozygous" sites of the hybrid</div>
+    <p>A real F1 hybrid would carry exactly this. hPSMC builds it from two genomes, then lets PSMC read the meeting times from the density of differences, as in <a href="#s03">s03</a>.</p>
+  </div></details>
+
+  <h3>Four methods, what they need</h3>
+  <div class="tbl"><table style="min-width:640px">
+    <thead><tr><th>Method</th><th>Input</th><th>Model and answer</th><th>Assumes / watch for</th></tr></thead>
+    <tbody>
+      <tr><td><b>hPSMC</b><br><span class="tag">Cahill et al. 2016</span></td><td>One haploid sequence of each species on a shared reference (any depth; the paper shows it works with low-coverage data)</td><td>Plain PSMC on the pseudo-diploid. The curve rises toward infinity at the time gene flow stopped; the split time comes from <b>simulations</b> that are compared with the curve.</td><td>The rise is never a sharp step, so the time cannot be read off by eye. Gene flow after the split makes the rise slower and younger. At high divergence the default 100-bp bins saturate (below).</td></tr>
+      <tr><td><b>MSMC2 cross-coalescence</b><br><span class="tag">Wang et al. 2020</span></td><td>Phased haplotypes of both species in one <span class="tip" title="The MSMC input format: one line per variable site with the number of callable bases since the previous one and the alleles of every haplotype (see s05).">multihetsep</span> file</td><td>Three runs: within A, within B, across. The <span class="tip" title="Relative cross-coalescence rate: the rate at which one haplotype from A and one from B find a common ancestor, divided by the average of the within-species rates. 1 = behaves like one population; 0 = fully separated.">relative cross-coalescence rate</span> falls from 1 (one population) to 0 (separated) going toward the present.</td><td>Needs phasing; sites with ambiguous phase are skipped with <code>-s</code>. Even a sharp split gives a smeared curve (MSMC tutorial). With one unphased genome per species, the only usable cross pair is one haploid from each, which is the hPSMC input (our reading).</td></tr>
+      <tr><td><b>BPP</b><br><span class="tag">Flouri et al. 2023</span></td><td>Many short, unlinked loci (alignments of a few hundred bp); unphased diploids allowed</td><td>Bayesian <span class="tip" title="Multispecies coalescent: gene trees grow inside a species tree; each locus has its own gene tree, but all share the species tree's split times (tau) and population sizes (theta).">multispecies coalescent</span> (MSC). Estimates split time τ and population sizes θ (analysis "A00"); the MSC-M model adds migration rates.</td><td>No recombination inside a locus, free recombination between loci, neutral loci, a molecular clock. Priors matter. Slow; check convergence across runs.</td></tr>
+      <tr><td><b>gIMble</b><br><span class="tag">Laetsch et al. 2023</span></td><td>A VCF and callable regions for at least one diploid per species</td><td>Short blocks (default 64 callable bases) summarised by four mutation types; likelihood under split (DIV), migration-only (MIG) or isolation with migration (IM); also genome scans for barriers to gene flow.</td><td>No recombination inside a block, <span class="tip" title="Infinite sites: the assumption that every mutation hits a new position, so no site mutates twice.">infinite sites</span>, gene flow in one direction at a constant rate since the split, unphased data. A <span class="tip" title="Composite likelihood: the likelihoods of all blocks multiplied as if they were independent, although neighbouring blocks are linked. Point estimates are fine, but the curvature of the likelihood overstates the certainty, so confidence intervals come from simulations.">composite likelihood</span>: intervals come from simulations.</td></tr>
+    </tbody>
+  </table></div>
+  <p>All four give times in mutation units (substitutions per site, or generations scaled by μ). Turning them into years needs the same per-generation mutation rate and generation time as in <a href="#s04">s04</a>, and inherits all of its uncertainty.</p>
+
+  <h3>1. hPSMC: a hybrid genome made in the computer</h3>
+  <ol class="steps">
+    <li><div><b>One haploid sequence per species</b><div class="d">Map the reads of species X to the reference genome of species Y and write one base per reference position. At heterozygous sites pick one allele at random (the paper did exactly this). Where the reference itself is a primary assembly of B, it already serves as B's haploid copy.</div><div class="t">samtools consensus · or samtools mpileup + pu2fa (README)</div></div></li>
+    <li><div><b>Mask</b><div class="d">Set to N every position where the reads of A (and B) are not trustworthy: depth bounds, mapping quality, sex chromosomes, as in <a href="#s02">s02</a>.</div><div class="t">mosdepth · bedtools maskfasta</div></div></li>
+    <li><div><b>Pseudo-diploid psmcfa</b><div class="d">Compare the two sequences in bins: K if they differ anywhere in the bin, T if not, N if the bin has too many masked bases.</div><div class="t">psmcfa_from_2_fastas.py (hPSMC)</div></div></li>
+    <li><div><b>Run PSMC and plot</b><div class="d">Same command as for one genome (<a href="#s03">s03</a>); tell the plotting script the bin size.</div><div class="t">psmc · psmc_plot.pl -s</div></div></li>
+    <li><div><b>Simulate and compare</b><div class="d">Simulate splits at a range of times with the ancestral size read from the plateau; keep the simulated times whose curves agree with yours.</div><div class="t">hPSMC_quantify_split_time.py (ms) · or your own msprime script</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. species X reads mapped to species Y's assembly; one base per reference position (samtools 1.25).</span>
+<span class="c">#    -a --show-ins no --show-del yes keeps 1:1 coordinates (manual example); -A writes IUPAC codes at hets</span>
+samtools consensus -a --show-ins no --show-del yes -A -X r10.4_sup --min-MQ 20 \
+  -f fasta -o A_on_B.fa A_on_B.bam
+<span class="c">#    then: IUPAC code -> one of its two bases at random (fixed seed), "*" (deletion) -> N,</span>
+<span class="c">#    and N outside the callable mask of both genomes (a few lines of your own code)</span>
+
+<span class="c"># 3. pseudo-diploid in 20-bp bins (-b bin size, -m max. masked bases before a bin becomes N)</span>
+python2 psmcfa_from_2_fastas.py -b20 -m10 A_on_B.hap.fa B_ref.masked.fa > AxB.b20.psmcfa
+grep -v '>' AxB.b20.psmcfa | tr -d '\n' | fold -w1 | sort | uniq -c   <span class="c"># share of K, T, N bins</span>
+
+<span class="c"># 4. PSMC with the usual settings; plot with the bin size given to -s</span>
+psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o AxB.b20.psmc AxB.b20.psmcfa
+psmc_plot.pl -s 20 -u 5.4e-09 -g 1 -R AxB AxB.b20.psmc</pre></div>
+  <p class="tool-note">The hPSMC scripts are Python 2. The README warns that option flags (bin size, mutation rate, generation time) have been reported to fail <b>silently</b> on some systems, keeping the defaults; the <code>grep</code> line above checks the bins you actually got (count the characters per sequence against its length ÷ bin size). Default bin of the builder script: 100 bp; README example and paper: 10 bp. In the script, a bin becomes N when its count of N bases exceeds <code>-m</code> (default 50, for 100-bp bins); <code>-m10</code> for 20-bp bins is our example, not a documented value.</p>
+
+  <h3>Bin size: the 100-bp default fails between species</h3>
+  <p>A PSMC bin is "K" if it holds at least one difference. Within one genome at 0.2 % heterozygosity, about one 100-bp bin in five is K, and the model can see where long stretches of low or high density begin and end. Between two species the two copies differ at, say, 2 % of sites; then almost every 100-bp bin holds a difference, the sequence becomes "KKKKKKK…", and PSMC has nothing left to read. If differences fall at random, the share of K bins is about</p>
+  <div class="formula">share of K bins ≈ 1 − e<sup>−d·b</sup>     d = differences per base, b = bin size</div>
+  <p>At d = 2 %: 86 % for 100-bp bins, 33 % for 20-bp bins, 18 % for 10-bp bins. Smaller bins keep the information, at the cost of a five to ten times longer input and run. The toy below prints this for the divergence it produces.</p>
+
+  <h3>Reading the curve: simulations, not the eye</h3>
+  <p>Going back in time, the hPSMC curve sits at infinity (no shared ancestry is possible) until the split, then falls to the ancestral population size. A real PSMC curve does not jump: PSMC works with broad time intervals and cannot place each change in ancestry exactly, so even a clean split gives a slope spread over a wide time range. The hPSMC authors therefore read the curve against simulated ones (README, step 5):</p>
+  <ol>
+    <li>Read the <b>pre-divergence N<sub>e</sub></b> from the plateau on the old side.</li>
+    <li>Simulate pseudo-diploids with that N<sub>e</sub> and a series of split times, run the same PSMC on them.</li>
+    <li>Find the simulated split times whose curves cross yours <b>between 1.5 and 10 times the pre-divergence N<sub>e</sub></b>. The estimate is the narrowest range of non-crossing simulations around them. The paper calls these thresholds "a reasonable starting point for interpretation, but may not be appropriate for all datasets."</li>
+  </ol>
+  <p class="note warn"><b>Check the hard-coded simulation settings.</b> <code>hPSMC_quantify_split_time.py</code> writes <span class="tip" title="ms (Hudson 2002): a classic program that simulates DNA sequences of a sample under the coalescent; msprime is a much faster modern equivalent.">ms</span> commands with values fixed in the script, chosen for humans: generation time 25 years, μ = 1 × 10<sup>−9</sup> per site per year, recombination 10<sup>−8</sup> per site per generation, 40 replicates of 5 Mb, 10-bp bins, and an instant split with <b>no</b> gene flow (<code>-I 2 2 2 -ej</code>). Edit them for your species, or write the simulation yourself (msprime), matching μ, bin size, recombination and the PSMC <code>-p</code> pattern of your real run. If gene flow continued after the split, the matching split time is the end of gene flow, not the first separation.</p>
+
+  <section class="tool explain" aria-labelledby="s07-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-toy-h">A split, with and without gene flow, as hPSMC sees it</h3></div>
+    <p class="tool-note">Two species split from one ancestral population. Take one copy of a chromosome piece from each species and follow them back in time. Before the split (older times) they wait in the ancestral population; after it (younger times) they can meet only if one of them has moved into the other species by gene flow, and then they wait in that species. The figure computes the exact distribution of their meeting time for this model, and the curve PSMC would aim at: the <span class="tip" title="IICR, inverse instantaneous coalescence rate: at each time, 1 / (2 × the chance per generation that two not-yet-joined copies join). In one panmictic population this is the effective population size; for a pseudo-diploid it is 'infinite' while the copies are kept apart.">IICR</span>. The thick steps average it over 24 broad time windows, as a piecewise-constant model does; real PSMC from finite data is smoother still. Times are in years at the placeholder rate μ = 5.4 × 10<sup>−9</sup> per generation and 1 year per generation (as in <a href="#s04">s04</a>).</p>
+    <div class="controls" role="group" aria-label="True history">
+      <label for="s07-T">Split time <output id="s07-T-o">1.0 My</output><input type="range" id="s07-T" min="0.1" max="3" step="0.05" value="1"></label>
+      <label for="s07-NA"><span>Ancestral N<sub>e</sub></span> <output id="s07-NA-o">300k</output><input type="range" id="s07-NA" min="50" max="1000" step="10" value="300"></label>
+      <label for="s07-Nd"><span>N<sub>e</sub> of each daughter species</span> <output id="s07-Nd-o">100k</output><input type="range" id="s07-Nd" min="10" max="400" step="10" value="100"></label>
+      <label for="s07-M">Gene flow, immigrants per generation (N·m) <output id="s07-M-o">none</output><input type="range" id="s07-M" min="0" max="40" step="1" value="0"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">When gene flow happens
+        <div class="seg" role="group" aria-label="Timing of gene flow" id="s07-when"><button type="button" data-v="all" aria-pressed="true">since the split</button><button type="button" data-v="early" aria-pressed="false">first half, then stopped</button><button type="button" data-v="late" aria-pressed="false">recent contact only</button></div></div>
+      <label style="min-width:auto;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="s07-ref" checked> show the no-gene-flow curve</label>
+    </div>
+    <div class="legend" id="s07-legend"></div>
+    <div class="svgbox" id="s07-dens"></div>
+    <div class="svgbox" id="s07-fig"></div>
+    <div class="readout" id="s07-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) Without gene flow no copy pair meets after the split: the IICR is infinite there and drops to the ancestral size exactly at the split; even then the stepped curve shows the change only to the nearest window. (2) Add a little gene flow (N·m of 0.01 to 0.1, one immigrant every 100 to 10 generations): 14 to 67 % of the genome now meets after the split (default sliders), and the curve comes down from infinity long after the split, toward the present. Its crossing of 10 × and 1.5 × N<sub>e</sub> moves toward the present: read naively, the split looks <b>younger</b>, and what is dated is closer to the end of gene flow. (3) At N·m of 1 or more the two species behave almost like one population and the rise nearly disappears (compare Cahill et al. 2016). (4) "First half, then stopped": the rise sits near the end of gene flow, not at the split. (5) The divergence d and the share of K bins in the readout: with T = 1 My and an ancestral N<sub>e</sub> of 300k the two copies differ at about 1.7 % of sites, and a 100-bp bin is K most of the time.</p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <p>Two lineages, one in each daughter species, both of size N<sub>d</sub>. Going back in time, each lineage moves to the other species at rate m = (N·m)/N<sub>d</sub> per generation while gene flow is on (symmetric). When both are in the same species they join at rate 1/(2N<sub>d</sub>); a lineage can also move out again. Older than the split, both are in the ancestral population and join at rate 1/(2N<sub>A</sub>). The probability that they have not joined by time t is computed exactly (a three-state Markov chain), on a fine logarithmic time grid. IICR(t) = 1 / (2 × rate of joining at t among pairs not yet joined). The stepped curve uses 24 windows equally spaced on a log scale from 12 ky to 12 My, with the average rate in each window. Divergence d = 2μ × mean joining time (in generations); K share = 1 − e<sup>−d·b</sup>. Not modelled: recombination, mutation noise, finite genome length, the PSMC fit itself, and unequal gene flow in the two directions.</p>
+    </div></details>
+  </section>
+
+  <h3>2. MSMC2: cross-coalescence rate</h3>
+  <p>MSMC2 estimates coalescence rates for pairs of haplotypes you choose with <code>-I</code>. For two species you run it three times, on the same input files, and combine the results (MSMC2 README; msmc-tools tutorial):</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># two phased diploids per species: haplotypes 0-3 = species X, 4-7 = species Y (one multihetsep file per chromosome)</span>
+msmc2 -I 0,1,2,3 -o withinA chr*.multihetsep.txt
+msmc2 -I 4,5,6,7 -o withinB chr*.multihetsep.txt
+msmc2 -s -I 0-4,0-5,0-6,0-7,1-4,1-5,1-6,1-7,2-4,2-5,2-6,2-7,3-4,3-5,3-6,3-7 -o across chr*.multihetsep.txt
+combineCrossCoal.py across.final.txt withinA.final.txt withinB.final.txt > AB.combined.final.txt
+<span class="c"># relative cross-coalescence rate per time interval (columns of the combined file):</span>
+<span class="c">#   rCCR = 2 * lambda_01 / (lambda_00 + lambda_11);  years = left_time_boundary / mu * g</span></pre></div>
+  <p>The relative cross-coalescence rate (rCCR) is about 1 while the two samples behave as one population and falls to 0 once they are fully separated; the time at which it passes 0.5 is often quoted as a split time. The tutorial warns that "even in simulations with a sharp separation, MSMC would not produce an infinitely sharp separation curve, but introduces a 'smear' around the true separation time". <code>-s</code> skips sites whose phase is ambiguous, "recommended for cross population analysis". MSMC2 options as listed in the README of v2.1.4: <code>-i</code> iterations (default 20), <code>-p</code> time pattern (default <code>1*2+25*1+1*2+1*3</code>), <code>-t</code> threads.</p>
+  <p>With <b>one unphased genome per species</b> the cross pairs cannot be built: you do not know which allele of A sits on the same haplotype as which allele of B. Running MSMC2 on one haploid of each species (two haplotypes in total) is the same pseudo-diploid as hPSMC, and the result is the same kind of curve.</p>
+
+  <h3>3. BPP: many short loci, a Bayesian model</h3>
+  <p>BPP does not walk along the genome. It takes thousands of short, separate alignments (loci), each with its own gene tree, and asks which species tree parameters explain them all: the split time τ and the population sizes θ, in units of mutations per site. It is a <span class="tip" title="Bayesian MCMC: the program wanders through parameter values, staying at each in proportion to prior × likelihood. The values visited form the posterior distribution: an estimate with a credible interval.">Bayesian MCMC</span> program, so you give <span class="tip" title="Prior: the range of values you consider plausible before seeing the data, as a probability distribution. The posterior combines it with the data.">priors</span> and get <span class="tip" title="Posterior: the distribution of parameter values after combining prior and data. Its 95 % HPD (highest posterior density) interval is the narrowest range holding 95 % of it.">posteriors</span>. The manual names four analyses by two switches; "A00" (<code>speciesdelimitation = 0</code>, <code>speciestree = 0</code>) estimates θ and τ on a fixed tree, which is what a two-species split needs.</p>
+  <div class="formula">θ = 4Nμ (μ per generation)     τ = T × μ (T and μ in the same time unit)     years = τ / μ<sub>per year</sub></div>
+  <p>One diploid per species is enough: unphased diploid sequences are written with <span class="tip" title="IUPAC ambiguity codes: one letter for two bases, e.g. R = A or G, Y = C or T. In an unphased diploid sequence an R at a site means the animal is A/G heterozygous there.">IUPAC codes</span> at heterozygous sites and declared unphased with <code>phase = 1</code> for that species; BPP then sums over the possible phases (manual: "phase"). Tiley et al. 2023 showed by simulation that divergence times and ancestral sizes can be estimated accurately "even when only a single diploid individual per species is sampled", provided gene flow is modelled when present.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># loci.txt (phylip blocks; the name after ^ is the individual ID):</span>
+<span class="c">#   2 500</span>
+<span class="c">#   ^bet1   ACGTRAGC...      R, Y, ... = heterozygous sites of the unphased diploid</span>
+<span class="c">#   ^tri1   ACGTAAGC...</span>
+<span class="c"># imap.txt:   bet1 A      tri1 B</span>
+
+<span class="c"># A00.ctl  (BPP 4.8.7; template, choose your own prior means)</span>
+seed = -1
+seqfile = loci.txt
+Imapfile = imap.txt
+jobname = A00_run1
+speciesdelimitation = 0
+speciestree = 0
+species&amp;tree = 2  A  B
+                  1  1
+                  (A, B)R;
+phase = 1 1                  <span class="c"># both species unphased diploids</span>
+usedata = 1
+nloci = 4000
+cleandata = 0                <span class="c"># 1 would delete every column with an IUPAC code, i.e. all het sites</span>
+thetaprior = invgamma 3 0.004    <span class="c"># mean b/(a-1) = 0.002</span>
+tauprior = invgamma 3 0.02       <span class="c"># mean 0.01 = 1 % divergence since the root</span>
+finetune = 1
+print = 1 0 0 0 0
+burnin = 20000
+sampfreq = 10
+nsample = 100000
+
+<span class="c"># MSC-M: add to the same file (the tree must have labelled nodes, as R above): a migration prior and one line per direction</span>
+wprior = 2 200               <span class="c"># gamma prior on w = m/mu, mean 0.01 (BPP 4.8; replaces migprior)</span>
+migration = 2
+  A B
+  B A
+
+bpp --cfile A00.ctl</pre></div>
+  <ul>
+    <li><b>Loci.</b> Short (a few hundred bp, so recombination inside a locus can be ignored), far apart (so they are roughly independent), outside genes and repeats, inside the callable mask of both genomes, without indels.</li>
+    <li><b>Priors.</b> The manual's examples use inverse-gamma priors with shape <i>a</i> = 3, a broad distribution; set the mean from rough numbers: θ about the heterozygosity per site; τ somewhat less than half the between-species divergence per site (the two copies differ by about 2τ plus the ancestral θ; our rule of thumb from θ = 4Nμ). Rerun with a prior mean several times larger and smaller: if the posterior follows the prior, the data do not inform that parameter.</li>
+    <li><b>Migration in 4.8.</b> Version 4.8.0 changed the migration parameter from M (migrants per generation) to <i>w</i> = <i>m</i>/μ; old control files with <code>migprior</code> must be updated, and the manual gives M = θ<sub>Y</sub>·w/4 for converting.</li>
+    <li><b>Convergence.</b> Run several chains with different seeds and compare them; look at the <span class="tip" title="Effective sample size: how many independent draws the correlated MCMC samples are worth; the more, the more stable the estimate.">effective sample size</span> of every parameter (column ESS* of BPP's summary table, or Tracer), and run longer if it is low.</li>
+    <li><b>Install.</b> Use the binary release from GitHub (the README links <code>bpp-4.8.7-linux-x86_64.tar.gz</code>); in our setup the conda package of that name was not the program.</li>
+  </ul>
+  <p class="note warn"><b>A migration rate above zero is not yet evidence for gene flow.</b> Model misfit of other kinds (variation in mutation rate or in N<sub>e</sub> along the genome, linked selection, wrong loci) can push it up. Check that it survives different locus sets and prior choices, and simulate data <b>without</b> gene flow under the fitted MSC model and run them through the same analysis: if those also give w &gt; 0, the signal is not informative (the same lesson as the cobraa null in <a href="#s05">s05</a>).</p>
+
+  <h3>4. gIMble: blocks and isolation with migration</h3>
+  <p>gIMble was written for the case of one diploid genome per species. It cuts the genome of each between-species sample pair into short blocks of a fixed number of callable bases (64 by default; the paper chose it so that a block holds on average about one heterozygous site per species) and counts, in each block, four kinds of variable sites:</p>
+  <dl class="defs">
+    <dt>hetA, hetB</dt><dd>Heterozygous in one species only.</dd>
+    <dt>hetAB</dt><dd>Heterozygous in both (a polymorphism the species share).</dd>
+    <dt>fixed</dt><dd>Homozygous in both, but for different bases: a fixed difference.</dd>
+  </dl>
+  <p>The tally of block types (the blockwise site frequency spectrum, bSFS) is compared with its exact probability under three models: strict divergence (DIV), migration only (MIG) and isolation with migration (IM) with gene flow in one stated direction. It then estimates the population sizes, the split time T (in generations) and the migration rate <i>m<sub>e</sub></i>. The same tallies in windows along the genome give the barrier scan: windows where gene flow is much lower than the genome average (Laetsch et al. 2023).</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># gIMble 1.0.3 (README). Input from gimbleprep: VCF, BED of callable sites, genome file, samples CSV (add 2 population IDs by hand)</span>
+gimbleprep -f ref.fa -b bams/ -v raw.freebayes.vcf.gz -k
+gimble parse -v gimble.vcf.gz -b gimble.intergenic.bed -g gimble.genomefile -s gimble.samples.csv -z analysis
+gimble blocks -z analysis.z -l 64
+gimble windows -z analysis.z -w 500 -s 100
+gimble tally -z analysis.z -k 2,2,2,2 -l blocks_kmax2 -t blocks
+<span class="c"># fit IM with migration B->A backwards in time; bounds for Ne (-A -B -C), T (generations), me; -u = mu per generation</span>
+gimble optimize -z analysis.z -l IM_BA_opt -d tally/blocks_kmax2 -m IM_BA -r A -u 5.4e-09 \
+  -A 10_000,1_000_000 -B 10_000,1_000_000 -C 10_000,2_000_000 -T 0,5_000_000 -M 0,1e-5</pre></div>
+  <p class="tool-note">The README designs <code>gimbleprep</code> around a FreeBayes VCF and BAMs; the <code>-A/-B/-C/-T/-M</code> bounds above are placeholders to adapt, not values from the documentation. Migration direction in the model names is backwards in time (<code>IM_BA</code>: lineages move from B to A going back, i.e. genes flowed from A into B forward in time; check the help of <code>gimble optimize</code>). The paper builds confidence intervals and false-positive rates for barrier windows from coalescent simulations (<code>gimble simulate</code>), because the composite likelihood alone overstates certainty.</p>
+
+  <h3>What one genome per species cannot do</h3>
+  <ul>
+    <li><b>D-statistics (ABBA-BABA) and relatives</b> test introgression by comparing two sister lineages with a third lineage and an <span class="tip" title="Outgroup: a species known to have split off before the others; it shows which base was ancestral.">outgroup</span> (Hibbins &amp; Hahn 2022). Between a single pair of sister species there is no third lineage to compare, so these tests do not apply to "did A and B exchange genes?".</li>
+    <li><b>Direction and timing of gene flow</b> are weakly identified with two diploids: the four methods above assume a model (one pulse, constant trickle, one direction) and estimate within it.</li>
+    <li><b>Ancestral structure</b> can mimic gene flow and vice versa, as for single-genome curves (<a href="#s01">s01</a>, <a href="#s06">s06</a>).</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p>One male of species A (ONT, our assembly) and the public chromosome-level assembly of the relative (HiFi). All times use the placeholder rate μ = 5.4 × 10<sup>−9</sup> per generation and 1 year per generation (see <a href="#s04">s04</a>); they are illustrative, not dates, and are compared here only with each other.</p>
+    <p><b>hPSMC.</b> The species A ONT reads were mapped to the relative's assembly, turned into one haploid sequence with <code>samtools consensus -A -X r10.4_sup</code> (heterozygous IUPAC codes resolved by a seeded random choice), and paired with the relative's reference; mask <span class="tip" title="Mapping quality of the reads: the aligner's confidence that a read belongs here (lesson 3, s09).">MAPQ</span> ≥ 20 and the depth bounds of <a href="#s02">s02</a>. The two differed at about 2 % of the callable bases. With 100-bp bins more than four in five bins were K and the curve was flat; 20-bp bins gave about a third K, 10-bp about a fifth. Reading the split from where the 20-bp curve rises gave a broad range; our <span class="tip" title="msprime: a Python coalescent simulator; it generates the genomes a given history would produce, which can then be run through the same PSMC.">msprime</span> calibration (no gene flow, ancestral N<sub>e</sub> from the plateau) matched the times at which the curve reaches 3 × and 10 × the ancestral N<sub>e</sub> to a true split clearly younger than the eye reading. A second grid with a larger ancestral size has no recorded result yet. Masking the <span class="tip" title="Runs of homozygosity: long stretches where the two copies of one animal are identical (lesson 3, s09).">ROH</span> of either species did not move the curve; masking the union of both (a third of the bins) made its rise about 15 % younger, and so did a random mask of the same size: the shift was loss of data, not ROH. In msprime the standard coalescent with recombination (<code>hudson</code> model) with haploid samples was about 17 times faster than the approximate <code>smc_prime</code> model.</p>
+    <p><b>BPP 4.8.7.</b> 4,000 loci of 500 bp, one unphased diploid per species (<code>phase = 1 1</code>). MSC: τ had a narrow 95 % HPD (a few percent either side), and four longer runs gave a value within about 5 % of it. θ of the relative was about 1.4 times that of species A, and the ancestral θ was larger than both (about 2.5 to 4 times). MSC-M put a migration rate (<i>w</i> = <i>m</i>/μ) clearly above zero from the relative into species A and one consistent with zero in the other direction, but with an effective sample size of only a few hundred at most per run. With loci in ROH removed or a random subset of loci the rate fell by up to about a third, and loci inside ROH alone gave about twice the full-data value, while τ stayed within a few percent in every subset. Our verdict: the split time is stable, the gene-flow call is fragile, and the no-gene-flow simulation control has not been run.</p>
+    <p><b>gIMble</b> is installed but has not been run on these genomes.</p>
+    <div class="tbl"><table style="min-width:520px">
+      <thead><tr><th>Estimate of the split between species A and the relative</th><th>Relative to the BPP estimate (same placeholder rate)</th></tr></thead>
+      <tbody>
+        <tr><td>hPSMC, read from the rise by eye</td><td>about 1 to 1.7 times</td></tr>
+        <tr><td>hPSMC, calibrated by simulation (first grid only)</td><td>about 0.7 times</td></tr>
+        <tr><td>BPP MSC, τ / μ</td><td>1 (reference)</td></tr>
+      </tbody>
+    </table></div>
+    <p>The three genome-based numbers differ by method, by up to a factor of about two, and all of them scale with the rate used to convert them: a different μ or generation time moves them together (<a href="#s04">s04</a>). A split time is only as good as the rate used to convert it, and only an independent date, such as a fossil-calibrated phylogeny of the group, can test that rate.</p>
+  </div>
+</section>

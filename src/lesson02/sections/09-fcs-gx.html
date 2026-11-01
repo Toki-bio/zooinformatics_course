@@ -1,0 +1,187 @@
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">09</span>Contamination screening with NCBI FCS-GX</h2>
+
+  <p class="lede">Some of the sequence in a new assembly does not come from your animal. Bacteria from the skin or gut, a fungus on the tissue, human DNA from whoever handled the sample, and short synthetic sequences added in the lab all end up in the reads and then in the contigs. The NCBI Foreign Contamination Screen (FCS) finds these pieces and says what to do with each one.</p>
+
+  <p>A <dfn>contaminant</dfn>, in NCBI's definition, is any sequence "that does not originate from the biological source organism". Left in, it causes real damage. Bacterial genes get annotated as genes of your species, they look like <span class="tip" title="Horizontal gene transfer: genes passed between unrelated organisms rather than from parent to offspring. Contamination is the most common false source of such claims.">horizontal gene transfer</span>, and they spread into every database that later copies your genome. FCS has two parts, and you run both:</p>
+  <ul>
+    <li><b>FCS-adaptor</b> finds <span class="tip" title="Short synthetic DNA pieces ligated to fragments during library preparation so that the sequencer can read them (for example the Illumina PCR primer). They should have been trimmed from the reads but sometimes survive into contigs.">adaptors</span> and <span class="tip" title="Cloning vectors: plasmids and other carrier DNA used in the lab. NCBI keeps a collection of them called UniVec.">vectors</span>. It is a fast version of NCBI's VecScreen, which uses strict <span class="tip" title="BLAST: the standard NCBI program that finds similar sequences by local alignment.">BLAST</span> searches against a small database of synthetic sequences. Any ordinary computer can run it.</li>
+    <li><b>FCS-GX</b> finds DNA from other organisms. It aligns every contig to a very large database of genomes and asks which group of organisms each piece most resembles. A piece that resembles a group other than your animal's is reported as a contaminant. This part needs a large server, or Galaxy.</li>
+  </ul>
+  <p>The FCS documentation recommends running both tools twice: once on the first contig assembly, and again on the final assembly before you submit it to NCBI. If the first run finds a lot of contamination, screen the cleaned genome a second time, because more can turn up. FCS-GX is built for assemblies and does not read <span class="tip" title="FASTQ: the file format of sequencing reads, with a quality score for every base.">FASTQ</span> files. Screening reads is done earlier, with the tools in <a href="../01-pre-assembly/#qc">lesson 1</a>.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what FCS-GX is checking</summary><div class="in">
+    <p>Imagine sorting a box of photos from a field trip. You know the trip was to a pine forest. A photo of pines is fine. A photo of a palm beach was put in the wrong box: throw it out (<b>EXCLUDE</b>). A pine photo with someone's thumb over one edge: cut the edge off (<b>TRIM</b>). A pine photo with a sticker in the middle: cover the sticker, or cut the photo in two (<b>FIX</b> or <b>SPLIT</b>). A photo of an oak forest is a harder case. It could belong to the same trip, so put it aside and look at it yourself (<b>REVIEW</b>).</p>
+    <p>FCS-GX does the same with contigs. You tell it what the animal is (the <b>tax-id</b>, for example the house mouse <i>Mus musculus</i> = 10090). It compares each stretch of each contig with about 3 million sequences from known organisms and asks which group the stretch looks most like. Rodent-like stretches stay. A contig that looks like <i>Pseudomonas</i> from end to end is removed. A rodent contig whose last 8 kb looks bacterial gets those 8 kb cut off.</p>
+    <p>FCS-GX can only recognise organisms that are in its database or have relatives there. It cannot recognise a bacterium unlike anything known, and it can be fooled by DNA that really did move between species. So its report is a strong suggestion, and the REVIEW category is there for exactly these cases.</p>
+  </div></details>
+
+  <h3>How GX finds foreign pieces</h3>
+  <p>The FCS-GX documentation describes six steps:</p>
+  <ol class="steps">
+    <li><div><b>Mask repeats.</b> <span class="d">Low-complexity sequence (such as CACACA…) and <span class="tip" title="Transposons: mobile DNA elements (SINEs, LINEs, ERVs…) present in thousands of copies. They match many genomes and would produce false hits.">transposons</span> are marked so that they cannot start alignments. They resemble too many genomes to be informative.</span></div></li>
+    <li><div><b>Align to the GX database</b> <span class="d">with the GX cross-species aligner (described below).</span></div></li>
+    <li><div><b>Refine the alignments</b> <span class="d">against the best-matching organisms (<span class="tip" title="Taxon (plural taxa): any named group in the tree of life, such as a species, genus or order. Each has a number in NCBI Taxonomy, the tax-id.">taxa</span>).</span></div></li>
+    <li><div><b>Classify each sequence</b> <span class="d">to a taxonomic division: either the division of your animal or a contaminant division.</span></div></li>
+    <li><div><b>Write cleaning actions</b> <span class="d">to the action report (<code>*.fcs_gx_report.txt</code>).</span></div></li>
+    <li><div><b>Clean the genome</b> <span class="d">with <code>fcs.py clean genome</code>, a separate command that you run after reading the report.</span></div></li>
+  </ol>
+
+  <p><b>Seeds that tolerate differences between species.</b> Usual k-mers (<a href="../01-pre-assembly/#km">lesson 1</a>) match only identical sequence, but a contaminating bacterium is rarely the exact strain that is in the database. GX therefore uses modified k-mers, which its authors call <dfn>h-mers</dfn>. Each starts as a 56-base window and is changed in three ways:</p>
+  <ul>
+    <li>Every third base is dropped, as in <span class="tip" title="Discontiguous megablast: a BLAST mode whose seed skips every third position, because the third codon position changes most often between species.">discontiguous megablast</span>.</li>
+    <li>The remaining bases are reduced to two letters: <b>R</b> for the <span class="tip" title="Purines: A and G. Changes between them (A↔G) are transitions, the most common type of mutation.">purines</span> A and G, and <b>Y</b> for the <span class="tip" title="Pyrimidines: C and T. Changes between them (C↔T) are transitions too.">pyrimidines</span> C and T. Transitions (A↔G, C↔T) are the most common mutations, so after this step they no longer break a match.</li>
+    <li>A <span class="tip" title="Minword: one fixed form is chosen out of the word and its reverse complement, so both DNA strands give the same h-mer, like canonical k-mers in lesson 1.">minword</span> rule makes the h-mer the same on both DNA strands.</li>
+  </ul>
+  <p>The result is a 38-bit word that, according to the documentation, finds matches between species more readily than an ordinary 19-base k-mer. Seeds are then extended into alignments, which can reach down to 65–75 % identity. The documentation also says the method favours hits in protein-coding regions.</p>
+  <div class="toy" aria-label="Toy example of h-mer construction"><span style="color:var(--muted)">toy: 12 bases instead of 56</span>
+position     1 2 3 4 5 6 7 8 9 10 11 12
+genome A     A C G T T C A G G C  T  A
+genome B     G C T T C C G G A C  C  A      <span style="color:var(--muted)">(6 differences from A)</span>
+drop every 3rd (positions 3, 6, 9, 12):
+A            A C . T T . A G . C  T  .
+B            G C . T C . G G . C  C  .
+R/Y code     <span class="a">R Y . Y Y . R R . Y  Y  .</span>   <span style="color:var(--muted)">identical for A and B: still a seed match</span></div>
+  <p style="font-size:13.5px;color:var(--muted)">Genome B differs from genome A at six positions. Two of them (positions 3 and 9) are among the dropped bases. The other four (positions 1, 5, 7 and 11) are transitions (A↔G or T↔C), which the R/Y code cannot see. The toy uses 12 bases and skips the strand step; the real h-mer is built from 56 bases.</p>
+
+  <p><b>Divisions, not species.</b> FCS-GX does not ask "which species is this?". It asks which <dfn>GX division</dfn> the sequence belongs to. Divisions are built from NCBI's "BLAST names" (an informal label NCBI gives each taxon). They are grouped into eight kingdoms: animals, plants, fungi, protists, bacteria, archaea, viruses and synthetic. Examples from the mapping table in the FCS-GX source:</p>
+  <div class="tbl"><table style="min-width:520px">
+    <thead><tr><th>NCBI BLAST name</th><th>GX division</th><th>who</th></tr></thead>
+    <tbody>
+      <tr><td>rodents</td><td><code>anml:rodents</code></td><td><i>Mus musculus</i> (tax-id 10090)</td></tr>
+      <tr><td>insectivores</td><td><code>anml:mammals</code></td><td><i>Desmana moschata</i> (tax-id 182682)</td></tr>
+      <tr><td>bats, carnivores, even-toed ungulates…</td><td><code>anml:mammals</code></td><td>most other placental mammals</td></tr>
+      <tr><td>primates</td><td><code>anml:primates</code></td><td>human, the commonest lab contaminant among animals</td></tr>
+      <tr><td>enterobacteria, g-proteobacteria</td><td><code>prok:g-proteobacteria</code></td><td><i>Escherichia</i>, <i>Pseudomonas</i></td></tr>
+      <tr><td>synthetic</td><td><code>synt:synthetic</code></td><td>vectors and other constructs</td></tr>
+    </tbody>
+  </table></div>
+  <p>This is why the <span class="tip" title="The number NCBI Taxonomy gives each taxon. Find it at ncbi.nlm.nih.gov/datasets/taxonomy/tree/ by searching the species name.">tax-id</span> is required. It tells GX which division is "self" (the <dfn>primary division</dfn>). A hit to any other division counts as foreign. If your species is not in NCBI Taxonomy, use a congener or the genus. A very high rank such as Metazoa (33208) is <b>not supported</b>. Hits between divisions of the same kingdom, for example a primate stretch in a rodent, have to pass stricter thresholds before GX reports them.</p>
+
+  <section class="tool" aria-labelledby="s09-tool-h">
+    <div class="tool-head"><span class="tool-tag">Interactive</span><h3 id="s09-tool-h">Which action would FCS report?</h3></div>
+    <p class="tool-note">A toy rodent assembly with nine contigs. Each coloured block shows what the database hits in that stretch looked like. Click a contig, or select it and press Enter, to see the rule that decides its action. Move the sliders to watch a call change. The rules follow <code>action_report.py</code> in the FCS-GX source (v0.5.5). <b>Bars are not to scale between contigs</b>; within one contig the proportions are true. The thin purple mark on ctg5 is a 40-base adaptor, drawn wider so you can see it.</p>
+    <div class="legend" id="s09-legend"></div>
+    <div class="svgbox"><svg id="s09-svg" viewBox="0 0 760 380" width="100%" style="min-width:640px" role="img" aria-label="Toy assembly: contigs coloured by taxonomic hits, with the action FCS reports for each"></svg></div>
+    <div class="controls">
+      <label for="s09-r7"><span class="tip" title="Length of the rodent part of chimeric contig ctg7. Its 30-kb bacterial part stays the same.">ctg7: rodent part (kb)</span><input id="s09-r7" type="range" min="1" max="120" step="1" value="15"><output id="s09-r7o">15</output></label>
+      <label for="s09-h8"><span class="tip" title="Length of the human-like stretch in the middle of ctg8. The effective length is this length × alignment coverage.">ctg8: human-like insert (kb)</span><input id="s09-h8" type="range" min="1" max="40" step="1" value="6"><output id="s09-h8o">6</output></label>
+      <label for="s09-c2"><span class="tip" title="Alignment coverage: the percentage of the stretch covered by alignments to the contaminant division (the agg_cont_cov column).">ctg2: alignment coverage (%)</span><input id="s09-c2" type="range" min="2" max="100" step="1" value="85"><output id="s09-c2o">85</output></label>
+      <div><span style="font-size:12.5px;color:var(--muted);display:block">internal contamination (FIX rows)</span><div class="seg" role="group" aria-label="What to do with internal contamination"><button type="button" id="s09-fix" aria-pressed="true">mask with N (FIX)</button><button type="button" id="s09-split" aria-pressed="false">cut in two (SPLIT)</button></div></div>
+    </div>
+    <div class="note" id="s09-why" aria-live="polite" style="max-width:none"></div>
+    <div><b style="font-size:13.5px">What the reports would contain</b> <span style="font-size:13px;color:var(--muted)">(tab-separated in the real files; contigs that are kept are not listed)</span></div>
+    <div class="tbl"><table id="s09-rep" style="min-width:680px"><thead><tr><th>file</th><th>seq_id</th><th>start</th><th>end</th><th>seq_len</th><th>action</th><th>div</th><th>cov %</th></tr></thead><tbody></tbody></table></div>
+    <div class="readout" id="s09-out"></div>
+  </section>
+
+  <p>In words, the rules in the source (<code>action_report.py</code>, default thresholds) are:</p>
+  <ul>
+    <li><b>The whole contig is foreign</b> → <b>EXCLUDE</b>. Within the same kingdom (for example animal in animal), coverage below 20 % turns this into REVIEW.</li>
+    <li><b>Coverage of 10 % or less</b> → no action. The source calls this "coverage too low to decide". The cutoff is the environment variable <code>GX_ACTION_REPORT_LOW_COVERAGE_THRESHOLD</code>, default 10.</li>
+    <li><b>A mixed contig with too little of your animal left</b> → the whole contig is EXCLUDEd. "Too little" means the part assigned to your animal is under 200 bp, or under both 50,000 bp and 30 % of the contig.</li>
+    <li><b>Otherwise each foreign stretch is handled separately.</b> A stretch that touches either end is <b>TRIM</b>med. A stretch inside the contig is <b>FIX</b>ed (masked with N).</li>
+    <li><b>A foreign stretch from the same kingdom</b> (a human-like stretch in a rodent) → kept when its effective length (length × coverage) is under 10,000 bp, otherwise <b>REVIEW</b>.</li>
+    <li><b>Mostly low-coverage hits</b> → REVIEW. A <span class="tip" title="Wolbachia: a bacterium that lives inside the cells of many insects; pieces of its genome are often built into the host's chromosomes."><i>Wolbachia</i></span> stretch in an insect → <b>INFO</b> (a known integration into the host genome).</li>
+    <li><b>A contig of your own division, &gt;80 % covered by hits to mitochondrial sequence</b> → <b>MITOCHONDRION</b>. This rule applies to eukaryotes only. It is in the source code of v0.5.4 and v0.5.5 but not yet described in the wiki.</li>
+  </ul>
+
+  <h3>The two reports and what clean does</h3>
+  <p><code>fcs.py screen genome</code> writes two files to <code>--out-dir</code>. Both are named <code>&lt;fasta name&gt;.&lt;tax-id&gt;.*</code>.</p>
+  <dl class="defs">
+    <dt><code>*.fcs_gx_report.txt</code></dt><dd>The <dfn>action report</dfn>: one row per action, with 8 tab-separated columns. <code>seq_id</code>; <code>start_pos</code>, <code>end_pos</code> (the range to act on); <code>seq_len</code> (the whole contig); <code>action</code>; <code>div</code> (the contaminant division); <code>agg_cont_cov</code> (the percentage of the range covered by alignments to that division); <code>top_tax_name</code> (the best-matching organism). The documentation warns that the real contaminant may be a different species, or even a different genus, from <code>top_tax_name</code>.</dd>
+    <dt><code>*.taxonomy.rpt</code></dt><dd>The intermediate per-sequence report. It lists up to four best taxa with their coverage and score, and a <code>result</code> column (<code>primary-div</code>, <code>contaminant</code>, <code>contaminant(human)</code>, <code>low-coverage</code>, <code>repeat</code>, <code>inconclusive</code>, …). Contigs are split at runs of 10 or more N. These pieces get IDs like <code>ctg~1..212539</code>; pieces of a <span class="tip" title="Chimera: a contig made of pieces from two different sources joined together.">chimera</span> get <code>~~start..end</code>. Read this file when an action looks wrong.</dd>
+  </dl>
+  <div class="tbl"><table>
+    <thead><tr><th>action</th><th>meaning</th><th>what <code>fcs.py clean genome</code> does</th></tr></thead>
+    <tbody>
+      <tr><td><b>EXCLUDE</b></td><td>the whole sequence is foreign</td><td>removes it from <code>clean.fasta</code>, writes it to <code>contam.fasta</code></td></tr>
+      <tr><td><b>TRIM</b></td><td>foreign stretch at the start or end</td><td>cuts it off and writes it to <code>contam.fasta</code>. GenBank does not accept sequences that start or end with N, so the end is removed rather than masked.</td></tr>
+      <tr><td><b>FIX</b></td><td>foreign stretch inside the sequence</td><td>replaces it with N (hard-masks it); the stretch also goes to <code>contam.fasta</code></td></tr>
+      <tr><td><b>SPLIT</b></td><td>never written by the screen; you substitute it for FIX when the insert looks like a misassembly (<code>sed -i 's/FIX/SPLIT/g' report.txt</code>)</td><td>cuts the sequence into two pieces at the range</td></tr>
+      <tr><td><b>REVIEW</b>, <b>REVIEW_RARE</b>, <b>INFO</b></td><td>weaker or special evidence (REVIEW_RARE: prokaryote in prokaryote, under 1 % of the genome)</td><td><b>nothing</b>. Check these yourself and change them to EXCLUDE, TRIM or FIX if you agree. The documentation notes that many REVIEW sequences are in fact contaminants.</td></tr>
+      <tr><td><b>MITOCHONDRION</b>, PLASTID</td><td>an organelle genome among the nuclear contigs</td><td>removes the whole sequence (source: <code>fasta.cpp</code>)</td></tr>
+    </tbody>
+  </table></div>
+  <p>After cleaning, sequences shorter than 200 bp are dropped from <code>clean.fasta</code>. The command-line option is <code>--min-seq-len</code>, default 200. NCBI's WGS submission page likewise asks for contigs longer than 199 nt and no N at either end.</p>
+  <p class="note"><b>Organelles are not contamination, but they do not belong in the nuclear assembly.</b> The mitochondrial genome is your animal's own DNA, so GX classifies it under your animal's division. In a eukaryote, the MITOCHONDRION action catches a contig only when more than 80 % of it is covered by mitochondrial hits. A multimer contig made of several tandem copies of the mitogenome should pass that test. A nuclear contig carrying a short <span class="tip" title="NUMT: a nuclear copy of mitochondrial DNA, inserted into a chromosome. It is part of the nuclear genome and must stay.">NUMT</span> should not, and it must stay. Assemble the mitogenome separately (section 11) and submit it as its own record. NCBI's FASTA format marks such records with <code>[location=mitochondrion]</code>.</p>
+
+  <h3>Hardware and database</h3>
+  <ul>
+    <li><b>Database:</b> the "all" GX database. Its manifest, read on 2026-10-31, lists <code>all.gxi</code> at 321.2 GB and <code>all.gxs</code> at 177.3 GB, about 464 GiB in total. The docs plan for 470 GiB of disk. It holds 3.03 million sequences (709 Gbp) and was built on 2023-01-24 (<code>all.meta.jsonl</code>). It is made from representative <span class="tip" title="RefSeq: NCBI's curated, non-redundant set of reference genomes. GenBank is the open archive that holds everything submitted.">RefSeq</span> prokaryotes and eukaryotes, RefSeq viruses and plasmids, and extra GenBank fungi, nematodes, protists and bacteria. Eukaryote sequences under 10 kb are left out. A small <code>test-only</code> database checks the installation; keep it in a different folder from "all".</li>
+    <li><b>RAM:</b> the documentation asks for a host with 512 GiB of shared memory, so that the whole database stays in RAM. If the database has to be read from disk, runs can be "as much as a 10000x" slower. The fastest setup copies the database into a RAM disk (<span class="tip" title="tmpfs: a filesystem that lives in RAM, such as /dev/shm on Linux. Files there vanish on reboot.">tmpfs</span>, such as <code>/dev/shm</code>). Without root rights, GX <span class="tip" title="Memory-mapping: the program asks the operating system to treat the file as part of its memory, so pages are loaded into RAM as they are touched.">memory-maps</span> the files from disk and slowly fills the RAM as it runs.</li>
+    <li><b>CPU and time:</b> up to 48 cores. The troubleshooting page lists run times with 48 cores and the database in RAM: <i>Escherichia coli</i> (4.6 Mb) 10 s, <i>Drosophila melanogaster</i> (144 Mb) 34 s, human (3.1 Gb) 6 min 57 s, wheat (14.6 Gb) 17 min 23 s. Downloading the database from the NCBI FTP site takes from 40 minutes to several hours.</li>
+    <li><b>Input rules:</b> FASTA or gzipped FASTA. Sequence IDs must be unique, shorter than 50 characters, and contain only letters, digits and <code>- _ . : * #</code>. Each sequence must be shorter than 2 Gbp. Runs of 10 or more N are split during alignment.</li>
+    <li><b>FCS-adaptor</b> needs only an ordinary computer.</li>
+  </ul>
+
+  <h3>Commands</h3>
+  <p>Both tools run inside a <span class="tip" title="Container: a packaged copy of a program with everything it needs. Docker and Singularity (Apptainer) run containers; HPC servers usually allow only Singularity.">container</span>. The runner script <code>fcs.py</code> downloads the Docker image itself; for Singularity you download the <code>.sif</code> image file. In <code>fcs.py</code> as of 2025-03 the default image version is 0.5.5.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. runner script + Singularity images (skip the .sif lines if you use Docker)</span>
+curl -LO https://github.com/ncbi/fcs/raw/main/dist/fcs.py
+curl -LO https://github.com/ncbi/fcs/raw/main/dist/run_fcsadaptor.sh &amp;&amp; chmod 755 run_fcsadaptor.sh
+curl https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/FCS/releases/latest/fcs-gx.sif -Lo fcs-gx.sif
+curl https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/FCS/releases/latest/fcs-adaptor.sif -Lo fcs-adaptor.sif
+export FCS_DEFAULT_IMAGE=fcs-gx.sif
+
+<span class="c"># 2. the GX database (~464 GiB) to disk, then check it against the manifest</span>
+SOURCE_DB_MANIFEST="https://ftp.ncbi.nlm.nih.gov/genomes/TOOLS/FCS/database/latest/all.manifest"
+LOCAL_DB=/big/disk/fcs
+python3 fcs.py db get   --mft "$SOURCE_DB_MANIFEST" --dir "$LOCAL_DB/gxdb"
+python3 fcs.py db check --mft "$SOURCE_DB_MANIFEST" --dir "$LOCAL_DB/gxdb"
+<span class="c"># optional, needs root: copy it into RAM for fast repeated runs</span>
+sudo mkdir /my_tmpfs &amp;&amp; sudo mount -t tmpfs tmpfs /my_tmpfs -o size=470G
+python3 fcs.py db get --mft "$LOCAL_DB/gxdb/all.manifest" --dir /my_tmpfs/gxdb
+
+<span class="c"># 3. adaptors and vectors (--euk for eukaryotes)</span>
+mkdir adaptor_out
+./run_fcsadaptor.sh --fasta-input asm.fa.gz --output-dir ./adaptor_out --euk \
+    --container-engine singularity --image fcs-adaptor.sif
+
+<span class="c"># 4. foreign organisms; 10090 = Mus musculus in NCBI Taxonomy (use your own species' tax-id)</span>
+printf 'GX_NUM_CORES=32\n' &gt; env.txt
+python3 fcs.py --env-file env.txt screen genome --fasta asm.fa.gz \
+    --out-dir ./gx_out/ --gx-db "$LOCAL_DB/gxdb" --tax-id 10090
+<span class="c">#   → gx_out/asm.fa.10090.fcs_gx_report.txt   gx_out/asm.fa.10090.taxonomy.rpt</span>
+
+<span class="c"># 5. read the report, edit REVIEW rows by hand if needed, then clean</span>
+grep -w EXCLUDE gx_out/asm.fa.10090.fcs_gx_report.txt | cut -f 1 | sort -u | wc -l
+zcat asm.fa.gz | python3 fcs.py clean genome \
+    --action-report gx_out/asm.fa.10090.fcs_gx_report.txt \
+    --output clean.fasta --contam-fasta-out contam.fasta
+<span class="c">#   prints e.g. "Applied 405 actions; 402417 bps dropped; 1922 bps hardmasked."</span>
+cat clean.fasta | python3 fcs.py clean genome \
+    --action-report adaptor_out/fcs_adaptor_report.txt \
+    --output clean2.fasta --contam-fasta-out contam2.fasta</pre></div>
+  <ul>
+    <li><b>FCS-adaptor rules</b> (from its output documentation): a hit at an end, or within 100 bp of an end, is trimmed to that end. A hit more than 100 bp inside a contig is reported as <code>ACTION_TRIM</code>, but the tool's own <code>cleaned_sequences/</code> file leaves it in place. <code>fcs.py clean genome</code> instead splits the contig at that hit. To mask it with N instead, change the action to <code>FIX</code>. A sequence that is more than 75 % adaptor, or has less than 200 bp left over, is reported as <code>ACTION_EXCLUDE</code>.</li>
+    <li><b>Options worth knowing</b> (put them in the <code>--env-file</code>). <code>GX_NUM_CORES</code> sets the number of cores. <code>GX_ALIGN_EXCLUDE_TAXA</code> ignores hits to listed tax-ids; it works only for tax-ids that are themselves in the database, not for higher groups. <code>GX_EXTRA_CONTAM_DIVS</code> adds contaminant divisions. Use <code>--no-report-analytics</code> to stop usage statistics being sent to NCBI.</li>
+    <li><b>Re-screen after cleaning.</b> When contamination was heavy, run the screen again on <code>clean.fasta</code>.</li>
+    <li><b>Reasons for false calls</b> listed in the docs: contaminants inside the database itself, groups poorly represented in it (sponges, crustaceans), recent horizontal gene transfer, repeats, and conserved sequence such as rDNA and mtDNA. Before accepting long contigs (over 50 kb) with low coverage (under 20 %), look them up in <code>taxonomy.rpt</code>.</li>
+  </ul>
+
+  <h3>The easy route: Galaxy</h3>
+  <p>On usegalaxy.org the GX database is already on the server. The Galaxy tool <i>NCBI FCS GX</i> (wrapper version 0.5.5) has two modes. <b>screen</b> takes the assembly FASTA, and under "Taxonomy entry" you pick either a GX division or an NCBI taxonomic identifier. <b>clean</b> takes the FASTA and the action report and returns "Cleaned Fasta" and "Fasta for EXCLUDE entries". Its "Minimum sequence length to keep" is 200 by default. The Galaxy Training Network tutorial "Screening assembled genomes for contamination using NCBI FCS" has a ready workflow, <i>NCBI Foreign Contamination Screen Workflow</i>, which runs GX screen, GX clean, FCS-adaptor and a final clean. Galaxy setup is covered in <a href="../01-pre-assembly/#gx">lesson 1</a>. For a 2–3 Gb mammal, the uploads are the hardest part.</p>
+
+  <h3>A picture to go with it: BlobToolKit</h3>
+  <p>FCS gives you a table. <b>BlobToolKit</b> gives you a picture of the same question, and it uses a second kind of evidence: read coverage. Its <dfn>blob plot</dfn> draws every contig as a circle. The x-axis is GC content, the y-axis is read coverage, circle size is contig length, and the colour is the taxon assigned from BLAST or <span class="tip" title="DIAMOND: a fast protein-level search tool, a much faster alternative to BLASTX; it finds protein-coding contaminants even when DNA has diverged.">DIAMOND</span> hits (the <code>bestsum</code> rule adds up hit scores per taxon). Contigs of your animal form one cloud at the genome's GC and the expected coverage. A bacterium often sits apart, with different GC and very different coverage, because its DNA was present in a different amount from the animal's. Mitochondrial contigs sit far above the cloud, because mitochondrial DNA is present in many copies per cell (in the long reads of one of our rodent projects the mitogenome had a depth of thousands).</p>
+  <figure>
+    <div class="svgbox"><svg id="s09-blob" viewBox="0 0 640 320" width="100%" style="min-width:520px" role="img" aria-label="Simulated blob plot: GC content against coverage, rodent contigs in one cloud, bacterial and mitochondrial contigs apart"></svg></div>
+    <figcaption><b>Simulated blob plot of the toy assembly above.</b> The nuclear contigs cluster near 42 % GC and 30× coverage. The bacterial contig ctg2 is at higher GC and low coverage, and the mitochondrial contig ctg6 is at the top. FCS-GX only looks at sequence; the blob plot adds coverage, an independent line of evidence.</figcaption>
+  </figure>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># BlobToolKit 4.x (pip install blobtoolkit); the sanger-tol/blobtoolkit Nextflow pipeline runs the whole set; ~/taxdump = NCBI taxonomy files, downloaded once</span>
+blobtools create --fasta asm.fa --taxid 10090 --taxdump ~/taxdump AssemblyName
+blobtools add --cov reads_vs_asm.bam AssemblyName
+blobtools add --hits blast.out --hits diamond.out --taxrule bestsumorder --taxdump ~/taxdump AssemblyName
+blobtools add --busco full_table.tsv AssemblyName
+blobtools view --local AssemblyName    <span class="c"># opens the interactive viewer in a browser</span></pre></div>
+
+  <div class="note"><b>In our projects.</b>
+    <ul>
+      <li>As far as our project notes show, none of our assemblies (species A–D, the desmans) has been screened with FCS-GX yet. FCS-GX should run before any of them goes to NCBI.</li>
+      <li>The tax-ids and divisions are fixed by the species. A rodent such as <i>Mus musculus</i> (10090) has the BLAST name "rodents", so the GX division is <code>anml:rodents</code>. <i>Desmana moschata</i> is 182682, BLAST name "insectivores", so the division is the broader <code>anml:mammals</code>. Looked up in NCBI Taxonomy on 2026-10-31.</li>
+      <li>Organelles: the hifiasm primary assembly of our species A (an unpublished rodent genome) contains dozens of mitochondria-like contigs (more than a megabase in total), which must be removed from the nuclear set. One of them is several tandem copies of the mitogenome. The same genome also holds dozens of full-length NUMTs, which belong to the nuclear genome. Telling the two apart is the job of section 11, not of FCS.</li>
+      <li>Memory: DRAGEN has 503 GB of RAM and therioserver about 499 GiB. Both are just under the 512 GiB that the FCS-GX documentation asks for. We have not tried it on either server, so whether the 464-GiB database runs at full speed there is unknown. Galaxy avoids the question.</li>
+    </ul>
+  </div>
+</section>

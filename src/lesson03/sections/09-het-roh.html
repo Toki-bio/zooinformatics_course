@@ -1,0 +1,190 @@
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">09</span>Heterozygosity and runs of homozygosity from one genome</h2>
+  <p class="lede">One diploid animal carries two copies of every autosome, one from its mother and one from its father. Where the two copies differ, the animal is heterozygous. How often they differ, and where they do not differ at all for millions of bases, tells you about the population the animal came from: how large it was, and whether the parents were related. This section shows how to get both numbers from the reads and the assembly you already have, which tools to use, and how the numbers go wrong.</p>
+
+  <h3>What we measure</h3>
+  <dl class="defs">
+    <dt>Heterozygous site</dt><dd>A position where the two copies of a chromosome carry different bases, written <code>0/1</code> in a <span class="tip" title="Variant Call Format: a text table with one line per position where the reads differ from the reference, and the genotype of each sample.">VCF</span>. A single-base difference is a <dfn>SNV</dfn> (single-nucleotide variant).</dd>
+    <dt>Heterozygosity</dt><dd>Heterozygous SNVs divided by the number of bases where a call could be made at all (the <dfn>callable genome</dfn>, explained below). Usually given per kb (1.9 per kb = 0.19 %). This is the per-site number; it is not the same as the k-mer heterozygosity of GenomeScope (<a href="../01-pre-assembly/#gp">lesson 1</a>), which is estimated from reads with errors and repeats in them.</dd>
+    <dt>Run of homozygosity (ROH)</dt><dd>A long stretch where the two copies are (nearly) identical, because both were inherited from one ancestor without being broken by recombination. Such a stretch is <dfn>autozygous</dfn> or <dfn>identical by descent</dfn> (IBD): the same piece of one ancestor's chromosome, received twice.</dd>
+    <dt>F<sub>ROH</sub></dt><dd>The share of the autosomal genome in runs of homozygosity above a chosen length (McQuillan et al. 2008). With one genome it is the closest thing to an inbreeding coefficient you can measure. Always state the minimum run length and what the denominator was.</dd>
+    <dt>Callable genome</dt><dd>The bases where reads were good enough that a heterozygous site, if present, would have been seen: enough depth, not too much depth, reads mapped uniquely. Everything else is unknown, not homozygous.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why related parents leave long identical stretches</summary><div class="in">
+    <p>Think of each chromosome as a long text copied by hand from generation to generation, with a cut-and-paste between the mother's and the father's version at a few random places in every generation (recombination). Two unrelated parents pass on texts with many small differences along their whole length. If the parents are cousins, both received pieces of the same grandparent's text. Their child can get the same piece twice, once through each parent, and there the two copies match letter for letter.</p>
+    <div class="toy">mother's copy   ACGTTAGCAT<span class="h">G</span>ACCTTAG<span class="a">ACGTTAGGATCCAGTTACAGGCTA</span>CC<span class="h">T</span>AGT
+father's copy   ACGTTAGCAT<span class="h">C</span>ACCTTAG<span class="a">ACGTTAGGATCCAGTTACAGGCTA</span>CC<span class="h">G</span>AGT
+                          <span class="h">^ het</span>         <span class="a">|------- ROH: same ancestor -------|</span>  <span class="h">^ het</span></div>
+    <p>The closer the shared ancestor, the fewer generations of cutting the piece went through, so the <b>longer</b> it is. A first-cousin mating leaves pieces of tens of megabases; an ancestor shared 500 generations ago leaves pieces of a few hundred kilobases or less. A small population, where everyone is distantly related, fills the genome with many short runs; a recent close mating adds a few very long ones.</p>
+  </div></details>
+
+  <h3>The workflow</h3>
+  <ol class="steps">
+    <li><div><b>Map the reads</b><div class="d">Reads of the same animal onto its own primary assembly (or onto a close reference).</div><div class="t">minimap2 · bwa-mem2 · samtools</div></div></li>
+    <li><div><b>Call variants</b><div class="d">A caller matched to the read type, with output that also tells you which homozygous positions were looked at.</div><div class="t">DeepVariant · Clair3 · bcftools mpileup/call</div></div></li>
+    <li><div><b>Build the callable mask and filter</b><div class="d">Depth bounds, mapping quality, sex chromosomes, organelle contigs, simple repeats; biallelic SNVs only.</div><div class="t">mosdepth · bcftools · bedtools</div></div></li>
+    <li><div><b>Heterozygosity in windows</b><div class="d">Het SNVs per callable base, in windows along each contig.</div><div class="t">bedtools makewindows / coverage</div></div></li>
+    <li><div><b>Call ROH</b><div class="d">An HMM, a sliding window, or a mixture model on the window densities.</div><div class="t">bcftools roh · PLINK --homozyg · ROHan · window mixture</div></div></li>
+    <li><div><b>Summarise and plot</b><div class="d">F<sub>ROH</sub> by length class, genome strip, length histogram, window heterozygosity histogram.</div><div class="t">your own script, or the toy below</div></div></li>
+  </ol>
+
+  <h3>1. Mapping: which assembly to map to</h3>
+  <p>Map to the <b>primary (pseudo-haploid) assembly</b> of the same individual, after haplotig purging (<a href="../02-assembly/#s06">lesson 2, s06</a>). Each read then has one place to go, and both alleles of a heterozygous site pile up at the same position. If both haplotypes of a region are still in the assembly as separate contigs (<span class="tip" title="A contig that is the second allele of a region already present in the primary assembly. Reads of each haplotype go to their own copy, so neither copy shows heterozygous sites.">unpurged haplotigs</span>), the reads split between them, each copy looks homozygous, and you get a <b>false ROH</b> and a mapping-quality drop at the same place. A reference from another species works too, but reads from divergent regions map poorly, and your heterozygosity is then measured only where the species are similar.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># long reads, minimap2 2.31: map-ont (ONT), map-hifi (PacBio HiFi), lr:hq (ONT Q20+, since v2.27)</span>
+minimap2 -ax map-ont -t 32 asm.fa ont.fq.gz | samtools sort -@ 8 -o ont.bam -
+samtools index ont.bam
+
+<span class="c"># Illumina pairs, bwa-mem2 2.3. The index needs about 28 GB of RAM per Gb of genome (README)</span>
+bwa-mem2 index asm.fa
+bwa-mem2 mem -t 32 -R '@RG\tID:s1\tSM:s1' asm.fa R1.fq.gz R2.fq.gz \
+  | samtools fixmate -m - - | samtools sort -@ 8 - | samtools markdup - ill.bam
+samtools index ill.bam   <span class="c"># fixmate -m adds the tags markdup needs; markdup needs position order</span></pre></div>
+
+  <h3>2. Variant calling: one caller per read type</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Reads</th><th>Caller</th><th>Model / preset</th><th>Notes from the documentation</th></tr></thead>
+    <tbody>
+      <tr><td><b>Illumina</b></td><td>DeepVariant 1.10</td><td><code>--model_type=WGS</code></td><td>Docker image <code>google/deepvariant:1.10.0</code>. The models are "only trained on human data"; they are widely used on other species, but check the result (<span class="tip" title="Ts/Tv (also written Ti/Tv): the ratio of transitions (A&lt;-&gt;G, C&lt;-&gt;T) to transversions (all other changes) among the SNVs. Real SNVs in mammals give about 2 or a little more; random errors pull it down toward 0.5.">Ts/Tv</span>, X control below).</td></tr>
+      <tr><td><b>PacBio HiFi</b></td><td>DeepVariant 1.10</td><td><code>--model_type=PACBIO</code></td><td><code>--output_gvcf</code> also writes the reference blocks, so you know which bases were examined.</td></tr>
+      <tr><td><b>ONT R10.4.1</b></td><td>DeepVariant 1.10 or Clair3 2.0</td><td><code>ONT_R104</code>; Clair3 model named after the basecaller, e.g. <code>r1041_e82_400bps_sup_v500</code></td><td>Clair3 calls only <code>chr1..22,X,Y</code> by default: add <code>--include_all_ctgs</code> for any non-human genome. Clair3 v2 cannot load v1 (TensorFlow) models.</td></tr>
+      <tr><td><b>Any</b></td><td>bcftools 1.25 <code>mpileup | call -m</code></td><td><code>-X illumina</code>, <code>ont-sup</code>, <code>pacbio-ccs</code></td><td>The <code>-X</code> profiles set read-type parameters. <code>mpileup</code> keeps at most 250 reads per position by default (<code>-d</code>) and uses every mapping quality (<code>-q 0</code>) unless told otherwise.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># DeepVariant: VCF plus gVCF (gVCF = also the homozygous-reference blocks)</span>
+docker run -v "$PWD":/data google/deepvariant:1.10.0 /opt/deepvariant/bin/run_deepvariant \
+  --model_type=PACBIO --ref=/data/asm.fa --reads=/data/hifi.bam \
+  --output_vcf=/data/dv.vcf.gz --output_gvcf=/data/dv.g.vcf.gz --num_shards=32
+
+<span class="c"># Clair3 2.0 on ONT; final calls in clair3_out/merge_output.vcf.gz</span>
+<span class="c"># the model folder must hold the PyTorch (v2) version of the model: bundled, or from the README's "Converted Rerio models"</span>
+run_clair3.sh --bam_fn=ont.bam --ref_fn=asm.fa --threads=32 --platform=ont \
+  --model_path=/opt/models/r1041_e82_400bps_sup_v500 --output=clair3_out \
+  --include_all_ctgs --gvcf
+
+<span class="c"># bcftools: without -v, call writes every site, homozygous-reference ones too (bcftools roh needs them)</span>
+bcftools mpileup -X pacbio-ccs -a AD,DP -f asm.fa -Ou hifi.bam \
+  | bcftools call -m -Oz -o allsites.vcf.gz</pre></div>
+  <p class="note warn"><b>ONT and homopolymers.</b> Nanopore reads often get the length of a run of one base (<code>AAAAAA</code>) wrong, and the error can be shared by most reads, so polishing does not remove it. Insertions and deletions in such runs are the least reliable calls. For heterozygosity use <b>SNVs only</b>, and treat ONT indels as suspect.</p>
+
+  <h3>3. Callable mask and filters</h3>
+  <p>The single most important step. A window with no heterozygous sites is homozygous only if it was callable; a stretch with no reads, or with reads of mapping quality 0, also has no heterozygous sites. The mask lists the bases where reads were trustworthy; every later count is divided by it.</p>
+  <ul>
+    <li><b>Depth bounds.</b> Keep bases with depth roughly between half and twice the autosomal median. Too low: a heterozygous site can be missed. Too high: <span class="tip" title="Two or more similar copies in the real genome assembled as one. Reads of all copies pile up on it, so depth is high and differences between the copies look like heterozygous sites.">collapsed duplications</span> and repeats, where differences between copies look like heterozygous sites.</li>
+    <li><b>Mapping quality.</b> Count only reads with MAPQ ≥ 10 to 20 (the <span class="tip" title="Mapping quality: the aligner's confidence that the read belongs here and not elsewhere; 0 means equally good elsewhere.">mapping quality</span> of reads in repeats is low).</li>
+    <li><b>Sex chromosomes.</b> In the heterogametic sex the X (or Z) is single-copy and must not count as homozygous autosome. Find these contigs by half depth (<a href="../02-assembly/#s12">lesson 2, s12</a>) and leave them out. Do the same for mitochondrial and <span class="tip" title="Nuclear mitochondrial DNA segments: pieces of mtDNA inserted into nuclear chromosomes; reads from the real mtDNA pile onto them.">NUMT</span>-like contigs.</li>
+    <li><b>Sites.</b> <span class="tip" title="Biallelic: only two different bases seen at the position (the reference base and one alternative).">Biallelic</span> SNVs that pass the caller's filter. For a heterozygous call, the share of reads with the second allele (<dfn>allele fraction</dfn>) should be near 0.5; a fraction near 0.1 to 0.3 is often an error or a paralog.</li>
+    <li><b>Simple repeats.</b> Microsatellites with two length alleles can be called as a tight cluster of "SNVs". Masking them changes little genome-wide but removes the hottest windows.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># mosdepth 0.3.15: depth classes, MAPQ >= 10. Example for an autosomal median of 30x: callable = 15 to 54x</span>
+export MOSDEPTH_Q0=LOW MOSDEPTH_Q1=CALLABLE MOSDEPTH_Q2=HIGH
+mosdepth -n -Q 10 --quantize 0:15:55: -t 4 cov ont.bam
+zcat cov.quantized.bed.gz | awk '$4=="CALLABLE"' | grep -v -w -f sex_and_mt_contigs.txt > callable.bed
+
+<span class="c"># biallelic PASS SNVs inside the mask (a .bed file given to -T is read as 0-based)</span>
+bcftools view -f PASS -v snps -m2 -M2 -T callable.bed -Oz -o snv.vcf.gz clair3_out/merge_output.vcf.gz
+
+<span class="c"># heterozygous sites with allele fraction 0.3-0.7, as BED</span>
+bcftools query -i 'GT="het"' -f '%CHROM\t%POS[\t%AD]\n' snv.vcf.gz \
+  | awk -F'\t' '{split($3,a,","); f=a[2]/(a[1]+a[2]); if(f>=0.3 && f<=0.7) print $1"\t"$2-1"\t"$2}' > het.bed</pre></div>
+  <p class="tool-note">Mosdepth's <code>--quantize</code> bins are half-open (<code>15:55</code> means 15 to 54); the environment variables only rename the bins. Check the <code>-v</code>/<code>-m2 -M2</code> choice against your caller: some write multiallelic sites on one line.</p>
+
+  <h3>4. Heterozygosity along the genome</h3>
+  <p>Cut each contig into windows, count heterozygous sites in each, and divide by the callable bases of that window, not by the window length. Windows with little callable sequence (for example under half) are dropped.</p>
+  <div class="formula">het per kb (window) = heterozygous SNVs in window ÷ callable bases in window × 1000</div>
+  <div class="code"><button type="button">copy</button><pre>samtools faidx asm.fa && cut -f1,2 asm.fa.fai > genome.txt
+bedtools makewindows -g genome.txt -w 50000 > win.bed
+bedtools coverage -a win.bed -b callable.bed > win.callable.tsv   <span class="c"># col 5 = callable bases</span>
+bedtools coverage -a win.bed -b het.bed -counts > win.het.tsv     <span class="c"># col 4 = het count</span>
+paste win.callable.tsv win.het.tsv | awk '$5>=25000 {print $1,$2,$3,$11/$5*1000}' > het_per_kb.tsv</pre></div>
+  <p>If you assembled both haplotypes (hifiasm hap1 and hap2), you can also count differences between them without reads: <code>minimap2 -cx asm5 --cs hap1.fa hap2.fa | sort -k6,6 -k8,8n | paftools.js call -</code>. The defaults of <code>paftools.js call</code> use only alignments of at least 50 kb for calling (<code>-L 50000</code>) and mapping quality ≥ 5 (<code>-q 5</code>). It is a cross-check, not a replacement: it misses what the assembler collapsed.</p>
+
+  <h3>5. Calling runs of homozygosity</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>Input</th><th>How it decides</th><th>With one genome, watch for</th></tr></thead>
+    <tbody>
+      <tr><td><b>bcftools roh</b></td><td>VCF/BCF</td><td>A two-state <span class="tip" title="Hidden Markov model: it walks along the chromosome and at each site weighs how well the genotype fits each hidden state (autozygous or not) against the probability of switching state.">HMM</span>: autozygous (AZ) or <span class="tip" title="Hardy-Weinberg state: the two copies are treated as drawn independently from the population, so heterozygous sites occur at the frequency the allele frequencies predict.">Hardy-Weinberg</span> (HW). Each site's genotype is scored with the population allele frequency; switching between states costs <code>-a</code> (HW→AZ, default 6.7e-8) and <code>-H</code> (AZ→HW, default 5e-9), scaled by distance if <code>-M</code> or a genetic map is given.</td><td>Sites with no <span class="tip" title="Allele frequency: how common the alternative base is in the population, normally estimated from many individuals. With one animal it is unknown, so a fixed guess is supplied.">allele frequency</span> are <b>skipped</b>: one sample has none, so give <code>--AF-dflt</code>. Use <code>-G 30</code> to work from genotypes when likelihoods are poor. It needs homozygous-reference sites (an all-sites VCF, e.g. <code>bcftools call</code> without <code>-v</code>); a variants-only VCF has no evidence for homozygosity between variants.</td></tr>
+      <tr><td><b>PLINK 1.9 --homozyg</b></td><td>VCF converted to PLINK files</td><td>A scanning window of SNPs (default 50) that may hold at most 1 heterozygous and 5 missing calls; a run must have ≥ 100 SNPs, ≥ 1000 kb, ≥ 1 SNP per 50 kb, no gap &gt; 1000 kb.</td><td>It sees only the variant positions you give it, so the defaults (built for many individuals and dense markers) must be retuned. Contig names need <code>--allow-extra-chr</code> (names must not start with a digit).</td></tr>
+      <tr><td><b>ROHan</b></td><td>BAM + reference</td><td>Estimates heterozygosity from the reads in windows (default 1 Mb), then an HMM whose parameters are fitted by <span class="tip" title="MCMC (Markov chain Monte Carlo): a random-sampling method that tries many parameter values and keeps them in proportion to how well they fit, giving an estimate with a credible range.">MCMC</span>; reports <span class="tip" title="θ (theta): the population-scaled mutation rate, in practice the expected heterozygosity per base outside ROH.">θ</span> outside and including ROH.</td><td>Built for one individual and low coverage (5 to 6× for modern samples). Slow: the README reports 42 min per 1 % of a 2.9-Gb genome on 4 threads. Supply the Ts/Tv ratio (<code>--tstv</code>). Results vary a little between runs (random MCMC start).</td></tr>
+      <tr><td><b>Window mixture</b></td><td>Het counts per window</td><td>Het per callable base in non-overlapping 50-kb windows; a two-component Gaussian mixture separates the near-zero windows (ROH) from the rest; adjacent ROH windows merge (Wilder et al. 2023, Zoonomia).</td><td>No allele frequencies needed. Runs shorter than about one window are invisible; contig ends cut runs.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># bcftools roh on one sample: flat allele frequency, genotypes only, regions output</span>
+bcftools roh --AF-dflt 0.4 -G 30 -O r -o roh.txt allsites.vcf.gz
+grep '^RG' roh.txt | awk '{print $3"\t"$4-1"\t"$5}' > roh.bed   <span class="c"># RG: sample chrom start end length nmarkers quality</span>
+
+<span class="c"># PLINK 1.9 (retune the window settings for your marker density)</span>
+plink --vcf snv.vcf.gz --double-id --allow-extra-chr --make-bed --out s1
+plink --bfile s1 --allow-extra-chr --homozyg --homozyg-kb 300 --homozyg-snp 50 --out s1   <span class="c"># → s1.hom</span>
+
+<span class="c"># ROHan, modern sample; autosomes.txt = one contig name per line</span>
+rohan --rohmu 2e-5 --tstv 2.1 --auto autosomes.txt -t 16 -o s1 asm.fa ill.bam   <span class="c"># → s1.summary.txt, s1.hEst.gz, PDFs</span></pre></div>
+  <p class="tool-note">The PLINK settings in the second command are an example of retuning, not a recommendation. <code>--tstv 2.1</code> is a placeholder: measure Ts/Tv on your own het calls first.</p>
+
+  <section class="tool explain" aria-labelledby="s09-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s09-toy-h">Make an inbred toy chromosome, then find its ROH</h3></div>
+    <p class="tool-note">A 100-Mb chromosome pair of one animal. Outside autozygous segments the two copies differ at a rate you set; inside them only false heterozygous calls (sequencing and mapping errors) remain. <b>Top controls</b> write the true history: how many generations ago the shared ancestor lived and how many pieces of its chromosome this animal inherited twice, plus many short old segments from an ancient small population. Segment lengths are drawn from an exponential distribution with mean 100/(2g) cM (Thompson 2013), converted at 1 cM per Mb. <b>Bottom controls</b> are your ROH caller: window size, the heterozygosity threshold, and the minimum run length.</p>
+    <div class="controls" role="group" aria-label="True history">
+      <label for="s09-g">Generations to the shared ancestor <output id="s09-g-o">10</output><input type="range" id="s09-g" min="2" max="200" step="1" value="10"></label>
+      <label for="s09-k">Shared ancestors (segments inherited twice) <output id="s09-k-o">3</output><input type="range" id="s09-k" min="0" max="12" step="1" value="3"></label>
+      <label for="s09-old">Old short segments (ancestor ~500 generations back) <output id="s09-old-o">40</output><input type="range" id="s09-old" min="0" max="120" step="5" value="40"></label>
+      <label for="s09-theta">Heterozygosity outside ROH <output id="s09-theta-o">2.0 per kb</output><input type="range" id="s09-theta" min="0.3" max="4" step="0.1" value="2"></label>
+      <label for="s09-err">False hets inside ROH <output id="s09-err-o">0.05 per kb</output><input type="range" id="s09-err" min="0" max="0.5" step="0.01" value="0.05"></label>
+      <label style="min-width:auto;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="s09-gaps" checked> uncallable gaps (no reads)</label>
+      <button type="button" class="btn" id="s09-new" style="align-self:center">new animal</button>
+    </div>
+    <div class="controls" role="group" aria-label="Your ROH caller">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Window size
+        <div class="seg" role="group" aria-label="Window size" id="s09-win"><button type="button" data-v="20" aria-pressed="false">20 kb</button><button type="button" data-v="50" aria-pressed="true">50 kb</button><button type="button" data-v="200" aria-pressed="false">200 kb</button><button type="button" data-v="1000" aria-pressed="false">1 Mb</button></div></div>
+      <label for="s09-thr">Call ROH if het per kb below <output id="s09-thr-o">0.30</output><input type="range" id="s09-thr" min="0.02" max="2" step="0.02" value="0.3"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Minimum run
+        <div class="seg" role="group" aria-label="Minimum run length" id="s09-min"><button type="button" data-v="0" aria-pressed="true">none</button><button type="button" data-v="300" aria-pressed="false">300 kb</button><button type="button" data-v="1000" aria-pressed="false">1 Mb</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Divide het count by
+        <div class="seg" role="group" aria-label="Denominator" id="s09-den"><button type="button" data-v="call" aria-pressed="true">callable bases</button><button type="button" data-v="len" aria-pressed="false">window length</button></div></div>
+    </div>
+    <div class="legend" id="s09-legend"></div>
+    <div class="svgbox" id="s09-fig"></div>
+    <div class="readout" id="s09-out"></div>
+    <div class="svgbox" id="s09-hist"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) A recent ancestor (g below about 10) gives a few runs of many megabases; move g to 100 and the same number of ancestors leaves only short runs, many below what a 1-Mb window can see. (2) Old short segments are found only with small windows; the minimum-run filter throws them away, so F<sub>ROH</sub> "above 1 Mb" and "above 100 kb" answer different questions. (3) Raise the false-het rate and windows inside true ROH climb over the threshold: long runs break into pieces. (4) Switch the denominator to "window length" with gaps on: every gap becomes a false ROH. (5) Press "new animal" a few times with the same g: run lengths vary a lot, because the exponential distribution has a standard deviation as large as its mean.</p>
+  </section>
+
+  <h3>6. Length classes, age and F<sub>ROH</sub></h3>
+  <p>For a common ancestor <i>g</i> generations back, the two copies are separated by 2<i>g</i> meioses, and the IBD segments they share have exponentially distributed lengths with mean 100/(2<i>g</i>) <span class="tip" title="cM (centimorgan): a genetic-map distance; 1 cM is the length over which one crossover happens in 1 % of meioses. The average rate in mammals is very roughly 0.5 to 1 cM per Mb, and it varies along chromosomes.">cM</span> (Thompson 2013: "a separation of m meioses provides segment lengths that are exponentially distributed with mean 100/m cM"). Turned around, a run of <i>L</i> cM points to an ancestor roughly <i>g</i> ≈ 100/(2<i>L</i>) generations back.</p>
+  <div class="formula">g ≈ 100 / (2 × L<sub>cM</sub>) = 50 / (L<sub>Mb</sub> × r)     r = recombination rate in cM per Mb</div>
+  <div class="tbl"><table style="min-width:520px">
+    <thead><tr><th>Run length</th><th>g at r = 1 cM/Mb</th><th>g at r = 0.5 cM/Mb</th><th>Usually read as</th></tr></thead>
+    <tbody>
+      <tr><td><b>≥ 5 Mb</b></td><td>≤ 10</td><td>≤ 20</td><td>Recent inbreeding: related parents a few generations back</td></tr>
+      <tr><td><b>1 to 5 Mb</b></td><td>10 to 50</td><td>20 to 100</td><td>Small recent population size</td></tr>
+      <tr><td><b>100 kb to 1 Mb</b></td><td>50 to 500</td><td>100 to 1,000</td><td>Old, long-term small population or old bottleneck</td></tr>
+    </tbody>
+  </table></div>
+  <p>Use these numbers only as orders of magnitude. The length of one run varies as much as its mean (Thompson 2013), so single runs cannot be dated, only the distribution. The recombination rate of most wild species is unknown, and it varies along chromosomes: a recombination cold spot or a region under selection also keeps low diversity without any inbreeding. Runs of up to 4 Mb are common even in demonstrably outbred people (McQuillan et al. 2008), so a few runs of a few Mb do not by themselves mean inbreeding.</p>
+  <p><b>F<sub>ROH</sub></b> = total length of runs ≥ L<sub>min</sub> ÷ callable autosomal length. Report it per length class (for example under 100 kb, 100 to 500 kb, 0.5 to 1 Mb, 1 to 5 Mb, 5 Mb or more), because methods and papers use different minimums, and compare species only at matched classes.</p>
+
+  <h3>Three figures that show it</h3>
+  <ul>
+    <li><b>Genome strip:</b> window heterozygosity along each chromosome or the largest contigs, with the called runs drawn as bars underneath, the same scale for every genome (the toy above is one strip).</li>
+    <li><b>Length histogram:</b> bases in ROH per length class on a log length axis, with the detection floor (one window) and, for a contig assembly, the contig N50 marked; a second axis can show generations for an assumed recombination rate.</li>
+    <li><b>Window heterozygosity histogram:</b> the near-zero group of windows (the ROH) next to the main hump; this is the distribution the mixture model splits.</li>
+  </ul>
+
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><b>Too many hets.</b> Errors, paralogs and collapsed duplications add heterozygous sites. Warning signs: allele fractions far from 0.5, the ratio of transitions to transversions (<span class="tip" title="Transitions are A&lt;-&gt;G and C&lt;-&gt;T changes; transversions are all others. Real SNVs in mammals have about two transitions per transversion; random errors pull the ratio down toward 0.5.">Ts/Tv</span>) of het SNVs well below about 2 in mammals, clusters of hets in high-depth windows.</li>
+    <li><b>Too few hets.</b> Low callability (gaps, repeats, MAPQ-0 regions) counted as homozygous; haplotigs left in the assembly; hard <span class="tip" title="QUAL: the caller's confidence score for a variant (column 6 of the VCF); higher means more confident. Its scale depends on depth.">QUAL</span> filters tuned for another depth.</li>
+    <li><b>Sex chromosomes.</b> A male's X has no true heterozygous sites outside the <span class="tip" title="PAR (pseudoautosomal region): the short part of the X that pairs with the Y and is present in two copies in males.">PAR</span>. Left in, it adds tens of Mb of "ROH"; used on purpose, it is a free false-positive control.</li>
+    <li><b>Contig ends.</b> In a contig assembly a run cannot be longer than its contig, so long runs are cut into shorter ones; the share of ROH bases in runs touching a contig end shows how much.</li>
+    <li><b>Reference vs own assembly.</b> Mapping to another species' genome loses divergent regions; mapping to your own assembly inherits its errors (indels in homopolymers are rarely heterozygous in reality).</li>
+    <li><b>A two-state model on noisy data</b> can put most of a genome into "ROH". If F<sub>ROH</sub> exceeds what the window heterozygosity histogram shows, believe the histogram.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p>Our rodent species A (not yet published, so no name or exact numbers here): one male, long reads at a few tens of × coverage, hifiasm primary assembly; called with Clair3 1.x and an ONT R10.4.1 model. On a test set of a few contigs, het SNPs were found at roughly two per kb, and most het calls had allele fractions between 0.35 and 0.65, but Ts/Tv was clearly below the expected 2.0 to 2.2, pointing to transversion-rich false calls. Hard QUAL/AF filters changed the het density several-fold, so fixed QUAL thresholds were not used.</p>
+    <p>The X as a control: on the half-depth X contigs, true hets should not exist. Unfiltered, the X still showed a modest het density, but after an allele-fraction filter of 0.35 to 0.65 it fell to about 1 % of the autosomal filtered rate: an upper bound for the false-het share. A few X-depth contigs behaved as diploid (hundreds of hets per Mb) and were excluded.</p>
+    <p>Callable mask: MAPQ ≥ 10 and depth from about half to about twice the median, covering most of the genome. A two-state HMM put nearly two thirds of the genome in ROH and was discarded. The 50-kb window mixture put roughly a third of species A's genome in ROH, with many short runs but also a clear share in runs of 5 Mb and longer; a published chromosome-level genome of a close relative (HiFi) had about three times less ROH, in fewer, longer-median runs, and almost none in runs ≥ 5 Mb. In our contig assembly a noticeable share of ROH bases sat in runs touching a contig end, in the chromosome-level one almost none: a contig assembly cuts long runs. In the relative's genome, differences between the two assembled haplotypes agreed closely with read-based heterozygosity (window-by-window correlation near 1), and most of its densest 100-bp het clusters were microsatellite length alleles. GenomeScope on species A's long-read k-mers had given a different heterozygosity: k-mer heterozygosity from noisy reads is not SNV heterozygosity.</p>
+  </div>
+
+  <p class="note"><b>Next: demography.</b> Heterozygosity and ROH are the input to demographic inference from one genome (PSMC, MSMC2, SMC++). Long ROH change those curves, so the mask and ROH calls from this section are reused there. A later lesson covers these methods.</p>
+</section>

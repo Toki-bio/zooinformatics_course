@@ -1,0 +1,174 @@
+<section aria-labelledby="s10" id="s10-wrap">
+  <h2 id="s10"><span class="n">10</span>Gene completeness with BUSCO</h2>
+  <p class="lede">The size, N50 and QV of an assembly (<a href="#s08">section 08</a>) say nothing direct about genes. BUSCO answers a gene question: of a fixed list of genes that almost every relative of your animal has exactly once, how many are in the assembly <b>whole</b>, how many <b>twice</b>, how many <b>broken</b>, and how many <b>not found</b>?</p>
+
+  <h3>What a BUSCO is</h3>
+  <dl class="defs">
+    <dt>BUSCO</dt><dd>Short for <b>B</b>enchmarking <b>U</b>niversal <b>S</b>ingle-<b>C</b>opy <b>O</b>rthologs. It is the name of the program and also of each gene on its list: "a BUSCO" is one marker gene.</dd>
+    <dt>Ortholog</dt><dd>The same gene in different species, inherited from their common ancestor (for example the gene for one particular enzyme in a mouse and in a shrew). Not to be confused with a <dfn>paralog</dfn>, a second copy made by duplication inside one genome.</dd>
+    <dt>Single-copy, near-universal</dt><dd>BUSCO picks genes that are present in at least 90 % of the species of a group and present <b>once</b> in at least 90 % of those (the rule is made stricter for groups with more than 100 species). So a healthy assembly should contain almost all of them, each once.</dd>
+    <dt>OrthoDB</dt><dd>The database of ortholog groups from which the lists are built, by the same lab (Zdobnov group, Geneva). Its release number is part of every dataset name.</dd>
+    <dt>Lineage dataset</dt><dd>One list of marker genes for one group of organisms, for example <code>mammalia_odb10</code> (9,226 genes) or <code>vertebrata_odb12.2</code>. The suffix is the OrthoDB release: <span class="tip" title="OrthoDB v10 datasets, dated 2024-01-08 on the BUSCO download server.">odb10</span>, <span class="tip" title="OrthoDB v12 datasets; this release has no lengths_cutoff file, so 'complete' means at least 80 % of the profile length.">odb12</span> and <span class="tip" title="OrthoDB v12.2 datasets (2026); the default in BUSCO 6.1.0. Only BUSCO 6.1.0 or later reads them correctly.">odb12.2</span>. Each release is clustered from scratch, so the gene lists differ and <b>numbers from different releases cannot be compared</b>.</dd>
+  </dl>
+  <p>Each dataset folder holds, per gene, a <span class="tip" title="Profile hidden Markov model: a statistical description of a protein family built from an alignment of many species' versions of the gene. It records which amino acid is expected at each position and how variable each position is. HMMER scores a candidate protein against it.">profile HMM</span> (in <code>hmms/</code>), the reference protein sequences of the species used (<code>refseq_db.faa.gz</code>), the minimum score for a real hit (<code>scores_cutoff</code>) and the expected length (<code>lengths_cutoff</code>).</p>
+
+  <h3>How BUSCO looks for them in a genome</h3>
+  <ol class="steps">
+    <li><div><b>Basic statistics</b><div class="d"><span class="tip" title="BBTools: a package of read and sequence utilities; BUSCO calls its stats.sh.">BBTools</span> <code>stats.sh</code> reports sizes and N50. A run of more than 10 Ns (<code>--contig_break</code>) is counted as a break between contigs. These numbers are not used for the gene score.</div></div></li>
+    <li><div><b>Place the reference proteins on your contigs</b><div class="d">In genome mode for animals and other eukaryotes, the default since BUSCO 5.7.0 is <dfn>miniprot</dfn>, a protein-to-genome aligner by Heng Li. It aligns the dataset's reference proteins to the assembly across introns and tolerates <span class="tip" title="An insertion or deletion of 1 or 2 bases inside a coding exon. It shifts the reading frame, so every codon downstream is read wrongly.">frameshifts</span>. Older choices are still available: <code>--metaeuk</code> (MetaEuk, default in BUSCO 5.0-5.6) and <code>--augustus</code> (Augustus, a gene predictor trained on each lineage; default up to 4.0).</div></div></li>
+    <li><div><b>Score each candidate against the profile</b><div class="d"><span class="tip" title="HMMER: the program that scores protein sequences against profile HMMs.">HMMER</span> compares each translated candidate with the profile HMM of its BUSCO. Candidates under the score cutoff are ignored.</div></div></li>
+    <li><div><b>Check the length</b><div class="d">For <code>odb12.2</code> a hit is "complete" when its length lies between a lower bound (the smallest of 90 % of the median length of that gene, median − 2 × <span class="tip" title="Scaled median absolute deviation: a robust measure of how much the gene's length varies between species.">sMAD</span>, or 80 % of the profile length) and 1.5 × median. Shorter hits are fragments. <code>odb10</code> uses a mean ± 2 standard deviations rule; <code>odb12</code> uses 80 % of the profile length.</div></div></li>
+    <li><div><b>Sort and clean up</b><div class="d">A gene region can count for one BUSCO only; overlapping hits keep the better one; extra copies scoring below 85 % of the best copy are dropped. In BUSCO 6.1 with miniprot, a copy with an internal stop codon is also dropped when another complete copy has none.</div></div></li>
+  </ol>
+
+  <h3>The categories</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Letter</th><th>BUSCO's meaning</th><th>What it usually says about an assembly</th></tr></thead>
+    <tbody>
+      <tr><td><b>C</b> complete</td><td>Score and length within the expected range. C = S + D.</td><td>The main number. Aim for about the C of a published chromosome-level relative measured with the same dataset.</td></tr>
+      <tr><td><b>S</b> single-copy</td><td>Complete, found once.</td><td>What you want.</td></tr>
+      <tr><td><b>D</b> duplicated</td><td>Complete, found two or more times with similar scores.</td><td>Usually <b>both haplotypes kept</b> as separate contigs (<span class="tip" title="Haplotig: a contig that holds the other parental copy of a region already present in the main assembly.">haplotigs</span>; see purge_dups in <a href="#s06">section 06</a> and assembly products in <a href="#s07">section 07</a>). Sometimes real: a recent whole-genome duplication (the user guide shows a plant with D = 48.5 %).</td></tr>
+      <tr><td><b>F</b> fragmented</td><td>Scores like the gene but is too short.</td><td>A contig ends inside the gene, the gene spans a gap, or base errors break the alignment. Can also be a gene too divergent to align in full.</td></tr>
+      <tr><td><b>M</b> missing</td><td>No hit above the score cutoff.</td><td>The region is absent from the assembly (not assembled, purged by mistake, or only in the other haplotype), or the gene is truly lost, or too divergent to be found.</td></tr>
+      <tr><td><b>E</b> (miniprot only)</td><td>Percent of the <b>complete</b> BUSCOs whose miniprot alignment contains an in-frame stop codon. Not a separate category: these genes are already counted in C.</td><td>A warning not to use those predicted proteins as they are. In our projects it sits near 9 % even in a chromosome-level reference, so on its own it is <b>not</b> a measure of base errors (see box below).</td></tr>
+    </tbody>
+  </table></div>
+  <p>BUSCO prints the result in one line, which is also the form to report: <code>C:97.6%[S:95.9%,D:1.6%],F:0.9%,M:1.6%,n:9226,E:8.5%</code> (the made-up example below). Here <code>n</code> is the number of genes in the dataset.</p>
+
+  <section class="tool" aria-labelledby="s10-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s10-toy-h">A toy assembly scored by toy BUSCO</h3></div>
+    <p class="tool-note">200 marker genes, each a square. Each slider damages the assembly in one way. Watch the squares change class and the bar update. <b>Click a square</b> (or focus it and press Enter) to see why it got its letter. The rules are simplified versions of BUSCO's, listed under the figure.</p>
+    <div class="controls">
+      <label for="s10-n50"><span class="tip" title="Contig N50 of the toy assembly. Smaller N50 means more contig ends, and more of them land inside genes.">Contig N50</span><output id="s10-n50o">18 Mb</output><input type="range" id="s10-n50" min="0" max="100" step="1" value="88"></label>
+      <label for="s10-err"><span class="tip" title="Wrong bases per 100,000 bases of the assembly. In the toy, 80 % are 1-base insertions or deletions (the typical long-read error) and 20 % are substitutions. QV is shown next to it.">Base errors per 100 kb</span><output id="s10-erro">2 (QV 47)</output><input type="range" id="s10-err" min="0" max="300" step="1" value="2"></label>
+      <label for="s10-dup"><span class="tip" title="Share of the genome where the second parental copy was left in the assembly as a separate contig (a haplotig) instead of being removed by purge_dups.">Genome kept twice (haplotigs)</span><output id="s10-dupo">2 %</output><input type="range" id="s10-dup" min="0" max="60" step="1" value="2"></label>
+      <label for="s10-abs"><span class="tip" title="Share of the genome that is not in this assembly at all: not assembled, wrongly purged, or present only in the other haplotype's file.">Genome absent</span><output id="s10-abso">0.5 %</output><input type="range" id="s10-abs" min="0" max="30" step="0.5" value="0.5"></label>
+      <label for="s10-base" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s10-base" checked> <span class="tip" title="In every BUSCO 6 miniprot run in our projects, about 9 % of complete genes carried an internal stop codon, including the published chromosome-level genome of a close relative of one of our species. The toy marks 9 % of genes this way when the box is ticked.">baseline E (~9 %)</span></label>
+    </div>
+    <div class="slider-row"><span>Presets:</span><span class="seg" id="s10-presets" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-p="0" aria-pressed="true" title="Long contigs, few errors, haplotigs purged">long-read primary</button><button type="button" data-p="1" aria-pressed="false" title="About 10x long reads: short contigs, more errors, some sequence not assembled">low coverage</button><button type="button" data-p="2" aria-pressed="false" title="Short-read assembly: contig N50 of tens of kb">short-read</button><button type="button" data-p="3" aria-pressed="false" title="One haplotype file of a partially phased assembly: long contigs but part of the genome is only in the other file">one haplotype</button><button type="button" data-p="4" aria-pressed="false" title="Both parental copies kept for a third of the genome">unpurged</button></span></div>
+    <div class="svgbox" id="s10-bar"></div>
+    <div class="readout" id="s10-out"></div>
+    <div class="svgbox" id="s10-grid"></div>
+    <div class="legend" id="s10-legend"></div>
+    <div class="svgbox" id="s10-gene"></div>
+    <p id="s10-why" style="font-size:14px" aria-live="polite"></p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li>Each gene has a span of 5-60 kb on the genome (exons plus introns) and 4-14 exons. Contig ends fall at random, on average one per 0.6 × N50 (for random breaks the N50 is about 1.7 times the mean contig length).</li>
+        <li>A gene cut by contig ends is scored on the piece that holds most of its exons. At least 90 % of the coding sequence on one piece: <b>complete</b>. 20-90 %: <b>fragmented</b>. Less: <b>missing</b> (too little to pass the score cutoff).</li>
+        <li>Base errors land in the coding sequence (0.6-3 kb per gene). An insertion or deletion is a frameshift that miniprot aligns through with a penalty. A substitution creates a stop codon in 23 of 549 cases (the share of single-base changes in the 61 sense codons that give TAA, TAG or TGA). Four or more errors in one gene lower the score enough to make it <b>fragmented</b> (a toy threshold).</li>
+        <li>A gene in a doubled region has a second copy with its own contig ends and errors. Two complete copies: <b>duplicated</b>, unless exactly one of them has a stop codon; then that one is dropped and the gene is <b>single-copy</b> (BUSCO 6.1 rule).</li>
+        <li>A gene in an absent region is <b>missing</b>, unless its haplotig copy survives.</li>
+        <li>Presets only set the sliders to values of the kind seen in real projects; the toy's percentages are not predictions for any real assembly.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: the moving-house checklist</summary><div class="in">
+    <p>You move house. Before the move you write a list of 100 things nearly every home has exactly one of: one fridge, one kettle, one front-door key. After the move you open the boxes and tick the list.</p>
+    <div class="toy">kettle      found, whole           <span class="a">S</span>  single-copy complete
+key         found twice            <span class="h">D</span>  your partner packed one too (two haplotypes)
+lamp        only the shade         <span class="h">F</span>  broken in two boxes (a contig ends inside the gene)
+fridge      not found              <span class="x">M</span>  the box never arrived (region not assembled)
+toaster     found, whole, but a    <span class="a">C</span>, counted in <span class="x">E</span>
+            fuse is blown          (complete, with an internal stop codon)</div>
+    <p>The checklist tells you nothing about the books, the paintings or anything not on the list. In the same way BUSCO says nothing about repeats, satellite DNA, centromeres or the large part of a mammal genome that lies outside these genes. And if you use a checklist written for a different kind of household (a lineage too distant), items will be "missing" that were never expected.</p>
+    <p><b>Example with numbers (illustrative counts).</b> <code>mammalia_odb10</code> has 9,226 genes. If 9,000 are complete, of which 150 twice, 80 fragmented and 146 not found, BUSCO reports C = 9,000 ÷ 9,226 = 97.6 %, D = 150 ÷ 9,226 = 1.6 %, S = 8,850 ÷ 9,226 = 95.9 %, F = 0.9 %, M = 1.6 %.</p>
+  </div></details>
+
+  <h3>Reading the numbers</h3>
+  <ul>
+    <li><b>Compare like with like.</b> The BUSCO user guide recommends comparing your result with the same assessment of public assemblies of close relatives. Same BUSCO version, same dataset (and release), same mode. An odb10 result and an odb12.2 result are different tests.</li>
+    <li><b>D rises when haplotypes are not separated.</b> A primary or pseudohaploid assembly (<a href="#s07">section 07</a>) should have D close to that of a reference relative (a few percent at most). A D of tens of percent in an animal almost always means both parental copies were kept; run purge_dups (<a href="#s06">section 06</a>) and measure again. A haplotype-resolved assembly is measured one haplotype file at a time.</li>
+    <li><b>F and M rise with fragmentation and with lost sequence.</b> Short contigs cut genes; gaps hide exons; sequence missing from one file (for example a single haplotype from a partially phased assembly) turns genes into M, not F.</li>
+    <li><b>Base errors are measured better by QV.</b> With miniprot a frameshift does not stop the alignment, so moderate error rates move few genes out of C. Use Merqury QV (<a href="#s08">section 08</a>) for base accuracy, and BUSCO for gene presence. The two answer different questions: an assembly can have a high QV and a low BUSCO (sequence correct but missing) or the reverse.</li>
+    <li><b>E is a caution, not a score.</b> The user guide says miniprot predictions often contain internal stop codons and are not fit for downstream use as they are; MetaEuk and Augustus predictions never contain them. If you need the gene sequences (for a phylogeny, for example), rerun with <code>--augustus</code> or <code>--metaeuk</code>.</li>
+  </ul>
+  <p class="note warn"><b>Limits.</b> BUSCO genes are a sample of conserved genes; a high C does not mean repeats, gene families, sex chromosomes or GC-rich regions are assembled. Miniprot may underperform on genomes distant from the species in the dataset (user guide); then try <code>--metaeuk</code>, which also needs less memory than miniprot (user guide). A missing ortholog can be replaced by a full-length close paralog that BUSCO counts as complete (user guide). Too broad a lineage gives fewer genes and less resolution; a wrong lineage gives false "missing" genes.</p>
+
+  <h3>Choosing the lineage</h3>
+  <ul>
+    <li>Use the most specific dataset that contains your animal (user guide). List them with <code>busco --list-datasets</code>. For mammals there are, among others, <code>mammalia</code>, <code>eutheria</code>, <code>euarchontoglires</code>, <code>glires</code>, <code>rodentia</code> (odb12 and odb12.2 only), <code>laurasiatheria</code>, <code>carnivora</code>, <code>primates</code>; for reptiles <code>sauropsida</code> and <code>squamata</code> (odb12 and odb12.2 only).</li>
+    <li>If you also want comparisons with older published numbers, run a second time with the dataset they used (often <code>mammalia_odb10</code> or <code>vertebrata_odb10</code>).</li>
+    <li><code>--auto-lineage-euk</code> lets BUSCO choose: it scores the assembly against the general eukaryote set, then places it on a tree with <span class="tip" title="SEPP: a program that places sequences on an existing phylogenetic tree.">SEPP</span> and picks the dataset at that position. The user guide warns that SEPP 4.5.6 gives wrong assignments; use SEPP 4.5.5. For a vertebrate you know, naming the lineage yourself is simpler and faster.</li>
+    <li>Writing <code>-l mammalia</code> without a suffix makes BUSCO 6.1 add the default release, <code>_odb12.2</code>. Write the suffix to be explicit.</li>
+  </ul>
+
+  <h3>Commands</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># install (versions from the BUSCO 6.1.0 user guide)</span>
+conda create -n busco6 -c conda-forge -c bioconda busco=6.1.0
+conda activate busco6
+
+<span class="c"># download datasets once, into a shared folder (--download must come last)</span>
+busco --list-datasets
+busco --download_path /data/busco_downloads --download mammalia_odb12.2
+busco --download_path /data/busco_downloads --download mammalia_odb10
+
+<span class="c"># score one assembly (genome mode; miniprot is used by default for eukaryotes)</span>
+busco -i asm.p_ctg.fa -m genome -l mammalia_odb12.2 -c 16 \
+      -o asm_mammalia12 --out_path busco_runs \
+      --download_path /data/busco_downloads --offline --opt-out-run-stats
+
+<span class="c"># the same with the older release, for comparison with published numbers</span>
+busco -i asm.p_ctg.fa -m genome -l mammalia_odb10 -c 16 \
+      -o asm_mammalia10 --out_path busco_runs \
+      --download_path /data/busco_downloads --offline --opt-out-run-stats
+
+<span class="c"># one figure for several runs: collect their short_summary JSON files in one folder</span>
+mkdir -p busco_plot
+cp busco_runs/*/short_summary.specific.*.json busco_plot/
+busco --plot busco_plot --plot_percentages            <span class="c"># → busco_plot/busco_figure.png</span></pre></div>
+  <dl class="defs">
+    <dt><code>-i</code>, <code>-m genome</code></dt><dd>Input FASTA (gzipped is accepted since 6.0) and the mode. Other modes: <code>transcriptome</code> and <code>proteins</code> (for an annotated gene set).</dd>
+    <dt><code>-l</code></dt><dd>Lineage dataset name, or a path to a dataset folder.</dd>
+    <dt><code>-c</code></dt><dd>Threads. Without it BUSCO uses one CPU (user guide).</dd>
+    <dt><code>-o</code>, <code>--out_path</code>, <code>-f</code></dt><dd>Run name, parent folder, and overwrite an existing run of that name (old results are lost). <code>-r</code> continues an interrupted run instead.</dd>
+    <dt><code>--download_path</code>, <code>--offline</code></dt><dd>Where datasets are kept (default: <code>busco_downloads/</code> in the current folder), and never try to download. Use both on compute nodes without internet.</dd>
+    <dt><code>--opt-out-run-stats</code></dt><dd>Do not send the anonymous usage report (on by default since 5.6.0). See the pitfall below.</dd>
+    <dt><code>--miniprot</code> / <code>--metaeuk</code> / <code>--augustus</code></dt><dd>Choose the gene finder; miniprot is the default for eukaryotes in genome mode.</dd>
+  </dl>
+
+  <h3>What comes out</h3>
+  <dl class="defs">
+    <dt><code>short_summary.specific.&lt;dataset&gt;.&lt;run&gt;.txt</code> / <code>.json</code></dt><dd>The one-line result, the counts per category, the dataset and the versions of every tool used. The <code>.json</code> is what <code>--plot</code> reads.</dd>
+    <dt><code>run_&lt;dataset&gt;/full_table.tsv</code></dt><dd>One line per BUSCO hit: <code>Busco id</code>, <code>Status</code> (Complete, Duplicated, Fragmented, Missing), <code>Sequence</code> (the contig), start, end, strand, score, length. Use it to find <i>which</i> genes are missing or duplicated and on which contigs, for example to check whether the duplicated ones sit on small contigs that look like haplotigs.</dd>
+    <dt><code>run_&lt;dataset&gt;/missing_busco_list.tsv</code></dt><dd>The missing gene IDs only.</dd>
+    <dt><code>run_&lt;dataset&gt;/busco_sequences/</code></dt><dd>Protein sequences and GFF coordinates of the single-copy, multi-copy and fragmented hits. The miniprot pipeline writes no nucleotide sequences, because they often contain internal stop codons.</dd>
+    <dt><code>logs/busco.log</code></dt><dd>The full log; read it when numbers look odd.</dd>
+  </dl>
+
+  <p class="note warn"><b>Pitfall: BUSCO "hangs" after it has finished.</b> Unless <code>--opt-out-run-stats</code> is given, BUSCO ends every run by looking up the machine's country at ipinfo.io and posting a usage report to busco-data.ezlab.org. In the 6.1.0 source both requests are made without a time limit. So on a server whose outgoing connections are blocked or very slow, the program can sit doing nothing after the results are written. Always add <code>--opt-out-run-stats</code> on servers.</p>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects</h3>
+    <p style="margin-bottom:10px">All runs below used <code>mammalia_odb10</code> (n = 9,226) in genome mode with miniprot: BUSCO 6.1.0 for species A, BUSCO 6.0.0 for species B and C. Species A–C are unpublished, so values are rounded (percent of genes). A dash means the value was not recorded.</p>
+    <div class="tbl"><table style="min-width:560px">
+      <thead><tr><th>Assembly</th><th>C [S, D]</th><th>F</th><th>M</th><th>E</th></tr></thead>
+      <tbody>
+        <tr><td>species A, hifiasm primary (contig N50 above 10 Mb)</td><td><b>above 95</b>, D about 2</td><td>under 1</td><td>under 1</td><td>~9</td></tr>
+        <tr><td>species A, Flye + Medaka (contigs about 10 times shorter)</td><td>about 1 point lower</td><td>under 1</td><td>about 1</td><td>-</td></tr>
+        <tr><td>species A, hifiasm haplotype 1 only</td><td>about 8 points lower</td><td>about 1</td><td>about 8</td><td>-</td></tr>
+        <tr><td>published chromosome-level genome of a close relative of A</td><td>about 1 point below A's primary</td><td>under 1</td><td>under 2</td><td>~9</td></tr>
+        <tr><td>species B, roughly 25× long reads (N50 a few hundred kb)</td><td>above 90</td><td>about 4</td><td>about 4</td><td>~10</td></tr>
+        <tr><td>species C, about 10× long reads (N50 less than half of B's)</td><td>about 80</td><td>about 9</td><td>about 10</td><td>~10</td></tr>
+      </tbody>
+    </table></div>
+    <ul style="margin-top:10px">
+      <li><b>Calibrate with a relative.</b> The species A primary scored at least as high as the published chromosome-level genome of a close relative with the same dataset. Without that comparison its score would be just a number.</li>
+      <li><b>E ≈ 9 % is a baseline.</b> Every species A assembly, the relative's published reference and species B and C all show it. It does not track base accuracy: B and C differ more than three-fold in Merqury error rate but only about half a point in E.</li>
+      <li><b>Coverage shows up as F and M.</b> C had less than half of B's long-read coverage, shorter contigs and a C score about 10 points lower, mostly through more fragmented and missing genes. Polishing (Medaka, then NextPolish) left C unchanged in both (within 0.1 point) while halving the error rate.</li>
+      <li><b>One haplotype loses genes as Missing.</b> hifiasm's haplotype 1, made without Hi-C or parental data, lost about 8 points of C, almost all as missing and only about 1 % fragmented: whole regions are simply not in that file. Polishing it did not help. The first numbers sent to collaborators came from this file by mistake (a file-name pattern picked <code>bp.hap1.p_ctg.gfa</code> before <code>bp.p_ctg.gfa</code>). Check the contig names (<code>ptg</code> = primary, <code>h1tg</code>/<code>h2tg</code> = haplotypes) before you report.</li>
+      <li><b>Label the file.</b> For B and C the BUSCO and QV were measured on the polished file before purge_dups, and size and N50 on the purged file; an early report mixed them.</li>
+      <li><b>The hang.</b> BUSCO 6.1 on therioserver sat for minutes after finishing, during the usage-stats upload; <code>--opt-out-run-stats</code> avoids it.</li>
+    </ul>
+  </div>
+
+  <h3>A faster alternative: compleasm</h3>
+  <p><dfn>compleasm</dfn> (Neng Huang and Heng Li, 2023) re-implements the BUSCO test with miniprot and HMMER and the same BUSCO datasets. Its paper reports it 14 times faster than BUSCO on human assemblies, with a completeness of 99.6 % for the <span class="tip" title="T2T-CHM13: the first complete (telomere-to-telomere) human genome sequence, made from a cell line whose two genome copies are identical.">T2T-CHM13</span> human genome against BUSCO's 95.7 % (the annotation itself is 99.5 % complete). Version 0.2.10 (October 2026) reads <code>odb10</code>, <code>odb12</code> and <code>odb12.2</code>; the default is <code>odb12</code>, so set <code>--odb</code> explicitly. It reports S, D, F, M and an extra class <b>I</b>: a gene split so that one part aligns in one place and the rest elsewhere (it counts as fragmented).</p>
+  <div class="code"><button type="button">copy</button><pre>conda create -n compleasm -c conda-forge -c bioconda compleasm
+compleasm download mammalia --odb odb12.2 -L /data/mb_downloads
+compleasm run -a asm.p_ctg.fa -o asm_compleasm -l mammalia --odb odb12.2 -t 16 -L /data/mb_downloads
+<span class="c"># result: asm_compleasm/summary.txt</span></pre></div>
+  <p>Do not mix compleasm and BUSCO numbers in one comparison table; run the same tool on every assembly you compare.</p>
+</section>

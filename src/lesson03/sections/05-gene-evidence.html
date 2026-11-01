@@ -1,0 +1,200 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Evidence for genes: transcripts and proteins</h2>
+  <p class="lede">A gene predictor guesses where genes are from the DNA alone. It guesses much better when you also show it <b>evidence</b>: pieces of messenger RNA from the animal itself (RNA-seq, long-read transcripts) and proteins of related species laid onto the new genome. This section explains what a gene looks like in the genome, how each kind of evidence is produced and aligned, and which files the gene predictors of <a href="#s06">section 06</a> expect.</p>
+
+  <h3>What a gene looks like in the genome</h3>
+  <p>In a mammal, a protein-coding gene is not one continuous stretch of code. It is cut into pieces that are joined only in the RNA copy.</p>
+  <dl class="defs">
+    <dt>Exon</dt><dd>A piece of the gene that stays in the mature messenger RNA (<dfn>mRNA</dfn>, the RNA copy that leaves the nucleus and is translated into protein).</dd>
+    <dt>Intron</dt><dd>A piece between two exons that is copied into RNA and then cut out. Mammal introns are often thousands of bases long, many times longer than the exons.</dd>
+    <dt>Splicing, splice sites</dt><dd>Cutting out the introns and joining the exons is called <dfn>splicing</dfn>. Almost every intron begins with the two bases <b>GT</b> (the <dfn>donor</dfn> site) and ends with <b>AG</b> (the <dfn>acceptor</dfn> site). Rarer types are GC-AG and AT-AC. The point where two exons meet in the mRNA is a <dfn>splice junction</dfn>.</dd>
+    <dt>CDS</dt><dd>Coding sequence: the part of the mRNA that is translated, from the <dfn>start codon</dfn> (ATG, read as methionine) to the <dfn>stop codon</dfn> (TAA, TAG or TGA). It is read three bases (one <span class="tip" title="Codon: three bases that code for one amino acid, or for 'stop'.">codon</span>) at a time, so its length is a multiple of 3.</dd>
+    <dt>UTR</dt><dd>Untranslated region: the parts of the mRNA before the start codon (<dfn>5′ UTR</dfn>) and after the stop codon (<dfn>3′ UTR</dfn>). They are in exons but do not code for protein. The first exon is often all UTR.</dd>
+    <dt>Isoform</dt><dd>One gene can be spliced in several ways, for example with or without one exon, or with a different last exon. Each version is an <dfn>isoform</dfn> (or <dfn>transcript</dfn>). Different tissues often make different isoforms.</dd>
+  </dl>
+  <figure>
+    <div class="svgbox" id="s05-anat"></div>
+    <figcaption><b>A toy gene with five exons.</b> Boxes are exons (thin = UTR, thick = CDS); lines are introns, drawn shorter than real. The zoom shows the splice signals at both ends of intron 1, with the consensus that miniprot's vertebrate splice model treats as best (<code>G|GTR…YYYNYAG|</code>; R = A or G, Y = C or T, N = any base, | = exon border). Below: the mature mRNA after the introns are removed.</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: a recipe with adverts in the middle</summary><div class="in">
+    <p>Think of a gene as a recipe printed in a magazine, interrupted by adverts. The recipe parts are the <b>exons</b>; the adverts are the <b>introns</b>. Before cooking, the cell cuts out the adverts and glues the recipe parts together (<b>splicing</b>). Every advert starts with the same two letters, GT, and ends with AG, so the scissors know where to cut.</p>
+    <div class="toy">DNA      <span class="a">ATGGCTCAG</span>gtaagt...advert...ttttcag<span class="a">GTTGAACTG</span>gtgag...advert...cctag<span class="a">CCTTAA</span>
+mRNA     <span class="a">ATGGCTCAG</span><span class="a">GTTGAACTG</span><span class="a">CCTTAA</span>
+protein  M  A  Q  V  E  L  P  stop</div>
+    <p>The title and the notes at the end of the recipe are not cooking steps: those are the <b>UTRs</b>. The cooking steps from "ATG" to the stop word are the <b>CDS</b>. A shortened version of the recipe, with one paragraph left out, is another <b>isoform</b>: liver might use the full recipe, testis the short one.</p>
+    <p>Why this matters for annotation: in the genome you only see the magazine with the adverts. An RNA read that runs across a glued joint ("split read") proves exactly where an advert was cut out. A protein of a related species tells you which recipe parts should be there, but not the title page (UTR) and not which version each tissue uses.</p>
+  </div></details>
+
+  <h3>Three kinds of evidence</h3>
+  <ol class="steps">
+    <li><div><b>Short-read RNA-seq</b><div class="d">mRNA is turned into <span class="tip" title="Complementary DNA: a DNA copy of an RNA molecule, made by the enzyme reverse transcriptase. Sequencers read DNA, so RNA is always converted to cDNA first (except in nanopore direct RNA sequencing).">cDNA</span>, broken into fragments and sequenced as 100-150 bp Illumina reads. Many reads, cheap, but each read sees only a small part of one transcript. Reads that cross an exon-exon junction show the exact intron positions.</div><div class="t">tools: HISAT2 or STAR (mapping), StringTie (assembly)</div></div></li>
+    <li><div><b>Long-read transcripts</b><div class="d">PacBio <dfn>Iso-Seq</dfn> or nanopore cDNA sequencing reads a whole mRNA molecule in one read, from 5′ end to poly(A) tail. One read shows a complete isoform, so no assembly is needed, but there are fewer reads per gene.</div><div class="t">tools: lima, isoseq, pbmm2 (PacBio); pychopper, minimap2 (nanopore)</div></div></li>
+    <li><div><b>Proteins of other species</b><div class="d">Known protein sequences (from a close relative, or from a large database such as OrthoDB) are aligned to the genome across introns. They show coding exons and their borders, need no lab work, but say nothing about UTRs or tissue-specific isoforms, and miss genes your species has and the relatives do not.</div><div class="t">tools: miniprot; ProtHint inside BRAKER</div></div></li>
+    <li class="later"><div><b>A related annotated genome</b><div class="d">Whole gene models of a relative projected onto your genome through a genome alignment. This is the topic of <a href="#s07">section 07</a> (Liftoff, TOGA2).</div></div></li>
+  </ol>
+
+  <h3>Planning RNA-seq</h3>
+  <ul>
+    <li><b>Tissues.</b> A gene leaves RNA evidence only where it is switched on. The human tissue atlas (Uhlén et al. 2015, <i>Science</i> 347:1260419) needed transcriptomes of 32 tissues and organs to detect more than 90 % of the protein-coding genes. For annotation, pool or sequence several different tissues of the same species rather than many replicates of one.</li>
+    <li><b>Preservation.</b> RNA degrades fast. The <span class="tip" title="ERGA: European Reference Genome Atlas, a consortium producing reference genomes of European species; its sampling guidelines cover tissue preservation.">ERGA</span> pilot guidelines (v2) state that tissue in RNAlater is sufficient for RNA-seq, and the listed sequencing centres ask for total RNA with a <span class="tip" title="RNA integrity number, 1 to 10, measured on a Bioanalyzer or TapeStation. 10 = intact RNA; low values = degraded RNA, which gives reads piled up at the 3′ end of transcripts.">RIN</span> above 8 for Iso-Seq (most list 300-500 ng as the minimum).</li>
+    <li><b>Depth.</b> There is no single agreed number of reads for annotation. Depth decides whether <b>weakly expressed</b> genes and <b>rare isoforms</b> get any split reads at all; the toy below shows this. More tissues usually help more than more reads from one tissue.</li>
+    <li><b>Stranded or unstranded.</b> A <dfn>stranded</dfn> library keeps the information which DNA strand the RNA was copied from; an unstranded one loses it. Strand matters where genes overlap on opposite strands and for UTRs. The BRAKER README says strandedness is not very important for gene prediction without UTRs, because spliced reads are "artificially stranded" by their GT-AG motif, but stranded data help UTR prediction. If nobody tells you which kind you have, RSeQC <code>infer_experiment.py</code> measures it from mapped reads (it needs a gene model file, for a new species for example protein-based models of conserved genes).</li>
+  </ul>
+
+  <h3>Mapping short reads: HISAT2 or STAR</h3>
+  <p>An RNA read that crosses a splice junction lies in two places on the genome, often thousands of bases apart. A normal DNA aligner (BWA, or minimap2 in genome mode) cannot place it. A <dfn>spliced aligner</dfn> splits the read and writes the gap as an intron. In the <span class="tip" title="SAM: the text format for reads aligned to a genome (BAM is its compressed binary form). One line per read: where it aligned and how.">SAM</span> file this is the <span class="tip" title="CIGAR string: a compact description of how a read aligns, as counts and letters: M = aligned bases, I = inserted, D = deleted, N = skipped region of the genome (an intron), S = clipped bases.">CIGAR</span> operator <code>N</code>: the HISAT2 manual's example read <code>90M200N10M</code> means 90 bases match, then a 200-bp intron is skipped, then 10 more bases match. Such a read is a <dfn>split read</dfn> (or spliced read).</p>
+  <p>Mask repeats first (<a href="#s04">section 04</a>) and use the <b>soft-masked</b> genome; HISAT2 ignores lowercase masking, as the BRAKER README notes.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># HISAT2 2.2.3 (2.2.1 is the version listed by BRAKER 3.0.8)</span>
+hisat2-build -p 16 genome.fa genome_idx            <span class="c"># index; about 8 GB RAM for a mammal-size genome without --ss/--exon</span>
+hisat2 -p 16 --dta -x genome_idx \
+       -1 liver_R1.fq.gz -2 liver_R2.fq.gz \
+       --novel-splicesite-outfile liver.junctions.txt \
+  | samtools sort -@ 8 -o liver.bam
+samtools index liver.bam
+<span class="c"># stranded library: add --rna-strandness RF or FR (paired), R or F (single-end); ask the provider or measure it</span></pre></div>
+  <ul>
+    <li><code>--dta</code> ("downstream transcriptome assembly"): HISAT2 asks for longer anchors before it accepts a new splice site, which helps StringTie. BRAKER's <span class="tip" title="GeneMark-ETP: the gene finder inside BRAKER3 that combines RNA-seq transcripts and protein hints with its own self-trained model (section 06).">GeneMark-ETP</span> runs StringTie on your BAM, so <b>BRAKER requires <code>--dta</code></b> for HISAT2 alignments: spliced reads must carry the <code>XS</code> strand tag.</li>
+    <li><code>--rna-strandness</code>: unstranded is the default. F/R for single-end, FR/RF for paired reads; the manual equates RF with TopHat's <code>fr-firststrand</code>.</li>
+    <li>Default maximum intron length 500,000 bp (<code>--max-intronlen</code>).</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># STAR 2.7.11b: build the index (mammal genomes: at least 16 GB RAM, ideally 32 GB, says the README)</span>
+STAR --runMode genomeGenerate --runThreadN 16 \
+     --genomeDir star_idx --genomeFastaFiles genome.fa
+<span class="c"># map one tissue, per-sample 2-pass mode</span>
+STAR --runThreadN 16 --genomeDir star_idx \
+     --readFilesIn liver_R1.fq.gz liver_R2.fq.gz --readFilesCommand zcat \
+     --twopassMode Basic --outSAMstrandField intronMotif \
+     --outSAMtype BAM SortedByCoordinate --outFileNamePrefix liver.</pre></div>
+  <ul>
+    <li><b>2-pass mode.</b> In pass 1 STAR finds junctions; it then inserts them into the index and maps all reads again. The manual says this "does not significantly increase the number of detected novel junctions, but allows to detect more spliced reads mapping to novel junctions", which is what a new genome without annotation needs. With several tissues you can instead collect every sample's <code>SJ.out.tab</code> and give them all to pass 2 with <code>--sjdbFileChrStartEnd</code>.</li>
+    <li><code>--outSAMstrandField intronMotif</code> adds the <code>XS</code> strand tag (and drops reads with inconsistent or non-canonical introns). BRAKER asks for this option when the BAM comes from STAR.</li>
+    <li><span class="tip" title="Splice-junction table, one line per intron: contig, first and last base of the intron (1-based), strand (0 undefined, 1 +, 2 -), intron motif (0 non-canonical, 1 GT/AG, 2 CT/AC, 3 GC/AG, 4 CT/GC, 5 AT/AC, 6 GT/AT), annotated or not, number of uniquely mapping reads crossing it, number of multi-mapping reads, maximum overhang.">SJ.out.tab</span> lists every junction with its read counts; it is the quickest way to see how much splicing evidence you have.</li>
+    <li>For an assembly with more than 5,000 contigs the manual recommends lowering <code>--genomeChrBinNbits</code> to min(18, log2(max(genome length / number of contigs, read length))). For example, a 2.5 Gb assembly in 25,000 contigs gives log2(100,000) ≈ 16.6, so 16.</li>
+  </ul>
+  <p class="note">Which one? Both write sorted BAM files that BRAKER accepts. HISAT2 needs less memory (the index fits on a desktop); STAR is the aligner NCBI's EGAPx pipeline uses for short RNA-seq reads. BRAKER itself runs HISAT2 when you give it FASTQ files instead of BAM.</p>
+
+  <h3>What BRAKER takes</h3>
+  <p>BRAKER (<a href="#s06">section 06</a>) accepts the evidence in several forms; any combination can be given in one run (README of BRAKER 3.0.8):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Option</th><th>What you give</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><code>--bam=a.bam,b.bam</code></td><td>Your own sorted RNA-seq alignments</td><td>HISAT2 with <code>--dta</code>, or STAR with <code>--outSAMstrandField intronMotif</code>; the <code>XS</code> tag is required.</td></tr>
+      <tr><td><code>--rnaseq_sets_ids</code> + <code>--rnaseq_sets_dirs</code></td><td>Names of FASTQ files (<code>ID_1.fastq</code>, <code>ID_2.fastq</code>) or BAM files in a folder</td><td>BRAKER maps FASTQ with HISAT2 itself. With only <code>--rnaseq_sets_ids</code> it downloads those <span class="tip" title="SRA (Sequence Read Archive): NCBI's public archive of raw sequencing reads; each run has an accession such as SRR1234567.">SRA</span> runs.</td></tr>
+      <tr><td><code>--prot_seq=proteins.fa</code></td><td>A protein database with <b>many members of each family</b>, e.g. an OrthoDB partition</td><td>ProtHint aligns them and makes hints. RNA-seq + proteins = BRAKER3 (GeneMark-ETP).</td></tr>
+      <tr><td><code>--hints=file.gff</code></td><td>Ready-made <span class="tip" title="Hints: short GFF lines that tell AUGUSTUS 'there is probably an intron here', 'a start codon here', 'a piece of coding sequence here', with a source (src=P protein, src=E, src=M manual) and a weight.">hints</span> (features <code>intron</code>, <code>start</code>, <code>stop</code>, <code>CDSpart</code>)</td><td>Not recommended together with RNA-seq + proteins: GeneMark-ETP does not use them.</td></tr>
+      <tr><td><code>--bam</code> + <code>--stranded=+,-,.</code></td><td>Strand-separated BAMs</td><td>Only for UTR prediction (<code>--UTR=on</code>); marked experimental.</td></tr>
+    </tbody>
+  </table></div>
+
+  <section class="tool" aria-labelledby="s05-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-toy-h">Which exons and isoforms does your RNA-seq support?</h3></div>
+    <p class="tool-note">A toy gene with six exons and three isoforms: <b>A</b> (all of exons 1-5) is made mostly in brain, <b>B</b> skips exon 3 and is made only in testis, <b>C</b> ends in exon 6 instead of 5 and is rare, liver only. Pick tissues and sequencing depth; reads are subsampled from the same simulated library, as when you downsample real data. <b>Split reads</b> (orange) are joined by a thin line across the intron; the arcs below the reads count them per junction. Turn on the protein to add a miniprot alignment of a relative's protein.</p>
+    <div class="controls">
+      <label for="s05-depth"><span class="tip" title="Millions of read pairs sequenced per tissue library. In this toy the gene receives a fixed number of reads per million (its expression level), so doubling the depth doubles the reads on the gene.">Reads per tissue</span><output id="s05-deptho">20 M</output><input type="range" id="s05-depth" min="0" max="8" step="1" value="4"></label>
+      <label for="s05-min"><span class="tip" title="A junction counts as supported when at least this many split reads cross it. StringTie's own default (-j) is 1 read; a stricter value removes noise from mis-mapped reads but also loses rare isoforms. The toy value is an illustration, not a BRAKER setting.">Min. split reads per junction</span><output id="s05-mino">2</output><input type="range" id="s05-min" min="1" max="10" step="1" value="2"></label>
+      <fieldset style="border:0;padding:0;margin:0;display:flex;gap:6px 14px;flex-wrap:wrap;align-items:center;font-size:13.5px">
+        <legend style="font-size:12.5px;color:var(--muted);padding:0;margin-bottom:2px">Tissues sequenced</legend>
+        <label style="flex-direction:row;align-items:center;gap:5px;min-width:0;color:var(--fg)"><input type="checkbox" id="s05-t0" checked> brain</label>
+        <label style="flex-direction:row;align-items:center;gap:5px;min-width:0;color:var(--fg)"><input type="checkbox" id="s05-t1" checked> liver</label>
+        <label style="flex-direction:row;align-items:center;gap:5px;min-width:0;color:var(--fg)"><input type="checkbox" id="s05-t2"> testis</label>
+        <label style="flex-direction:row;align-items:center;gap:5px;min-width:0;color:var(--fg)"><input type="checkbox" id="s05-prot"> <span class="tip" title="Adds a miniprot alignment of the orthologous protein from a related species. It covers the coding exons of isoform A only.">protein of a relative</span></label>
+      </fieldset>
+    </div>
+    <div class="svgbox" id="s05-fig"></div>
+    <div class="legend" id="s05-legend"></div>
+    <div class="readout" id="s05-out"></div>
+    <p id="s05-say" style="font-size:14px" aria-live="polite"></p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li>Expression, in reads on this gene per million reads sequenced: brain A 2.0; liver A 0.8, C 0.25; testis A 0.3, B 0.9. These numbers are invented to show the effect; real genes range over several orders of magnitude.</li>
+        <li>Each read is 100 bases, single-end, placed uniformly along the chosen transcript (real coverage is less even). A read that covers two exons is drawn as a split read.</li>
+        <li>An exon is "covered" when at least one read overlaps it. An isoform is "supported" when every one of its junctions has at least the minimum number of split reads. Exon 3 skipping (junction 2→4) and the exon 4→6 junction are the only junctions unique to B and C.</li>
+        <li>The protein covers the coding part of isoform A (from the start codon in exon 2 to the stop codon in exon 5); it supports the junctions 2→3, 3→4 and 4→5 but never the UTR exon 1, the 1→2 junction, or the B and C isoforms.</li>
+        <li>Drawn reads are capped at 26 rows; counts in the arcs and the readout always include all reads.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <h3>Long reads: whole transcripts in one read</h3>
+  <p>PacBio's current bulk Iso-Seq workflow (isoseq.how; <code>isoseq</code> 4.3.0/26.2.0, pbmm2 26.2) starts from HiFi reads, which already have predicted accuracy of at least Q20:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. remove cDNA primers, orient reads 5'->3' (also splits pooled samples by their barcode sequences)</span>
+lima movieX.hifi_reads.bam primers.fasta movieX.fl.bam --isoseq --peek-guess
+<span class="c"># 2. trim poly(A) tails, remove concatemers -> full-length non-concatemer reads (FLNC)</span>
+isoseq refine movieX.fl.NEB_5p--NEB_Clontech_3p.bam primers.fasta movieX.flnc.bam --require-polya
+<span class="c"># 3. cluster reads of the same isoform (several SMRT cells, i.e. several PacBio sequencing runs: list FLNC files in flnc.fofn, one file name per line)</span>
+isoseq cluster2 flnc.fofn clustered.bam
+<span class="c"># 4. spliced alignment to the genome</span>
+pbmm2 align --preset ISOSEQ --sort clustered.bam genome.fa mapped.bam
+<span class="c"># 5. merge redundant transcripts into unique isoforms (GFF)</span>
+isoseq collapse mapped.bam collapsed.gff</pre></div>
+  <ul>
+    <li><span class="tip" title="Full-length non-concatemer: a read with both cDNA primers found (so it covers the molecule end to end), poly(A) tail removed, and not two molecules glued together.">FLNC</span> reads are the clean input. <code>--require-polya</code> keeps only reads with a poly(A) tail of at least 20 bases.</li>
+    <li><code>isoseq cluster2</code> replaces <code>isoseq cluster</code> (to be deprecated). It outputs isoforms supported by at least 2 FLNC reads; add <code>--singletons</code> to keep the rest.</li>
+    <li>pbmm2 is PacBio's wrapper around minimap2 that reads and writes PacBio BAM and comes with parameter presets; <code>ISOSEQ</code> is the preset for transcripts (its README lists <code>-G</code> maximum intron length and <code>-C</code> non-canonical splice cost as the extra settings you may change).</li>
+  </ul>
+  <p><b>Nanopore cDNA.</b> Reads from cDNA kits come in both orientations and include primers. Pychopper (v2.7.10) finds the primers, keeps full-length reads and orients them (<code>-k</code> picks the kit's primers; PCS109 is the default, check that your kit is in its list). Then align with minimap2's spliced mode:</p>
+  <div class="code"><button type="button">copy</button><pre>pychopper -r report.pdf -u unclassified.fq -w rescued.fq cdna_reads.fq full_length.fq
+minimap2 -t 16 -ax splice genome.fa full_length.fq | samtools sort -o ont_cdna.bam      <span class="c"># nanopore cDNA</span>
+minimap2 -t 16 -ax splice:hq -uf genome.fa isoseq.fa | samtools sort -o isoseq.bam      <span class="c"># PacBio / high-quality full-length cDNA</span></pre></div>
+  <p>In minimap2 (2.31) <code>-uf</code> tells it the reads are already in transcript orientation; <code>-x splice</code> otherwise tries both strands. The default maximum intron is 200 kb (<code>-G</code>).</p>
+  <p class="note warn"><b>Long reads in BRAKER.</b> The standard BRAKER3 expects short reads. For long reads only, the README points to a separate container (<code>teambraker/braker3:isoseq</code>) with a GeneMark-ETP version hard-coded to assemble long reads, fed with a minimap2 <code>splice:hq</code> BAM. It warns: do <b>not</b> mix short and long reads in that variant, and accuracy depends heavily on long-read depth (similar to short reads with 2022 PacBio HiFi data, lower with noisier, shallower data). EGAPx (<a href="#s06">section 06</a>) takes short and long RNA reads together.</p>
+
+  <h3>From alignments to transcripts and ORFs</h3>
+  <p>Mapped reads are not yet transcripts. A <dfn>transcript assembler</dfn> joins overlapping reads and their junctions into full isoform models.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># StringTie 3.0.3 (the "StringTie2" algorithm, extended)</span>
+stringtie -p 8 -o liver.gtf liver.bam                    <span class="c"># short reads</span>
+stringtie -p 8 -L -o isoseq.gtf isoseq.bam               <span class="c"># long reads</span>
+stringtie -p 8 --mix -o mix.gtf liver.bam isoseq.bam     <span class="c"># both: short BAM first, long BAM second</span>
+stringtie --merge -o merged.gtf liver.gtf brain.gtf testis.gtf   <span class="c"># one non-redundant set across tissues</span></pre></div>
+  <p>Defaults worth knowing: minimum transcript length 200 bp (<code>-m</code>); minimum junction coverage 1 read (<code>-j</code>); isoforms below 1 % of the gene's most abundant isoform dropped (<code>-f 0.01</code>); <code>--rf</code>/<code>--fr</code> declare a stranded library. The README recommends at least 8 GB of RAM, 16 GB for large data sets.</p>
+  <p>A transcript is not yet a protein. <dfn>TransDecoder</dfn> finds the most likely <span class="tip" title="Open reading frame: a stretch that starts with a start codon and runs, codon by codon, to the first stop codon without interruption.">ORF</span> in each transcript and writes it back to genome coordinates:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># TransDecoder v6.0.0: full wrapper, genome + GTF mode</span>
+TransDecoder --genome genome.fa --gtf merged.gtf
+<span class="c"># main output: merged.fasta.transdecoder.genome.gff3 (plus .pep, .cds, .bed on the transcripts)</span></pre></div>
+  <p>By default it reports ORFs of at least 100 amino acids (<code>-m</code>; the wiki warns that lowering it raises false positives sharply). It scores coding potential with a model it trains on your own data, so it needs a whole transcriptome (hundreds of candidates at least), not a handful of transcripts. Version 6.0.0 introduced this <code>TransDecoder</code> wrapper; older tutorials call <code>TransDecoder.LongOrfs</code> and <code>TransDecoder.Predict</code> separately.</p>
+
+  <h3>Protein evidence</h3>
+  <p><b>For BRAKER: an OrthoDB partition.</b> ProtHint needs many members of each protein family, not just one relative's proteome. The BRAKER team provides ready partitions; for any vertebrate take <code>Vertebrata.fa.gz</code> (OrthoDB v12: 5.8 GB compressed; the v11 file was 3.1 GB). You may add the proteins of a close relative to the same file.</p>
+  <div class="code"><button type="button">copy</button><pre>wget https://bioinf.uni-greifswald.de/bioinf/partitioned_odb12/Vertebrata.fa.gz
+gunzip Vertebrata.fa.gz                                  <span class="c"># the Greifswald tools need it unzipped</span>
+cat Vertebrata.fa relative_proteins.faa > proteins.fa   <span class="c"># optional</span>
+braker.pl --genome=genome.softmasked.fa --prot_seq=proteins.fa --bam=liver.bam,brain.bam --threads=16</pre></div>
+
+  <p><b>miniprot: proteins straight onto the genome.</b> miniprot (Heng Li; v0.18) aligns a protein to a whole genome, allowing introns and <span class="tip" title="An insertion or deletion of 1 or 2 bases inside a coding exon. It shifts the reading frame, so every codon after it is read wrongly.">frameshifts</span>. It translates the genome in all six frames and seeds on short amino-acid words, then aligns with a splice model. BUSCO 5.7+ uses it in genome mode (<a href="../02-assembly/#s10">lesson 2, section 10</a>), and GALBA and EGAPx use it for gene evidence.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># index once (slow and memory-hungry, so build it separately), then align</span>
+miniprot -t16 -d genome.mpi genome.fa
+miniprot -Iut16 --gff -j2 genome.mpi relative_proteins.faa > relative.miniprot.gff</pre></div>
+  <dl class="defs">
+    <dt><code>-I</code></dt><dd>Sets the maximum intron length from the genome size: min(max(3.6 × √genome length, 10,000), 300,000). For a 3 Gb mammal genome that is 3.6 × 54,772 ≈ 197 kb. Without <code>-I</code> or <code>-G</code> the limit is 200 kb.</dd>
+    <dt><code>-u</code>, <code>-t16</code></dt><dd><code>-u</code> also prints proteins that found no hit (useful to count them); <code>-t</code> is the number of threads (default 4).</dd>
+    <dt><code>-j2</code></dt><dd>Splice model for vertebrates and insects (the default 1 is a general model). Not in the README's basic command, which uses only <code>-Iut16 --gff</code>.</dd>
+    <dt><code>--gff</code></dt><dd>GFF3 output with features <code>mRNA</code>, <code>CDS</code> and <code>stop_codon</code>; the full alignment of each hit is kept in a <code>##PAF</code> line above it. Without <code>--gff</code> you get only the protein <span class="tip" title="PAF (Pairwise mApping Format): minimap2's tab-separated alignment format, one line per hit with both sequence names, coordinates and match counts; miniprot uses a protein version of it.">PAF</span> format.</dd>
+  </dl>
+  <p>What to read in the output (attributes in the <code>mRNA</code> line):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Field</th><th>Meaning</th><th>Use</th></tr></thead>
+    <tbody>
+      <tr><td><code>Identity</code>, <code>Positive</code></td><td>Fraction of identical and of similar (positive-scoring) amino acids</td><td>Close relatives give high values; very low identity = distant <span class="tip" title="Homolog: any gene related by common descent. Paralog: a copy made by a duplication within one genome (orthologs are the 'same' gene in two species).">homolog or paralog</span>.</td></tr>
+      <tr><td><code>Rank</code></td><td>1 = best hit of this protein; more hits are often paralogs or pseudogenes</td><td>Usually keep rank 1 for gene evidence.</td></tr>
+      <tr><td><code>Frameshift</code>, <code>StopCodon</code></td><td>Number of frameshifts and in-frame stop codons in the alignment</td><td>Either a pseudogene, a real loss, or an <b>error in the assembly</b>; see <a href="#s06">section 06</a> on <span class="tip" title="Homopolymer: a run of one repeated base, such as AAAAAA. Long-read sequencers often miscount its length, which adds or removes a base in the assembly.">homopolymer</span> errors.</td></tr>
+      <tr><td><code>Donor</code>, <code>Acceptor</code></td><td>Shown only when the intron does not start with GT or end with AG</td><td>Non-canonical introns deserve a second look.</td></tr>
+      <tr><td><code>Target</code></td><td>Which part of the protein (amino-acid coordinates) this hit covers</td><td>A hit covering a small part of the protein is weak evidence.</td></tr>
+    </tbody>
+  </table></div>
+  <p>In the <code>##PAF</code> line, the protein CIGAR uses <code>M</code> (match: 3 bases per amino acid), <code>I</code>/<code>D</code> (amino-acid gaps), <code>F</code> and <code>G</code> (frameshifts), and <code>N</code>, <code>U</code>, <code>V</code> for introns of phase 0, 1 and 2 (an intron that falls between codons, after the first, or after the second base of a codon). Tags <code>fs</code> and <code>st</code> count frameshifts and stops. By default a hit is reported only if it covers at least 10 % of the protein (<code>--outc 0.1</code>) and scores at least 99 % of that protein's best hit (<code>--outs 0.99</code>).</p>
+  <p class="note">The miniprot README says it "is not optimized for mapping distant homologs". Proteins of the same family or order work best; for distant groups BRAKER's OrthoDB route is designed to tolerate unknown distance.</p>
+
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><b>Wrong genome version.</b> RNA-seq mapped to an earlier assembly cannot be reused after scaffolding or polishing; contig names and coordinates change. Map again.</li>
+    <li><b>Missing XS tag.</b> HISAT2 without <code>--dta</code> or STAR without <code>--outSAMstrandField intronMotif</code>: BRAKER's StringTie step needs the tag on spliced reads.</li>
+    <li><b>Contamination and organelles.</b> RNA-seq contains many mitochondrial and ribosomal RNA reads; they map to <a href="../02-assembly/#s11">NUMTs</a> and repeats and create false "genes". The STAR manual suggests removing junctions in the mitochondrial genome and non-canonical junctions with few reads.</li>
+    <li><b>Expressed repeats.</b> Active transposable elements are transcribed and spliced too. Masking repeats before prediction (<a href="#s04">section 04</a>) keeps them from becoming gene models.</li>
+    <li><b>Absence of evidence.</b> No reads on a gene means it is not expressed in the tissues you sampled, not that it is absent.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p>We had <b>no RNA-seq</b> for our rodent species A (not yet published, so no name or exact numbers here). The evidence for its genes came from DNA only: our long reads, the published HiFi assembly of a close relative, and the human annotation projected onto species A by TOGA2 in the Hiller lab (most human reference genes were found, the large majority as 1:1 orthologs; <a href="#s07">section 07</a>). This is the "only DNA" case: projection gives good coding models of conserved genes, but nothing for UTRs, tissue-specific isoforms or genes absent from the human set. Adding RNA-seq from a few tissues (or Iso-Seq) would be the step that makes a BRAKER3 or EGAPx run possible (<a href="#s06">section 06</a>).</p>
+  </div>
+</section>

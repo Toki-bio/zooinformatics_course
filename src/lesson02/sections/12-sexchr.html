@@ -1,0 +1,239 @@
+<section aria-labelledby="s12" id="s12-wrap">
+  <h2 id="s12"><span class="n">12</span>Sex chromosomes in an assembly</h2>
+  <p class="lede">In most animals one sex carries two different sex chromosomes. Sequence an individual of that sex and its X (or Z) and Y (or W) each come in one copy instead of two. That single fact changes the read depth, the k-mer spectrum, the GenomeScope estimate, how the assembler sorts contigs into haplotypes, and how you should call variants. This section shows what to expect and how to find the sex-linked contigs in your own assembly.</p>
+
+  <h3>Sex chromosome systems in animals</h3>
+  <dl class="defs">
+    <dt>XY system</dt><dd>Females are XX, males XY. The male is the <dfn>heterogametic sex</dfn> (it makes two kinds of sperm, X-carrying and Y-carrying); the female is the <dfn>homogametic sex</dfn>. Therian mammals (placentals and marsupials), many insects such as <i>Drosophila</i>, and some fish, amphibians and reptiles.</dd>
+    <dt>ZW system</dt><dd>The mirror image: females are ZW (heterogametic), males ZZ. Birds, snakes, butterflies and moths (Lepidoptera).</dd>
+    <dt>X0 and Z0</dt><dd>The Y (or W) has been lost completely, so one sex has a single X and no partner: X0 males in some grasshoppers; X0 animals also occur in a few rodents (some voles, Japanese spiny rats, mole voles).</dd>
+    <dt>Homomorphic / heteromorphic</dt><dd><dfn>Heteromorphic</dfn> sex chromosomes look different under the microscope (the human Y is much smaller than the X). <dfn>Homomorphic</dfn> ones look alike and differ only in a small region, sometimes a single sex-determining gene, as in pufferfish.</dd>
+    <dt>Young vs old</dt><dd>When X and Y stop exchanging DNA (<span class="tip" title="Crossing-over during meiosis, which shuffles DNA between the two copies of a chromosome.">recombination</span>), the Y slowly loses genes and fills with repeats. An old, degenerated Y differs from its X over most of its length; a young one is still almost identical. Age alone does not decide it: python snakes and ratite birds have homomorphic sex chromosomes about 140 and 120 million years old.</dd>
+    <dt>PAR</dt><dd>The <dfn>pseudoautosomal region</dfn>: a stretch at the tip of X and Y that still recombines and is present on both. A male has two copies of the PAR, just as of an autosome. In the human Y, PAR1 is 2.77 Mb and PAR2 330 kb.</dd>
+    <dt>Gametologs</dt><dd>Pairs of genes, one on the X and one on the Y (or Z and W), that descend from the same ancestral gene. Old pairs differ a lot; young pairs are so similar that software can take them for two alleles of one gene.</dd>
+    <dt>Hemizygous</dt><dd>Present in one copy in a diploid cell. The X of a male mammal, the Z of a female bird and every Y or W are hemizygous outside the PAR.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: who is heterogametic</summary><div class="in">
+    <p>Ask which sex has two <i>different</i> sex chromosomes. That sex is heterogametic, and an individual of that sex gives you both sex chromosomes in one genome, each at single copy.</p>
+    <div class="toy">species                  system   heterogametic   sequence a ... to get both sex chromosomes
+house mouse              XY       male            male   (XY)
+zebra finch              ZW       female          female (ZW)
+silkworm moth            ZW       female          female (ZW)
+grasshopper (some)       X0       male            either: there is no Y to find
+platypus                 5X + 5Y  male            male   (all ten sex chromosomes)</div>
+    <p>Sequencing the homogametic sex (a female mouse, a male bird) gives two copies of X (or Z), so the X looks exactly like an autosome in depth and k-mers, and the Y (or W) is simply absent from the assembly.</p>
+  </div></details>
+
+  <h3>What one copy does to read depth</h3>
+  <p>Reads are sampled in proportion to how many copies of a sequence the cell has. In the heterogametic sex the autosomes and the PAR have two copies, while the X (or Z) and the Y (or W) outside the PAR have one. So, mapped back to the assembly, X and Y contigs show about <b>half</b> the autosomal depth. The homogametic sex shows the X at full depth.</p>
+  <div class="tbl"><table style="min-width:520px">
+    <thead><tr><th>Region</th><th>Copies in heterogametic sex</th><th>Depth ÷ autosomal median</th><th>Copies in homogametic sex</th><th>Depth ÷ median</th></tr></thead>
+    <tbody>
+      <tr><td><b>Autosomes</b></td><td>2</td><td>≈ 1</td><td>2</td><td>≈ 1</td></tr>
+      <tr><td><b>X / Z</b> (outside PAR)</td><td>1</td><td>≈ 0.5</td><td>2</td><td>≈ 1</td></tr>
+      <tr><td><b>Y / W</b> (outside PAR)</td><td>1</td><td>≈ 0.5</td><td>0 (absent)</td><td>no reads</td></tr>
+      <tr><td><b>PAR</b></td><td>2 (one on X, one on Y)</td><td>≈ 1</td><td>2</td><td>≈ 1</td></tr>
+    </tbody>
+  </table></div>
+
+  <section class="tool explain" aria-labelledby="s12-dep-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s12-dep-h">Classify contigs by depth</h3></div>
+    <p class="tool-note">A toy assembly of 40 contigs, made from the same individual whose reads were mapped back to it. Each dot is a contig: its height is the contig's median read depth divided by the median of the whole assembly, its size is its length. <b>Click the dots you think are sex-linked</b>, then press "Show the truth". Change the system, the sex of the animal and the noise, and see what still works.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Sex chromosome system"><button type="button" id="s12-sys-xy" aria-pressed="true">XY (mammal)</button><button type="button" id="s12-sys-zw" aria-pressed="false">ZW (bird)</button></div>
+      <div class="seg" role="group" aria-label="Sex of the sequenced animal"><button type="button" id="s12-sex-m" aria-pressed="true">male</button><button type="button" id="s12-sex-f" aria-pressed="false">female</button></div>
+      <label for="s12-noise">Depth noise (for a 1 Mb contig; shorter = noisier) <output id="s12-noise-o">10 %</output><input type="range" id="s12-noise" min="0" max="40" step="1" value="10"></label>
+      <button type="button" class="btn" id="s12-new" style="align-self:center">new animal</button>
+      <button type="button" class="btn" id="s12-reveal" style="align-self:center">Show the truth</button>
+    </div>
+    <div class="svgbox" id="s12-dep-fig"></div>
+    <div class="legend" id="s12-dep-legend"></div>
+    <div class="readout" id="s12-dep-out"></div>
+    <p class="tool-note"><b>What to notice.</b> In the heterogametic sex, X and Y (or Z and W) both sit near 0.5, the PAR contig sits at 1 with the autosomes, and two <span class="tip" title="Unpurged haplotigs: the second allele of a heterozygous region left in a primary assembly. Each copy gets only the reads of its own haplotype, so it shows half depth too.">unpurged haplotigs</span> also sit at 0.5. Depth alone cannot tell them apart: a haplotig has a near-identical partner elsewhere in the assembly, an X contig does not. In the homogametic sex there is nothing at 0.5 except haplotigs, and the X hides among the autosomes. With high noise (short contigs, low coverage) the two clouds merge; then use the other evidence below.</p>
+  </section>
+
+  <h3>What one copy does to the k-mer spectrum and GenomeScope</h3>
+  <p>In <a href="../01-pre-assembly/#gp">lesson 1</a> the heterozygous peak sits at half coverage because each allele lies on one haplotype only. A hemizygous X k-mer also lies on one chromosome copy, so it is seen at the same half coverage and falls into the <b>same peak</b>. GenomeScope has no way to know these k-mers are not heterozygous. In the heterogametic sex this has two consequences:</p>
+  <ul>
+    <li><b>Heterozygosity is overestimated.</b> The het peak is taller than heterozygosity alone would make it.</li>
+    <li><b>The size estimate counts X and Y at half weight.</b> Each hemizygous k-mer adds half a homozygous-peak's worth of sightings, so the estimate is about autosomes + (X + Y) / 2, while the assembly of that animal contains autosomes + X + Y. Expect the assembly to be larger than the estimate by about half of the sex chromosomes, before any other cause.</li>
+  </ul>
+
+  <figure>
+    <h3>Hemizygous k-mers join the heterozygous peak (toy, k = 21, 1 Gb of autosomes, 30× k-mer coverage)</h3>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Sex of the sequenced mammal"><button type="button" id="s12-sp-m" aria-pressed="true">male (XY)</button><button type="button" id="s12-sp-f" aria-pressed="false">female (XX)</button></div>
+      <label for="s12-sp-het">True heterozygosity <output id="s12-sp-het-o"></output><input type="range" id="s12-sp-het" min="0" max="1.5" step="0.05" value="0.3"></label>
+      <label for="s12-sp-x">X size (% of autosomes) <output id="s12-sp-x-o"></output><input type="range" id="s12-sp-x" min="0" max="15" step="0.5" value="5"></label>
+      <label for="s12-sp-y">Y size (% of autosomes) <output id="s12-sp-y-o"></output><input type="range" id="s12-sp-y" min="0" max="5" step="0.5" value="2"></label>
+    </div>
+    <div class="svgbox" id="s12-sp-fig"></div>
+    <div class="legend">
+      <span><i style="background:var(--het)"></i>heterozygous k-mers (autosomes)</span>
+      <span><i style="background:var(--bad)"></i>hemizygous X and Y k-mers</span>
+      <span><i style="background:var(--accent)"></i>homozygous k-mers</span>
+      <span><i style="background:var(--fg);height:1px"></i>total (what the histogram shows)</span>
+    </div>
+    <div class="readout" id="s12-sp-out"></div>
+    <figcaption><b>Try it:</b> set heterozygosity to 0 in the male. A completely homozygous animal still shows a "het" peak, made only of X and Y. Then switch to the female: the X moves into the homozygous peak and the het estimate becomes correct. The apparent heterozygosity here is computed from the ratio of the two peaks, the way GenomeScope's model relates them; real fits also include errors and repeats.</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: the size estimate of a male</summary><div class="in">
+    <p>Take a mammal with 1,000 Mb of autosomes, a 50 Mb X and a 20 Mb Y, sequenced at 30× k-mer coverage. Every autosomal position is seen ~30 times, every X or Y position ~15 times.</p>
+    <div class="toy">sightings from autosomes   1,000 Mb × 30 = 30,000 M
+sightings from X              50 Mb × 15 =    750 M
+sightings from Y              20 Mb × 15 =    300 M
+total                                     31,050 M
+÷ homozygous peak (30)                  = <span class="a">1,035 Mb</span>  (GenomeScope-style estimate)
+
+the assembly of this male holds          1,000 + 50 + 20 = <span class="h">1,070 Mb</span>
+the female's assembly would hold         1,000 + 50      = 1,050 Mb</div>
+    <p>So for a male the k-mer estimate is about (X + Y) / 2 below the assembly. That is fine for choosing an assembler's expected genome size, which only needs to be roughly right, but keep it in mind when you judge whether an assembly is "too big".</p>
+  </div></details>
+
+  <h3>Why Y and W are hard to assemble</h3>
+  <p>Once X and Y stop recombining, the Y (or W) accumulates repeats, and assemblers break wherever reads cannot span a repeat. The complete human Y (Rhie et al. 2023), sequenced with PacBio HiFi and ONT ultra-long reads, is 62.46 Mb; the previous reference Y (GRCh38) had 30.8 Mb of its 57.2 Mb as unresolved gaps, and about 30 Mb of the new sequence is the <span class="tip" title="Heterochromatin: tightly packed chromosome parts made mostly of repeats, with few genes.">heterochromatic</span> block on the long arm. The human Y is made of these sequence classes:</p>
+  <ul>
+    <li><b>Ampliconic regions</b> (~10 Mb in the human Y): long segments present in many near-identical copies, carrying multi-copy gene families expressed in testis.</li>
+    <li><b>Palindromes</b>: an ampliconic segment followed by its own reverse complement. In the five palindromes that lie inside X-degenerate regions the two arms are 99.84–99.96 % identical, so reads from the two arms look the same. Even in the complete T2T Y, <span class="tip" title="Strand-seq: a single-cell method that tells which DNA strand each read came from, so it reveals inverted segments.">Strand-seq</span> found one inversion error inside palindrome P5; the authors left it in place because the inversion also occurs as a real variant between men.</li>
+    <li><b>Heterochromatin and satellites</b>: megabases of short tandem repeats (<span class="tip" title="Satellite DNA: short sequence units repeated head-to-tail thousands of times, typical of centromeres and heterochromatin.">satellite</span> arrays such as HSat1B and HSat3 in human), often collapsed or missing in normal assemblies.</li>
+    <li><b>X-degenerate regions</b> (~8.7 Mb): single-copy remains of the ancestral chromosome, with gametologs of X genes. These assemble best.</li>
+    <li><b>X-transposed region</b> (XTR): a block that came from the X and is still very similar to it, which confuses read mapping between the two.</li>
+    <li><b>PAR</b>: identical in kind on X and Y. In the human assembly graph, the X and Y components were joined to each other only through the PARs. PAR1 is also rich in GA repeats where HiFi coverage drops.</li>
+  </ul>
+  <p>Add the half depth of every sex chromosome in the heterogametic sex, and it is no surprise that the Vertebrate Genomes Project (Rhie et al. 2021) found its sex chromosome assemblies more fragmented than the autosomes, "probably owing to their lower sequencing depth and high repeat content". Even so, it assembled Z and W in three birds, X and/or Y in several mammals, and all ten sex chromosomes of the platypus, by sequencing the heterogametic sex: for example, it chose a female Anna's hummingbird (<i>Calypte anna</i>) partly because she carries both Z and W.</p>
+
+  <h3>Where X and Y end up in hifiasm's output</h3>
+  <p>A diploid-aware assembler such as <span class="tip" title="hifiasm: the standard assembler for PacBio HiFi reads; since 0.21 it also accepts ONT R10 reads with --ont.">hifiasm</span> tries to split each chromosome pair into two haplotypes. X and Y are not a normal pair: they are allelic only in the PAR (and, if young, in similar gametolog stretches), and different everywhere else. Where they land depends on the mode (<a href="#s07">section 07</a> explains the products and trio binning).</p>
+
+  <figure>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+      <h3>Toy: one male mammal (or one female bird) assembled three ways</h3>
+      <div class="seg" role="group" aria-label="Assembly mode">
+        <button type="button" data-s12m="trio" aria-pressed="true">trio binning</button><button type="button" data-s12m="hic" aria-pressed="false">Hi-C phasing</button><button type="button" data-s12m="pa" aria-pressed="false">primary / alternate</button>
+      </div>
+      <div class="seg" role="group" aria-label="System">
+        <button type="button" data-s12s="xy" aria-pressed="true">XY male</button><button type="button" data-s12s="zw" aria-pressed="false">ZW female</button>
+      </div>
+      <button type="button" class="btn" id="s12-hp-shuffle" style="align-self:center">re-run Hi-C phasing</button>
+    </div>
+    <div class="svgbox" id="s12-hp-fig"></div>
+    <div class="legend">
+      <span><i style="background:var(--accent)"></i>from the father</span>
+      <span><i style="background:var(--het)"></i>from the mother</span>
+      <span><i style="background:var(--bad)"></i>PAR</span>
+      <span><i style="background:var(--muted)"></i>mixed (either parent, switches along the contig)</span>
+    </div>
+    <p class="tool-note" id="s12-hp-note"></p>
+  </figure>
+
+  <ul>
+    <li><b>Trio binning</b> (<code>hifiasm -1 pat.yak -2 mat.yak</code>): reads are sorted by the parents' k-mers, so <code>hap1</code> is paternal and <code>hap2</code> maternal. A son's Y comes from the father and his X from the mother, so the Y lands in hap1 and the X in hap2. The hifiasm FAQ notes that for a human male "the paternal haplotype should be larger than the maternal haplotype". In a ZW bird the daughter's W comes from the mother and her Z from the father; the VGP grouped the zebra finch Z in the paternal and the W in the maternal assembly. Because neither haplotype then holds both, the VGP added "the heterogametic sex chromosome from the unchosen haplotype" to the representative assembly. They also found a pitfall: in low-divergence regions of the father's and mother's X (or Z), a few offspring reads went to the wrong parent and made a duplicate, low-coverage X (or Z) fragment that had to be removed.</li>
+    <li><b>Hi-C phasing</b> (<code>hifiasm --h1 R1.fq.gz --h2 R2.fq.gz</code>): Hi-C links keep each chromosome in one haplotype, and the hifiasm documentation says it "cleanly separated chrX and chrY for a human male dataset". But it cannot know which parent each chromosome came from: "contigs from different parental chromosomes are randomly mixed". So the X can be in hap1 and the Y in hap2, or the reverse, and the autosomes are shuffled the same way. Look for them in both.</li>
+    <li><b>Primary / alternate and hifiasm's default <code>bp.hap1</code>/<code>bp.hap2</code></b>: the primary contigs are one copy of each region. Divergent X and Y sequence has no allelic partner, so both are kept in the primary assembly at half depth (that is what we saw in our species A, below). <b>The rest of this point is our inference</b> from how hifiasm and purge_dups treat near-identical sequence; the hifiasm documentation does not describe it, and we have not checked it in an assembly: the PAR is a real allelic pair, so we expect one copy in the primary and the other in the alternate (or purged), and very similar young gametologs or the XTR may be treated the same way, leaving a gap in the Y. The partially phased <code>bp.hap1</code>/<code>bp.hap2</code> sets are not chromosome-scale; X and Y pieces can sit in either.</li>
+  </ul>
+
+  <h3>Which sex to sequence for a reference</h3>
+  <div class="tbl"><table style="min-width:560px">
+    <thead><tr><th>Choice</th><th>You get</th><th>You lose</th></tr></thead>
+    <tbody>
+      <tr><td><b>Homogametic</b> (female mammal, male bird)</td><td>X (or Z) at full depth, two copies, so it assembles like an autosome and its heterozygosity can be measured.</td><td>The Y (or W) entirely. Carvalho &amp; Clark (2013) note that "virtually all mammalian genome projects in recent years sequenced only the homogametic sex to increase the coverage of the X (or Z)".</td></tr>
+      <tr><td><b>Heterogametic</b> (male mammal, female bird)</td><td>Both sex chromosomes in one individual. This is what the VGP did for its birds and several mammals.</td><td>Half depth on X/Z and Y/W, so more fragments; inflated GenomeScope heterozygosity; X and Y split across haplotypes in phased assemblies.</td></tr>
+      <tr><td><b>Both</b> (heterogametic for the assembly + short reads of the other sex)</td><td>The assembly has everything, and the second sex's reads let you prove which contigs are sex-linked (methods below).</td><td>An extra, cheap short-read library.</td></tr>
+    </tbody>
+  </table></div>
+  <p>We found no written recommendation from the VGP or the Earth BioGenome Project on which sex to sequence; the table summarises what the VGP did, Carvalho &amp; Clark's remark and our own reasoning. If you sequence the heterogametic sex, raise the total coverage so that the half-depth chromosomes still get enough reads. Whatever you choose, record the sex of the specimen in the metadata; and if it was not recorded, the depth test below will usually tell you.</p>
+
+  <h3>Finding the sex-linked contigs</h3>
+  <p>The VGP identified sex chromosomes in heterogametic samples "based on half coverage, homology alignments to sex chromosomes in other species, and the presence of sex chromosome-specific genes". Use several independent lines of evidence, because each one has its own false positives.</p>
+  <ol class="steps">
+    <li><div><b>Depth ratio</b><div class="d">Map the reads of the same animal back to the assembly (<code>minimap2 -ax map-ont</code> or <code>map-hifi</code>), measure depth in windows with <span class="tip" title="mosdepth: a fast program that reports read depth from a BAM file, per base or per window.">mosdepth</span>, and take each contig's median window depth divided by the median of all windows. Hemizygous contigs sit near 0.5. Use the median, not the mean, because collapsed repeats pull the mean up.</div></div></li>
+    <li><div><b>Rule out haplotigs</b><div class="d">A half-depth contig with a ≥ 90 %-identity counterpart elsewhere in the same assembly is more likely an unpurged second allele than an X. Align the assembly to itself (minimap2 <code>-x asm5 -DP</code>, the setting purge_dups uses) or check the purge_dups result (section 06).</div></div></li>
+    <li><div><b>No heterozygous SNPs on the X</b><div class="d">A male has one X, so true heterozygous SNPs cannot exist outside the PAR. Call variants and count het SNPs per Mb per contig: X contigs should have almost none, autosomes the genome's normal rate, PAR contigs the normal rate too. The leftover het calls on the X are your false-positive rate (see "In our projects").</div></div></li>
+    <li><div><b><span class="tip" title="Synteny: the same genes or sequences in the same order on the chromosomes of two species.">Synteny</span> to a related chromosome-level genome</b><div class="d">Align the contigs to a related species' assembly that has named sex chromosomes (minimap2 <code>-x asm20</code> for "several percent" divergence) and see which chromosome each half-depth contig hits. The X is usually well conserved between related mammals; a Y or W often has no good counterpart.</div></div></li>
+    <li><div><b>Compare male and female reads</b><div class="d">Map short reads of both sexes to the assembly and compare depth per contig or window: X (or Z) shows a female:male ratio near 2:1 (male:female for Z), Y (or W) reads come from one sex only. The tools below do this. The k-mer version (YGS) needs no mapping.</div></div></li>
+    <li class="later"><div><b>Known sex-linked genes</b><div class="d">For example the mammalian <i>SRY</i> on the Y (<span class="tip" title="SRY: sex-determining region Y, the gene that switches on male development in most mammals.">the male-determining gene</span>); X gene content is conserved enough that gene annotation or BUSCO-style protein matches confirm the call.</div></div></li>
+  </ol>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Input</th><th>How it works</th><th>Output</th></tr></thead>
+    <tbody>
+      <tr><td><b>findZX</b> (Sigeman et al. 2022)</td><td>Paired-end <span class="tip" title="WGS = whole-genome shotgun: reads from randomly fragmented DNA of the whole genome.">WGS</span> reads of any number of males and females + a reference (your assembly)</td><td><span class="tip" title="Snakemake: a workflow manager that runs a chain of programs in order and reruns only what changed.">Snakemake</span> pipeline: trims and maps reads (BWA-MEM), calls variants (<span class="tip" title="Platypus: a short-read variant caller.">Platypus</span>), and compares male vs female depth and heterozygosity per contig and in windows (for example 100 kb and 1 Mb). <code>findZX-synteny</code> also lifts the windows over to another species' chromosomes (<span class="tip" title="LAST: a genome-to-genome aligner, more sensitive than minimap2 for distant species.">LAST</span>).</td><td>PDF plots per chromosome/window, tables, an optional HTML report</td></tr>
+      <tr><td><b>SATC</b> (Nursyifa et al. 2021)</td><td><span class="tip" title="samtools idxstats: lists, for every contig in a BAM file, its length and how many reads mapped to it."><code>samtools idxstats</code></span> files from many individuals of unknown sex; works with low depth</td><td>R functions: normalise each scaffold's depth by the longest scaffolds, run a <span class="tip" title="PCA (principal component analysis): reduces many measurements per sample to a few axes that show the main differences between samples.">PCA</span>, cluster samples into two sexes (<span class="tip" title="Gaussian mixture: a statistical model that splits points into groups, each shaped like a bell curve.">Gaussian mixture</span>), then flag scaffolds with a male–female depth difference (t-test).</td><td><code>*_sampleSex.tsv</code>, <code>*_scaffSex.tsv</code>, lists of X/Z and sex-linked scaffolds, PNG plots</td></tr>
+      <tr><td><b>DifCover</b> (Smith et al. 2018; Timoshevskaya et al.)</td><td>Two coordinate-sorted BAMs (sample 1, sample 2) on the same reference</td><td>Bash + C++ + <span class="tip" title="bedtools: a toolkit for intervals (overlap, merge, windows) in BED and BAM files.">bedtools</span>: builds "stretched" windows with a fixed number of bases inside a depth range (skipping gaps, low and repeat-high depth), computes the depth ratio per window, segments it with <span class="tip" title="DNAcopy: an R package, made for tumour copy-number data, that splits a noisy series of values into stretches of equal level.">DNAcopy</span> and reports regions above an enrichment threshold (<code>p = 2</code> ≈ 4-fold).</td><td><code>*.DNAcopyout.up{p}</code> regions with significant depth difference</td></tr>
+      <tr><td><b>YGS</b> (Carvalho &amp; Clark 2013)</td><td>Assembly of the heterogametic sex + short reads of the homogametic sex (+ optional reads of the heterogametic sex as control)</td><td>Takes the 15-mers present once in the assembly and reports, per contig, the share not found in the female reads. Y contigs are ~95–100 % unmatched, X and autosomes ~0–5 %; the distribution is sharply bimodal. The authors counted contigs with ≥ 25 % unmatched as candidates; male reads remove contaminants and assembly errors that would also look "unmatched".</td><td>Per-contig percentage of unmatched single-copy k-mers (Perl script YGS.pl from the paper's supplement)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. depth: map the same animal's reads back (ONT here; map-hifi for HiFi), index, 10-kb windows</span>
+minimap2 -ax map-ont -t 32 asm.fa reads.fq.gz | samtools sort -@8 -o self.bam
+samtools index self.bam
+mosdepth -n -x -t 4 -Q 10 -b 10000 self self.bam
+<span class="c">#   self.mosdepth.summary.txt : chrom length bases mean min max   (mean per contig)</span>
+<span class="c">#   self.regions.bed.gz       : contig start end mean-depth        (one line per 10-kb window)</span>
+
+<span class="c"># per-contig median window depth / median of all windows</span>
+python3 - &lt;&lt;'EOF'
+import gzip, statistics as st, collections as c
+w = c.defaultdict(list)
+for line in gzip.open("self.regions.bed.gz", "rt"):
+    ctg, s, e, d = line.split()[:4]; w[ctg].append(float(d))
+g = st.median([d for v in w.values() for d in v])
+for ctg, v in w.items():
+    print(ctg, len(v) * 10, "kb", round(st.median(v) / g, 2), sep="\t")
+EOF
+<span class="c">#   ratio ~0.5 = candidate hemizygous (X/Y, Z/W) or unpurged haplotig; ~1 = autosome or PAR</span>
+
+<span class="c"># 2. self-alignment, to spot haplotigs (half-depth contigs with a near-identical partner)</span>
+minimap2 -x asm5 -t 32 -DP asm.fa asm.fa &gt; self_vs_self.paf
+
+<span class="c"># 3. heterozygous SNPs per contig (VCF from any caller, e.g. Clair3 or DeepVariant)</span>
+bcftools view -v snps -g het -f PASS calls.vcf.gz | bcftools query -f '%CHROM\n' | sort | uniq -c
+
+<span class="c"># 4. synteny: contigs against a related chromosome-level genome; aligned bp per contig x chromosome</span>
+minimap2 -x asm20 -t 32 relative.fa asm.fa &gt; asm_vs_rel.paf
+awk '{a[$1"\t"$6]+=$11} END{for(k in a) print k"\t"a[k]}' asm_vs_rel.paf | sort -k1,1 -k3,3nr | awk '!seen[$1]++'
+
+<span class="c"># 5a. SATC on several individuals of unknown sex (R, package mclust)</span>
+for b in *.bam; do samtools idxstats "$b" &gt; "${b%.bam}.idxstats"; done
+ls $PWD/*.idxstats &gt; idx.list
+Rscript --vanilla satc.R -i idx.list -o mysp
+
+<span class="c"># 5b. findZX on males + females (units.tsv: sample, group = homogametic|heterogametic, fq1, fq2)</span>
+snakemake -s workflow/findZX --configfile config/config.yml --cores 32 -R all --use-conda -k</pre></div>
+  <p class="tool-note"><b>Notes on the commands.</b> <code>-n</code> skips per-base output and <code>-x</code> (fast mode) skips <span class="tip" title="CIGAR: the field of a SAM/BAM line that spells out matches, insertions and deletions of a read against the reference.">CIGAR</span> details, both recommended in the mosdepth README; <code>-Q 10</code> drops reads with <span class="tip" title="Mapping quality (MAPQ): the mapper's confidence that a read is placed correctly; low for reads that fit several places equally well.">mapping quality</span> below 10, which removes repeats but also part of the X if it is repeat-rich, so compare with <code>-Q 0</code>. In the PAF, column 1 is the contig, 6 the target chromosome and 11 the alignment block length. <code>-g het</code> keeps sites where a sample is heterozygous. The <code>-DP</code> pair in the self-alignment ignores each contig's hit to itself.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: four contigs, three tests</summary><div class="in">
+    <p>A male mammal, autosomal median depth 34×. Four contigs:</p>
+    <div class="toy">contig   depth  ratio  partner in assembly?  het SNP/Mb   best hit in relative
+ctg_A    35x    1.03   no                    1,900        chr7              -&gt; <span class="a">autosome</span>
+ctg_B    17x    0.50   no                    15           chrX              -&gt; <span class="x">X (hemizygous)</span>
+ctg_C    16x    0.47   yes, 99 % identical   1,800        chr3              -&gt; <span class="h">unpurged haplotig</span>
+ctg_D    18x    0.53   no                    10           none / short hits -&gt; <span class="x">Y candidate</span>: check with female reads</div>
+    <p>ctg_B and ctg_C have the same depth. Only the partner test and the het SNPs separate them. ctg_D has no counterpart in the relative because the Y changes fast between species; female reads (YGS, findZX) would show that none of its single-copy k-mers occur in females.</p>
+  </div></details>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects: the species A male</h3>
+    <p style="margin-bottom:10px">Species A, an unpublished rodent genome, was assembled from long reads only with hifiasm (<code>--ont</code>; primary <code>bp.p_ctg</code>, about a thousand contigs). Values below are rounded. Its sex was not recorded with the sample; the assembly told us.</p>
+    <ul>
+      <li><b>Depth.</b> All reads mapped back to the primary give a median depth of a few tens × in 10-kb windows; about three quarters of the windows lie at 0.75–1.25× of the median. More than 100 Mb sits in contigs at half depth.</li>
+      <li><b>Not haplotigs.</b> The half-depth contigs ≥ 1 Mb (several dozen) have no ≥ 90 %-identity counterpart in the assembly.</li>
+      <li><b>Synteny.</b> Most of their alignment (close to nine tenths) to the published chromosome-level genome of a close relative goes to one chromosome, over a hundred times more than its share of the genome would predict, and a few percent to one small chromosome. So these contigs are the X (+ Y), and the animal is almost certainly male. They were excluded from the autosomal <span class="tip" title="PSMC: a method that infers past population size from the heterozygous sites of one diploid genome.">PSMC</span> analysis.</li>
+      <li><b>A built-in false-positive control.</b> Because a male cannot be heterozygous on the X, variants were called on the long half-depth contigs (about 100 Mb, at roughly half the genome-wide depth). A few of them had several hundred het SNPs per Mb, so they behave as diploid (PAR or duplicated) and were set aside. On the rest there were, unfiltered, under a tenth of the autosomal het rate at the same depth, and after keeping only <span class="tip" title="Allele fraction: the share of reads at a site that show the second allele; about 0.5 for a true heterozygous site.">allele fractions</span> 0.35–0.65, about 1 % of the autosomal filtered rate. So roughly 1 % of het calls are false after the allele-fraction filter (an upper bound, since mismapped <span class="tip" title="Paralogs: copies of a gene or segment made by duplication within the same genome.">paralogs</span> count too). The false hets had a median allele fraction below 0.3, against close to 0.5 for real ones.</li>
+      <li><b>The spectrum.</b> GenomeScope2 on the long reads gave a haploid size about a tenth smaller than the assembly. Counting the hemizygous sequence at half weight accounts for less than a third of that difference, so most of the gap has other causes.</li>
+    </ul>
+    <p style="margin-top:10px"><b>Caveat.</b> The read headers suggest the reads may come from a CycloneSEQ instrument rather than ONT; the variant caller used an ONT R10.4.1 model, so the 1 % figure applies to that combination of reads and model.</p>
+  </div>
+
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><b>Half depth is not proof.</b> Unpurged haplotigs, contigs from <span class="tip" title="Copy-number variants: segments present in a different number of copies on the two homologous chromosomes.">CNV</span> regions, GC-poor sequence that sequences badly, and the ends of contigs also show low depth. Combine with partner, het SNP and synteny tests.</li>
+    <li><b>Do not purge the X.</b> Depth-based duplicate removal tests contigs below a depth cutoff for duplication. A hemizygous X contig with no partner should survive, but check: count half-depth Mb before and after purging.</li>
+    <li><b>Do not run PSMC or heterozygosity on the X of a male.</b> Exclude sex-linked contigs from autosomal analyses (as we did for species A); otherwise they look like long <span class="tip" title="Runs of homozygosity (ROH): long stretches without heterozygous sites, normally a sign of inbreeding.">runs of homozygosity</span>.</li>
+    <li><b>Variant calling on the heterogametic sex needs ploidy 1 outside the PAR.</b> Diploid callers will report some false "het" calls on the X; use them as an error estimate, or call with haploid ploidy there.</li>
+    <li><b>Look for X and Y in both haplotypes</b> of a Hi-C-phased assembly, and expect the Y (or W) to be fragmented and incomplete in any assembly short of a T2T effort.</li>
+  </ul>
+  <p class="tool-note"><b>Sources.</b> Bachtrog et al. 2014 <a href="https://doi.org/10.1371/journal.pbio.1001899">PLoS Biol</a>; Rhie et al. 2023, complete human Y <a href="https://doi.org/10.1038/s41586-023-06457-y">Nature</a>; Rhie et al. 2021, VGP <a href="https://doi.org/10.1038/s41586-021-03451-0">Nature</a>; Carvalho &amp; Clark 2013, YGS <a href="https://doi.org/10.1101/gr.156034.113">Genome Res</a>; Sigeman et al. 2022, <a href="https://github.com/hsigeman/findZX">findZX</a> (<a href="https://doi.org/10.1186/s12864-022-08432-9">BMC Genomics</a>); Nursyifa et al. 2021, <a href="https://github.com/popgenDK/SATC">SATC</a> (<a href="https://doi.org/10.1111/1755-0998.13491">Mol Ecol Resour</a>); <a href="https://github.com/timnat/DifCover">DifCover</a>; <a href="https://github.com/chhylp123/hifiasm">hifiasm</a> 0.25 documentation and FAQ.</p>
+</section>

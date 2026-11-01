@@ -1,0 +1,236 @@
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">08</span>Naming genes and checking the annotation</h2>
+  <p class="lede">Gene prediction (<a href="#s06">section 06</a>) and projection (<a href="#s07">section 07</a>) give you coordinates and protein sequences with labels like <code>g1234.t1</code>. This section gives those proteins names and functions, and then asks whether the whole gene set is believable before anyone uses it or you submit it.</p>
+
+  <h3>Three kinds of evidence for a name</h3>
+  <dl class="defs">
+    <dt>Domains</dt><dd>A <dfn>protein domain</dfn> is a part of a protein that folds on its own and does one job, for example binding DNA or cutting a peptide bond. The same domain turns up in many different proteins. Finding a known domain tells you <b>what kind</b> of protein you have ("a kinase", "a 7-transmembrane receptor"), but not exactly <b>which</b> one. Tool: <b>InterProScan</b>.</dd>
+    <dt>Orthology</dt><dd>Your protein is placed in a group of <span class="tip" title="Orthologs: the same gene in different species, inherited from their common ancestor. Paralogs: copies made by duplication inside one genome; they often take on different jobs.">orthologs</span> from many species, and the name and functions recorded for the closest members of that group are copied over. This tells you <b>which</b> gene it is, if the group is resolved finely enough. Tool: <b>eggNOG-mapper</b>.</dd>
+    <dt>Best similar known protein</dt><dd>Search your protein against a set of well-studied proteins and copy the name of the best hit. Simple and fast, but the best hit can be a <b>paralog</b> (a related gene of the same family), so the name can be wrong in a way that looks right. Tools: <b>BLASTP</b> or <b>DIAMOND</b> against <span class="tip" title="UniProtKB/Swiss-Prot: the manually reviewed part of the UniProt protein database. Each entry was checked by a curator. Release 2026_03 FASTA is about 94 MB compressed.">Swiss-Prot</span>.</dd>
+  </dl>
+  <p>If your genes came from TOGA2 projection (<a href="#s07">section 07</a>), each one already carries the human (or other reference) gene symbol of its ortholog. The tools below are still useful for the genes that projection does not cover, and as an independent check.</p>
+
+  <h3>The order of work</h3>
+  <ol class="steps">
+    <li><div><b>One protein per gene</b><div class="d">Most predictors write several <span class="tip" title="Isoforms: different mRNAs from the same gene, made by using different exons (alternative splicing) or different start/end points.">isoforms</span> per gene. Keep the longest one for counting and naming, translate its <span class="tip" title="Coding sequence: the exons, joined, from start codon to stop codon; the part that is translated into protein.">CDS</span>, and remove the final stop codon (<code>*</code>), which some tools reject.</div><div class="t">AGAT: agat_sp_keep_longest_isoform.pl, agat_sp_extract_sequences.pl</div></div></li>
+    <li><div><b>Domains and GO terms</b><div class="d">InterProScan on all proteins.</div><div class="t">InterProScan 6.0.3.0</div></div></li>
+    <li><div><b>Orthology-based names, GO and KEGG</b><div class="d">eggNOG-mapper on the same proteins.</div><div class="t">eggNOG-mapper 3.0.0-beta6 (eggNOG 7) or 2.1.x (eggNOG 5)</div></div></li>
+    <li><div><b>Best hit in Swiss-Prot</b><div class="d">DIAMOND <code>blastp</code>; gives a second opinion on the name.</div><div class="t">DIAMOND 2.2.8</div></div></li>
+    <li><div><b>Write names and terms into the GFF3</b><div class="d">Merge the results into the annotation file (<span class="tip" title="General Feature Format version 3: a tab-separated text file with one line per feature (gene, mRNA, exon, CDS), its position, strand and attributes such as ID, Parent and Name.">GFF3</span>); decide on one product name per gene.</div><div class="t">AGAT: agat_sp_manage_functional_annotation.pl</div></div></li>
+    <li><div><b>Check the gene set</b><div class="d">BUSCO in protein mode, OMArk, AGAT statistics, gene counts against a relative, a look in a genome browser.</div></div></li>
+    <li class="later"><div><b>Submit</b><div class="d">GFF3 + FASTA through table2asn to GenBank, with a registered locus_tag prefix.</div></div></li>
+  </ol>
+
+  <h3>Step 1: one protein per gene</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># AGAT 1.7.0 (bioconda: conda install -c bioconda agat=1.7.0)</span>
+agat_sp_keep_longest_isoform.pl -gff annot.gff3 -o annot.longest.gff3
+agat_sp_extract_sequences.pl -g annot.longest.gff3 -f genome.fa -p --clean_final_stop -o proteins.faa
+<span class="c"># -p translates the CDS to protein; --clean_final_stop drops the trailing '*'</span></pre></div>
+
+  <h3>Step 2: InterProScan, domains from many databases at once</h3>
+  <p><dfn>InterPro</dfn> (EMBL-EBI) collects protein signatures from many partner databases, called <dfn>member databases</dfn>. A <span class="tip" title="Signature: a model of a protein family, domain or site, usually a profile HMM (a statistical description of which amino acid is expected at each position) or a short pattern of amino acids.">signature</span> from a member database that InterPro curators have checked is grouped into an <b>InterPro entry</b> with an accession like <code>IPR019805</code>; InterPro entries carry curator-assigned GO terms and pathway links (PANTHER adds GO terms of its own). <dfn>InterProScan</dfn> is the program that runs all these searches on your proteins.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Member database</th><th>What it finds</th></tr></thead>
+    <tbody>
+      <tr><td><b>Pfam</b></td><td>Protein domains and families, from profile HMMs built on alignments. The most widely quoted, for example <code>PF00078</code> = reverse transcriptase.</td></tr>
+      <tr><td><b>PANTHER</b></td><td>Families and subfamilies of whole proteins, with curated GO terms.</td></tr>
+      <tr><td><b>CDD</b>, <b>SMART</b>, <b>PROSITE</b>, <b>PRINTS</b></td><td>Conserved domains (NCBI), signalling and extracellular domains, short motifs and profiles, groups of conserved motifs.</td></tr>
+      <tr><td><b>CATH-Gene3D</b>, <b>SUPERFAMILY</b></td><td>Structural domains, from the CATH and SCOP classifications of known 3D structures.</td></tr>
+      <tr><td><b>NCBIFAM</b>, <b>PIRSF</b>, <b>PIRSR</b>, <b>HAMAP</b>, <b>SFLD</b></td><td>Curated families, site rules and enzyme classes (HAMAP is mostly for microbes and organelles).</td></tr>
+      <tr><td><b>MobiDB-lite</b>, <b>COILS</b></td><td>Disordered regions and coiled coils. Not families; they describe the shape of a stretch of protein.</td></tr>
+      <tr><td><b>AntiFam</b></td><td>Families of <b>spurious</b> proteins: sequences known to be translations of non-coding DNA. A hit here is a warning about your gene model.</td></tr>
+      <tr><td>SignalP, DeepTMHMM, Phobius, TMbed, DeepTMHMM2</td><td>Signal peptides and membrane helices. Not run by default (deep-learning tools are switched on with <code>--run-ml</code>); SignalP, DeepTMHMM and Phobius need a separate licence and download.</td></tr>
+    </tbody>
+  </table></div>
+  <p>InterProScan 6 (current release 6.0.3.0, 15 October 2026) is a <span class="tip" title="Nextflow: a workflow manager. It downloads the pipeline from GitHub, splits the work into tasks, runs each task in a container and can send tasks to a cluster scheduler such as Slurm.">Nextflow</span> pipeline that runs its tools in <span class="tip" title="Container: a packaged copy of a program with all its libraries, run by Docker, Podman, Singularity or Apptainer, so it behaves the same on every machine.">containers</span>. InterProScan 5.78-109.0 (June 2026) was the last release of version 5; it will not receive new InterPro data. You need Nextflow 25.10.4 or later and Docker, Podman, Singularity or Apptainer; the member-database files are downloaded on the first run into the folder given by <code>--datadir</code>. For InterPro release 110.0 the archives on the EBI server add up to about 6 GB compressed (CATH 2.5 GB, PANTHER 1.0 GB, SUPERFAMILY 0.95 GB, CDD 0.48 GB, NCBIFAM 0.41 GB, Pfam 0.39 GB, the rest small); they take more space unpacked.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># first a test run: downloads data into ./ipr_data and annotates a small bundled file</span>
+nextflow run ebi-pf-team/interproscan6 -r 6.0.3.0 -profile apptainer,test \
+    --datadir ipr_data --interpro 110.0
+
+<span class="c"># your proteins, on a Slurm cluster; GO terms and pathways switched on</span>
+nextflow run ebi-pf-team/interproscan6 -r 6.0.3.0 -profile apptainer,slurm \
+    --input proteins.faa --datadir /shared/ipr_data --interpro 110.0 \
+    --goterms --pathways --cpus 8 --formats tsv,gff3,json \
+    --outdir ipr_out --outprefix genome</pre></div>
+  <dl class="defs">
+    <dt><code>-r</code>, <code>--interpro</code></dt><dd>Pin the pipeline version and the InterPro data release. The default data release is <code>latest</code>, and a new InterPro release comes out about every eight weeks; the documentation asks you to pin both for reproducibility.</dd>
+    <dt><code>-profile</code></dt><dd>Container runtime plus where to run: <code>docker</code>, <code>apptainer</code>, <code>singularity</code>; add <code>slurm</code> or <code>lsf</code> on a cluster. On a cluster <code>--datadir</code> and the Nextflow work folder must be on a disk that every compute node sees.</dd>
+    <dt><code>--goterms</code>, <code>--pathways</code></dt><dd>Off by default. Without <code>--goterms</code> the output has no GO terms at all.</dd>
+    <dt><code>--applications</code> / <code>--skip-applications</code></dt><dd>Run only some databases, for example <code>--applications Pfam,PANTHER</code> for a quick first pass. The two cannot be combined.</dd>
+    <dt><span class="tip" title="Matches API: a web service at EMBL-EBI holding precomputed InterProScan results for every protein in UniParc, the archive of all public protein sequences. Lookup is by the MD5 checksum of the sequence, so only identical sequences match.">Matches API</span></dt><dd>On by default: proteins identical to one already in UniParc get precomputed results over the internet; the rest are computed on your machine. <code>--no-matches-api</code> forces everything local (use it on nodes without internet).</dd>
+  </dl>
+  <p><b>Output.</b> <code>genome.tsv</code> has one line per match: protein ID, <span class="tip" title="A checksum: a 32-character fingerprint computed from the sequence. Identical sequences have identical MD5 values.">MD5</span>, length, database, signature accession and description, start, end, score or <span class="tip" title="Expect value: how many matches this good you would expect by chance in a search of this size. Smaller is better; 1e-6 means one in a million.">E-value</span>, status, date, InterPro accession and description, GO terms with their source in brackets (for example <code>GO:0022625(PANTHER)</code>), pathways. The <code>.gff3</code> places matches on the protein for genome browsers; <code>.json</code> and <code>.xml</code> hold everything. <b>Runtime:</b> the documentation gives no figure, and it depends on the number of proteins, the databases chosen and the cluster. Time a run on 1,000 proteins and scale up before you book a week of cluster time.</p>
+
+  <h3>Step 3: eggNOG-mapper, names copied from orthologs</h3>
+  <p><dfn>eggNOG</dfn> is a database of <span class="tip" title="Orthologous group: a set of genes from many species that descend from one gene in their last common ancestor. eggNOG computes these groups at many taxonomic levels (for example all animals, all mammals).">orthologous groups</span> with functional terms. <dfn>eggNOG-mapper</dfn> finds the closest eggNOG protein to each of yours (the <b>seed ortholog</b>), takes the orthologs of that seed, and copies their gene name, <span class="tip" title="Gene Ontology: a controlled vocabulary of terms (GO:0005515 and so on) in three branches: molecular function, biological process and cellular component. Terms let you count and compare gene functions across genomes.">GO terms</span>, <span class="tip" title="KEGG: Kyoto Encyclopedia of Genes and Genomes. A KEGG Orthology (KO) number such as K00844 names a function; KO numbers link to metabolic and signalling pathway maps.">KEGG</span> orthologs and pathways, <span class="tip" title="EC number: Enzyme Commission number, a four-part code for the reaction an enzyme catalyses, for example EC 2.7.1.1 for hexokinase.">EC numbers</span>, Pfam domains and more. Its authors' point is that transferring from orthologs avoids taking a name from a close paralog, which a simple best hit can do.</p>
+  <p class="note"><b>Two versions in use.</b> <b>v3</b> (3.0.0-beta6, August 2026) works only with the new <b>eggNOG 7</b> database (about 59 million proteins), copies only manually curated terms, and by default chooses for each protein how far up the tree to look for donors (<code>--tax_scope auto</code>). <b>v2</b> works only with <b>eggNOG 5</b>; it is what <code>conda install -c bioconda eggnog-mapper</code> (2.1.15) and <code>pip install eggnog-mapper</code> (2.1.13) give you today (checked 31 October 2026). The databases are not interchangeable, and the two versions will name some genes differently. Write the version of both the program and the database in your methods.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># v3 from source (Python 3.9 or later; DIAMOND must be on PATH)</span>
+git clone --branch v3.0.0-beta6 https://github.com/eggnogdb/eggnog-mapper.git
+cd eggnog-mapper && pip install .
+python download_eggnog_data.py -y --data_dir /data/eggnog7      <span class="c"># ~45 GB</span>
+emapper.py --selftest                                             <span class="c"># checks the install</span>
+
+<span class="c"># annotate the proteins with the default DIAMOND search</span>
+emapper.py -i proteins.faa --itype proteins -o genome --output_dir emapper_out \
+    --data_dir /data/eggnog7 --cpu 16 --temp_dir /local/scratch
+
+<span class="c"># the same with the prebuilt Apptainer image (DIAMOND, MMseqs2, HMMER inside)</span>
+apptainer run --bind /data/eggnog7:/data eggnog-mapper-3.0.0-beta6.sif \
+    -i proteins.faa -o genome --data_dir /data --output_dir "$PWD" --cpu 16</pre></div>
+  <dl class="defs">
+    <dt>Database size</dt><dd>Core download about 45 GB: annotation database ~22 GB plus DIAMOND database ~23 GB. The optional MMseqs2 database (<code>-M</code>) adds ~25 GB. The free web service <a href="https://eggnog-mapper.cgmlab.org">eggnog-mapper.cgmlab.org</a> avoids the download for a few proteomes.</dd>
+    <dt><code>-m diamond</code> / <code>-m mmseqs</code></dt><dd>The search engine. <span class="tip" title="DIAMOND: a protein aligner by Benjamin Buchfink, built to be much faster than BLASTP on large databases.">DIAMOND</span> is the default; the manual says both give the same annotations and DIAMOND is faster and lighter. <span class="tip" title="MMseqs2: another fast protein search program (Steinegger and Söding).">MMseqs2</span> needs its own database. <code>-m no_search --annotate_hits_table</code> re-annotates an earlier search without searching again.</dd>
+    <dt>Memory</dt><dd>The manual's rough DIAMOND peak: block size × 6 + database size / index chunks + threads × 0.5 GB (in GB); both are picked from the machine's RAM when not set. Extra CPUs add little memory.</dd>
+    <dt>Output</dt><dd><code>genome.emapper.annotations</code>, a 22-column table: query, seed ortholog, E-value, score, orthologous groups, taxonomic ceiling, <code>Preferred_name</code>, GOs, EC, KEGG columns, <span class="tip" title="Carbohydrate-Active enZYmes database: families of enzymes that build or break down sugars.">CAZy</span>, <span class="tip" title="BiGG Models: a database of curated metabolic reactions used in metabolic models.">BiGG</span>, PFAMs, and <code>annotation_confidence</code>, one letter per annotation column (<code>h</code> high, <code>m</code> medium, <code>l</code> low, <code>-</code> none).</dd>
+  </dl>
+
+  <h3>Step 4: a second opinion from Swiss-Prot</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Swiss-Prot, release 2026_03 (~94 MB compressed)</span>
+wget https://ftp.uniprot.org/pub/databases/uniprot/current_release/knowledgebase/complete/uniprot_sprot.fasta.gz
+gunzip uniprot_sprot.fasta.gz
+diamond makedb --in uniprot_sprot.fasta -d sprot
+diamond blastp -q proteins.faa -d sprot -o sprot_hits.tsv --very-sensitive \
+    --max-target-seqs 1 --evalue 1e-6 --query-cover 50 --subject-cover 50 --threads 16
+<span class="c"># output format 6, the 12 BLAST tabular columns: qseqid sseqid pident length mismatch</span>
+<span class="c"># gapopen qstart qend sstart send evalue bitscore</span></pre></div>
+  <p><code>--very-sensitive</code> is meant for hits across the whole range of identities (the default mode is tuned for more than 70 % identity). <code>--query-cover</code> and <code>--subject-cover</code> keep only hits that cover at least half of both proteins, so that a shared single domain does not pass a name from a different protein. These two coverage limits are a choice, not a default. BLASTP from NCBI BLAST+ gives the same kind of table and is fine for one genome; it is slower.</p>
+
+  <h3>Step 5: one name per gene, written into the GFF3</h3>
+  <p>AGAT can copy the Swiss-Prot name into each gene's <code>Name</code> and each mRNA's <code>product</code>, and InterPro, Pfam and GO accessions into <code>Dbxref</code> and <code>Ontology_term</code>:</p>
+  <div class="code"><button type="button">copy</button><pre>agat_sp_manage_functional_annotation.pl -f annot.longest.gff3 \
+    -b sprot_hits.tsv --db uniprot_sprot.fasta -i ipr_out/genome.tsv \
+    -o annot.func.gff3
+<span class="c"># -b needs BLAST tabular (outfmt 6) and the same FASTA used to build the database;</span>
+<span class="c"># default --blast_evalue 1e-6; --pe 1..5 limits names to UniProt evidence levels</span></pre></div>
+  <p>Where the three sources disagree, look before you choose. A common rule: take the ortholog name if eggNOG-mapper and the Swiss-Prot hit agree; if only a domain is found, name the protein by the domain ("zinc finger protein", "ABC transporter domain-containing protein"); if nothing is found, call it <b>uncharacterized protein</b>.</p>
+
+  <h3>Naming rules you will meet</h3>
+  <ul>
+    <li><b>Product names for GenBank</b> must be concise names, not descriptions. For a protein of unknown function NCBI accepts <code>hypothetical protein</code> or <code>uncharacterized protein</code>. A CDS without a <code>product</code> attribute is named "hypothetical protein" automatically by table2asn.</li>
+    <li><b>LOC numbers.</b> In NCBI Gene a gene with no official symbol gets <code>LOC</code> + its GeneID, for example <code>LOC12345</code> = GeneID 12345. When a real symbol is assigned later, the LOC name is replaced. You do not invent LOC names yourself; they appear when NCBI annotates a genome (<span class="tip" title="NCBI Reference Sequence database: NCBI's own curated or computed records, including the genome annotations made by NCBI's Eukaryotic Genome Annotation Pipeline.">RefSeq</span>) or when your submission is processed.</li>
+    <li><b>NCBI's own pipeline</b> names predicted genes by similarity to Swiss-Prot proteins. Most of its models that need an insertion, deletion or frameshift to keep the reading frame are labelled <span class="tip" title="Pseudogene: a gene copy that can no longer make a working protein, for example because a stop codon or frameshift interrupts it.">pseudogenes</span>; those kept as coding get the title prefix <code>PREDICTED: LOW QUALITY PROTEIN</code>, because the assembly under them may have base errors. That is exactly the <span class="tip" title="Homopolymer: a run of one repeated base, such as AAAAAA. Long-read sequencers often miscount its length, which inserts or deletes a base in the assembly.">homopolymer</span> problem of <a href="#s06">section 06</a>.</li>
+    <li><b>Gene symbols.</b> Copying a human or mouse symbol (for example from TOGA2 or eggNOG-mapper) is normal for mammals. Add nothing that claims more than the evidence: a symbol from a one-to-many orthology group means "one of the copies", not "the" gene.</li>
+  </ul>
+
+  <details class="simple"><summary>Simple explanation with examples: naming strangers in an old class photo</summary><div class="in">
+    <p>You find a school photo with forty unlabelled faces and want a name under each.</p>
+    <ul>
+      <li><b>Uniform (InterProScan).</b> One child wears a football shirt: you know he played football, not his name. A domain tells you the kind of protein, for example "has a kinase domain", but there are hundreds of kinases.</li>
+      <li><b>Family tree (eggNOG-mapper).</b> You have the family photo albums of the town. You find the child's parents and siblings, and the family records say this was the second son, Peter. Orthology places the protein in the right family and copies the name from close relatives.</li>
+      <li><b>Look-alike (best BLAST hit).</b> You flip through a book of famous people and pick the face that looks most alike. Often right, but cousins look alike: the best hit can be a paralog, a related gene of the same family with another job.</li>
+      <li><b>"Unknown boy, back row" (uncharacterized protein).</b> If no clue works, say so. A wrong name is worse than no name, because others will copy it.</li>
+    </ul>
+    <div class="toy">protein g1234.t1   InterPro: <span class="a">IPR000719 protein kinase domain</span>         -> kind of protein
+                   eggNOG:   <span class="a">Preferred_name MAPK1</span>, confidence h     -> which gene
+                   Swiss-Prot best hit: <span class="h">MK03_HUMAN (MAPK3)</span>, 85 % id    -> close paralog!
+name chosen: MAPK1 (two orthology-aware sources agree; the best hit is a paralog)</div>
+    <p style="font-size:13px;color:var(--muted)">The example protein and its hits are invented for illustration; the accessions are real InterPro and UniProt names.</p>
+  </div></details>
+
+  <h3>Step 6: is the gene set believable?</h3>
+  <p>None of the checks below proves an annotation is right. Each one catches a different kind of mistake, and each is only meaningful next to the same number for a well-annotated relative, measured the same way.</p>
+
+  <h3>BUSCO in protein mode</h3>
+  <p>BUSCO was introduced on the assembly in <a href="../02-assembly/#s10">lesson 2, section 10</a>. In protein mode it scores your <b>predicted proteins</b> instead of the genome: the FASTA goes straight to <span class="tip" title="HMMER: the program that scores protein sequences against profile HMMs (statistical models of protein families).">HMMER</span>, with no gene finding. Use the one-protein-per-gene file; the BUSCO 6.1.0 user guide warns that protein sets not filtered for isoforms give many false duplicates.</p>
+  <div class="code"><button type="button">copy</button><pre>busco -i proteins.faa -m proteins -l mammalia_odb12.2 -c 16 -o genome_prot \
+      --download_path /data/busco_downloads --offline --opt-out-run-stats</pre></div>
+  <p>The most useful number is the <b>difference</b> between genome mode and protein mode with the same dataset. Genome mode says which marker genes are in the assembly; protein mode says which of them your annotation found. If the genome scores 98 % and the proteins 90 %, about 8 % of the markers are in the DNA but the annotation missed or broke them, and so are many other genes.</p>
+
+  <h3>OMArk: is every protein a real member of a known family?</h3>
+  <p><dfn>OMArk</dfn> (Nevers et al. 2025, <i>Nature Biotechnology</i>; version 0.5.0) looks at the <b>whole</b> proteome, not only a few thousand marker genes. Every protein is first placed in a gene family of the <span class="tip" title="OMA (Orthologous MAtrix): a database of orthologs among more than two thousand complete genomes, run by the Dessimoz lab.">OMA database</span> by the fast k-mer tool <span class="tip" title="OMAmer: places protein sequences into hierarchical orthologous groups (HOGs) of the OMA database by matching short amino-acid words (k-mers). Much faster than alignment.">OMAmer</span>. OMArk then reports:</p>
+  <dl class="defs">
+    <dt>Completeness</dt><dd>Like BUSCO, but on <span class="tip" title="Hierarchical orthologous group (HOG): a gene family as it was in an ancestor at a given level of the tree, for example the ancestor of all rodents. A conserved HOG here has at least one gene in more than 80 % of the living species of that clade.">conserved HOGs</span> of your lineage: single, duplicated (expected or unexpected, from the known history of the family) and missing.</dd>
+    <dt>Consistent</dt><dd>The protein belongs to a family known in your lineage. Sub-labels: <b>partial hit</b> (similar to the family over only part of its length; in the code, less than 80 % overlap) and <b>fragmented</b> (shorter than half the median length of that family). Both point to broken gene models.</dd>
+    <dt>Inconsistent</dt><dd>The protein matches families known from other lineages, "seemingly at random" in the words of the OMArk summary. Look at these proteins before trusting them.</dd>
+    <dt>Contaminant</dt><dd>Many proteins match the same foreign species more than expected by chance, for example a bacterium or a parasite. Compare with FCS-GX on the assembly (<a href="../02-assembly/#s09">lesson 2, section 09</a>).</dd>
+    <dt>Unknown</dt><dd>No similarity to any known family: an orphan gene, or a model built on non-coding DNA, for example an open reading frame inside a transposable element or a random stretch of intergenic sequence.</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre>conda install -c bioconda omark=0.5.0 omamer
+wget https://omabrowser.org/All/LUCA.h5                 <span class="c"># all of OMA, ~9.9 GB</span>
+omamer search --db LUCA.h5 --query proteins.faa --out genome.omamer
+omark -f genome.omamer -d LUCA.h5 -o omark_out -of proteins.faa
+<span class="c"># with all isoforms instead: add -i genes.splice (one gene per line, isoform IDs separated by ';')</span></pre></div>
+  <p>The README's example on the human reference proteome takes under 15 minutes for OMAmer and under 10 for OMArk. Results: <code>*_detailed_summary.txt</code> (read this one), <code>.sum</code>, a <code>.pdf</code> bar chart, and with <code>-of</code> FASTA files of the proteins in each category, so you can look at the "Unknown" ones directly. The OMArk web server (<a href="https://omark.omabrowser.org/">omark.omabrowser.org</a>) shows your result next to precomputed UniProt reference proteomes of related species, which is the comparison the authors recommend.</p>
+
+  <h3>Counting with AGAT</h3>
+  <div class="code"><button type="button">copy</button><pre>agat_sp_statistics.pl --gff annot.gff3 -g genome.fa -o annot.stats.txt
+<span class="c"># the same on a relative's RefSeq GFF3, so the two are comparable</span>
+agat_sp_statistics.pl --gff relative_refseq.gff3 -g relative.fa -o relative.stats.txt</pre></div>
+  <p>The report lists numbers and lengths of genes, mRNAs, exons, CDS, introns and <span class="tip" title="Untranslated regions: the parts of an mRNA before the start codon (5' UTR) and after the stop codon (3' UTR).">UTRs</span>, mean exons per mRNA, <b>Number of single exon gene</b> and <b>Number gene overlapping</b>. When isoforms exist it computes everything twice, with all isoforms and with the longest isoform per gene only. Compare with a relative:</p>
+  <ul>
+    <li><b>Gene count.</b> Mammals share most protein-coding genes. A count far above a close relative usually means split genes (one gene predicted as two or three pieces), genes on <span class="tip" title="Haplotig: a contig carrying the second parental copy of a region that is already in the primary assembly; it should have been purged (lesson 2, section 06).">haplotigs</span>, or genes built from transposable elements. Far below: merged neighbours, or genes missed.</li>
+    <li><b>Single-exon (mono-exonic) genes.</b> Real ones exist: most olfactory receptor genes have their coding sequence in one exon, and <span class="tip" title="Retrocopy: a copy of a gene made when its mRNA was reverse-transcribed and inserted back into the genome. It has no introns. Most are processed pseudogenes; a few are functional retrogenes.">retrocopies</span> have no introns. But open reading frames of LINE and LTR retrotransposons, and spurious predictions, are also single-exon. A share clearly higher than in the relative needs explaining.</li>
+    <li><b>Transposable-element proteins.</b> Search the InterProScan table for TE domains, for example <code>PF00078</code> (RVT_1, reverse transcriptase), <code>PF00665</code> (rve, integrase core), <code>PF02994</code> (Transposase_22, the L1 ORF1 protein domain), <code>PF03184</code> (DDE_1, DDE endonuclease). Genes made only of these domains are most likely transposable elements that escaped masking (<a href="#s04">section 04</a>), not host genes. Some host genes are domesticated TEs, so check by hand before removing any.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># genes with a TE domain, from the InterProScan TSV (column 5 = signature accession)</span>
+awk -F'\t' '$5=="PF00078"||$5=="PF00665"||$5=="PF02994"||$5=="PF03184"{print $1}' \
+    ipr_out/genome.tsv | sort -u &gt; te_domain_proteins.txt
+wc -l te_domain_proteins.txt</pre></div>
+
+  <h3>Agreement with evidence: AED and transcript support</h3>
+  <p>When RNA-seq or protein alignments exist (<a href="#s05">section 05</a>), ask how many gene models they support. <span class="tip" title="MAKER: an annotation pipeline (Yandell lab) that combines ab initio predictions with RNA and protein evidence.">MAKER</span> reports for each model an <dfn>annotation edit distance</dfn> (AED, Eilbeck et al. 2009): 0 means the model agrees completely with the aligned evidence, 1 means no evidence supports it. A rule of thumb from the MAKER developers is that a set is good when more than about 95 % of models have AED below 0.5; it is a mailing-list heuristic, not a published standard. Outside MAKER, the same idea is the <b>share of models whose introns are all confirmed by spliced RNA-seq reads</b>: compare the intron coordinates of each model with the splice junctions found by the RNA-seq aligner. Without any RNA evidence, as for our species A, this check is not available, and orthology-based checks carry more weight.</p>
+
+  <h3>Look at it</h3>
+  <p>Numbers hide patterns that a picture shows at once. Load the genome, the gene GFF3, the repeat annotation and any RNA-seq BAM into <span class="tip" title="IGV: Integrative Genomics Viewer (Broad Institute), a desktop and web genome browser.">IGV</span> or <span class="tip" title="JBrowse 2: a web-based genome browser that can also run as a desktop app; it handles large genomes and many tracks.">JBrowse 2</span>, and look at about twenty random genes plus the BUSCO genes reported as fragmented or missing. Look for exons sitting inside repeats, one gene split in two at a contig end, two neighbouring genes fused into one, introns that do not match the spliced reads, and stop codons or frameshifts in homopolymer runs.</p>
+
+  <section class="tool" aria-labelledby="s08-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-toy-h">An annotation health dashboard</h3></div>
+    <p class="tool-note">Move the sliders to describe an annotation, or pick a preset. The bar shows what the predicted gene count is made of; each row below gets a traffic light and the reason. <b>The thresholds are teaching choices, not published standards</b>: real limits come from a relative measured the same way.</p>
+    <div class="controls">
+      <label for="s08-bg"><span class="tip" title="BUSCO complete (C) for the assembly in genome mode. It says which marker genes are present in the DNA.">BUSCO C, genome mode</span><output id="s08-bgo"></output><input type="range" id="s08-bg" min="70" max="100" step="0.5" value="98"></label>
+      <label for="s08-bp"><span class="tip" title="BUSCO complete (C) for the predicted proteins (protein mode, longest isoform per gene). It says which marker genes the annotation found whole.">BUSCO C, protein mode</span><output id="s08-bpo"></output><input type="range" id="s08-bp" min="50" max="100" step="0.5" value="96"></label>
+      <label for="s08-f"><span class="tip" title="BUSCO fragmented (F) in protein mode: marker genes found but too short. In an annotation this usually means broken gene models: frameshifts, genes split at contig ends, or exons not found.">BUSCO F, protein mode</span><output id="s08-fo"></output><input type="range" id="s08-f" min="0" max="20" step="0.5" value="1.5"></label>
+      <label for="s08-d"><span class="tip" title="BUSCO duplicated (D) in protein mode, after keeping one isoform per gene. In a diploid assembly this usually means both parental copies (haplotigs) were kept and annotated.">BUSCO D, protein mode</span><output id="s08-do"></output><input type="range" id="s08-d" min="0" max="40" step="0.5" value="1.5"></label>
+      <label for="s08-te"><span class="tip" title="Share of predicted genes whose proteins carry a transposable-element domain (reverse transcriptase, integrase, transposase).">Genes with TE domains</span><output id="s08-teo"></output><input type="range" id="s08-te" min="0" max="30" step="0.5" value="1"></label>
+      <label for="s08-se"><span class="tip" title="Share of predicted genes with only one exon, from agat_sp_statistics.pl, compared below with the same number for a relative.">Single-exon genes</span><output id="s08-seo"></output><input type="range" id="s08-se" min="0" max="60" step="0.5" value="12"></label>
+      <label for="s08-ser"><span class="tip" title="The same single-exon share measured with AGAT on a well-annotated relative's RefSeq GFF3. Measure it yourself; the slider value is a toy number.">Single-exon, relative</span><output id="s08-sero"></output><input type="range" id="s08-ser" min="1" max="40" step="0.5" value="11"></label>
+      <label for="s08-gc"><span class="tip" title="Number of protein-coding genes predicted, as a percentage of the number in a well-annotated relative.">Gene count vs relative</span><output id="s08-gco"></output><input type="range" id="s08-gc" min="40" max="250" step="1" value="103"></label>
+    </div>
+    <div class="slider-row"><span>Presets:</span><span class="seg" id="s08-presets" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-p="0" aria-pressed="true" title="Long-read assembly, RNA-seq evidence, repeats masked, haplotigs purged">careful annotation</button><button type="button" data-p="1" aria-pressed="false" title="Both parental copies kept in the assembly and annotated">haplotigs kept</button><button type="button" data-p="2" aria-pressed="false" title="Repeat masking skipped or the repeat library incomplete">repeats not masked</button><button type="button" data-p="3" aria-pressed="false" title="Unpolished long-read assembly: indels in homopolymers break reading frames">frameshift-rich assembly</button><button type="button" data-p="4" aria-pressed="false" title="Short-read assembly with small contigs: genes are cut at contig ends">short contigs</button></span></div>
+    <div class="svgbox" id="s08-bar"></div>
+    <div class="legend" id="s08-legend"></div>
+    <div id="s08-rows" aria-live="polite"></div>
+    <p id="s08-verdict" style="font-size:15px"></p>
+    <details class="simple"><summary>Toy rules (what the dashboard computes)</summary><div class="in">
+      <ul>
+        <li><b>Missed by the annotation</b> = BUSCO C genome − C protein. Green ≤ 2 points, amber ≤ 5, red above; amber also when protein mode is more than 1 point above genome mode (a sign that the two runs were not comparable).</li>
+        <li><b>Fragmented models</b> (BUSCO F, protein mode). Green ≤ 3 %, amber ≤ 6 %, red above.</li>
+        <li><b>Duplicated</b> (BUSCO D, protein mode, one isoform per gene). Green ≤ 3 %, amber ≤ 8 %, red above.</li>
+        <li><b>TE-domain genes.</b> Green ≤ 2 %, amber ≤ 5 %, red above.</li>
+        <li><b>Single-exon share</b> divided by the relative's. Green ≤ 1.3×, amber ≤ 1.8×, red above.</li>
+        <li><b>Gene count</b> as % of the relative. Green 85-120 %, amber 70-150 %, red outside.</li>
+        <li>The bar: the BUSCO D share is applied to the whole gene set as extra haplotig copies, the BUSCO F share as broken models, and the TE share as TE genes; the rest is "other genes". This assumes the marker genes behave like all genes, which is only roughly true.</li>
+        <li>The overall verdict is the worst light. One red light is enough to stop and look before using or submitting the annotation.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">In our projects</h3>
+    <ul>
+      <li><b>BUSCO did not see the base errors.</b> The long-read assembly of our rodent species A (not yet published, so no name or exact numbers here) scored above 95 % complete (<code>mammalia_odb10</code>, genome mode), at least as high as the published chromosome-level genome of a close relative. Yet inside the TOGA2 exons the reads contradicted hundreds of small indels of the assembly, nearly all of them frameshifting and most in homopolymers. They break reading frames in about one in ten genes classed "uncertain loss" and in a somewhat smaller share of those classed "lost" (our own count of gene symbols with at least one projection of that class; TOGA2's <code>summary.txt</code> counts lost genes by its own gene-level rule, <a href="#s07">section 07</a>). BUSCO completeness does not measure base accuracy, and an annotation built on this assembly would carry these frameshifts.</li>
+      <li><b>Polishing did not fix it either, by this measure.</b> In the assembly of another of our small mammals (species B), the number of BUSCO genes with internal stop codons did not fall after short-read polishing with NextPolish; it rose slightly.</li>
+      <li><b>A gene count with a reference.</b> TOGA2 projected the 19,990 human reference genes onto species A: about nine in ten have at least one potentially functional ortholog, most of them 1:1 orthologs, and about a tenth have no ortholog found ("one2zero"). An annotation of the same genome that predicts far more genes than this would need to explain the extra ones.</li>
+    </ul>
+  </div>
+
+  <h3>Step 7: submitting the annotation to NCBI</h3>
+  <p>Annotation is optional for a GenBank genome; you can submit the FASTA alone (<a href="../02-assembly/#s13">lesson 2, section 13</a>). If you do submit genes:</p>
+  <ul>
+    <li><b>locus_tag prefix.</b> Every gene needs a <span class="tip" title="locus_tag: a systematic, unique gene identifier of the form PREFIX_number, for example ABC12_000123. It is stable even when the gene name changes.">locus_tag</span>. The prefix is assigned when you register the <span class="tip" title="BioProject and BioSample: NCBI records that describe your project and the individual animal sampled; every genome submission links to one of each.">BioProject and BioSample</span> (one prefix per BioProject-BioSample pair); annotated genomes must be registered before submission. Rules: 3-12 letters or digits, first character not a digit, case-sensitive; then one underscore and a number.</li>
+    <li><b>GFF3 in NCBI's flavour.</b> Column 1 must match the FASTA sequence IDs. Genes need <code>locus_tag</code> (or give <code>-locus-tag-prefix</code>); mRNA needs <code>transcript_id</code> and CDS <code>protein_id</code> (or leave both out and let table2asn make them); the name goes in <code>product=</code> on the CDS. A broken gene that you do not think is a pseudogene, for example one with an internal stop codon, gets <code>pseudo=true</code>; a pseudogene gets <code>pseudogene=&lt;TYPE&gt;</code>. Partial genes are worked out automatically.</li>
+    <li><b>table2asn</b> turns FASTA + GFF3 + a submission template into a <code>.sqn</code> file. The template (<code>template.sbt</code>) is made with NCBI's web form.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># table2asn (linux64.table2asn.gz from ftp.ncbi.nlm.nih.gov/asn1-converters/by_program/table2asn/)</span>
+table2asn -M n -J -c w -euk -t template.sbt \
+    -j "[organism=Genus species] [isolate=XXXX]" \
+    -i genome.fsa -f annot.func.gff3 -o genome.sqn -Z -V b
+<span class="c"># for a scaffolded assembly also: -gaps-min 10 -l proximity-ligation (Hi-C) or -l paired-ends</span>
+<span class="c"># -locus-tag-prefix ABCD only if the GFF3 has no locus_tag on every gene</span></pre></div>
+  <dl class="defs">
+    <dt><code>-M n</code></dt><dd>Genome-submission mode (validation, product-name fixes; FATAL problems reported when <code>-Z</code> is used).</dd>
+    <dt><code>-J</code>, <code>-c w</code>, <code>-euk</code></dt><dd>The readme says always use these with GFF3: proper protein_id/transcript_id pairs, <span class="tip" title="WGS: whole-genome shotgun, GenBank's category for assemblies made from shotgun sequencing; -c w runs the clean-up checks for that category.">WGS</span> clean-up, and for eukaryotes the creation of missing mRNA features.</dd>
+    <dt><code>-Z</code>, <code>-V b</code></dt><dd>Write the discrepancy report (<code>.dr</code>) and a GenBank flatfile (<code>.gbf</code>) for you to read. Read the <code>.val</code> and <code>.dr</code> files before you upload; for example, the discrepancy report flags it when all proteins have the same name, which happens when products were put on the gene or mRNA instead of the CDS.</dd>
+  </dl>
+</section>

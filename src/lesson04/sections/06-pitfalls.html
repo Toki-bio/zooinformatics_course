@@ -1,0 +1,138 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Pitfalls and checks</h2>
+  <p class="lede">A PSMC curve is the last link of a long chain: reads, variant calls, a callable mask, bins, a model with a time pattern, and finally a mutation rate and a generation time. Every link can bend the curve, and most of them bend it without changing the bootstrap band. This section lists what bends single-genome curves, shows the main effects on a toy genome you can spoil yourself, and gives the checks that tell a real feature from an artefact, with what they showed for our two rodent genomes.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>False negative (missed het)</dt><dd>A true heterozygous site that the pipeline calls homozygous, usually because too few reads carried the second allele, or because the site was filtered out. The share of true hets missed is the <dfn>false-negative rate</dfn> (FNR).</dd>
+    <dt>False positive (false het)</dt><dd>A site called heterozygous where the two genome copies are in fact the same: a sequencing error shared by many reads, a misaligned read from a similar copy elsewhere (a <span class="tip" title="Paralog: a second copy of a sequence made by duplication within the genome. Reads from the two copies look alike and can be placed on the wrong one.">paralog</span>), or an assembly error.</dd>
+    <dt>Artefact</dt><dd>A bump, dip or slope in the curve that comes from the data or the method, not from the history of the animals.</dd>
+    <dt>Sensitivity test</dt><dd>Running the same analysis again with one thing changed (fewer reads, another caller, a mask, another time pattern) to see which parts of the curve move. A feature that survives the reasonable alternatives is called <dfn>robust</dfn>.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why each error moves the curve in its own direction</summary><div class="in">
+    <p>PSMC reads the genome as a mosaic of pieces and dates each piece by how many heterozygous sites it carries (<a href="#s01">s01</a>, <a href="#s03">s03</a>): few hets = the two copies met their common ancestor recently; many hets = long ago. The curve is then built from how many pieces fall into each age class. So any error that changes the het count of a piece changes its apparent age.</p>
+    <div class="toy">true piece, 100 kb   <span class="h">|</span>....<span class="h">|</span>.......<span class="h">|</span>.....<span class="h">|</span>......   4 hets  → recent ancestor
+missed hets (30 %)   <span class="h">|</span>............<span class="h">|</span>............   2 hets  → looks even younger
+false hets added     <span class="h">|</span>.<span class="x">|</span>..<span class="h">|</span>..<span class="x">|</span>....<span class="h">|</span>.<span class="x">|</span>...<span class="h">|</span>.<span class="x">|</span>...   8 hets  → looks older
+collapsed duplicate  <span class="h">|</span><span class="x">||</span>.<span class="x">|</span><span class="h">|</span><span class="x">|||</span>..<span class="h">|</span><span class="x">||</span>.<span class="h">|</span><span class="x">||</span>.   very many → looks very old
+run of homozygosity  ........................   0 hets  → "ancestor yesterday"</div>
+    <p>Missing hets everywhere makes every piece look younger, so the whole curve slides toward the present and down; the PSMC README says this "has the same effect as smaller mutation rate". False hets sprinkled evenly matter most for the pieces that had few hets to begin with: the recent coalescences vanish from the record, and the recent population looks larger than it was. A collapsed duplication adds pieces that look extremely old. A run of homozygosity adds pieces whose ancestor lived a few generations ago.</p>
+  </div></details>
+
+  <h3>What bends the curve</h3>
+  <div class="tbl"><table style="min-width:720px">
+    <thead><tr><th>Cause</th><th>What happens to the hets</th><th>What happens to the curve</th><th>First check</th></tr></thead>
+    <tbody>
+      <tr><td><b>Low coverage, strict filters</b></td><td>True hets are missed where too few reads show the second allele, or where the caller's quality filters drop them.</td><td>Whole curve lower and shifted toward the present (README, Appendix II). In flycatchers, genomes under about 10× gave "nearly flat lines" with a lenient depth filter, and the maximum N<sub>e</sub> rose with coverage; individual curves converged only from about 18× (Nadachowska-Brzyska et al. 2016).</td><td>Subsample the reads and repeat; correct a measured FNR when plotting.</td></tr>
+      <tr><td><b>Sequencing errors</b></td><td>Errors shared by many reads at one place are called as hets. Nanopore errors concentrate in <span class="tip" title="Homopolymer: a run of one base, such as AAAAAAA. Nanopore basecallers often get its length wrong, and most reads can agree on the wrong length.">homopolymers</span> (<a href="../02-assembly/#s06">lesson 2, s06</a>); they are mostly indels, which is why only SNVs are used.</td><td>In the toy below: the most recent part rises, because pieces with very few true hets no longer look young. (Our reasoning and toy, not a published measurement.)</td><td>X chromosome of a male as a control (<a href="#s02">s02</a>); <span class="tip" title="Ratio of transitions (A&lt;-&gt;G, C&lt;-&gt;T) to transversions among the het SNVs. Real mammalian SNVs give about 2; random errors pull it down.">Ts/Tv</span>; compare two callers.</td></tr>
+      <tr><td><b>Mapping reference</b></td><td>On another species' genome, reads from divergent regions map poorly or not at all, so hets are counted only where the two species are similar. On the animal's own assembly, assembly errors become calls (a homozygous difference from your own reference is an assembly error, not a variant).</td><td>Fewer hets in the hardest regions: a lower curve, and a bias toward conserved sequence (our reasoning).</td><td>State which reference you used; if both exist, compare.</td></tr>
+      <tr><td><b>Collapsed duplications</b></td><td>Two similar copies assembled as one: the reads of both pile on it, and the differences between copies look like hets, packed densely.</td><td>Extra pieces that look very old: the old part of the curve rises.</td><td>Upper depth bound (the README suggests a maximum of twice the mean depth; <a href="#s02">s02</a>), mapping quality, mask dense het clusters.</td></tr>
+      <tr><td><b>Haplotigs left in the assembly</b></td><td>The second haplotype of a region is a separate contig; the reads split between the two copies, and each looks homozygous.</td><td>False runs of homozygosity, i.e. false recent coalescences (<a href="../03-annotation/#s09">lesson 3, s09</a>).</td><td>Purge haplotigs before mapping (<a href="../02-assembly/#s06">lesson 2, s06</a>); look for half-depth regions with no hets.</td></tr>
+      <tr><td><b>Runs of homozygosity (inbreeding)</b></td><td>Long stretches with no hets, because the parents were related (<a href="../03-annotation/#s09">lesson 3, s09</a>).</td><td>Pieces with an ancestor a few generations back: they belong in the most recent time window. Whether that window spills into older ones depends on the method; masking ROH barely changed PSMC curves in flycatchers (Nadachowska-Brzyska et al. 2016) or in our two rodent genomes, but it changed SMC++ (below).</td><td>Mask the ROH and rerun, with a random mask of the same size as a control.</td></tr>
+      <tr><td><b>Population structure, gene flow</b></td><td>None: the hets are real.</td><td>The curve is a coalescence rate (the <span class="tip" title="Inverse instantaneous coalescence rate: the quantity a PSMC curve actually estimates. It equals the population size only for one randomly mating population.">IICR</span>, <a href="#s03">s03</a>). Splitting into partly connected groups lowers the coalescence rate and looks like a larger population; Hilgers et al. (2025) simulated a population split into three groups followed by a collapse and got a recent peak like the false ones below.</td><td>Not testable with one genome alone; compare individuals and populations, simulate structured alternatives (<a href="#s05">s05</a>, <a href="#s07">s07</a>).</td></tr>
+      <tr><td><b>Time pattern too coarse or too fine</b></td><td>None.</td><td>With the default <code>-p "4+25*2+4+6"</code>, one size is fitted for the whole first window (4 intervals). A decline inside it is compensated by a false high peak in the next window (Hilgers et al. 2025). Too many free parameters for the data overfit (README: aim for at least ~10 recombinations per parameter after 20 iterations).</td><td>Rerun with the first window split: <code>2+2+25*2+4+6</code> and <code>1+1+1+1+25*2+4+6</code>.</td></tr>
+      <tr><td><b>Too few bootstraps</b></td><td>None.</td><td>A band from a handful of rounds understates the spread. Even many rounds only measure sampling of genome pieces, not call errors or model errors (<a href="#s03">s03</a>).</td><td>More rounds (we use 20 or more; the README example uses 100), plus the other checks.</td></tr>
+      <tr><td><b>The two ends</b></td><td>Few pieces coalesced very recently, and few very long ago.</td><td>Recent end: PSMC "cannot accurately resolve demography in times relatively recent compared to the average TMRCA" (Nadachowska-Brzyska et al. 2016). Old end: the last parameter of the default pattern spans the last 6 intervals (README), so the oldest part is one averaged number.</td><td>Interpret only the time range where reruns, call sets and bootstraps agree.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">A different mutation rate or generation time does not bend the curve; it slides the whole curve along both axes by one factor (<a href="#s04">s04</a>). Everything in the table above changes its <b>shape</b>.</p>
+
+  <section class="tool explain" aria-labelledby="s06-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">Spoil a toy genome and watch the curve bend</h3></div>
+    <p class="tool-note">A toy genome of 2 Gb in 20,000 blocks of 100 kb. Each block gets one common-ancestor age (<span class="tip" title="Time to the most recent common ancestor of the two genome copies in that block, in generations.">TMRCA</span>) drawn from the true history (dashed line), and true hets in proportion to that age, at μ = 5.4 × 10<sup>-9</sup> per base per generation. The estimate (solid blue line) dates each block from its observed het count, then turns the share of blocks in each age class into a coalescence rate and a size, as PSMC does in principle. It is <b>not</b> PSMC: real blocks are much shorter than 100 kb and PSMC finds them with an HMM; the grey line is what the toy estimator recovers from clean data. Spoil the data with the sliders.</p>
+    <div class="controls" role="group" aria-label="Errors in the data">
+      <label for="s06-fp">False hets added <output id="s06-fp-o">0.00 per kb</output><input type="range" id="s06-fp" min="0" max="0.5" step="0.01" value="0"></label>
+      <label for="s06-fn">True hets missed (low coverage) <output id="s06-fn-o">0 %</output><input type="range" id="s06-fn" min="0" max="60" step="5" value="0"></label>
+      <label for="s06-roh">Genome in runs of homozygosity <output id="s06-roh-o">0 %</output><input type="range" id="s06-roh" min="0" max="40" step="2" value="0"></label>
+      <label for="s06-dup">Collapsed duplications <output id="s06-dup-o">0 %</output><input type="range" id="s06-dup" min="0" max="10" step="1" value="0"></label>
+      <label style="min-width:auto;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="s06-mask"> mask called ROH</label>
+      <button type="button" class="btn" id="s06-new" style="align-self:center">new genome</button>
+      <button type="button" class="btn" id="s06-reset" style="align-self:center">clean data</button>
+    </div>
+    <div class="legend" id="s06-legend"></div>
+    <div class="svgbox" id="s06-strip"></div>
+    <div class="svgbox" id="s06-fig"></div>
+    <div class="readout" id="s06-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) False hets at only 0.05 per kb (5 per block, under 3 % of all hets) already lift the most recent part of the curve: the young blocks are the ones with few hets, and they no longer look young. (2) Missing 30 % of the hets moves the whole curve down and to the left, the same as a lower mutation rate; the shape survives. (3) ROH add blocks with no hets; in this estimator they only fill the youngest age class, and masking them changes the rest very little. Now add false hets as well: the "empty" ROH blocks get a few hets each, look a few thousand generations old, and a false recent decline appears; masking the called ROH removes that decline. Raise the false hets to 0.2 per kb or more and the ROH caller (under 0.2 het per kb over 300 kb) starts to miss the runs. (4) Collapsed duplications (here 6 false hets per kb in each duplicated block) lift the older part of the curve. (5) "New genome" redraws the history's random outcome: the recent end changes from genome to genome, the old part hardly at all.</p>
+  </section>
+
+  <h3>The checks</h3>
+  <ol class="steps">
+    <li><div><b>Subsample the coverage</b><div class="d">Keep a fraction of the reads, redo calling, mask and PSMC exactly as before, and compare. Two disjoint halves of the reads also give two independent call sets. The PSMC README suggests downsampling a high-coverage genome as the way to measure the false-negative rate: the drop in hets per callable kb at lower depth estimates it.</div><div class="t">samtools view -s · psmc_plot.pl -N</div></div></li>
+    <li><div><b>Compare two callers or two call sets</b><div class="d">Clair3 and DeepVariant, or PASS-only and an allele-fraction filter (<a href="#s02">s02</a>). Run PSMC on both. Where the curves differ, the result depends on the calls.</div><div class="t">bcftools isec</div></div></li>
+    <li><div><b>Mask ROH, and a random region of the same size</b><div class="d">Remove the called ROH from the callable mask and rebuild the input. Masking anything removes data, so mask a random set of regions of the same total size as a control; only the difference between the two masks is the effect of ROH.</div><div class="t">bedtools subtract · bedtools shuffle</div></div></li>
+    <li><div><b>Split the first time window</b><div class="d">Two extra runs with the first window split in two and in four. Hilgers et al. (2025): "if a peak is only observed with the default parameter setting, it is likely an artifact."</div><div class="t">psmc -p</div></div></li>
+    <li><div><b>Enough bootstraps</b><div class="d">Bootstraps for every curve you show: we use at least 20 rounds; the README example uses 100.</div><div class="t">splitfa · psmc -b</div></div></li>
+    <li><div><b>Compare individuals and species</b><div class="d">Two animals of one population should give the same curve within the bootstrap band; sister species should meet in their shared ancestral past (Nadachowska-Brzyska et al. 2016 saw four flycatcher species converge 1–2 million years ago). A curve that disagrees only for one genome points to that genome's data.</div><div class="t">same settings for all genomes</div></div></li>
+    <li><div><b>Simulate the inferred history and infer it again</b><div class="d">Turn the curve into a simulation, generate genomes under it, and run PSMC on them with the same settings. If PSMC does not get back the history you put in, the feature you are interpreting is beyond what the method can resolve. Simulating an alternative (for example a structured population of constant size) shows whether it gives the same curve.</div><div class="t">psmc2history.pl · history2ms.pl · msprime</div></div></li>
+  </ol>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. Half the reads (samtools 1.25: -s 42.5 = seed 42, keep 50 % of reads/pairs); then call, mask, psmcfa, psmc as before</span>
+samtools view -b -s 42.5 -o half.bam reads.bam && samtools index half.bam
+<span class="c">#    plot with a false-negative rate of 10 % (psmc_plot.pl -N; -M "name=0.1,..." for several files)</span>
+utils/psmc_plot.pl -u 5.4e-9 -g 1 -N 0.1 half half.psmc
+
+<span class="c"># 2. Two call sets of het SNVs (bgzipped and indexed) compared site by site</span>
+bcftools isec -p cmp callerA.het.vcf.gz callerB.het.vcf.gz
+<span class="c">#    cmp/README.txt lists the files: 0000 = only in A, 0001 = only in B, 0002 and 0003 = shared</span>
+
+<span class="c"># 3. ROH mask and a random mask of the same size (bedtools 2.31)</span>
+bedtools subtract -a callable.bed -b roh.bed > callable.noROH.bed
+bedtools shuffle -i roh.bed -g genome.txt -chrom -noOverlapping -seed 1 > random.bed
+bedtools subtract -a callable.bed -b random.bed > callable.random.bed
+for f in callable.bed callable.noROH.bed callable.random.bed; do awk -v f=$f '{s+=$3-$2} END{print f, s}' $f; done   <span class="c"># both masks should remove a similar number of bp</span>
+<span class="c">#    rebuild the psmcfa from each mask with the same script as before (s02), then run psmc on each</span>
+
+<span class="c"># 4. Patterns: the default and two splits of the first window</span>
+psmc -N25 -t15 -r5 -p "4+25*2+4+6"       -o default.psmc x.psmcfa
+psmc -N25 -t15 -r5 -p "2+2+25*2+4+6"     -o split2.psmc  x.psmcfa
+psmc -N25 -t15 -r5 -p "1+1+1+1+25*2+4+6" -o split4.psmc  x.psmcfa
+
+<span class="c"># 5. 100 bootstrap rounds, 16 at a time</span>
+utils/splitfa x.psmcfa > split.psmcfa
+seq 100 | xargs -P 16 -I{} psmc -N25 -t15 -r5 -b -p "4+25*2+4+6" -o boot{}.psmc split.psmcfa</pre></div>
+  <p class="tool-note">For the over-fitting rule, the <code>RS</code> lines of the last round hold, in their fifth column, the number of recombinations inferred in each interval (the code prints n_recomb × the interval's share; our reading of <code>aux.c</code>). Add them up over the intervals of each parameter: the README asks for about 10 or more.</p>
+
+  <h3>Simulating under the inferred history</h3>
+  <p>The PSMC package has its own route: <code>psmc2history.pl</code> extracts the fitted history, and <code>history2ms.pl</code> writes a command line for a coalescent simulator (the script writes it for <code>msHOT-lite</code>, a variant of Hudson's ms with recombination hotspots, or with <code>-M</code> for MaCS); <code>ms2psmcfa.pl</code> turns the simulated output into a <code>.psmcfa</code>. We did not use this route, so it is shown as the README describes it. <span class="tip" title="msprime: a Python library that simulates the genealogies of sampled genomes under a demographic model you specify (population sizes over time, splits, migration), and then drops mutations on them.">msprime</span> does the same in Python, and you control every step.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># PSMC package route (msHOT-lite must be installed). -n 25 = last round of a -N25 run; -L 30 Mb per chromosome, 100 chromosomes</span>
+utils/psmc2history.pl -n 25 x.psmc | utils/history2ms.pl -L 30000000 -r 100 > ms-cmd.sh
+sh ms-cmd.sh | utils/ms2psmcfa.pl - > sim.psmcfa
+psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o sim.psmc sim.psmcfa</pre></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># msprime 1.4: one diploid under a step history (sizes and times in generations; numbers are an illustration)</span>
+import msprime
+mu = 5.4e-9            <span class="c"># per base per generation, as used for scaling</span>
+r  = mu * 0.2          <span class="c"># recombination rate = mu x rho0/theta0 from the TR line of your .psmc</span>
+d = msprime.Demography()
+d.add_population(name="A", initial_size=30_000)                    <span class="c"># size today</span>
+for t, n in [(8_000, 130_000), (25_000, 70_000), (80_000, 170_000)]:
+    d.add_population_parameters_change(time=t, initial_size=n, population="A")
+with open("sim.psmcfa", "w") as out:
+    for i in range(1, 51):                                         <span class="c"># 50 chromosomes of 30 Mb</span>
+        ts = msprime.sim_ancestry(samples=1, demography=d, sequence_length=30_000_000,
+                                  recombination_rate=r, random_seed=i)   <span class="c"># samples=1 = one diploid</span>
+        ts = msprime.sim_mutations(ts, rate=mu, random_seed=i)
+        bins = ["T"] * (30_000_000 // 100)                        <span class="c"># 100-bp bins, T = no het</span>
+        for v in ts.variants():
+            if v.genotypes[0] != v.genotypes[1]:
+                bins[int(v.site.position) // 100] = "K"            <span class="c"># K = at least one het</span>
+        s = "".join(bins)
+        out.write(f">sim{i}\n" + "\n".join(s[j:j+60] for j in range(0, len(s), 60)) + "\n")</pre></div>
+  <p class="tool-note">Simulated genomes are perfect: no errors, no missed hets, no mask. Add the error rates you measured (false hets from the X control, the FNR from subsampling) to the simulated data if you want to know what they do to your curve. The 0.2 for ρ<sub>0</sub>/θ<sub>0</sub> above is a placeholder; take yours from the <code>TR</code> line (<a href="#s04">s04</a>).</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what "simulate and re-infer" proves</summary><div class="in">
+    <p>Suppose your curve shows a sharp peak 30,000 years ago and a crash after it. Simulate genomes under a history <b>without</b> the peak, only with the crash, and run PSMC on them. If the peak comes back, PSMC makes it out of the crash, and your peak is not evidence of anything (this is how Hilgers et al. 2025 showed the default-pattern peaks are artefacts). If the peak does not come back, the data really demand it, under the model. Then try a different story that could produce the same data, such as a population split into connected groups at constant size: if that also reproduces your curve, one genome cannot tell the two stories apart.</p>
+  </div></details>
+
+  <div class="note"><b>In our projects</b>
+    <p>Species A (our ONT genome, one male) and the relative (public HiFi assembly, somewhat lower depth), both scaled with the placeholder μ = 5.4 × 10<sup>-9</sup> per generation and one year per generation.</p>
+    <p><b>Reads and calls.</b> Two disjoint halves of the species A reads (each with half the depth, on a test subset of the genome) gave nearly identical curves for the old part of the history; the full call set agreed with them only further back. In a figure of six call sets on the same subset (the full set and both halves, each PASS-only and allele-fraction filtered), all six coincided over the old part and disagreed in the youngest intervals. Over the whole genome, PASS-only calls and the allele-fraction 0.3–0.7 set agreed in the old part; for the relative, PASS-only gave about twice the N<sub>e</sub> in the middle part: the recent and middle parts depend on the filter. False hets: on the male's X, about 1 % of the autosomal het rate remained after the allele-fraction filter, and Ts/Tv of the PASS hets was clearly below the 2.0–2.2 expected. The densest 100-bp bins (21 or more hets) were tandem-repeat alleles called as strings of SNVs (well under 1 % of the hets in both genomes).</p>
+    <p><b>Patterns.</b> Splitting the first window left the species A curve unchanged except in the youngest intervals, including its recent low point and the bump before it; only the youngest interval ran away to values in the millions, i.e. it is not constrained. In the relative the default and split patterns agreed in shape beyond the youngest intervals (the peak height differed by about 15 %) and disagreed in the youngest ones. We do not interpret the most recent part of either curve.</p>
+    <p><b>ROH masks.</b> Masking runs of homozygosity of at least 100 kb (or 500 kb) hardly moved PSMC: species A kept its recent low point and its bump, and the relative's peak changed by a few percent at most. MSMC2 behaved similarly. SMC++ did not: its most recent species A value rose about five-fold with ROH masked, and the relative's peak fell by about a third. An earlier quick test with a differently built mask had seemed to erase the species A bump; the rebuilt masks did not reproduce that, and the reason was not recorded.</p>
+    <p><b>Repeat masks and the random-mask control.</b> Masking tandem repeats, simple repeats, very deep regions or dense het bins changed the relative's curve by 5 % or less. Masking all interspersed repeats (roughly half of the genome) cut its peak by about half, but a random mask of the same size alone lowered it by about a quarter: about half of the drop was simply less data.</p>
+    <p><b>Simulated nulls.</b> The same idea, simulating a history without the feature, showed that cobraa's preference for a structured model on both genomes is matched by simulations without any structure (<a href="#s05">s05</a>). Bootstraps: 20 rounds per curve.</p>
+  </div>
+
+  <p class="note"><b>Next.</b> With two species, the pitfalls multiply: the divergence between them saturates the bins and the split time depends on a simulation calibration (<a href="#s07">s07</a>). How to report all of these checks is in <a href="#s08">s08</a>.</p>
+</section>

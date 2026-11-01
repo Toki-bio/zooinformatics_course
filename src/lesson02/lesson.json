@@ -1,0 +1,78 @@
+{
+ "number": 2,
+ "slug": "02-assembly",
+ "title": "Genome Assembly",
+ "eyebrow": "Lesson 2 · from reads to a genome",
+ "intro": [
+  "Lesson 1 ended with a profile of the reads: genome size, heterozygosity, coverage, read length and accuracy. This lesson turns those reads into a genome, in the order of real work. It starts with a go/no-go check of what lesson 1 measured and an estimate of the memory, disk and time the job will take. Then it shows how short-read and long-read assemblers build contigs, how Hi-C joins contigs into chromosomes, and how polishing, duplicate purging and gap closing clean the result. Next comes what kind of assembly you are holding (collapsed, primary/alternate or haplotype-resolved) and how to judge it: contiguity, base accuracy, k-mer completeness, contamination and conserved genes. The last sections treat the parts that need special care (the mitochondrial genome and its nuclear copies, the sex chromosomes) and how to deposit reads and assemblies in public archives.",
+  "Every step is illustrated with our own assemblies: four small mammals whose genomes are not yet published, called species A to D here (A, a rodent with long reads only; B and C, with long and short reads; D, with short reads only), and the desmans <i>Desmana moschata</i> and <i>Galemys pyrenaicus</i>, including the mistakes we made. Each interactive box uses a toy example; hover over a dotted term to see what it means."
+ ],
+ "steps": [
+  {
+   "title": "Pre-flight check",
+   "what": "Write down what lesson 1 measured (size, heterozygosity, ploidy, coverage, read length and accuracy) and decide whether to go.",
+   "tools": "GenomeScope2 · NanoPlot · seqkit"
+  },
+  {
+   "title": "System requirements",
+   "what": "Estimate RAM, threads, disk and time; set limits on a shared server.",
+   "tools": "RAM · disk · threads · checkpoints"
+  },
+  {
+   "title": "Short-read assembly",
+   "what": "de Bruijn graphs, error correction, choice of k, Bloom filters.",
+   "tools": "SPAdes · ABySS · MEGAHIT · MaSuRCA"
+  },
+  {
+   "title": "Long-read assembly",
+   "what": "Pick the assembler by read type and check which output file is which.",
+   "tools": "hifiasm · Flye · Verkko · NextDenovo"
+  },
+  {
+   "title": "Hi-C scaffolding",
+   "what": "Order and orient contigs into chromosomes; check the contact map.",
+   "tools": "YaHS · Juicebox · PretextView"
+  },
+  {
+   "title": "Polish, purge, close gaps",
+   "what": "Fix remaining base errors, remove duplicated haplotigs, fill gaps; measure before and after.",
+   "tools": "Medaka · NextPolish · purge_dups · TGS-GapCloser"
+  },
+  {
+   "title": "Assembly products",
+   "what": "Collapsed, primary/alternate, hap1/hap2, Hi-C- or trio-phased.",
+   "tools": "hifiasm outputs · phasing"
+  },
+  {
+   "title": "Quality metrics",
+   "what": "Contiguity, base accuracy, k-mer completeness, reads mapped back, the EBP standard.",
+   "tools": "QUAST · gfastats · Merqury"
+  },
+  {
+   "title": "Contamination",
+   "what": "Screen, review and clean foreign sequence.",
+   "tools": "NCBI FCS-GX · FCS-adaptor"
+  },
+  {
+   "title": "Gene completeness",
+   "what": "Count conserved single-copy genes; compare with a relative.",
+   "tools": "BUSCO · compleasm"
+  },
+  {
+   "title": "Mitogenome and NUMTs",
+   "what": "Assemble the mitochondrial genome separately; find its nuclear copies.",
+   "tools": "MitoHiFi · GetOrganelle · ReadExtend"
+  },
+  {
+   "title": "Sex chromosomes",
+   "what": "Recognise X/Y or Z/W contigs and know where the assembler put them.",
+   "tools": "depth ratio · synteny · findZX"
+  },
+  {
+   "title": "Deposit the data",
+   "what": "Submit reads and the assembly; know where else genomes are kept.",
+   "tools": "NCBI SRA / Genome · ENA · NGDC GSA / GWH"
+  }
+ ],
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+}

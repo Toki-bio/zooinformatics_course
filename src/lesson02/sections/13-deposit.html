@@ -1,0 +1,249 @@
+<section aria-labelledby="s13" id="s13-wrap">
+  <h2 id="s13"><span class="n">13</span>Depositing data: NCBI SRA and Genome, and where else to find genomes</h2>
+  <p class="lede">An assembly is not finished until other people can find it. Journals ask for <span class="tip" title="Accession number: the permanent ID an archive gives a record, e.g. GCA_019455555.1. Papers cite it so readers can download the data.">accession numbers</span> before they accept a paper, and the next person who studies your species will first look in the public archives. This section shows what goes where, in what order, with which files, and how to search the archives for a genome that someone else has already made.</p>
+
+  <h3>The three archives that share everything: INSDC</h3>
+  <p>Three archives form the <dfn>INSDC</dfn> (International Nucleotide Sequence Database Collaboration): <b>NCBI</b> in the USA (its databases include <span class="tip" title="GenBank: NCBI's archive of assembled and annotated sequences, from single genes to chromosomes.">GenBank</span> and the <span class="tip" title="Sequence Read Archive: the archive for raw reads, with their per-base quality scores">SRA</span>), <b>ENA</b> (the European Nucleotide Archive at EMBL-EBI, UK) and <b>DDBJ</b> (the DNA Data Bank of Japan). You submit to <em>one</em> of them. The record keeps the accession the first archive gave it and is also shown by the other two. The first letter of many accessions tells you where a record was submitted: <code>S…</code> or <code>…N…</code> for NCBI, <code>E…</code> for ENA, <code>D…</code> for DDBJ.</p>
+  <p>Each archive stores several kinds of record, linked to one another:</p>
+  <dl class="defs">
+    <dt>BioProject</dt><dd>The umbrella: what the study is about. NCBI accession <code>PRJNA…</code>, ENA <code>PRJEB…</code>, DDBJ <code>PRJDB…</code>. In the SRA the same study also has a "study" accession (<code>SRP…</code>/<code>ERP…</code>/<code>DRP…</code>).</dd>
+    <dt>BioSample</dt><dd>The biological material: one animal, or one tissue sample from it, with where and when it was collected. <code>SAMN…</code> (NCBI), <code>SAMEA…</code> (ENA), <code>SAMD…</code> (DDBJ); in the SRA also <code>SRS…</code>/<code>ERS…</code>.</dd>
+    <dt>Experiment</dt><dd>One sequencing library on one instrument model (<code>SRX…</code>/<code>ERX…</code>/<code>DRX…</code>).</dd>
+    <dt>Run</dt><dd>The read files themselves (<code>SRR…</code>/<code>ERR…</code>/<code>DRR…</code>). This is the accession you download reads by.</dd>
+    <dt>Assembly</dt><dd>A genome assembly as a whole: <code>GCA_</code> + 9 digits + version, for example <code>GCA_123456789.1</code>. <code>GCA_</code> is the submitter's own record (GenBank/ENA/DDBJ); <code>GCF_</code> is NCBI's <span class="tip" title="RefSeq: NCBI's curated, non-redundant copy of selected records. Every RefSeq genome assembly carries annotation.">RefSeq</span> copy of a GCA assembly, always annotated, sometimes slightly changed by NCBI staff.</dd>
+    <dt>WGS set and sequences</dt><dd>The contigs, scaffolds and chromosomes of a <span class="tip" title="Whole Genome Shotgun: a genome assembled from randomly fragmented DNA. Nearly every new animal genome is a WGS submission.">WGS</span> assembly get accessions that start with a 4- or 6-letter prefix, then a 2-digit assembly version, then a running number, for example <code>ABCDEF000000000</code> in NCBI's guide. A record whose running number is all zeros stands for the whole set. Finished chromosomes in addition get ordinary GenBank accessions (two letters + six digits + version).</dd>
+  </dl>
+
+  <section class="tool" aria-labelledby="s13-dec-h">
+    <div class="tool-head"><span class="tool-tag">Decoder</span><h3 id="s13-dec-h">What is this accession?</h3></div>
+    <p class="tool-note">Type an accession from a paper, or pick an example. The page says what kind of record it is, which archive holds it, and lights up where it sits in the chain of linked records. <b>Examples</b> are the format examples printed in the archives' own documentation (ENA's accession guide, NCBI's WGS and Datasets guides, NGDC's guides); a few marked "synthetic" were made up to show a format and may not exist.</p>
+    <div class="calc">
+      <label for="s13-acc" class="wide">Accession<input id="s13-acc" class="wide" type="text" spellcheck="false" autocomplete="off" value="GCA_123456789.1"></label>
+      <label for="s13-ex">Examples<select id="s13-ex"></select></label>
+    </div>
+    <div class="readout" id="s13-dec-out" aria-live="polite"></div>
+    <div class="svgbox" id="s13-dec-fig"></div>
+    <p class="tool-note" id="s13-dec-links"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why so many numbers for one animal?</summary><div class="in">
+    <p>Think of a museum. The <b>BioProject</b> is the expedition ("Genome of the Russian desman"). The <b>BioSample</b> is the specimen in the drawer, with its label: species, sex, tissue, place, date, voucher number. Each sequencing <b>library</b> made from that specimen is an <b>Experiment</b>, and the files that came off the machine are <b>Runs</b>. The <b>assembly</b> is a reconstruction built from the runs, and its contigs are the individual pieces.</p>
+    <p>One animal sequenced with HiFi, Hi-C and Illumina, assembled into two haplotypes, gives roughly: 1 umbrella BioProject + 2 haplotype BioProjects, 1 BioSample (or 2–3 if the tissues were different samples), 3 Experiments, 3 or more Runs, 2 assemblies (2 <code>GCA_</code> numbers), 2 WGS sets with thousands of contig accessions, and later perhaps 1 mitogenome record. A paper should cite the BioProject (it leads to everything else) and the <code>GCA_</code> numbers.</p>
+  </div></details>
+
+  <h3>Order of submission</h3>
+  <ol class="steps">
+    <li><div><b>BioProject</b><div class="d">Describes the study. Register it first or let the SRA/Genome wizard create it. Projects with several haplotype assemblies need one BioProject per haplotype plus an <dfn>umbrella BioProject</dfn> that links them (NCBI staff create the umbrella if you do not have one).</div></div></li>
+    <li><div><b>BioSample</b><div class="d">One record per sequenced individual. Both haplotypes of one animal share the <em>same</em> BioSample, which must have an isolate name to tell this animal from others of its species.</div></div></li>
+    <li><div><b>SRA (reads)</b><div class="d">Raw reads with quality scores, linked to the project and sample. Do this before the genome: the assembly metadata refers to the reads, and an SRA submission done first gives you BioProject and BioSample accessions.</div></div></li>
+    <li><div><b>Genome (WGS assembly)</b><div class="d">Contigs/scaffolds/chromosomes as FASTA (or <span class="tip" title=".sqn: NCBI's submission file (ASN.1 format) that bundles sequences, annotation and submitter details; made with table2asn, below."><code>.sqn</code></span> if annotated), with assembly metadata. Mitogenome included here when it comes with the nuclear assembly.</div></div></li>
+    <li class="later"><div><b>Later: annotation, updates</b><div class="d">Annotation can be added later as a new version. A corrected assembly is submitted as an update of the same <code>GCA_</code> (the version number goes up).</div></div></li>
+  </ol>
+
+  <h3>BioSample: the specimen label</h3>
+  <p>NCBI asks you to choose a <dfn>package</dfn>: a set of required fields for one kind of sample. For animal genomes the usual choices are <b>Model organism or animal</b> and <b>Invertebrate</b>. Their required fields today (NCBI package pages, version 1.0):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Field</th><th>Model organism or animal</th><th>Invertebrate</th><th>What to write</th></tr></thead>
+    <tbody>
+      <tr><td><code>organism</code></td><td>required</td><td>required</td><td>The most specific name in NCBI Taxonomy, e.g. <i>Mus musculus</i>. If your species is missing, the wizard lets you request it.</td></tr>
+      <tr><td><code>isolate</code> (or strain, breed, cultivar, ecotype)</td><td>at least one</td><td>isolate or breed</td><td>Your name for this individual, e.g. a field or lab number. Required for haplotype assemblies.</td></tr>
+      <tr><td><code>age</code> or <code>dev_stage</code></td><td>at least one</td><td>—</td><td>"adult", "juvenile", or an age.</td></tr>
+      <tr><td><code>sex</code></td><td>required</td><td>—</td><td>male, female, … Check it: an assembly from a male has a Y (see <a href="#s12">section 12</a>).</td></tr>
+      <tr><td><code>tissue</code></td><td>required</td><td>required</td><td>"liver", "muscle", "whole body".</td></tr>
+      <tr><td><code>geo_loc_name</code></td><td>required</td><td>required</td><td>Country from NCBI's list, then a colon and detail: <code>Russia: Altai, Chuya valley</code>.</td></tr>
+      <tr><td><code>collection_date</code></td><td>required</td><td>required</td><td><code>2024-06-17</code>, <code>2024-06</code> or <code>2024</code> (ISO), or <code>17-Jun-2024</code>.</td></tr>
+      <tr><td><code>host</code> or <code>isolation_source</code></td><td>—</td><td>at least one</td><td>For free-living animals, isolation_source such as "pond".</td></tr>
+      <tr><td><code>specimen_voucher</code></td><td>optional</td><td>optional</td><td>The museum number of the specimen, in the form <code>institution:collection:number</code>, e.g. <code>UAM:Mamm:52179</code> (NCBI's example).</td></tr>
+      <tr><td><code>lat_lon</code>, <code>collected_by</code></td><td>optional</td><td>optional</td><td><code>38.98 N 77.11 W</code>; the collector's name.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note"><b>Voucher and permits.</b> The archives make the voucher optional, but it is the only thing that lets a reader check your species identification later. Deposit the specimen (or tissue) in a collection and put its number in <code>specimen_voucher</code>. Keep collecting and export permit numbers with your records: the archives do not ask for them, but many journals and access-and-benefit-sharing rules do, and the BioSample <code>description</code> is a good place to note them.</div>
+
+  <h3>SRA: the reads</h3>
+  <p>The SRA wizard (<a href="https://submit.ncbi.nlm.nih.gov/subs/sra/">submit.ncbi.nlm.nih.gov/subs/sra</a>) goes: submitter → general info and release date → project → BioSample package → BioSample attributes → SRA metadata → files → review. The <dfn>SRA metadata</dfn> is a table with one row per <span class="tip" title="In SRA terms an experiment is a unique combination of sample, library, strategy, layout and instrument model">experiment</span>. Its <span class="tip" title="Controlled vocabulary: the cell must contain one of a fixed list of allowed values.">controlled-vocabulary</span> columns:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Column</th><th>Means</th><th>Typical genome-project values</th></tr></thead>
+    <tbody>
+      <tr><td><code>library_strategy</code></td><td>What kind of experiment</td><td><code>WGS</code> for genomic reads, <code>Hi-C</code>, <code>RNA-Seq</code></td></tr>
+      <tr><td><code>library_source</code></td><td>What molecule</td><td><code>GENOMIC</code>, <code>TRANSCRIPTOMIC</code></td></tr>
+      <tr><td><code>library_selection</code></td><td>How DNA was selected</td><td><code>RANDOM</code> for shotgun libraries; <code>size fractionation</code> if fragments were size-selected; for Hi-C pick from the list (e.g. <code>Restriction Digest</code>, defined as "DNA fractionation using restriction enzymes")</td></tr>
+      <tr><td><code>library_layout</code></td><td>Reads come in pairs or not</td><td><code>paired</code> for Illumina pairs; <code>single</code> for HiFi/ONT</td></tr>
+      <tr><td><code>platform</code> / <code>instrument_model</code></td><td>The machine</td><td><code>PACBIO_SMRT</code>: Sequel II, Sequel IIe, Revio, Vega…; <code>OXFORD_NANOPORE</code>: MinION, GridION, PromethION; <code>DNBSEQ</code>: DNBSEQ-G400, DNBSEQ-T7…; <code>ILLUMINA</code>: NovaSeq …; each platform also allows <code>unspecified</code></td></tr>
+      <tr><td><code>filetype</code>, <code>filename</code></td><td>The files of this row</td><td><code>fastq</code> or <code>bam</code>; exact file names with extension</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><b>An instrument that is not in the list.</b> The instrument list is fixed. In the ENA's copy of the shared INSDC schema (July 2026) there is no CycloneSEQ (<a href="#s01">section 1</a>), for example, and its Oxford Nanopore list has only MinION, GridION and PromethION. Do <em>not</em> pick a different company's machine because the list forces a choice: readers will run the wrong error models on the reads. Write to the archive's help desk (NCBI: <code>sra@ncbi.nlm.nih.gov</code>) and ask which value to use, and state the real instrument, chemistry, flow cell and basecaller version in the library's design description and in the BioProject text.</div>
+  <p><b>Files.</b> The SRA is a raw-data archive and wants per-base qualities. Accepted: FASTQ (gzip or bzip2 compressed; <b>not zip</b>), BAM (preferred by SRA; also unaligned BAM, as PacBio delivers HiFi), <span class="tip" title="CRAM: a more compressed form of BAM that stores reads as differences from a reference sequence.">CRAM</span>. SAM is not accepted. NCBI's format guide also lists PacBio <code>bas.h5</code>/<code>bax.h5</code> (older PacBio instrument files) and ONT <span class="tip" title="fast5 and pod5: Oxford Nanopore files with the raw electrical signal; pod5 is the newer format."><code>fast5</code></span> (basecalled, tarred) for "native" submissions; it does not mention pod5. Paired reads go as two files in matching order (not R1 and R2 concatenated into one). Limits: each FASTQ under 100 GB (split bigger files), at most 1,000 samples and 5 TB per submission. Assemblies are <em>not</em> accepted in the SRA.</p>
+  <p><b>Upload.</b> Small sets: through the browser. Large sets: request a <dfn>preload folder</dfn> in the wizard, upload with <span class="tip" title="FTP: the old standard protocol for copying files to a server.">FTP</span> or <span class="tip" title="Aspera (ascp): a commercial file-transfer program, much faster than FTP over long distances; NCBI provides the key.">Aspera</span> into a new subfolder, wait 10–15 minutes, then pick that subfolder at the Files step. The account folder name (<code>uploads/you@mail_xxxxx</code>) and the Aspera key file are shown in the wizard.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># FTP (host, user name and password are shown in the SRA wizard)</span>
+ftp ftp-private.ncbi.nlm.nih.gov
+  cd uploads/you@mail.org_xxxxx
+  mkdir my_reads               <span class="c"># files must be in a subfolder, not the account folder itself</span>
+  cd my_reads
+  binary
+  mput *.fastq.gz
+
+<span class="c"># Aspera command line (faster, resumes; needs the key file from the wizard)</span>
+ascp -i &lt;key-file&gt; -QT -l100m -k1 -d ./my_reads \
+     subasp@upload.ncbi.nlm.nih.gov:uploads/you@mail.org_xxxxx/my_reads
+<span class="c"># -k1 resume partial files; -l100m bandwidth cap (raise it if your link allows); -d create the folder</span>
+<span class="c"># Aspera needs TCP port 22 and UDP port 33001 open</span></pre></div>
+  <p><b>Release date.</b> The default is "release immediately following processing". You can set a later date (a hold until publication) and change it later; changing the SRA release date changes the project's and samples' dates too. Before contacting the help desk, quote your temporary submission ID (<code>SUB…</code>).</p>
+
+  <h3>Genome: the assembly</h3>
+  <p>The Genome Submission Portal (<a href="https://submit.ncbi.nlm.nih.gov/subs/genome/">submit.ncbi.nlm.nih.gov/subs/genome</a>) accepts either FASTA files (no annotation) or <code>.sqn</code> files (with annotation), never a mix. What NCBI checks, from its current submission guide:</p>
+  <ul class="qlist">
+    <li><b>Sequence names</b> unique, under 50 characters, only letters, digits and <code>- _ . : * #</code>.</li>
+    <li><b>Length:</b> contigs should be longer than 199 nt. No Ns at the start or end of any sequence (the validator calls it <code>TerminalNs</code>).</li>
+    <li><b>Gaps:</b> a run of Ns inside a sequence is a gap, and contigs on both sides must be in the right order and orientation. Never join contigs of unknown order with Ns. You state the smallest N-run that counts as a gap (10 or less), how many Ns mean "gap of unknown length" (NCBI suggests 100), and the <dfn>linkage evidence</dfn>: what joined the two sides, e.g. <code>paired-ends</code>, <code>proximity-ligation</code> (Hi-C, <a href="#s05">section 5</a>), <code>map</code>, <code>align-genus</code>.</li>
+    <li><b>AGP instead of Ns:</b> scaffolds and chromosomes can also be described by an <dfn>AGP file</dfn> (9 tab-separated columns: object, start, end, part number, component type <code>W</code> for a contig or <code>N</code>/<code>U</code> for a gap, then contig name and coordinates, or gap length, gap type, linkage <code>yes</code>/<code>no</code> and evidence such as <code>proximity_ligation</code>). U gaps are always 100 long. YaHS writes this file for you (<code>asm_scaffolds_final.agp</code>, <a href="#s05">section 5</a>).</li>
+    <li><b>Chromosomes:</b> for a single genome the portal asks which sequences are chromosomes, plasmids or organelles; for batch and haplotype submissions put it in the FASTA header: <code>&gt;scaf1 [location=chromosome] [chromosome=1]</code>, <code>&gt;mito [location=mitochondrion] [topology=circular] [completeness=complete]</code>. Chromosome names: up to 33 characters, no "chr" or "chromosome", not "Un" or "0"; linkage groups include "LG".</li>
+    <li><b>Contamination and adaptors:</b> every genome is screened for foreign organisms and vector/adaptor sequence, and contamination is a common reason a submission comes back. NCBI recommends running its own <a href="#s09">FCS tools (section 9)</a>, FCS-adaptor and FCS-GX, on the final assembly before submitting, and removing or trimming what they flag.</li>
+    <li><b>Assembly metadata:</b> assembly method (program name) and its version or date, estimated genome coverage (e.g. "40x"), sequencing technology (all of them), and whether the assembly is a full representation of the genome.</li>
+  </ul>
+  <p><b>Two haplotypes.</b> Choose the option "<span class="tip" title="Pseudohaplotype: an assembly of one parental copy that may switch between the two parents along a contig, because phasing is not complete (section 7).">Pseudohaplotypes</span> of a diploid/polyploid assembly". You must say how the assemblies relate: <b>Principal/Alternate</b> when one is clearly better (hifiasm's primary and alternate contigs), <b>Haplotype 1/Haplotype 2</b> when they are of similar quality (hifiasm <code>hap1</code>/<code>hap2</code>), or <b>Maternal/Paternal</b> when parentage is known (trio data). One BioSample, one BioProject per haplotype, joined by an umbrella. Name them so they can be told apart, e.g. <code>bSteHir1.pri</code>/<code>bSteHir1.alt</code> or <code>rPleGil1.0.hap1</code>/<code>.hap2</code> (NCBI's examples). The mitogenome goes into the principal (or maternal) assembly; NCBI's page gives no rule for a Haplotype 1/Haplotype 2 pair, so ask the help desk. See <a href="#s07">section 7</a> for what these products are.</p>
+  <p><b>Mitogenome alone.</b> A mitochondrial genome without a nuclear assembly is <em>not</em> a Genome portal submission: it goes through the GenBank portal (SP-GenBank: eukaryote → "any other feature … organelle genomes"), as FASTA plus a feature table.</p>
+  <p><b>Annotation</b> is optional. Without it, upload FASTA. With it, build a <code>.sqn</code> file with <dfn>table2asn</dfn> (NCBI's converter; it replaced tbl2asn). You need a template <code>.sbt</code> (made on NCBI's "Submission template" web form, it holds authors and contacts), the sequences <code>.fsa</code>, and features as a 5-column <code>.tbl</code> or NCBI-style GFF3. To submit an annotated genome, register BioProject and BioSample first and tick "autogenerate <span class="tip" title="Locus tag: a unique ID given to every gene of a genome (prefix + number, e.g. ABC_00001). The prefix is registered with the BioProject.">locus tag</span> prefix".</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># download: ftp.ncbi.nlm.nih.gov/asn1-converters/by_program/table2asn/ (rename to table2asn, chmod +x)</span>
+<span class="c"># genome with gaps: runs of ≥10 N are gaps, runs of exactly 100 N are unknown-length gaps, Hi-C evidence</span>
+<span class="c"># (illustration only: a contig assembly with no Ns and no Hi-C would leave the three gap options out)</span>
+table2asn -t template.sbt -indir fsa_dir/ -M n -Z \
+          -gaps-min 10 -gaps-unknown 100 -l proximity-ligation \
+          -j "[organism=Mus musculus] [isolate=MM-01]"
+<span class="c"># one sequence + its feature table, with a GenBank flatfile to look at</span>
+table2asn -t template.sbt -i mito.fsa -f mito.tbl -V vb
+<span class="c"># out: .sqn (submit this)  .val (validation messages)  .stats (summary of .val)</span>
+<span class="c">#      .dr (discrepancy report, from -Z)  .gbf (flatfile, from -V b)</span>
+<span class="c"># fix every ERROR/REJECT in .val and every FATAL in .dr before uploading</span></pre></div>
+  <p>The 5-column feature table: a header line <code>&gt;Feature</code> + the sequence ID exactly as in the FASTA, then one line per interval (start, stop, and the feature key on the first interval only), then qualifier lines starting with three empty columns. Minus-strand features are written with the larger number first. Columns are separated by TABs.</p>
+  <div class="toy">&gt;Feature mito
+<span class="a">5522	5572	CDS</span>          <span class="c">← first interval carries the key</span>
+<span class="a">5706	6197</span>                 <span class="c">← further intervals: start and stop only</span>
+			product	Yip2p
+<span class="h">4626	4590	tRNA</span>         <span class="c">← minus strand: larger coordinate first</span>
+<span class="h">4570	4535</span>
+			product	tRNA-Phe</div>
+  <p style="font-size:13.5px;color:var(--muted)">Example lines from NCBI's Feature Table page (a yeast CDS and tRNA). In the real file the gaps are single TAB characters.</p>
+  <p><b>Typical reasons a genome comes back:</b> validation errors left unfixed (the <code>.val</code>/<code>.dr</code> files); contamination; a genome size far outside what GenBank has for the species; BioSample and assembly metadata that disagree; feature table IDs that do not match the FASTA IDs (the report then says <code>NO_ANNOTATION</code>). NCBI's pages give no fixed processing time: the status goes Queued → Processing (accessions assigned, staff review) → Processed (released). Unfixed errors cause the longest delays; if a genome is held until publication, tell NCBI at least two weeks before the paper appears.</p>
+
+  <section class="tool" aria-labelledby="s13-plan-h">
+    <div class="tool-head"><span class="tool-tag">Planner</span><h3 id="s13-plan-h">What do I submit, in which order?</h3></div>
+    <p class="tool-note">Tick what you have. The list below is the order of submissions and the files each one needs.</p>
+    <div class="controls" id="s13-plan-in">
+      <fieldset class="s13-fs"><legend>Reads</legend>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-ill" checked> Illumina / DNBSEQ pairs</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-hifi" checked> PacBio HiFi</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-ont"> Oxford Nanopore</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-odd"> instrument not in the list (e.g. CycloneSEQ)</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-hic" checked> Hi-C</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-r-rna"> RNA-seq</label>
+      </fieldset>
+      <fieldset class="s13-fs"><legend>Assembly</legend>
+        <label class="s13-ck"><input type="radio" name="s13-lev" value="none"> none yet</label>
+        <label class="s13-ck"><input type="radio" name="s13-lev" value="contig"> contigs only</label>
+        <label class="s13-ck"><input type="radio" name="s13-lev" value="scaffold"> scaffolds</label>
+        <label class="s13-ck"><input type="radio" name="s13-lev" value="chrom" checked> chromosomes</label>
+      </fieldset>
+      <fieldset class="s13-fs"><legend>Haplotypes</legend>
+        <label class="s13-ck"><input type="radio" name="s13-hap" value="one"> one assembly</label>
+        <label class="s13-ck"><input type="radio" name="s13-hap" value="pa" checked> principal + alternate</label>
+        <label class="s13-ck"><input type="radio" name="s13-hap" value="h12"> hap1 + hap2</label>
+      </fieldset>
+      <fieldset class="s13-fs"><legend>Extras</legend>
+        <label class="s13-ck"><input type="checkbox" id="s13-x-mt" checked> mitogenome</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-x-ann"> gene annotation</label>
+        <label class="s13-ck"><input type="checkbox" id="s13-x-hold" checked> hold until publication</label>
+      </fieldset>
+    </div>
+    <ol class="steps" id="s13-plan-out"></ol>
+  </section>
+
+  <h3>The European route: ENA and Webin-CLI</h3>
+  <p>ENA has the same objects (study <code>PRJEB…</code>, sample <code>SAMEA…</code>, runs <code>ERR…</code>). You register a <span class="tip" title="Webin: ENA's submission system; the account name looks like Webin-12345.">Webin</span> account, register the study and samples (web forms or spreadsheets), then send reads and assemblies with <dfn>Webin-CLI</dfn>, a <span class="tip" title="Java: a programming language; its programs come as .jar files and need a Java runtime installed.">Java</span> program (Java 17 or newer; jar from <a href="https://github.com/enasequence/webin-cli/releases">github.com/enasequence/webin-cli/releases</a>, or <code>docker run enasequence/webin-cli</code>, <span class="tip" title="Docker: runs a program inside a ready-made container that brings all its dependencies.">Docker</span>). Each submission is described by a small text <dfn>manifest</dfn>; run with <code>-validate</code> first, then <code>-submit</code>. <code>-test</code> sends to a test server that archives nothing.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># reads.manifest (one experiment = one manifest)</span>
+STUDY             PRJEB12345
+SAMPLE            SAMEA123456
+NAME              mGenSpe_HiFi_1
+INSTRUMENT        Revio
+LIBRARY_SOURCE    GENOMIC
+LIBRARY_SELECTION RANDOM
+LIBRARY_STRATEGY  WGS
+BAM               m84001_hifi_reads.bam
+
+<span class="c"># genome.manifest</span>
+STUDY             PRJEB12345
+SAMPLE            SAMEA123456
+ASSEMBLYNAME      mGenSpe1.pri
+ASSEMBLY_TYPE     clone or isolate
+COVERAGE          40
+PROGRAM           hifiasm &lt;version&gt;; YaHS &lt;version&gt;
+PLATFORM          PacBio Revio, Illumina NovaSeq X
+MOLECULETYPE      genomic DNA
+FASTA             mGenSpe1.pri.fa.gz
+AGP               mGenSpe1.pri.agp.gz
+CHROMOSOME_LIST   chromosomes.txt.gz
+
+java -jar webin-cli-&lt;version&gt;.jar -context reads  -userName Webin-XXXXX -password '…' -manifest reads.manifest  -validate
+java -jar webin-cli-&lt;version&gt;.jar -context genome -userName Webin-XXXXX -password '…' -manifest genome.manifest -submit
+<span class="c"># add -ascp to upload with Aspera (ascp must be on PATH)</span></pre></div>
+  <p>The <dfn>chromosome list</dfn> file (gzipped, TAB-separated) has the sequence name, the chromosome name, the type (<code>chromosome</code>, <code>linkage_group</code>, <code>plasmid</code>…, optionally with a <code>linear</code>/<code>circular</code> modifier, written like ENA's example <code>Linear-Chromosome</code>), and optionally a location such as <code>Mitochondrion</code>. Sequences assigned to a chromosome but not placed in it go into an <em>unlocalised list</em> (sequence name, chromosome name). ENA also requires: at least 2 sequences for a contig assembly, each at least 20 bp, no terminal Ns, assembly name up to 50 characters. You get an <code>ERZ…</code> number at once (for your own use; do not cite it) and the <code>GCA_</code> accession after processing.</p>
+  <div class="toy">contig_1	1	Linear-Chromosome
+contig_2	X	Linear-Chromosome
+mito	MT	Circular-Chromosome	Mitochondrion</div>
+  <p style="font-size:13.5px;color:var(--muted)">The ENA manifest values above (study, sample, instruments, program versions) are an illustration, not our own data; <code>PRJEB12345</code>/<code>SAMEA123456</code> are the format examples from ENA's accession guide.</p>
+
+  <h3>China: CNCB / National Genomics Data Center</h3>
+  <p>The <b>National Genomics Data Center</b> (<dfn>NGDC</dfn>) of the China National Center for Bioinformation (CNCB), Beijing, runs its own archives with the same structure as INSDC but <em>outside</em> it:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>NGDC database</th><th>Holds</th><th>Accession format (from NGDC guides)</th><th>INSDC equivalent</th></tr></thead>
+    <tbody>
+      <tr><td>BioProject</td><td>study</td><td><code>PRJCA</code> + digits, e.g. <code>PRJCA000005</code></td><td>PRJNA / PRJEB / PRJDB</td></tr>
+      <tr><td>BioSample</td><td>specimen</td><td><code>SAMC</code> + 6 digits, e.g. <code>SAMC000001</code></td><td>SAMN / SAMEA / SAMD</td></tr>
+      <tr><td><b>GSA</b> (Genome Sequence Archive)</td><td>raw reads</td><td><code>CRA…</code> dataset, <code>CRX…</code> experiment, <code>CRR…</code> run</td><td>SRA / ENA reads</td></tr>
+      <tr><td>GSA-Human</td><td>human reads, often controlled access</td><td><code>HRA…</code></td><td>dbGaP / EGA</td></tr>
+      <tr><td><b>GWH</b> (Genome Warehouse)</td><td>assemblies and annotation</td><td><code>GWH</code> + 4 capital letters + 8 digits: <code>GWHAAAA00000000</code> = assembly, <code>…00000001</code> onward = its sequences, <code>.1</code> = version; genes/transcripts/proteins <code>GWHG…</code>/<code>GWHT…</code>/<code>GWHP…</code></td><td>GCA_ + WGS</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Why some genomes are only there.</b> Many Chinese groups (and some journals that publish their work) deposit in NGDC only. The 2021 GWH paper describes exchange with INSDC as limited to a test set (62 SARS-CoV-2 sequences shared with GenBank) and sharing of all public assemblies as a future plan. So an NCBI search that finds nothing does <em>not</em> mean your species has no genome: search NGDC separately.</p>
+  <p><b>Searching and downloading.</b> Search by species or accession at <a href="https://ngdc.cncb.ac.cn/gwh/">ngdc.cncb.ac.cn/gwh</a> and <a href="https://ngdc.cncb.ac.cn/gsa/">ngdc.cncb.ac.cn/gsa</a> (the site may first run a browser check, so scripted access to the HTML pages can fail; GWH has an <span class="tip" title="API: an address that programs (not browsers) can query to get data back in a machine-readable form.">API</span>). Released assemblies download from <a href="https://download.cncb.ac.cn/gwh/">download.cncb.ac.cn/gwh/</a> (FASTA, GFF3, TSV); released GSA runs from <code>ftp://download.big.ac.cn/gsa3/&lt;CRA&gt;/&lt;CRR&gt;/</code>. Controlled data in GSA-Human (and OMIX) need approval from a Data Access Committee first. Submitting to NGDC goes through BIG Sub (<a href="https://ngdc.cncb.ac.cn/gsub/">ngdc.cncb.ac.cn/gsub</a>); files go by FTP to <code>submit.big.ac.cn</code> (run <code>binary</code> before <code>mput</code>) or by Aspera. GWH takes FASTA, annotation as GFF or TBL, AGP for chromosome-level assemblies and a CSV that assigns sequences to chromosomes.</p>
+
+  <h3>Where else to look for a genome of your species</h3>
+  <dl class="defs">
+    <dt>NCBI Datasets</dt><dd><a href="https://www.ncbi.nlm.nih.gov/datasets/genome/">ncbi.nlm.nih.gov/datasets/genome</a> and the <code>datasets</code> command-line tool: every INSDC assembly (GenBank, ENA, DDBJ) with its <code>GCA_</code>, plus RefSeq <code>GCF_</code>.</dd>
+    <dt>ENA browser</dt><dd><a href="https://www.ebi.ac.uk/ena/browser/home">ebi.ac.uk/ena/browser</a>: the same INSDC data, convenient for read files (direct FTP links per run).</dd>
+    <dt>Ensembl</dt><dd><a href="https://www.ensembl.org">ensembl.org</a> and its newer site <a href="https://beta.ensembl.org">beta.ensembl.org</a>: annotated genomes with gene models; Darwin Tree of Life genomes at <a href="https://projects.ensembl.org/darwin-tree-of-life/">projects.ensembl.org/darwin-tree-of-life</a>.</dd>
+    <dt>GoaT</dt><dd><a href="https://goat.genomehubs.org">goat.genomehubs.org</a>, Genomes on a Tree: genome size, chromosome numbers and the <em>sequencing status</em> of every eukaryote species, as reported by Earth BioGenome Project affiliates. Use it to see who has a genome planned or in progress before you start one.</dd>
+    <dt>DNA Zoo</dt><dd><a href="https://www.dnazoo.org/assemblies">dnazoo.org/assemblies</a>: chromosome-length assemblies made by adding Hi-C (<span class="tip" title="3D-DNA: a Hi-C scaffolder, an alternative to YaHS (section 5).">3D-DNA</span> + <span class="tip" title="Juicebox: a program to view a Hi-C contact map and correct the scaffolds by hand.">Juicebox</span> curation) to existing drafts, many for mammals and other vertebrates.</dd>
+    <dt>Large projects</dt><dd>Vertebrate Genomes Project (<a href="https://www.vertebrategenomesproject.org">vertebrategenomesproject.org</a>; raw data on <a href="https://genomeark.github.io/">GenomeArk</a>), Earth BioGenome Project (<a href="https://www.earthbiogenome.org">earthbiogenome.org</a>), Darwin Tree of Life (<a href="https://portal.darwintreeoflife.org">portal.darwintreeoflife.org</a>).</dd>
+    <dt>NGDC</dt><dd>GWH and GSA, above.</dd>
+    <dt>Supplements</dt><dd>Some assemblies exist only as paper supplements on <a href="https://figshare.com">figshare</a>, <a href="https://zenodo.org">Zenodo</a> or <a href="https://datadryad.org">Dryad</a>: search the species name in Google Scholar plus "genome assembly".</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># install: conda create -n ncbi_datasets; conda activate ncbi_datasets; conda install -c conda-forge ncbi-datasets-cli</span>
+datasets summary genome taxon "Talpidae" --as-json-lines | dataformat tsv genome \
+    --fields accession,organism-name,assmstats-contig-n50,assminfo-level   <span class="c"># what exists for a family or genus</span>
+datasets download genome taxon "Talpidae" --include none           <span class="c"># metadata report only</span>
+datasets download genome accession GCF_000001405.40 --include genome,gff3,protein --filename human.zip
+datasets download genome accession GCA_003774525.2 --preview      <span class="c"># size before downloading</span>
+<span class="c"># big sets: add --dehydrated, unzip, then: datasets rehydrate --directory unzipped_dir/</span></pre></div>
+  <details class="simple"><summary>Simple explanation with examples: a checklist for "is there already a genome of my species?"</summary><div class="in">
+    <ol class="qlist">
+      <li><b>NCBI Datasets</b>: search the binomial, then the genus. Note GCA/GCF accession, assembly level (contig/scaffold/chromosome), contig N50, date, and whether it is a principal, alternate or haplotype assembly.</li>
+      <li><b>Synonyms.</b> Search old and new names: NCBI Taxonomy may still use a name your field has abandoned, or the reverse.</li>
+      <li><b>NGDC GWH</b>: same searches. A genome may be only here.</li>
+      <li><b>GoaT</b>: is someone already sequencing it? GoaT shows the sequencing status reported by projects affiliated with the Earth BioGenome Project. Write to them before you spend money.</li>
+      <li><b>DNA Zoo</b> and project portals (VGP/GenomeArk, DToL): sometimes released there earlier than in the archives.</li>
+      <li><b>Reads without an assembly</b>: search SRA/ENA/GSA for the species. Raw HiFi or Hi-C reads from someone else can sometimes be assembled or used for scaffolding (check the data's reuse terms).</li>
+      <li><b>Literature</b>: "<i>Genus species</i> genome assembly" in Google Scholar; check supplements on figshare/Zenodo/Dryad.</li>
+      <li><b>Close relatives</b>: if your species has nothing, the nearest relative's chromosome-level assembly still helps with scaffolding checks and BUSCO comparisons.</li>
+    </ol>
+    <p>Example: for the Russian desman <i>Desmana moschata</i> a search of the family finds the assembly of a relative, the Pyrenean desman <i>Galemys pyrenaicus</i> (<code>GCA_019455555.1</code>), onto which the published desman assembly was scaffolded; that is the kind of hit step 8 is about.</p>
+  </div></details>
+
+  <div class="note"><b>In our projects</b>
+    <ul>
+      <li><b>A mitogenome feature table that "had a bug".</b> Our crayfish (Astacidae) mitogenome, 15,428 bp, was prepared for GenBank with table2asn (FASTA + 5-column <code>.tbl</code> + a <code>.sbt</code> template). The D-loop crosses the start of the circular sequence, so it was written as two intervals: <code>14919 15428 D-loop</code> and then a bare <code>1 180</code>. An automated review called the bare line a syntax error and the "final" file changed it to <code>1 180 D-loop</code>. NCBI's Feature Table page shows the opposite: only the first interval carries the key, further intervals are start and stop only. The bare line was correct, and adding the key makes a second, separate D-loop feature. Lesson: check a "fix" against the format documentation and let <code>table2asn … -V vb</code> show you the flatfile before believing any reviewer, human or machine. The same package also added a missing trnL2 and shortened cox1 so it no longer ran into trnL2. <span style="color:var(--muted)">(Sources: memory notes crayfish_mito_annotation_qc_2026-08-08 and crayfish_mito_final_resubmission_2026-08-09; NCBI feature_table page.)</span></li>
+      <li><b>An instrument that is not in the SRA list.</b> The long reads of two of our unpublished small-mammal genomes (species B and C) were first described as Oxford Nanopore. The read IDs did not look like ONT IDs, and the provider confirmed a CycloneSEQ instrument and named the basecaller and its model. These reads must not be deposited as ONT "MinION/PromethION"; record the real instrument, flow cell, kit and basecaller as described above. <span style="color:var(--muted)">(Source: our project notes.)</span></li>
+      <li><b>Which file is "primary"?</b> For our species A (an unpublished rodent genome assembled with hifiasm), a file named <code>hifiasm_primary.fa</code> was a link to <code>…_hifiasm.p_ctg.fa</code>, which held hap1 (headers <code>h1tg…</code>): a script had picked <code>bp.hap1.p_ctg.gfa</code> with a wildcard (<a href="#s04">section 4</a>, <a href="#s07">section 7</a>), and for a while every number sent to collaborators came from hap1. The real primary (fewer contigs, about twice the contig N50, a clearly higher BUSCO C) is the better assembly. If such files go to NCBI as "Principal" and "Alternate", check names, contig counts and sizes against the assembler's own output files first. <span style="color:var(--muted)">(Source: our project notes.)</span></li>
+    </ul>
+  </div>
+</section>

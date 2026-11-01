@@ -1,0 +1,142 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>Preparing the input: one diploid genome</h2>
+  <p class="lede">PSMC does not read your reads, your VCF or your assembly. It reads one long string of letters, one letter per 100 bases, that says only "here the two chromosome copies differ", "here they do not", or "here we do not know". Everything you decide while making that string (which reads count, which bases you trust, which chromosomes you leave out) goes straight into the curve. This section builds the string step by step, with the exact commands and defaults of the tools, and shows with a toy genome how loose filters invent heterozygous sites and strict ones throw real ones away.</p>
+
+  <h3>What the input is</h3>
+  <dl class="defs">
+    <dt>Diploid consensus</dt><dd>One sequence per contig in which every base is written as what the animal carries on both copies. Where the two copies differ, the base is written as a two-base <span class="tip" title="IUPAC codes: one letter for two possible bases. R = A or G, Y = C or T, M = A or C, K = G or T, S = C or G, W = A or T. A heterozygous A/G site is written R.">IUPAC code</span> (an A/G heterozygous site becomes <code>R</code>). Bases you do not trust are written in lower case or as <code>N</code>.</dd>
+    <dt>Callable bases</dt><dd>Positions where the reads were good enough that a heterozygous site, if present, would have been seen (<a href="../03-annotation/#s09">lesson 3, s09</a>). PSMC treats every base outside them as missing, not as homozygous.</dd>
+    <dt>psmcfa</dt><dd>The PSMC input file, written by <code>fq2psmcfa</code>. It looks like FASTA, but each letter stands for a 100-bp <dfn>bin</dfn>: <code>K</code> = at least one heterozygous site in the bin, <code>T</code> = no heterozygous site, <code>N</code> = (almost) no callable bases. The <code>K</code> here has nothing to do with the IUPAC <code>K</code> (G or T); it is just the letter Heng Li chose.</dd>
+  </dl>
+  <div class="toy">diploid consensus  ACGTTAGC<span class="h">R</span>TTAGGCATCCAG...  nnnnnnnnnnnnnnnn...  GGCTTA...
+psmcfa (100-bp bins)       <span class="h">K</span>                      N                  T</div>
+
+  <details class="simple"><summary>Simple explanation with examples: why PSMC only needs "differ or not" per 100 bases</summary><div class="in">
+    <p>PSMC looks along the genome for how far apart the differences between your animal's two chromosome copies are. Where the two copies trace back to a common ancestor a long time ago, mutations have had time to pile up, and differences are close together. Where the common ancestor is recent, differences are rare, so long stretches have none. The pattern of "dense" and "sparse" stretches is what PSMC turns into a history (<a href="#s03">s03</a>).</p>
+    <p>For that it does not need to know which bases differ, only roughly where. So the genome is cut into 100-base boxes and each box gets one of three marks. In a mammal with about 2 differences per 1,000 bases, most boxes are <code>T</code> (no difference) and about one in five to ten is <code>K</code>. A box you could not read gets <code>N</code>, and PSMC simply skips it.</p>
+    <p>The danger is a box with the wrong mark. A sequencing error or two merged repeat copies turn a <code>T</code> into a false <code>K</code>: the animal looks more diverse, and the population looks larger. A real difference that your filter removed turns a <code>K</code> into a false <code>T</code>: the population looks smaller. A missing box marked <code>T</code> instead of <code>N</code> has the same effect. Good input means: as few wrong marks as possible, and as many honest <code>N</code>s as needed.</p>
+  </div></details>
+
+  <h3>The workflow</h3>
+  <ol class="steps">
+    <li><div><b>Map the reads</b><div class="d">Reads of the animal onto its own primary assembly (or a close reference).</div><div class="t">minimap2 · bwa-mem2 · samtools</div></div></li>
+    <li><div><b>Mark duplicates</b><div class="d">For PCR-amplified short-read libraries: copies of one fragment must count once.</div><div class="t">samtools fixmate / markdup</div></div></li>
+    <li><div><b>Call genotypes at every base</b><div class="d">Either the PSMC route (bcftools consensus caller, all sites) or a modern caller plus a separate mask.</div><div class="t">bcftools mpileup | call -c · DeepVariant · Clair3</div></div></li>
+    <li><div><b>Decide which bases are callable</b><div class="d">Depth between about a third (or half) and twice the mean, mapping quality, repeats and low complexity, sex chromosomes and mitochondrion out.</div><div class="t">vcfutils.pl vcf2fq · mosdepth · bedtools</div></div></li>
+    <li><div><b>Write the diploid consensus and the bins</b><div class="d">IUPAC codes at heterozygous sites, lower case outside the mask, then 100-bp bins.</div><div class="t">vcf2fq · vcf2snp.pl + seqtk · fq2psmcfa</div></div></li>
+    <li><div><b>Check what is left</b><div class="d">Share of bins that are <code>N</code>, heterozygosity, the X control, a second filter set.</div><div class="t">grep / awk on the psmcfa</div></div></li>
+  </ol>
+
+  <h3>1. Mapping and duplicates</h3>
+  <p>Mapping and variant calling for one genome were covered in <a href="../03-annotation/#s09">lesson 3, s09</a>; use the same BAM. Two points matter here. First, map to a <b>purged</b> primary assembly (<a href="../02-assembly/#s06">lesson 2, s06</a>): if both haplotypes of a region are still in the assembly, each copy collects the reads of one haplotype and looks homozygous, which PSMC reads as a recent common ancestor. Second, in short-read libraries made with PCR, several reads can be copies of one DNA fragment. Mark them with <code>samtools fixmate -m</code> and <code>samtools markdup</code> (command in lesson 3). Both later tools skip reads flagged as duplicates by default: <code>bcftools mpileup</code> skips <code>UNMAP,SECONDARY,QCFAIL,DUP</code>, and <code>mosdepth</code> excludes flag 1796 (the same four).</p>
+
+  <h3>2. Route A: the PSMC README route (bcftools + vcf2fq)</h3>
+  <p>The PSMC README makes the diploid consensus in one pipe. Its example uses the 2011-era syntax (<code>samtools mpileup … | bcftools view -c</code>); with current bcftools the same thing is <code>bcftools mpileup | bcftools call -c</code>.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># bcftools 1.25, PSMC (lh3/psmc, 2025). Example for a mean depth of 30x: -d 10 (a third), -D 60 (twice)</span>
+<span class="c"># autosomes.bed = the autosomal contigs only (no X/Z, Y/W, mitochondrion); a .bed file is read as 0-based</span>
+bcftools mpileup -R autosomes.bed -f asm.fa -Ou aln.bam \
+  | bcftools call -c -Ov \
+  | vcfutils.pl vcf2fq -d 10 -D 60 | gzip > diploid.fq.gz
+
+fq2psmcfa -q20 diploid.fq.gz > diploid.psmcfa</pre></div>
+  <ul>
+    <li><b>Why <code>call -c</code> and not <code>call -m</code>.</b> <code>vcf2fq</code> reads three fields of the INFO column (where the caller writes extra values for each position) of every line: <code>FQ</code> (is the site heterozygous, and how sure), <code>MQ</code> (the <span class="tip" title="Root mean square of the mapping qualities of the reads at this position: a kind of average that is pulled down strongly by reads with low mapping quality.">RMS</span> mapping quality) and <code>DP</code> (depth). In the bcftools source, <code>FQ</code> is written only by the original consensus caller (<code>-c</code>); the newer multiallelic caller (<code>-m</code>) writes <code>MQ</code> but no <code>FQ</code>, so its output does not fit <code>vcf2fq</code> (our reading of both sources; we did not run this combination).</li>
+    <li><b>All sites, not just variants.</b> Do not add <code>-v</code> to <code>call</code>. <code>vcf2fq</code> needs a line for every position; positions without a line (no reads) become <code>n</code>.</li>
+    <li><b>What <code>vcf2fq</code> does</b> (defaults <code>-d 3 -D 100000 -Q 10 -l 5</code>): a base is written in upper case only if its depth is between <code>-d</code> and <code>-D</code> and its RMS mapping quality is at least <code>-Q</code>; otherwise it is written in lower case, which <code>fq2psmcfa</code> treats as missing. Five bases (<code>-l</code>) on each side of a called <span class="tip" title="Indel: an insertion or deletion of one or more bases.">indel</span> are also put in lower case. A heterozygous SNV is written as its IUPAC code. The quality line of the FASTQ is the consensus quality.</li>
+    <li><b>Depth rule of thumb</b> (README): "set <code>-d</code> to a third of the average depth and <code>-D</code> to twice". Measure the mean on the autosomes only.</li>
+    <li><b>Two traps.</b> <code>bcftools mpileup</code> keeps at most 250 reads per position (<code>-d 250</code>), so for very deep data raise it above twice the mean, or the upper depth bound never acts. The README example also uses <code>-C50</code>; the current bcftools manual says it does "not recommend use of this parameter unless you fully understand the impact of it", so we left it out.</li>
+  </ul>
+
+  <h3>3. Route B: a modern caller plus a callable mask</h3>
+  <p>DeepVariant (Illumina, HiFi, ONT) and Clair3 (ONT, HiFi) call long reads better than bcftools (<a href="../03-annotation/#s09">lesson 3, s09</a> has their commands; for any non-human genome Clair3 needs <code>--include_all_ctgs</code>). Their VCFs list variants, not every base, so the mask has to come from elsewhere: a depth/mapping-quality BED from <code>mosdepth</code>, minus whatever else you exclude. The PSMC README shows the way for VCF + BED input (written for dipcall, a tool that calls variants by comparing two assembled haplotypes with a reference, but it works for any one-sample VCF): put the heterozygous sites into the assembly as IUPAC codes, put everything outside the mask in lower case, then bin.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. callable mask: mosdepth 0.3.15, MAPQ >= 20, depth 10-60x for a 30x mean (bins are half-open: 10:61 = 10..60)</span>
+export MOSDEPTH_Q0=LOW MOSDEPTH_Q1=CALLABLE MOSDEPTH_Q2=HIGH
+mosdepth -n -Q 20 --quantize 0:10:61: -t 4 cov aln.bam
+zcat cov.quantized.bed.gz | awk '$4=="CALLABLE"' | grep -v -w -f sex_and_mt_contigs.txt > callable.bed
+bedtools subtract -a callable.bed -b simple_repeats.bed > mask.bed      <span class="c"># optional: TRF / low complexity</span>
+
+<span class="c"># 2. heterozygous, biallelic PASS SNVs inside the mask (add an allele-fraction filter as in lesson 3 if wanted)</span>
+bcftools view -f PASS -v snps -m2 -M2 -g het -T mask.bed -Ov -o het.vcf merge_output.vcf.gz
+
+<span class="c"># 3. consensus with IUPAC codes, lower case outside the mask, then 100-bp bins (seqtk 1.5; vcf2snp.pl is in psmc/utils)</span>
+seqtk seq -U asm.fa > asm.upper.fa                     <span class="c"># soft-masked assembly? make it upper case first</span>
+vcf2snp.pl het.vcf > het.snp                           <span class="c"># contig, position, ref base, IUPAC code</span>
+seqtk mutfa asm.upper.fa het.snp | seqtk seq -cM mask.bed -l80 - > diploid.fa
+fq2psmcfa diploid.fa > diploid.psmcfa</pre></div>
+  <p class="note warn"><b>A soft-masked assembly silently masks every repeat.</b> <code>fq2psmcfa</code> treats every <b>lower-case</b> base as missing. Many assemblies are delivered soft-masked, with repeats in lower case (<a href="../03-annotation/#s04">lesson 3, s04</a>). <code>seqtk mutfa</code> keeps the case of the bases it does not change, so on a soft-masked assembly all interspersed repeats (often 30 to 50 % of a mammal genome) become <code>N</code> bins without anyone deciding so. Whether you want that is a decision (see below), not an accident: convert to upper case first (<code>seqtk seq -U</code>) and mask repeats on purpose with a BED.</p>
+
+  <h3>4. Which bases to keep</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Filter</th><th>What the sources used or recommend</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td><b>Minimum depth</b></td><td>README: a third of the mean depth. Li &amp; Durbin 2011: half the mean. Nadachowska-Brzyska et al. 2016 (flycatchers): at least 10 reads per site, and a third of the mean "produced nearly flat lines" for genomes of 10× or less.</td><td>With few reads, both alleles of a heterozygous site are often not seen: the site is called homozygous, the base still counts as callable, and heterozygosity is biased low.</td></tr>
+      <tr><td><b>Maximum depth</b></td><td>README and Nadachowska-Brzyska et al.: twice the mean. Li &amp; Durbin 2011: twice the mean.</td><td>Two or more similar copies assembled as one (a <span class="tip" title="Collapsed duplication: several similar copies in the real genome are present only once in the assembly. Reads of all copies pile onto it, so depth is doubled or tripled, and differences between the copies look like heterozygous sites.">collapsed duplication</span>) collect the reads of all copies. The differences between the copies look like heterozygous sites with a perfectly normal <span class="tip" title="Allele fraction (AF): the share of reads at a site that carry the second base. At a true heterozygous site it is near 0.5.">allele fraction</span> of 0.5 (two copies) or 0.33 (three); only the depth gives them away.</td></tr>
+      <tr><td><b>Mapping quality</b></td><td><code>vcf2fq</code> default: RMS mapping quality ≥ 10. Li &amp; Durbin 2011: ≥ 25. Our projects: ≥ 10 in mosdepth.</td><td>Reads that fit equally well elsewhere (<span class="tip" title="Mapping quality: the aligner's confidence that a read belongs here and not elsewhere; 0 means it fits equally well somewhere else.">MAPQ</span> near 0) are often from another copy of a repeat; their differences are not alleles.</td></tr>
+      <tr><td><b>Indels</b></td><td><code>vcf2fq</code>: 5 bases on each side of an indel (<code>-l 5</code>). Li &amp; Durbin 2011: 10 bp.</td><td>Reads are often misaligned next to an indel, which creates false SNVs.</td></tr>
+      <tr><td><b>Mappability</b></td><td>Li &amp; Durbin 2011 masked positions "where fewer than 18 out of the 35 overlapping 35-mers from the reference sequence can be mapped elsewhere with zero or one mismatch" (a 35-mer <span class="tip" title="Mappability: whether short pieces of the reference starting at a position occur only once in the genome, so that reads from there can be placed unambiguously.">mappability</span> mask).</td><td>A short-read filter: in regions that look like other regions, short reads cannot be placed. Long reads need it less (our inference).</td></tr>
+      <tr><td><b>Repeats, low complexity</b></td><td>Not required by the README. Nadachowska-Brzyska et al. mapped to a repeat-masked assembly. Masking simple repeats (<span class="tip" title="Tandem Repeats Finder: finds microsatellites and other tandem repeats; see lesson 3, s04.">TRF</span>, <a href="../03-annotation/#s04">lesson 3, s04</a>) is cheap.</td><td>A microsatellite with two length alleles is often called as a tight cluster of "SNVs" with allele fraction 0.5. Masking all interspersed repeats removes much more sequence; check what it changes with a random mask of the same size (<a href="#s06">s06</a>).</td></tr>
+      <tr><td><b>Sex chromosomes</b></td><td>Li &amp; Durbin 2011 analysed autosomes; the X separately, with the <span class="tip" title="Pseudoautosomal region: the short part of the X that pairs with the Y and is present in two copies in males.">PAR</span> masked.</td><td>In the heterogametic sex the X (or Z) is single-copy: it has no real heterozygous sites, and in the other sex it has its own, smaller effective size. Find X/Z and Y/W contigs by depth (<a href="../02-assembly/#s12">lesson 2, s12</a>) and leave them out.</td></tr>
+      <tr><td><b>Mitochondrion</b></td><td>Not part of the model.</td><td>mtDNA is haploid and inherited without recombination; its depth is usually many times the nuclear depth, and <span class="tip" title="Heteroplasmy: more than one mtDNA variant in the same animal.">heteroplasmy</span> or <span class="tip" title="Nuclear mitochondrial DNA segments: pieces of mtDNA inserted into nuclear chromosomes (lesson 2, s11).">NUMT</span> reads add mixed sites. Remove the mt contig and NUMT-like contigs (<a href="../02-assembly/#s11">lesson 2, s11</a>).</td></tr>
+    </tbody>
+  </table></div>
+  <p>Nadachowska-Brzyska et al. (2016) also give the most-cited data requirements: a mean genome coverage of at least 18×, a per-site filter of at least 10 reads, and no more than 25 % missing data. Below about 18× their curves from different birds of one population did not agree. They tested short reads on one bird family; treat the numbers as a guide, not a law.</p>
+
+  <section class="tool explain" aria-labelledby="s02-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-toy-h">Filter a toy genome and watch the psmcfa change</h3></div>
+    <p class="tool-note">A toy male genome of 19.6 kb: two autosomal contigs, one X contig (single copy, half depth) and a shortened mitochondrion. Mean nuclear depth is 30×. The autosomes carry real heterozygous sites at 2.5 per kb (circles). The reads also produce false ones (crosses): random sequencing errors, differences between the copies of a collapsed duplication, reads from other repeat copies, a microsatellite, and mixed mtDNA sites. The toy caller reports a site as heterozygous when at least 2 reads show each allele. Your filters decide which bases are callable (green band) and which heterozygous sites count; the bins and the psmcfa text below follow the <code>fq2psmcfa</code> rule.</p>
+    <div class="controls" role="group" aria-label="Presets">
+      <div class="seg" role="group" aria-label="Preset filter sets" id="s02-preset"><button type="button" data-v="loose" aria-pressed="false">too loose</button><button type="button" data-v="readme" aria-pressed="true">README-style</button><button type="button" data-v="strict" aria-pressed="false">too strict</button></div>
+      <button type="button" class="btn" id="s02-new">new toy genome</button>
+    </div>
+    <div class="controls" role="group" aria-label="Filters">
+      <label for="s02-dmin">Minimum depth <output id="s02-dmin-o">10×</output><input type="range" id="s02-dmin" min="1" max="30" step="1" value="10"></label>
+      <label for="s02-dmax">Maximum depth <output id="s02-dmax-o">60×</output><input type="range" id="s02-dmax" min="32" max="200" step="1" value="60"></label>
+      <label for="s02-mq">Minimum mapping quality <output id="s02-mq-o">20</output><input type="range" id="s02-mq" min="0" max="60" step="5" value="20"></label>
+      <label for="s02-af">Allele fraction of a het site <output id="s02-af-o">0.30 to 0.70</output><input type="range" id="s02-af" min="0" max="0.45" step="0.05" value="0.3"></label>
+    </div>
+    <div class="controls" role="group" aria-label="Masks">
+      <label class="s02-ck"><input type="checkbox" id="s02-rep"> mask interspersed repeats</label>
+      <label class="s02-ck"><input type="checkbox" id="s02-ssr" checked> mask simple repeats</label>
+      <label class="s02-ck"><input type="checkbox" id="s02-x" checked> leave out the X</label>
+      <label class="s02-ck"><input type="checkbox" id="s02-mt" checked> leave out the mitochondrion</label>
+      <div class="s02-segwrap"><span>Bin is <code>N</code> when</span>
+        <div class="seg" role="group" aria-label="Bin rule" id="s02-rule"><button type="button" data-v="fq" aria-pressed="true">over 90 of 100 bases missing</button><button type="button" data-v="half" aria-pressed="false">under 50 bases callable</button></div></div>
+    </div>
+    <div class="legend" id="s02-legend"></div>
+    <div class="svgbox" id="s02-fig"></div>
+    <div class="readout" id="s02-out"></div>
+    <div class="s02-verdict" id="s02-verdict" aria-live="polite"></div>
+    <p class="tool-note" style="margin-bottom:4px"><b>The psmcfa this produces</b> (60 bins per line, as <code>fq2psmcfa</code> writes them; <span class="s02-k">K</span> = het bin, <span class="s02-n">N</span> = missing)</p>
+    <div class="toy" id="s02-psmcfa"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) <b>Too loose</b>: the crosses survive. The collapsed duplication on ctg2 and the microsatellite on ctg1 fill their bins with <code>K</code>; with the X kept in, its errors add <code>K</code>s and its 40 bins of single-copy sequence count as homozygous. The het rate is wrong in both directions at once. (2) Even the README-style set lets a few differences of the 2-copy duplication through: its depth is about 60×, so a bound of exactly twice the mean cuts it only where the depth happens to be higher. Raise the bound to 200× and all of it comes back, with allele fractions of 0.5 and 0.33 that no allele-fraction filter can catch. (3) <b>Too strict</b>: narrowing the allele fraction to 0.45 to 0.55 removes real heterozygous sites while their bases stay callable, so <code>K</code> bins turn into <code>T</code> and the rate drops. A strict depth window instead turns bins into <code>N</code>: less data, but no bias. (4) Set the minimum depth to 1 and look at the low-coverage stretch on ctg1: bases with 3 to 9 reads count as callable but many real sites there are not seen. (5) Switch the bin rule: under the <code>fq2psmcfa</code> rule a bin with as few as 10 callable bases still counts as a full <code>T</code>; look at the bins at the edges of masked stretches.</p>
+  </section>
+
+  <h3>5. fq2psmcfa and its 100-bp bins</h3>
+  <p>What <code>fq2psmcfa</code> does, read from its source (lh3/psmc, <code>utils/fq2psmcfa.c</code>):</p>
+  <ul>
+    <li>Every lower-case base, every <code>N</code>, and (in FASTQ input) every base with quality below <code>-q</code> counts as missing. The default is <code>-q 10</code>; the README uses <code>-q20</code>. With FASTA input there is no quality line, so <code>-q</code> does nothing.</li>
+    <li>A base counts as heterozygous if its letter stands for exactly two bases (<code>R Y M K S W</code>).</li>
+    <li>The sequence is cut into bins of 100 bases (<code>-s</code>). A bin becomes <code>N</code> if <b>more than 90 %</b> of its bases are missing, <code>K</code> if any of its non-missing bases is heterozygous, and <code>T</code> otherwise. A bin with 15 good bases and no heterozygous site therefore counts as a full homozygous bin; some pipelines (ours too) use a stricter rule, such as <code>N</code> when fewer than 50 bases are callable.</li>
+    <li>A whole contig is left out if fewer than 10,000 of its bases (<code>-g</code>) or less than 20 % of them are good. Short contigs of a fragmented assembly disappear here without a message.</li>
+  </ul>
+  <p>Because a bin only says "at least one", two heterozygous sites 30 bases apart count once. At mammal heterozygosity this loses little; at the 2 % divergence between two species it saturates the bins, which is why the pseudo-hybrid analysis in <a href="#s07">s07</a> uses smaller bins.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># how much is left: bins per letter, the share of K among the non-N bins, and the share of N</span>
+grep -v '>' diploid.psmcfa | tr -d '\n' | awk '{n=gsub(/N/,"");k=gsub(/K/,"");t=gsub(/T/,""); print "N", n, "K", k, "T", t, "K share", k/(k+t), "missing", n/(n+k+t)}'</pre></div>
+
+  <h3>6. Checks before you run PSMC</h3>
+  <ul>
+    <li><b>How much is left.</b> The share of <code>N</code> bins is your missing data. Compare it with the 25 % guide above, and report it with the callable length.</li>
+    <li><b>Heterozygosity.</b> Het sites per callable kb, and the share of <code>K</code> bins, should match what you measured in <a href="../03-annotation/#s09">lesson 3, s09</a>. A much higher value points to false heterozygous sites; a much lower one to missed sites or unmasked missing data.</li>
+    <li><b>The X as a free control.</b> In a male mammal (female bird), the X (Z) outside the PAR has no real heterozygous sites. Run the same filters on it: whatever heterozygous sites remain are an estimate of your false-positive rate.</li>
+    <li><b>Missed sites at low depth.</b> The README calls not correcting for low coverage "the most common pitfall when using PSMC". If a known share of heterozygous sites is missed (the <span class="tip" title="False negative rate: the share of real heterozygous sites that the calls missed.">FNR</span>), PSMC behaves as if the mutation rate were lower; <code>psmc_plot.pl -M "sample=0.1"</code> corrects a plot for 10 % FNR, or you divide θ<sub>0</sub> (the scaled mutation rate PSMC estimates, <a href="#s04">s04</a>) by (1 − FNR) in your own scaling. Li writes that he has not found a reliable way to estimate the FNR; he suggests downsampling a deep genome to the lower coverage and measuring it, but has not done this himself.</li>
+    <li><b>A second filter set.</b> Make a second psmcfa with different but reasonable filters (for example with and without an allele-fraction filter). Parts of the curve that change between them are not supported by the data (<a href="#s06">s06</a>).</li>
+    <li><b>File integrity.</b> Check downloaded reads with their md5 checksum (a fingerprint of the file's content, published by the archive) and <code>gzip -t</code>, not by file size.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p>Species A, one male: ONT reads at a depth of a few tens ×, called with Clair3 (model <code>r1041_e82_400bps_sup_v500</code>) on its own assembly. Mask: MAPQ ≥ 10 and depth from about 0.5 to 1.8 times the mean, closer to Li &amp; Durbin's "half" than to the README's "third". Most of the assembly stayed callable; mitochondrion-like contigs and the half-depth contigs (the X and Y; most of their alignments fall on the X of the relative's chromosome-level assembly) were excluded. Heterozygous sites: <span class="tip" title="PASS: the caller's own FILTER column says the call passed its quality tests.">PASS</span> SNVs with allele fraction 0.3 to 0.7; PASS only, without the allele-fraction filter, gave slightly more <code>K</code> bins. The X control: after an allele-fraction filter of 0.35 to 0.65, the heterozygous sites left on the X were about 1 % of the autosomal rate. Hard quality filters changed the heterozygous-site density about seven-fold, so they were not used.</p>
+    <p>The relative (public PacBio HiFi data at a somewhat lower depth; the archive lists the library as whole-genome amplified, which is a caveat for heterozygous calls): Clair3 HiFi model, MAPQ ≥ 10, depth about 0.5 to 1.8 times the median, the same bins. The two call sets gave different curves: PASS-only gave about twice the population size of the allele-fraction set some tens of thousands of years ago. Differences between its two assembled haplotypes agreed with the read-based heterozygosity to within about 5 % (<span class="tip" title="Spearman correlation: a measure from -1 to 1 of how well two rankings agree (1 = same order); here, whether windows with more read-based hets also have more assembly-based differences.">Spearman</span> correlation close to 1 over 1-Mb windows), a check that the read calls are sound. One large read file of this species had exactly the right size but failed md5 and <code>gzip -t</code>; a second download was fine.</p>
+  </div>
+
+  <p class="note"><b>Next.</b> The psmcfa is ready. <a href="#s03">s03</a> runs PSMC on it and reads the curve.</p>
+</section>

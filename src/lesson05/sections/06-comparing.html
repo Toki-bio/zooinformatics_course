@@ -1,0 +1,183 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Comparing samples: differential methylation</h2>
+  <p class="lede">Once every CpG of a genome has a methylation level (<a href="#s03">s03</a>), the next question is usually a comparison: does this region differ between males and females, between two tissues, two populations, young and old animals, or the mother's and the father's copy? This section explains what the comparison tools compute, why the number of animals matters more than the number of reads, how a statistically "significant" difference can be biologically trivial, which hidden differences between samples (tissue, age, sex) can fake a result, and what epigenetic age clocks can and cannot do with the few animals a zoologist usually has.</p>
+
+  <p class="note"><b>In our projects.</b> The lab has no methylation data to compare yet: none of our genomes has modification calls (<a href="#s02">s02</a>), and the species A genome is a single male. Everything below therefore uses toy data and the tools' own examples. For population questions in the species A project we already concluded that more individuals had to be sequenced; the same holds for any methylation comparison (our inference, explained below).</p>
+
+  <h3>The words</h3>
+  <dl class="defs">
+    <dt>Methylation level</dt><dd>At one CpG in one sample: reads that call the C methylated divided by all reads with a call there (modkit's <i>percent modified</i>, <a href="#s03">s03</a>). Over a region: the same ratio with the calls of all CpGs in it added up.</dd>
+    <dt>DML / DMR</dt><dd>A <dfn>differentially methylated locus</dfn> is a single CpG whose level differs between the groups; a <dfn>differentially methylated region</dfn> is a stretch of neighbouring CpGs that differ together. Regions are what biologists usually report, because neighbouring CpGs tend to share their state and one CpG alone is noisy.</dd>
+    <dt>Effect size</dt><dd>How big the difference is, in a unit you can interpret: here, level in group A minus level in group B (0.80 − 0.60 = 0.20, "20 percentage points").</dd>
+    <dt>Significance</dt><dd>How sure you can be that a difference is not chance. A <dfn>p-value</dfn> is the probability of seeing a difference at least this large if there were no true difference. Small p means "unlikely to be chance", not "large" or "important".</dd>
+    <dt>Biological replicate</dt><dd>Another animal of the same group. Not another read, not another library of the same animal (that is a <dfn>technical replicate</dfn>). Only biological replicates tell you how much animals of one group differ among themselves.</dd>
+    <dt>False discovery rate (FDR)</dt><dd>Among everything you call "different", the share that is not. Testing millions of CpGs at p &lt; 0.05 gives tens of thousands of chance hits, so p-values are corrected, usually with the <span class="tip" title="Benjamini-Hochberg procedure: sort the p-values from smallest to largest; the k-th smallest is accepted if it is at most k/m × q, where m is the number of tests and q the FDR you accept (for example 0.05).">Benjamini-Hochberg</span> procedure.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why 100 reads from one animal are not 100 animals</summary><div class="in">
+    <p>Imagine you want to know whether mice from the mountains are heavier than those from the lowlands. You catch one mouse from each place and weigh each of them a hundred times. The hundred weighings tell you very precisely what <b>these two mice</b> weigh. They tell you nothing about how much mice vary within a place, so you cannot say whether the difference belongs to the places or to the two individuals.</p>
+    <p>Reads are the weighings. At one CpG, 30 reads of an animal measure that animal's methylation level very well. If the level of this CpG differs naturally between animals (it often does, by tissue, age, sex, genotype, or for no known reason), a test that pools the reads of the group treats animal-to-animal differences as if they were group differences:</p>
+    <div class="toy">group A, 1 animal:  <span class="a">24 of 30</span> reads methylated = 0.80
+group B, 1 animal:  <span class="h">15 of 30</span> reads methylated = 0.50
+pooled-read test:   p ≈ 0.015  <span class="x">"significant"</span>
+but: the same CpG in three more animals of group A reads 0.55, 0.62, 0.71</div>
+    <p>With several animals per group, the test compares the spread <b>between</b> groups with the spread <b>within</b> groups, and the false signal disappears. The toy below lets you try this.</p>
+  </div></details>
+
+  <h3>The workflow</h3>
+  <ol class="steps">
+    <li><div><b>One table per sample</b><div class="d">For each animal (or each parental copy, <a href="#s04">s04</a>): a bedMethyl table of CpG counts from the same pipeline, the same reference and the same basecaller model (<a href="#s03">s03</a>, <a href="#s07">s07</a>).</div><div class="t">modkit pileup · bgzip · tabix</div></div></li>
+    <li><div><b>Look before testing</b><div class="d">Coverage per sample, overall level per sample, a clustering or <span class="tip" title="Principal component analysis (PCA): squeezes thousands of CpG levels per sample into two or three summary axes, so samples that are alike plot close together.">principal-component plot</span> of all samples: an outlier animal or a <span class="tip" title="Batch effect: a difference caused by how samples were handled (date, flow cell, extraction kit) rather than by biology.">batch effect</span> shows up here, not in a DMR list.</div><div class="t">modkit modbam summary · R / Python</div></div></li>
+    <li><div><b>Explore: one sample against another</b><div class="d">Region scores, single-site scores and segmentation into "same" and "different" blocks. Quick and needs no replicates; a ranking, not a statistical answer about groups.</div><div class="t">modkit dmr pair · modkit dmr multi</div></div></li>
+    <li><div><b>Test groups of animals</b><div class="d">A model of counts with animal-to-animal variation, other factors (sex, age, tissue) in the design, corrected for testing many CpGs.</div><div class="t">DSS · dmrseq · methylKit · metilene</div></div></li>
+    <li><div><b>Filter by effect size and look at the data</b><div class="d">Keep DMRs that are both well supported and large enough to matter; plot the per-animal levels of each one you report.</div><div class="t">IGV · your own plots (<a href="#s07">s07</a>)</div></div></li>
+  </ol>
+
+  <h3>1. modkit dmr: comparing bedMethyl tables</h3>
+  <p><code>modkit dmr</code> (modkit v0.6.4) compares bedMethyl tables made by <code>modkit pileup</code>. Its documentation states the purpose plainly: "to enable exploratory data analysis of methylation patterns", with scores that are "simple and interpretable". It has two subcommands and three uses:</p>
+  <ul>
+    <li><b><code>dmr pair</code> with <code>-r regions.bed</code></b>: one sample against another over regions you supply (CpG islands, promoters, repeat families from <a href="#s05">s05</a>).</li>
+    <li><b><code>dmr multi</code></b>: every pair among several named samples, regions only; with <code>--ref-sample</code> each sample is compared only with one reference sample. Samples given the same name are combined.</li>
+    <li><b><code>dmr pair</code> without <code>-r</code></b>: single CpGs, optionally joined into segments by a two-state <span class="tip" title="Hidden Markov model: it walks along the genome and at each CpG weighs how well the data fit each hidden state (here 'Different' or 'Same') against the cost of switching state.">HMM</span> (<code>--segment</code>). This is the mode for the two parental copies of one animal (<a href="#s04">s04</a>).</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># input: bgzip-compressed, tabix-indexed bedMethyl per sample (modkit 0.6.4 docs)</span>
+modkit pileup A1.bam - --cpg --ref asm.fa -t 16 --log-filepath A1.pileup.log | bgzip -c > A1.bed.gz
+tabix -p bed A1.bed.gz
+
+<span class="c"># 1) regions, one sample against another</span>
+modkit dmr pair -a A1.bed.gz -b B1.bed.gz -r regions.bed --ref asm.fa --base C \
+  --header -t 16 -o A1_vs_B1.regions.bed --log-filepath dmr.log
+
+<span class="c"># 2) all pairs of named samples over the same regions (-o is a directory here)</span>
+modkit dmr multi -s A1.bed.gz A1 -s A2.bed.gz A2 -s B1.bed.gz B1 -s B2.bed.gz B2 \
+  -r regions.bed --ref asm.fa --base C --header -t 16 -o dmr_multi/
+
+<span class="c"># 3) single CpGs, replicates repeated with -a / -b, plus HMM segments</span>
+modkit dmr pair -a A1.bed.gz -a A2.bed.gz -b B1.bed.gz -b B2.bed.gz --ref asm.fa --base C \
+  --header --segment segments.bed -t 16 -o sites.bed --log-filepath dmr.log</pre></div>
+  <p class="tool-note"><code>--base C</code> picks which modified base is compared (all modifications of C, for example 5mC and 5hmC, unless <code>--single-code</code> names one). <code>--min-valid-coverage</code> (default 0) drops sites with fewer valid calls. Use <code>--header</code> and read columns by name: the column order differs between region, single-site and segment output, and the docs' own example table has one more column than their schema list.</p>
+
+  <h3>What the scores mean</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Output</th><th>What it is (modkit docs)</th><th>How to read it</th></tr></thead>
+    <tbody>
+      <tr><td><b>score</b></td><td>A log marginal likelihood ratio: the counts are modelled with a binomial (or multinomial when several modification types are called) with a <span class="tip" title="A Beta distribution describes uncertainty about a proportion between 0 and 1; a Dirichlet does the same for several proportions that add up to 1. Here they express how unsure the model is about the true methylation level.">Beta / Dirichlet</span> <span class="tip" title="Prior: what the model assumes about a value before it sees the data. Jeffreys prior: a standard, deliberately vague choice, so that the data decide the result.">prior</span> (Jeffreys), once for A and B separately and once for A and B together. Higher = more different. Within a region the order of CpGs is ignored.</td><td>A ranking of how different two samples look. Grows with coverage. Also sees a change of modification <b>type</b> (5hmC to 5mC), which the other metrics do not.</td></tr>
+      <tr><td><b>MAP-based p-value</b> (single sites only)</td><td>From Makowski et al. (2019): the <span class="tip" title="Posterior: how plausible each possible value is after the data have been taken into account.">posterior</span> density of the difference at zero divided by its density at the observed difference; uses at most 100 reads per condition, because it "becomes unstable" above that. <code>--delta</code> (default 0.05): only effect sizes above it are considered. Not given for regions.</td><td>Small = a difference of zero is much less plausible than the one observed. It is not a classical p-value, and it is computed from read counts, so it says nothing about other animals.</td></tr>
+      <tr><td><b>effect size</b></td><td>Fraction modified in A minus fraction modified in B.</td><td>The number to report next to any p-value.</td></tr>
+      <tr><td><b>Cohen's h</b> with a 95 % interval</td><td>A difference of proportions on the arcsine scale, h = 2·asin√p<sub>A</sub> − 2·asin√p<sub>B</sub>; added because with many calls "small effect sizes will become statistically significant". The docs suggest filtering or sorting on the lower bound.</td><td>Roughly: |h| 0.2 small, 0.5 medium, 0.8 large (Cohen's own rule of thumb). An interval that touches zero means "no clear difference".</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Segmentation.</b> The HMM has two states, "Different" and "Same". Its emission comes from the score above (probability of "Same" = e<sup>−score</sup>). The probability of staying in "Different" is highest (<code>--diff-stay</code>, default 0.9) when the next CpG is adjacent and decays to the prior probability of a differential site (<code>--dmr-prior</code>, default 0.1) once the next CpG is <code>--decay-distance</code> (default 500 bp) away; sites more than <code>--max-gap-size</code> (default 5,000 bp) apart are not joined. The default "coarse" mode joins neighbours eagerly and can include unchanged CpGs in a "different" block; <code>--fine-grained</code> gives shorter segments.</p>
+  <p class="note warn"><b>Replicates in modkit are pooled reads, not a test across animals.</b> With repeated <code>-a</code>/<code>-b</code>, the help text of <code>--cap-coverages</code> says that three replicates of 30× "would normally" give a total coverage of 90; <code>dmr multi</code> combines samples with the same name. The source code (modkit 0.6.4, single-site DMR) confirms it: the counts of all replicates of a condition are added up before the score, the MAP-based p-value and Cohen's h are computed, so the test has no term for how much animals of one group differ from each other. It also reports "balanced" values (each replicate first scaled to the same coverage, then added up) and, with equal group sizes, per-replicate-pair p-values and effect sizes, which show whether every pair agrees. Use modkit dmr to explore and rank; for a claim about groups of animals, use a method that models replicates.</p>
+
+  <h3>2. Statistical tests across animals: DSS and others</h3>
+  <p><b>DSS</b> (Bioconductor, release 2.60.0) was written for bisulfite sequencing, but it needs only, per sample and CpG, the number of reads (<code>N</code>) and the number of methylated reads (<code>X</code>), which a bedMethyl table holds in columns 10 (N<sub>valid_cov</sub>) and 12 (N<sub>mod</sub>). It models counts with a <span class="tip" title="A binomial whose success probability itself varies from animal to animal. It allows more spread between animals than read sampling alone (overdispersion).">beta-binomial</span> distribution, estimates the animal-to-animal spread (the <dfn>dispersion</dfn>) of each CpG while borrowing strength across all CpGs (a <span class="tip" title="Shrinkage: an estimate from few animals is pulled towards the typical value of all CpGs, which makes it less jumpy.">shrinkage</span> estimator from a Bayesian hierarchical model; Feng et al. 2014), and tests each CpG with a <span class="tip" title="Wald test: divides the estimated difference by its standard error and asks how unusual that ratio would be if there were no true difference.">Wald test</span>.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># bedMethyl -> DSS input (chr, 1-based pos, N, X); check that column 4 is "m" in your file</span>
+zcat A1.bed.gz | awk 'BEGIN{OFS="\t"; print "chr","pos","N","X"} $4=="m" {print $1,$2+1,$10,$12}' > A1.dss.txt</pre></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># R, DSS 2.60 (function defaults read from the DSS source)</span>
+library(DSS)
+ids  <- c("A1","A2","A3","B1","B2","B3")
+dat  <- lapply(ids, function(s) read.table(paste0(s, ".dss.txt"), header = TRUE))
+BSobj <- makeBSseqData(dat, ids)
+
+<span class="c"># two groups; smoothing borrows information from CpGs within smoothing.span (default 500 bp)</span>
+dml  <- DMLtest(BSobj, group1 = c("A1","A2","A3"), group2 = c("B1","B2","B3"), smoothing = TRUE)
+dmrs <- callDMR(dml, delta = 0.1, p.threshold = 0.01)   <span class="c"># defaults: delta 0, p.threshold 1e-5, minlen 50, minCG 3, dis.merge 100, pct.sig 0.5</span>
+
+<span class="c"># other factors in the design (Park &amp; Wu 2016): test group while accounting for sex and age</span>
+design <- data.frame(group = c("A","A","A","B","B","B"), sex = c("F","M","F","M","F","M"), age = c(1,2,3,1,2,3))
+fit  <- DMLfit.multiFactor(BSobj, design = design, formula = ~ group + sex + age)
+test <- DMLtest.multiFactor(fit, coef = "groupB")
+dmrs2 <- callDMR(test, p.threshold = 0.01)              <span class="c"># delta is not allowed with multifactor results</span></pre></div>
+  <p class="tool-note">With <code>delta = 0.1</code>, <code>callDMR</code> scores each CpG by the posterior probability that the true difference exceeds 0.1 rather than by its p-value. A DMR must be longer than <code>minlen</code> bp, contain more than <code>minCG</code> CpGs, and at least <code>pct.sig</code> of its CpGs must pass. The vignette says it is very difficult to choose a natural and rigorous threshold for DMRs and recommends trying several. (In the source, <code>dis.merge</code> is lowered to <code>minlen</code> when it is larger, so with the defaults DMRs closer than 50 bp are merged.) The six-animal design above is a toy: with six animals and four terms (intercept, group, sex, age) only two <span class="tip" title="Degrees of freedom: here, the animals left over for estimating the spread after the model has used some to fit its terms; with two left, the spread is very uncertain.">degrees of freedom</span> remain.</p>
+  <p><b>One animal per group.</b> <code>DMLtest</code> refuses to run with one sample in a group unless <code>smoothing = TRUE</code> (or <code>equal.disp = TRUE</code>). The method for this case (Wu et al. 2015) uses neighbouring CpGs as "pseudo-replicates" to estimate dispersion. That makes the test possible, but it still cannot tell a difference between groups from a difference between the two individuals.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Approach (from the paper's abstract)</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><b>DSS</b></td><td>Beta-binomial, dispersion shrinkage, Wald test; general designs with an <span class="tip" title="Arcsine link: levels are transformed with the arcsine of the square root before the regression, which evens out the variance of proportions near 0 and 1.">arcsine link</span> (Feng et al. 2014; Wu et al. 2015; Park &amp; Wu 2016).</td><td>Works from N and X counts, so any caller's bedMethyl can feed it.</td></tr>
+      <tr><td><b>dmrseq</b></td><td>Region-level statistics from a regression with correlated errors along the genome, and inference from a pooled <span class="tip" title="Null distribution: the spread of a test statistic expected when there is no true difference; an observed value far outside it counts as evidence.">null distribution</span> that "can be implemented even when as few as two samples per population are available"; reported to control the FDR of regions accurately (Korthauer et al. 2019).</td><td>Built on the <code>bsseq</code> data format, like DSS.</td></tr>
+      <tr><td><b>methylKit</b></td><td>R package for clustering, sample quality plots, differential methylation of bases or regions, annotation (Akalin et al. 2012).</td><td>Good for the "look before testing" step.</td></tr>
+      <tr><td><b>metilene</b></td><td>Binary segmentation with a two-dimensional statistical test; fast; meant both for "dozens of samples per group" and for data "without biological replicates" (Jühling et al. 2016).</td><td>Input is a table of levels per sample.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">These tools were developed for bisulfite data. With long reads the counts come from a modification caller with its own error rate, and calls below a confidence threshold are dropped by modkit pileup (<a href="#s03">s03</a>). The statistics still apply to the counts, but a difference in calling quality between samples (another basecaller model, much lower read quality) can look like a methylation difference.</p>
+
+  <section class="tool explain" aria-labelledby="s06-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">Two groups of animals, 2,000 CpGs: what does a test find?</h3></div>
+    <p class="tool-note">A toy genome of 200 regions with 10 CpGs each. Each CpG has a baseline level (most around 0.8, some near 0.1, as in a mammalian genome). In <b>20 regions</b> (the true DMRs) group B differs from group A by the <b>true difference</b>. Every animal has its own level in every region, scattered around its group's level by the <b>animal-to-animal variation</b> (a standard deviation); reads per CpG follow a <span class="tip" title="The distribution of counts of random, independent events: here the number of reads that happen to cover one CpG when the average is the chosen coverage.">Poisson distribution</span> around the <b>coverage</b>, and each read is methylated with the animal's probability. The test is either a <b>pooled-read</b> test (all reads of a group added up, <span class="tip" title="Compares two proportions (methylated reads / all reads) using the normal approximation; every read counts as an independent observation.">two-proportion z-test</span>; this is what a read-count test without replicates does) or a <b>per-animal</b> test (a <span class="tip" title="A t-test in which each animal contributes one number, its methylation level in the unit, and the within-group variance of each unit is pulled towards the typical variance of all units (Smyth 2004). With three animals, a unit whose animals agree by chance no longer looks falsely certain.">moderated t-test</span> on each animal's level; it borrows strength across units as DSS does for its dispersions, but it is a simple stand-in, not DSS itself). Both are corrected with Benjamini-Hochberg at FDR 5 %. The plot is a <dfn>volcano plot</dfn>: each dot is one tested region (or CpG), placed by its observed difference (left-right) and its strength of evidence, −log<sub>10</sub> of the p-value (up; 2 means p = 0.01, 6 means p = 0.000001).</p>
+    <div class="controls" role="group" aria-label="The experiment">
+      <label for="s06-cov">Coverage per animal per CpG <output id="s06-cov-o">10×</output><input type="range" id="s06-cov" min="1" max="60" step="1" value="10"></label>
+      <label for="s06-rep">Animals per group <output id="s06-rep-o">3</output><input type="range" id="s06-rep" min="1" max="10" step="1" value="3"></label>
+      <label for="s06-delta">True difference in DMRs <output id="s06-delta-o">0.20</output><input type="range" id="s06-delta" min="0" max="0.5" step="0.01" value="0.2"></label>
+      <label for="s06-bio">Animal-to-animal variation (SD) <output id="s06-bio-o">0.05</output><input type="range" id="s06-bio" min="0" max="0.2" step="0.01" value="0.05"></label>
+      <button type="button" class="btn" id="s06-new" style="align-self:center">new animals</button>
+    </div>
+    <div class="controls" role="group" aria-label="The analysis">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Test
+        <div class="seg" role="group" aria-label="Test" id="s06-test"><button type="button" data-v="pool" aria-pressed="false">pooled reads</button><button type="button" data-v="anim" aria-pressed="true">per animal</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Unit tested
+        <div class="seg" role="group" aria-label="Unit tested" id="s06-unit"><button type="button" data-v="reg" aria-pressed="true">regions of 10 CpGs</button><button type="button" data-v="cpg" aria-pressed="false">single CpGs</button></div></div>
+      <label style="min-width:auto;flex-direction:row;align-items:center;gap:6px"><input type="checkbox" id="s06-eff"> also require |difference| ≥ 0.10</label>
+    </div>
+    <div class="legend" id="s06-legend"></div>
+    <div class="svgbox" id="s06-fig"></div>
+    <div class="readout" id="s06-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) Set animal-to-animal variation to 0: the pooled-read test is then fine, and more coverage helps it. (2) Put the variation back to 0.05 and switch to pooled reads: false positives appear, and raising coverage makes it <b>worse</b>, because more reads make every chance difference between a few animals look certain. (3) With the per-animal test, one animal per group cannot be tested at all, two gives little power, and adding animals helps much more than adding coverage beyond about 10×. (4) Regions find true DMRs that single CpGs miss, because the reads of 10 CpGs add up. (5) Set the variation to 0.02, the true difference to 0.05, 10 animals and 60× coverage: a difference of 5 points becomes "significant" in most true DMRs; the effect-size filter then decides whether you care. (6) Raise the variation to 0.10 and watch how many animals you need for the same power.</p>
+  </section>
+
+  <h3>3. Effect size and significance are different questions</h3>
+  <p>A p-value mixes two things: how large the difference is and how much data you have. With deep coverage and many CpGs per region, a difference of 1 to 2 percentage points becomes "highly significant"; with few reads, a difference of 30 points may not be. Report both, and decide in advance what size of difference you consider biologically meaningful (DSS's <code>delta</code>, modkit's Cohen's h lower bound, or a plain filter on the difference). The calculator shows a single CpG or region with pooled counts.</p>
+  <section class="tool" aria-labelledby="s06-calc-h">
+    <div class="tool-head"><span class="tool-tag">Calculator</span><h3 id="s06-calc-h">Same difference, different evidence</h3></div>
+    <div class="calc">
+      <label for="s06-ca">A: methylated calls<input id="s06-ca" type="number" min="0" value="82"></label>
+      <label for="s06-na">A: all calls<input id="s06-na" type="number" min="1" value="100"></label>
+      <label for="s06-cb">B: methylated calls<input id="s06-cb" type="number" min="0" value="80"></label>
+      <label for="s06-nb">B: all calls<input id="s06-nb" type="number" min="1" value="100"></label>
+      <button type="button" class="btn" id="s06-x100">10× more reads</button>
+      <button type="button" class="btn" id="s06-reset">reset</button>
+    </div>
+    <div class="readout" id="s06-calc-out" aria-live="polite"></div>
+    <p class="tool-note">Press "10× more reads" twice (100 → 10,000 calls per group): the difference stays 2 points and Cohen's h stays near 0.05 (negligible), while the p-value of the pooled two-proportion test falls far below 0.05. The interval for h is ±1.96·√(1/n<sub>A</sub> + 1/n<sub>B</sub>), the usual normal approximation; modkit reports its own interval.</p>
+  </section>
+
+  <h3>4. Hidden differences between samples (confounders)</h3>
+  <p>A <dfn>confounder</dfn> is a difference between your groups other than the one you are studying, which also changes methylation. Every DMR list should be read against this list:</p>
+  <ul>
+    <li><b>Tissue and cell composition.</b> Each cell type has its own methylation profile. A tissue is a mixture, and if the mixture differs between groups (more white blood cells in sick animals, more fat in a liver sample), the levels differ without any cell changing. In human blood, cell composition changes with age and explains much of the variation in methylation, and it is tangled with age at the CpG level (Jaffe &amp; Irizarry 2014). Compare the same tissue, sampled the same way.</li>
+    <li><b>Age.</b> Many CpGs change with age; that is what epigenetic clocks use (below). If one population was sampled as juveniles and the other as adults, age-related CpGs appear as population DMRs.</li>
+    <li><b>Sex.</b> In female mammals one X is inactivated and methylated on many promoters (<a href="#s01">s01</a>, <a href="#s04">s04</a>). Unbalanced sexes give X-linked "DMRs" and dilute others; analyse sex chromosomes separately (<a href="../02-assembly/#s12">lesson 2, s12</a>), or put sex in the design.</li>
+    <li><b>Genotype.</b> A SNP that destroys a CpG in some animals removes the site in them (the read shows TG or CA, not CG). In a pooled comparison this looks like a loss of methylation; in a phased animal it shows up as an allele-specific difference (<a href="#s04">s04</a>).</li>
+    <li><b>Batch and platform.</b> Different flow cells, basecaller models, read quality or DNA extraction between groups. Sequence the groups mixed, not group after group, and record the basecaller and model for every sample (<a href="#s07">s07</a>).</li>
+  </ul>
+  <p>If a confounder cannot be avoided, put it in the model (DSS <code>DMLfit.multiFactor</code>), which needs more animals than terms. If it is perfectly tied to the groups (all population A animals are adults, all population B juveniles), no statistics can separate the two.</p>
+
+  <h3>5. Epigenetic clocks: estimating age from methylation</h3>
+  <p>An <dfn>epigenetic clock</dfn> predicts an animal's age from the methylation levels of a set of CpGs. It is built, not discovered: you need many animals of <b>known</b> age, measured at the same CpGs, and a regression that picks the useful sites.</p>
+  <ol class="steps">
+    <li><div><b>Training animals of known age</b><div class="d">Animals whose age is known independently (marked at birth, captive records, tooth layers). The age error of these animals sets a floor on the clock's accuracy.</div></div></li>
+    <li><div><b>Methylation at many CpGs</b><div class="d">An array, targeted sequencing or whole-genome data. The mammalian methylation array used for cross-species clocks measures up to about 36,000 CpGs per species, chosen because their sequence is conserved across many mammals (Arneson et al. 2022).</div></div></li>
+    <li><div><b>Elastic net regression</b><div class="d">A <span class="tip" title="A linear regression with a penalty on the size of the coefficients. The penalty mixes two kinds: one shrinks all coefficients (ridge), the other sets many exactly to zero (lasso), so the model keeps only a few useful CpGs. alpha sets the mix; lambda sets the penalty strength and is chosen by cross-validation.">penalised regression</span> of (transformed) age on all CpG levels; most coefficients become zero, leaving tens to hundreds of CpGs. Horvath's human pan-tissue clock (2013) used glmnet with alpha 0.5, lambda by cross-validation, and kept 353 CpGs.</div></div></li>
+    <li><div><b>Test on animals not used for training</b><div class="d">Report the median absolute error in years and the correlation with true age. With few animals, <span class="tip" title="Leave-one-out cross-validation: build the clock on all animals but one, predict that one, repeat for every animal.">leave-one-out cross-validation</span> is often the only option.</div></div></li>
+  </ol>
+  <p>Scale of the published examples: Horvath's clock was developed using about 8,000 human array samples of 51 tissues and cell types, with a median error of 3.6 years in test data (correlation 0.96). The pan-mammalian clocks of the Mammalian Methylation Consortium used 11,754 arrays from 185 species and 59 tissues (Lu et al. 2023). A review of wildlife clock design (Newediuk et al. 2025) notes that wildlife clocks "often rely on datasets with no more than a few dozen samples", that inaccurate training ages bias any estimate of age acceleration, that clocks are most accurate when the training animals resemble the animals to be aged (tissue, sex, population, age range), and that leave-one-out cross-validation estimated test error as well as a separate hold-out set in their polar bear data. A systematic review and meta-analysis across more than 40 species (Le Clercq et al. 2023) found methylation-based age estimates more accurate than telomere length.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>With a handful of animals you can</th><th>You cannot</th></tr></thead>
+    <tbody>
+      <tr><td>Describe methylation in each animal and tissue; compare the two parental copies of one animal (<a href="#s04">s04</a>); compare tissues of one animal (descriptive, no population claim).</td><td>Claim a difference between populations, sexes or treatments from one animal per group.</td></tr>
+      <tr><td>Explore with <code>modkit dmr</code> and choose candidate regions for a later study with more animals.</td><td>Build an epigenetic clock: that needs dozens of animals of known age at least.</td></tr>
+      <tr><td>Check whether published clock CpGs are covered in your data (our inference: array probes would have to be located in your assembly first, and long-read coverage per CpG is low compared with arrays).</td><td>Report "biological age acceleration" of individual wild animals: a clock trained on uncertain ages cannot separate prediction error from biology.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Sources</h3>
+  <ul style="font-size:13.5px">
+    <li>modkit v0.6.4 documentation and source (<a href="https://github.com/nanoporetech/modkit">github.com/nanoporetech/modkit</a>, <code>modkit-core/src/dmr/single_site.rs</code>): <a href="https://nanoporetech.github.io/modkit/intro_dmr.html">dmr</a>, <a href="https://nanoporetech.github.io/modkit/dmr_scoring_details.html">scoring details</a>, <a href="https://nanoporetech.github.io/modkit/limitations.html">limitations</a>, <a href="https://nanoporetech.github.io/modkit/intro_pileup.html">bedMethyl columns</a>.</li>
+    <li>DSS 2.60.0 <a href="https://bioconductor.org/packages/release/bioc/html/DSS.html">Bioconductor page and vignette</a>; Feng H, Conneely KN, Wu H 2014 Nucleic Acids Res 42:e69, <a href="https://doi.org/10.1093/nar/gku154">doi:10.1093/nar/gku154</a>; Wu H et al. 2015 Nucleic Acids Res 43:e141, <a href="https://doi.org/10.1093/nar/gkv715">doi:10.1093/nar/gkv715</a>; Park Y, Wu H 2016 Bioinformatics 32:1446, <a href="https://doi.org/10.1093/bioinformatics/btw026">doi:10.1093/bioinformatics/btw026</a>.</li>
+    <li>Korthauer K et al. 2019 Biostatistics 20:367 (dmrseq), <a href="https://doi.org/10.1093/biostatistics/kxy007">doi:10.1093/biostatistics/kxy007</a>; Akalin A et al. 2012 Genome Biol 13:R87 (methylKit), <a href="https://doi.org/10.1186/gb-2012-13-10-r87">doi:10.1186/gb-2012-13-10-r87</a>; Jühling F et al. 2016 Genome Res 26:256 (metilene), <a href="https://doi.org/10.1101/gr.196394.115">doi:10.1101/gr.196394.115</a>.</li>
+    <li>Makowski D et al. 2019 Front Psychol 10:2767, <a href="https://doi.org/10.3389/fpsyg.2019.02767">doi:10.3389/fpsyg.2019.02767</a> (cited by modkit for the MAP-based p-value).</li>
+    <li>Smyth GK 2004 Stat Appl Genet Mol Biol 3:Article3, <a href="https://doi.org/10.2202/1544-6115.1027">doi:10.2202/1544-6115.1027</a> (moderated t-statistic, used in the toy).</li>
+    <li>Jaffe AE, Irizarry RA 2014 Genome Biol 15:R31, <a href="https://doi.org/10.1186/gb-2014-15-2-r31">doi:10.1186/gb-2014-15-2-r31</a>.</li>
+    <li>Horvath S 2013 Genome Biol 14:R115, <a href="https://doi.org/10.1186/gb-2013-14-10-r115">doi:10.1186/gb-2013-14-10-r115</a>; Horvath S, Raj K 2018 Nat Rev Genet 19:371, <a href="https://doi.org/10.1038/s41576-018-0004-3">doi:10.1038/s41576-018-0004-3</a>; Lu AT et al. 2023 Nat Aging 3:1144, <a href="https://doi.org/10.1038/s43587-023-00462-6">doi:10.1038/s43587-023-00462-6</a>; Newediuk L et al. 2025 Mol Ecol Resour 25:e14120, <a href="https://doi.org/10.1111/1755-0998.14120">doi:10.1111/1755-0998.14120</a>; Arneson A et al. 2022 Nat Commun 13:783, <a href="https://doi.org/10.1038/s41467-022-28355-z">doi:10.1038/s41467-022-28355-z</a>; Le Clercq et al. 2023 Biol Rev 98:1972, <a href="https://doi.org/10.1111/brv.12992">doi:10.1111/brv.12992</a>.</li>
+  </ul>
+</section>

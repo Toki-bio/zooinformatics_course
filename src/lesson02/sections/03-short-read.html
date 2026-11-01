@@ -1,0 +1,201 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>Assembling short reads</h2>
+  <p class="lede">Short reads (Illumina, MGI) are 100–250 bases long, so no single read crosses a repeat that is longer than itself. Short-read assemblers therefore do not compare reads with each other. They cut every read into k-mers and join k-mers that overlap. This section shows how that works, why the contigs stop where they stop, how errors are removed, how k is chosen, how the graph fits into memory, and which tools exist today.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>de Bruijn graph</dt><dd>A network built from k-mers. Each distinct k-mer is a point (a <dfn>node</dfn>). An arrow (an <dfn>edge</dfn>) joins two k-mers when the last k − 1 bases of the first are the first k − 1 bases of the second, so they could sit next to each other in the genome. Named after the mathematician Nicolaas de Bruijn. (Some tools put the (k − 1)-mers on the nodes and the k-mers on the edges; the idea is the same.)</dd>
+    <dt>unitig</dt><dd>A run of k-mers with no choice along the way: each has exactly one way forward and one way back. The assembler writes it out as one sequence. A unitig ends where the graph branches or stops.</dd>
+    <dt>contig</dt><dd>A gap-free sequence the assembler reports. Contigs are unitigs after cleaning (errors removed, small side branches cut) and, in some tools, joined further with the help of read pairs.</dd>
+    <dt>scaffold</dt><dd>Contigs put in order and orientation and joined with runs of <code>N</code> (unknown bases) in between. The N-run stands for a gap whose sequence is unknown.</dd>
+    <dt>bubble</dt><dd>Two paths that split and join again a little later. Made by a heterozygous site (the two parental copies differ) or by a read error in the middle of a read.</dd>
+    <dt>tip</dt><dd>A short dead-end side branch. Usually made by a read error near the end of a read.</dd>
+  </dl>
+
+  <!-- ===== DBG TOY ===== -->
+  <section class="tool explain" aria-labelledby="s03-dbg-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-dbg-h">A de Bruijn graph with a repeat</h3></div>
+    <p class="tool-note">The toy genome has three unique pieces and one <b>repeat</b> (purple) that occurs twice, identically. All its k-mers are put into a graph and joined into unitigs. Move <b>k</b>: while k is shorter than the repeat + 2, both copies give the same k-mers, the graph merges them into one purple unitig, and the genome falls apart into several contigs. Once every k-mer that touches the repeat also carries a unique base on each side, the graph becomes one line. Then add a read error or a heterozygous site.</p>
+    <div class="controls">
+      <label for="s03-dbg-k">k (k-mer length) <output id="s03-dbg-ko">9</output><input type="range" id="s03-dbg-k" min="3" max="20" step="1" value="9"></label>
+      <div><div style="font-size:12.5px;color:var(--muted);margin-bottom:3px">Input reads</div>
+        <div class="seg" role="group" aria-label="Input reads" id="s03-dbg-mode">
+          <button type="button" data-m="clean" aria-pressed="true">error-free, one haplotype</button>
+          <button type="button" data-m="err" aria-pressed="false">+ one read with an error</button>
+          <button type="button" data-m="het" aria-pressed="false">+ heterozygous site</button>
+        </div></div>
+    </div>
+    <div class="svgbox" id="s03-dbg-fig"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>unitig from unique sequence</span><span><i style="background:var(--rep)"></i>repeat unitig (both copies merged)</span><span><i style="background:var(--bad)"></i>branch from a read error</span><span><i style="background:var(--het)"></i>branch from the other haplotype</span></div>
+    <div class="readout" id="s03-dbg-out"></div>
+    <p class="tool-note">The top line is the genome. Each bar below it is one unitig, drawn where its sequence occurs; a purple bar is drawn twice because one unitig stands for both copies. The lower panel is the graph itself: boxes are unitigs (×2 = its k-mers occur twice in the input), arrows show which unitig can follow which. Arrows drawn below the boxes go backwards along the genome. To keep the toy readable, only one DNA strand is used; real assemblers also merge each k-mer with its <span class="tip" title="Reverse complement: the same DNA read on the other strand. The letter order is reversed and each letter swapped (A↔T, C↔G), so ACCG becomes CGGT.">reverse complement</span>.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why repeats cut contigs</summary><div class="in">
+    <p>Think of a train route written on cards, each card showing three station names in a row. You rebuild the route by laying cards so that the last two names of one card match the first two of the next. That is a de Bruijn graph with k = 3.</p>
+    <div class="toy">route:  Oak – <span class="h">Mill – Bridge</span> – Park – <span class="h">Mill – Bridge</span> – Lake
+cards:  Oak·Mill·Bridge   Mill·Bridge·Park   Bridge·Park·Mill
+        Park·Mill·Bridge  Mill·Bridge·Lake</div>
+    <p>After <b>Mill·Bridge</b> the next card can be "…Park" or "…Lake". The cards alone cannot tell you which comes first. A careful assembler does not guess: it stops at <b>Mill·Bridge</b> and reports the pieces it is sure of. So the route comes out as several short pieces, and the repeated part <span class="toy" style="display:inline;padding:1px 4px">Mill – Bridge</span> is written once, not twice.</p>
+    <p>With cards of four names, <b>Oak·Mill·Bridge·Park</b> and <b>Park·Mill·Bridge·Lake</b> are different cards, and the route is unique again. Longer k = longer cards = repeats up to k − 2 long are resolved. But a card is only made when a read contains all of its names, and reads have a fixed length, so k cannot grow forever (see <a href="#s03-k-h">Choosing k</a>).</p>
+    <p>A <b>bubble</b>: the mother's chromosome says Park – Mill, the father's says Park – Mole – Mill. Both versions make cards, so the path splits after Park and joins again at Mill. A <b>tip</b>: one card with a misspelled station ("Brigde") that leads nowhere, because no other card continues from it.</p>
+  </div></details>
+
+  <h3>What breaks a contig, and what the assembler does about it</h3>
+  <ul>
+    <li><b>Repeats longer than about k.</b> Every copy gives the same k-mers, so the graph merges the copies and branches where they begin and end. Contigs stop at those branches. Interspersed repeats such as <span class="tip" title="Short interspersed elements: retrotransposons 100–500 bases long, present in tens of thousands to millions of copies per mammal genome">SINEs</span> and <span class="tip" title="Long interspersed elements: retrotransposons up to ~6–7 kb long, the main mammalian autonomous repeat">LINEs</span>, satellites and duplicated genes all do this. No setting removes the problem; only longer reads or long-range links do.</li>
+    <li><b>Heterozygous sites</b> make bubbles. Assemblers "pop" bubbles: keep one path (often the one with more coverage) and drop the other. The result is one <span class="tip" title="A single sequence that mixes the two parental copies, switching between them at random; see section 07">pseudohaploid</span> sequence. Where the two copies differ a lot, the bubble is not recognised and both copies end up as separate contigs (a false duplication, removed later with purge_dups, section 06).</li>
+    <li><b>Read errors</b> make tips (error near a read end) and small bubbles (error in the middle). Error k-mers are rare (seen once or twice), so tools cut low-coverage branches. ABySS, for example, removes branches shorter than k (its <code>t</code> parameter, default k) and, in Bloom filter mode, uses only k-mers seen at least <code>kc</code> times (default 2).</li>
+  </ul>
+
+  <section class="tool" aria-labelledby="s03-k1-h">
+    <div class="tool-head"><span class="tool-tag">Calculator</span><h3 id="s03-k1-h">The k − 1 rule: how far a contig reaches into a repeat copy</h3></div>
+    <p class="tool-note">Take one copy of an identical repeat, L bases long, flanked by unique DNA. The last k-mer that is still unique contains one flanking base plus the first k − 1 bases of the copy. So the contig from the left enters the copy by <b>k − 1</b> bases and stops; the contig from the right does the same from the other end. The middle, <b>L − 2(k − 1)</b> bases, is in no unique contig. If that number is negative, the two contigs overlap inside the copy but are still not joined. The copy is resolved only when k ≥ L + 2.</p>
+    <div class="controls">
+      <label for="s03-k1-L">repeat copy length L <output id="s03-k1-Lo">268</output><input type="range" id="s03-k1-L" min="100" max="500" step="1" value="268"></label>
+      <label for="s03-k1-k">k <output id="s03-k1-ko">100</output><input type="range" id="s03-k1-k" min="21" max="255" step="1" value="100"></label>
+      <div class="seg" role="group" aria-label="Examples" id="s03-k1-pre">
+        <button type="button" data-L="268" data-k="100"><i>Galemys</i> k = 100</button>
+        <button type="button" data-L="250" data-k="99"><i>Desmana</i> k = 99</button>
+        <button type="button" data-L="300" data-k="77">SPAdes, 150-base reads: k = 77</button>
+      </div>
+    </div>
+    <div class="svgbox" id="s03-k1-fig"></div>
+    <div class="readout" id="s03-k1-out"></div>
+  </section>
+
+  <div class="note"><b>In our projects: young SINEs cut the desman assemblies exactly k − 1 bases deep.</b>
+    <ul>
+      <li><i>Galemys pyrenaicus</i> (GCA_019455555.1) was assembled with ABySS 2.1.5 at k = 100. Of its 62,376 N-runs, 17,284 are exactly 50 N, and 64 % of those 50-N runs touch a <span class="tip" title="Tal: a SINE family of talpids (moles and desmans). d4 and d5 are two of its subfamilies; d4 is the youngest, so its copies are the most alike.">Tal SINE</span> (8.1 × more than random), sitting in the middle of the element. For a 268-base copy of the youngest subfamily (d4) the rule predicts 268 − 2 × 99 = 70 bases in no contig; the gaps closed later from reads were 74–109 bases. 16 % of d4 copies are gapped against 0.2 % of the older d5 copies: older copies differ from each other by mutations, so their k-mers are unique.</li>
+      <li><i>Desmana moschata</i>: the raw SPAdes runs (final k = 99, inferred from exact 99-base overlaps at 75.5 % of contig ends, not read from a log) end inside a young Tal SINE at 50.3 % (animal R8) and 48.0 % (R9) of contig ends, a median 98 bases (= k − 1) into the element. In a toy test (SPAdes 3.15.5, <code>--isolate</code>, k = 77) contigs ran 75–76 bases into an identical copy from each side, and 250-base copies with 3 % divergence were fully resolved.</li>
+      <li>The reads are there: in <i>Galemys</i>, 237 of 238 gaps were closed identically by independent libraries. The gap is made by the graph, not by missing data. 26 long-read assemblies (PacBio, ONT; two <i>Talpa</i>, a hedgehog, 22 bats) have no N at young SINEs.</li>
+    </ul>
+  </div>
+
+  <!-- ===== ERROR CORRECTION ===== -->
+  <h3 id="s03-ec-h">Fixing read errors before assembly</h3>
+  <p>Most correctors use the k-mer spectrum from <a href="../01-pre-assembly/#gp">lesson 1</a>. A k-mer from the genome is seen about as often as the k-mer coverage (tens of times). A k-mer that contains a sequencing error is seen once or a few times, because the same error rarely happens twice at the same place. So k-mers above a threshold are called <dfn>trusted</dfn> (or <dfn>solid</dfn>), the rest <dfn>untrusted</dfn>. A read base is changed when one substitution turns all the untrusted k-mers that cover it into trusted ones.</p>
+  <div class="toy">read      ACGTTGC<span class="x">A</span>TGCC        k = 5, k-mer coverage ≈ 30
+k-mers    ACGTT 31   CGTTG 29   GTTGC 33   TTGC<span class="x">A</span> <span class="x">1</span>   TGC<span class="x">A</span>T <span class="x">1</span>   GC<span class="x">A</span>TG <span class="x">2</span>   C<span class="x">A</span>TGC <span class="x">1</span>   <span class="x">A</span>TGCC <span class="x">1</span>
+          five k-mers in a row are rare: they all cover the 8th base
+try A→G   TTGC<span class="a">G</span> 30   TGC<span class="a">G</span>T 28   GC<span class="a">G</span>TG 32   C<span class="a">G</span>TGC 30   <span class="a">G</span>TGCC 29   → all trusted: correct A→G</div>
+  <p>The tools differ in how they store the k-mers and decide what to trust:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Corrector</th><th>How it decides</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>BayesHammer</b> (inside SPAdes, program <code>spades-hammer</code>)</td><td>Groups k-mers that differ by a few letters (a <span class="tip" title="Hamming distance = number of positions at which two equal-length strings differ">Hamming</span> graph), splits each group into sub-groups with a <span class="tip" title="A statistical model that compares how likely each explanation of the data is (here: one true k-mer plus errors, or two true k-mers from two repeat copies)">Bayesian model</span> that uses base qualities, keeps the centre of each sub-group as a solid k-mer, then corrects each read by a majority vote of the solid k-mers it contains.</td><td>Runs by default before SPAdes assembles. Built for uneven coverage (single cells). Turn it off with <code>--only-assembler</code>, run it alone with <code>--only-error-correction</code>.</td></tr>
+      <tr><td><b>Lighter</b></td><td>Does not count k-mers. Puts a random sample of k-mers into one Bloom filter (see below) and k-mers likely to be correct into a second one.</td><td>Sampling rate α is set by the user; the README's rule of thumb is α = 7 / C (C = average coverage). Memory stays constant as coverage grows.</td></tr>
+      <tr><td><b>Musket</b></td><td>k-mer spectrum, three stages: two-sided conservative correction, one-sided aggressive correction, voting-based refinement.</td><td>Aimed at substitution errors, the main Illumina error type.</td></tr>
+      <tr><td><b>BFC</b></td><td>Counts k-mers (a Bloom filter first drops most k-mers seen once), then searches for the set of corrections that gives a read a path of supported k-mers at the lowest penalty.</td><td>"Specifically designed for high-coverage whole-genome human data" (README). Example: <code>bfc -s 3g -t16 reads.fq.gz</code>.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Not every pipeline wants corrected reads. The MaSuRCA manual says: "Do not do any trimming, cleaning or error correction. This will likely deteriorate the assembly", because MaSuRCA corrects reads itself. ABySS 2 has no separate read-correction step; it starts contigs only from reads made entirely of solid k-mers and trims error branches in the graph. Error correction of many hundreds of millions of read pairs needs a lot of memory (next box).</p>
+  <div class="note warn"><b>In our projects: species D died in error correction.</b> Species D is one of our unpublished small-mammal genomes, sequenced with short reads only. The run was <code>spades.py --careful -1 R1.fastq.gz -2 R2.fastq.gz -o spades_output -t 16 -m 256 -k 21,33,55</code> on downsampled reads (SPAdes 4.x, standard mode). It failed in BayesHammer (the error-correction step) with "finished abnormally, OS return value: 12". Return value 12 is the operating-system code for "out of memory"; our project report too says it was apparently out of memory. Two things in that command go against the manual: <code>--careful</code> is "recommended only for assembly of small genomes. We strongly recommend not to use it for large and medium-size eukaryotic genomes", and the log itself suggested <code>--isolate</code>. The desman SPAdes runs used <code>--isolate</code>.</div>
+
+  <!-- ===== K CHOICE ===== -->
+  <h3 id="s03-k-h">Choosing k</h3>
+  <dl class="defs">
+    <dt>Small k</dt><dd>Most k-mers appear in many reads, so low-coverage regions are still connected. But more of the genome is repeated at that length, so the graph has more branches and the contigs are short. In the toy above, try k = 4.</dd>
+    <dt>Large k</dt><dd>Resolves repeats up to k − 2 bases. But each read gives only L − k + 1 k-mers (lesson 1), so k-mer coverage falls, and where it falls to zero the path breaks. One read error spoils k k-mers, so with large k fewer k-mers are error-free. k can never exceed the read length.</dd>
+    <dt>Odd k</dt><dd>SPAdes and MEGAHIT require odd k. An odd-length k-mer can never be its own reverse complement, which keeps the two DNA strands apart in the graph. ABySS accepts even k (its manual uses k = 96).</dd>
+  </dl>
+  <p>There are three ways to deal with the trade-off:</p>
+  <ol class="steps">
+    <li><div><b>Several k in one run (multi-k)</b><div class="d">Assemble with a small k, then use those contigs together with the reads to build the graph again at a larger k, and so on. The small k bridges thin coverage; the large k resolves repeats. SPAdes picks k from the read length: 21, 33, 55 for 100-base reads; <b>21, 33, 55, 77 for 150-base reads</b>; 21, 33, 55, 77, 99, 127 for 250-base reads. Its manual: "We strongly recommend not to change <code>-k</code> parameter unless you are clearly aware about the effect"; all values must be odd and below 128. MEGAHIT's default list is 21, 29, 39, 59, 79, 99, 119, 141, and it drops values longer than the longest read + 20. Platanus-allee starts at k = 32 and grows in steps of 20 up to 0.5 × read length.</div></div></li>
+    <li><div><b>Predict one best k (KmerGenie)</b><div class="d">For single-k assemblers (ABySS, Minia, SOAPdenovo2). KmerGenie builds the k-mer histogram for many k, predicts for each how many distinct genomic k-mers the data hold, and returns the k with the most. Its own manual says: "There is no need to use Kmergenie for a multi-k assembler, like SPAdes."</div></div></li>
+    <li><div><b>Try several k and compare</b><div class="d">The ABySS manual calls this "standard practice" and gives a starting point: for 2×150 reads at 40× coverage, k is often 70–90; for 2×250 reads, 110–140. Compare the assemblies with N50 and BUSCO (sections 08, 10), not only N50.</div></div></li>
+  </ol>
+
+  <!-- ===== BLOOM ===== -->
+  <h3 id="s03-bf-h">Fitting the graph into memory: the Bloom filter</h3>
+  <p>A mammal genome gives roughly as many distinct genomic k-mers as it has bases (billions), plus many error k-mers. Storing each k-mer and its count in a <span class="tip" title="A lookup table that stores every key (here a k-mer) in full, so it can answer exactly; memory grows with key length">hash table</span> takes at least 8 bytes per k-mer (k = 31 at 2 bits per base) plus the count and the table's empty slots. A <dfn>Bloom filter</dfn> stores a set in a few bits per element. It is a row of m bits, all 0 at the start, and h <span class="tip" title="A function that turns any text (here a k-mer) into a number that looks random but is always the same for the same text">hash functions</span>. To insert a k-mer, compute its h hash values and set those h bits to 1. To ask "is this k-mer in the set?", look at the same h bits: if any is 0, the k-mer is certainly absent; if all are 1, it is <i>probably</i> present. "Probably", because other k-mers may have set those bits by chance: a <dfn>false positive</dfn>. The filter never gives false negatives, and it does not store the k-mers themselves.</p>
+  <p>The de Bruijn graph does not need its edges stored: from any k-mer the assembler tries the four possible next k-mers (add A, C, G or T) and asks the Bloom filter which exist. Minia was the first assembler to store the graph this way; ABySS 2 does it too, and so do the correctors Lighter and BFC.</p>
+  <div class="formula">false-positive rate = (1 − (1 − 1/m)<sup>hn</sup>)<sup>h</sup> ≈ (1 − e<sup>−hn/m</sup>)<sup>h</sup>
+    <span style="color:var(--muted)">  m = bits, h = hash functions, n = distinct k-mers inserted</span></div>
+  <p style="font-size:14px">This is equation 1 of the ABySS 2 paper. The source code of ABySS 2.3.10 estimates the same rate in a simpler way: the share of bits that are 1, raised to the power h (if 30 % of bits are 1 and h = 4, a random absent k-mer hits four 1-bits with probability 0.3<sup>4</sup> ≈ 0.8 %).</p>
+
+  <section class="tool explain" aria-labelledby="s03-bl-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-bl-h">A Bloom filter for the k-mers of one read</h3></div>
+    <p class="tool-note">All 5-mers of the read below are inserted into a filter of m bits with h hash functions. Then 24 other 5-mers that are <b>not</b> in the read are looked up. Grey = correctly "absent", red = false positive ("present" although it was never inserted). Make the filter smaller and watch false positives appear. Type any 5-mer to see which bits it uses.</p>
+    <div class="controls">
+      <label for="s03-bl-m">filter size m (bits) <output id="s03-bl-mo">96</output><input type="range" id="s03-bl-m" min="8" max="192" step="8" value="96"></label>
+      <label for="s03-bl-h2">hash functions h <output id="s03-bl-ho">3</output><input type="range" id="s03-bl-h2" min="1" max="6" step="1" value="3"></label>
+      <label for="s03-bl-q">query a 5-mer<input id="s03-bl-q" value="GCATG" maxlength="5" spellcheck="false" style="font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px;width:90px;text-transform:uppercase"></label>
+    </div>
+    <div class="svgbox" id="s03-bl-fig"></div>
+    <div class="readout" id="s03-bl-out"></div>
+    <p class="tool-note">With h fixed, the false-positive rate depends only on bits per k-mer (m / n). For each m / n there is a best h, about 0.69 × m / n; more hash functions than that fill the filter faster than they help. In a real assembler a false positive adds a k-mer that is not in the reads. ABySS 2 found that most such k-mers form a short dead-end side branch, which a <span class="tip" title="Before following a branch, the assembler looks a few k-mers ahead; a branch that dies within that distance is ignored">look-ahead</span> step removes; its code treats side branches of up to 5 k-mers as possible false positives.</p>
+  </section>
+
+  <p><b>ABySS 2 in practice.</b> The parameter <code>B</code> is the whole memory budget: 8/9 of it goes to a <span class="tip" title="A Bloom filter that keeps a small counter instead of a single bit at each position, so it can also tell how many times a k-mer was seen (needed for the kc threshold)">counting Bloom filter</span> and 1/9 to a second filter that remembers which k-mers are already in a contig. The manual's guide values: <code>B=2G</code> for <i>Caenorhabditis elegans</i> (~101 Mb), <code>B=50G</code> for <i>Homo sapiens</i> (~3.1 Gb), <code>B=500G</code> for <i>Picea glauca</i> (~20 Gb). Check the log (with <code>v=-v</code>): the FPR under "Counting Bloom filter stats" should be 5 % or less. Default <code>H</code> (hash functions) is 4. In the ABySS 2 paper the human assembly needed under 35 GB of RAM, while DISCOVAR de novo needed 618 GB and SOAPdenovo2 659 GB for the same data.</p>
+
+  <!-- ===== PAIRS ===== -->
+  <h3 id="s03-pe-h">Read pairs, insert size and scaffolds</h3>
+  <p>Both ends of each DNA fragment are read, so the two reads of a pair lie a known distance apart. The <dfn>insert size</dfn> (or fragment size) is the length of the fragment, both reads included. A normal <dfn>paired-end</dfn> library has fragments of about 300–600 bases, the two reads facing each other. A <dfn>mate-pair</dfn> (jumping) library is made by circularising long fragments, 2–10 kb or more, and reading across the junction; it needs much more DNA and lab work. The <i>Galemys</i> genome used both: paired-end libraries of 350 and 550 bases and mate pairs of 5 and 9 kb.</p>
+  <div class="toy">contig 1 ────────────────────────────▶          contig 2 ─────────────────────────▶
+               read 1 ──▶                                  ◀── read 2
+               |←────────── insert size ≈ 9,000 (from the library) ───────────→|
+scaffold ──────────────────────────────<span class="x">NNNNNNNNNN</span>──────────────────────────────</div>
+  <p>Pairs do three jobs. (1) Inside the graph they choose between branches: if read 1 lies in the left unique contig, read 2 tells which exit from a repeat is right (SPAdes and ABySS do this; MaSuRCA merges the two reads of a pair into one longer "super-read" when a unique path joins them). (2) <dfn>Scaffolding</dfn>: pairs whose reads fall in two different contigs order and orient those contigs. (3) The distance between the reads gives an estimate of the gap size, written as that many N. Some tools write a fixed number of N when the size is unknown, so an N-run is not always a measured gap size (section 06). ABySS uses mate-pair libraries (<code>mp=</code>) only for scaffolding; they "do not contribute towards the consensus sequence".</p>
+  <div class="note"><b>In our projects: N-runs of fixed length and doubled SINE copies.</b> <i>Galemys</i> (ABySS) has 17,284 runs of exactly 50 N, 64 % of them touching a Tal SINE. The published <i>Desmana moschata</i> assembly (GCA_051107935.1) was built from SPAdes 4.0 (k = 99) and MaSuRCA 4.1 contigs, then joined onto the <i>Galemys</i> genome with <span class="tip" title="A tool that orders and joins contigs by aligning them to a related species' genome; see section 05">RagTag</span> 2.1. 65,059 of its 66,963 N-runs are exactly 100 N, RagTag's placeholder for an unknown gap. At those joins the MaSuRCA contigs on both sides often each contained the whole SINE copy, so the same ~250-base copy is written twice with 100 N between: 19,250 doubled copies genome-wide. Reference-guided joining copies the neighbour's order and cannot see such overlaps.</div>
+
+  <!-- ===== TOOLS ===== -->
+  <h3 id="s03-tools-h">Short-read assemblers today</h3>
+  <p>Versions and dates are from each project's GitHub page (checked 31 October 2026). "Last change" is the last commit, which may be a small fix.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Latest release</th><th>Approach</th><th>For a 2–3 Gb vertebrate</th></tr></thead>
+    <tbody>
+      <tr><td><b>SPAdes</b></td><td>4.3.0 (June 2026)</td><td>Multi-k de Bruijn graph, BayesHammer correction, pairs for repeat resolution</td><td>Version 3.15.5's manual said: "SPAdes is not intended for larger genomes (e.g. mammalian size genomes). For such purposes you can use it at your own risk." The current manual no longer has this sentence and recommends <code>--isolate</code> for "standard eukaryotic and bacterial isolated datasets with decent coverage (50x or higher)". Default memory limit 250 GB (<code>-m</code>).</td></tr>
+      <tr><td><b>ABySS 2</b></td><td>2.3.10 (Oct 2024; last change Apr 2026)</td><td>Single-k de Bruijn graph in a Bloom filter; contigs grown from solid reads; scaffolding with pairs, mate pairs, <span class="tip" title="10x Genomics reads: short reads carrying a barcode that marks which long DNA molecule they came from">linked reads</span></td><td>Documented for human (<code>B=50G</code>); low memory. Built-in <span class="tip" title="Fills N gaps in scaffolds by searching the read k-mers for a path between the two gap ends; see section 06">gap filler Sealer</span>. Maximum k 192 by default (set at compile time).</td></tr>
+      <tr><td><b>MEGAHIT</b></td><td>1.2.9 (Oct 2019; last change Oct 2025)</td><td>Multi-k <span class="tip" title="A compressed way of storing a de Bruijn graph that needs only a few bits per edge">succinct de Bruijn graph</span></td><td>"Optimized for metagenomes, but also works well on generic single genome assembly (small or mammalian size)" (README). Fast; output <code>final.contigs.fa</code>; contigs only, no scaffolds.</td></tr>
+      <tr><td><b>MaSuRCA</b></td><td>4.1.4 (June 2025)</td><td>Reads extended through a k-mer graph into "super-reads", then assembled by overlaps (<span class="tip" title="Celera Assembler with the Best Overlap Graph: an older overlap-layout-consensus assembler that MaSuRCA runs internally">CABOG</span>); hybrid mode with long reads</td><td>Manual: mammal (up to 3 Gb) needs 512 GB RAM, 32+ cores, 5 TB disk, 15–20 days for Illumina-only data. Do not pre-trim or pre-correct reads. Writes <code>primary</code> and <code>alternative</code> scaffolds.</td></tr>
+      <tr><td><b>Platanus-allee</b></td><td>v2.4.0 (README; last change Apr 2026)</td><td>Multi-k; separates the two haplotypes in heterozygous regions (phasing) and also writes a consensus (pseudohaploid) assembly</td><td>Made for highly heterozygous genomes. Needs at least one Illumina paired-end library; mate pairs, long reads and linked reads optional.</td></tr>
+      <tr><td><b>DISCOVAR de novo</b></td><td>(Broad Institute, no GitHub release)</td><td>Designed for one <span class="tip" title="A library made without PCR amplification: fewer duplicates and more even coverage in GC-rich or GC-poor DNA, but it needs more starting DNA">PCR-free</span> library of 250-base pairs</td><td>Best contig N50 among short-read assemblers in the ABySS 2 human comparison, but 618 GB of RAM. Used for the eastern mole <i>Scalopus aquaticus</i> (one of the talpid genomes in our comparison).</td></tr>
+      <tr><td><b>w2rap-contigger</b></td><td>(no release; last change Nov 2022)</td><td>Reworked from Broad Institute code (its licence names Broad as the 2014 copyright holder); small-k graph, then a large K (example: K = 260)</td><td>Illumina paired-end contig assembler; README: "can handle large (17Gbp) complex (hexaploid) genomes". Its last step scaffolds across gaps with the read pairs.</td></tr>
+      <tr><td><b>Minia 3</b> (GATB)</td><td>3.2.6 (May 2021)</td><td>Bloom-filter de Bruijn graph, contigs only</td><td>Its own README sends users wanting "high-quality genome" assemblies to the multi-k <code>gatb-minia-pipeline</code> instead.</td></tr>
+      <tr><td><b>SOAPdenovo2</b></td><td>r242 (Oct 2020)</td><td>de Bruijn graph (k up to 127), scaffolding, <span class="tip" title="A separate SOAP program that fills N gaps from read pairs">GapCloser</span></td><td>Published 2012. 659 GB in the ABySS 2 human test.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>What is used now?</b> For a new vertebrate reference, short reads alone are no longer the standard: the reference projects use long reads and Hi-C (<a href="../01-pre-assembly/#vgp">lesson 1</a>, sections 04–05), and short reads are used to polish and to check quality (sections 06, 08). Short-read-only assembly is still done when only short reads can be afforded, for population or comparative work, and for many small genomes. Of the tools above, ABySS 2, MEGAHIT and MaSuRCA document mammal-size use, Platanus-allee is built for heterozygous genomes, and all four had updates in 2025–2026; SPAdes is maintained and does run on mammals (our desman, <i>Cricetulus</i>), but its developers wrote it for small genomes. Expect contig N50 in the tens of kilobases.</p>
+  <div class="note"><b>In our projects: what short reads give for a mammal.</b> Contig N50: <i>Desmana</i> raw SPAdes 24.2 kb (R8) and 21.4 kb (R9), published 43.3 kb; <i>Galemys</i> (ABySS, with mate pairs) 64.5 kb. Long reads on other small mammals of ours: species B (Flye, short long-reads with N50 under 3 kb) a few hundred kb; species A (hifiasm) above 10 Mb. Benchmarks on the Monsoon cluster with 32× mouse reads: ABySS 5.4 h and contig N50 6.7 kb, MEGAHIT 8 h and 13.9 kb. Memory <i>requested</i> for <i>Darevskia mixta</i> (~16×): ABySS 120 GB, MEGAHIT 240 GB, SPAdes 470 GB (requests, not measured peaks).</div>
+
+  <!-- ===== COMMANDS ===== -->
+  <h3 id="s03-cmd-h">Command lines</h3>
+  <p>Syntax checked against each tool's current manual. Paths and numbers of threads/memory are examples; see section 02 for planning memory.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># SPAdes 4.x - isolate mode (recommended for eukaryote isolates at 50x or more; not combinable with --careful)</span>
+spades.py --isolate -1 R1.fq.gz -2 R2.fq.gz -o spades_out -t 32 -m 500
+<span class="c">#   -m = memory limit in GB (default 250); SPAdes stops when it reaches it
+#   k is chosen from read length (150-base reads: 21,33,55,77); set -k only if you know why (odd, &lt; 128)
+#   → spades_out/scaffolds.fasta (recommended), contigs.fasta, assembly_graph_with_scaffolds.gfa
+#   headers like &gt;NODE_3_length_237403_cov_243.207 : cov = k-mer coverage at the largest k
+#   after a crash: spades.py --continue -o spades_out</span>
+
+<span class="c"># ABySS 2 - Bloom filter mode (B = total memory budget); try several k (and kc 2-4)</span>
+abyss-pe name=sp k=96 B=50G j=32 kc=3 v=-v \
+         lib='pea' pea='R1.fq.gz R2.fq.gz' \
+         mp='mpa' mpa='MP_R1.fq.gz MP_R2.fq.gz'          <span class="c"># mp only if you have mate pairs</span>
+<span class="c">#   → sp-unitigs.fa, sp-contigs.fa, sp-scaffolds.fa ; abyss-fac sp-scaffolds.fa for N50
+#   check the log: "Counting Bloom filter stats" FPR should be ≤ 5 %
+#   ABySS puts temporary files in TMPDIR (default /tmp): export TMPDIR=/big/disk first</span>
+
+<span class="c"># MEGAHIT - multi-k; -o must not exist yet</span>
+megahit -1 R1.fq.gz -2 R2.fq.gz -t 32 -m 0.5 -o megahit_out
+<span class="c">#   -m = memory for graph building, as bytes or a fraction of the machine's RAM (default 0.9)
+#   → megahit_out/final.contigs.fa (contigs ≥ 200 bases by default)</span>
+
+<span class="c"># MaSuRCA - simple mode for one paired-end library (raw, untrimmed reads); -r adds long reads (hybrid)</span>
+masurca -t 32 -i /full/path/R1.fq.gz,/full/path/R2.fq.gz
+<span class="c">#   bigger projects: copy sr_config_example.txt, edit, then:  masurca config.txt ; ./assemble.sh
+#   → CA*/primary.scf.fasta (and alternative.scf.fasta); CA.mr.*/ when long reads were given</span>
+
+<span class="c"># Platanus-allee - contigs, then phasing, then consensus (logs go to stderr)</span>
+platanus_allee assemble -f R1.fq R2.fq -t 32 -m 200 2&gt;assemble.log
+platanus_allee phase -c out_contig.fa -IP1 R1.fq R2.fq -t 32 2&gt;phase.log
+platanus_allee consensus -c out_consensusInput.fa -IP1 R1.fq R2.fq -t 32 2&gt;consensus.log
+<span class="c">#   → out_allPhasedScaffold.fa (two haplotypes), out_consensusScaffold.fa (pseudohaploid)</span>
+
+<span class="c"># Choosing one k for a single-k assembler</span>
+ls -1 R1.fq.gz R2.fq.gz &gt; reads.list
+kmergenie reads.list -t 16             <span class="c"># last line of output = best k; report histograms_report.html</span></pre></div>
+  <p class="tool-note"><b>Pitfalls.</b> (1) SPAdes <code>--careful</code> on a mammal: the manual advises against it. (2) Memory: in our species D run the step that ran out of memory was error correction; SPAdes stops when it reaches <code>-m</code>, so set it to what the machine really has. (3) Do not give MaSuRCA trimmed or corrected reads. (4) ABySS reads <code>abyss-pe</code> variables also from the environment; <code>abyss-pe env</code> prints what it will use. (5) Gap N-runs from scaffolding are guesses or placeholders; check them before using gap sizes for anything.</p>
+</section>

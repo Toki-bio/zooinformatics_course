@@ -1,0 +1,1437 @@
+<title>Pre-Assembly Read Profiling</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, stages in pipeline order, each stage = what it answers + figure + commands */
+:root{
+  --bg:#F5F7F8; --panel:#FFFFFF; --fg:#13212C; --muted:#586A77; --line:#D3DCE2;
+  --accent:#0A6C96;   /* homozygous peak / primary */
+  --het:#B9770E;      /* heterozygous peak */
+  --rep:#7B4FA6;      /* repeats */
+  --err:#9AA7B0;      /* errors */
+  --bad:#B4372F; --good:#2E7D4F;
+  --code-bg:#EBF0F3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:700;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-weight:600}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+section{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p code,li code,td code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+a{color:var(--accent)}
+/* sequential steps: one column, numbered markers joined by a line */
+.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column;max-width:72ch}
+.steps>li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:14px;padding-bottom:16px;position:relative;margin:0}
+.steps>li::before{content:counter(st);width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--f-mono);color:var(--accent);background:var(--bg);position:relative;z-index:1}
+.steps>li::after{content:"";position:absolute;left:13px;top:28px;bottom:0;border-left:1.5px solid var(--line)}
+.steps>li:last-child::after{display:none}
+.steps>li.later::before{content:"+";border-style:dashed;color:var(--muted);border-color:var(--muted)}
+.steps>li>div{min-width:0;padding-top:2px}
+.steps b{font-family:var(--f-display);font-size:16px}
+.steps .d{font-size:14.5px}
+.steps .t{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.steps a{font-size:13px;margin-left:6px}
+.qlist{font-size:16px;padding-left:22px;max-width:72ch}
+.qlist li+li{margin-top:6px}
+.defs{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 20px;margin:0}
+.defs dt{font-family:var(--f-display);font-weight:700}
+.defs dd{margin:0;max-width:68ch}
+@media (max-width:600px){.defs{grid-template-columns:1fr;gap:2px}.defs dd{margin-bottom:10px}}
+dfn{font-style:normal;font-weight:600}
+/* figure */
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:13.5px;color:var(--muted)}
+figcaption b{color:var(--fg)}
+.svgbox{overflow-x:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .lab{fill:var(--fg);font-size:11.5px}
+svg .ax{stroke:var(--line);stroke-width:1;fill:none}
+svg .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3;fill:none;opacity:.7}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.controls label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted);min-width:150px}
+.controls label output{font-family:var(--f-mono);color:var(--fg);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:170px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;background:transparent;color:var(--fg);border:0;padding:5px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;font-size:13px}
+.tool{border:1.5px solid var(--accent);border-radius:6px;background:var(--bg);padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.tool.explain{border-color:var(--het)}
+.tool.explain .tool-tag{background:var(--het)}
+.tool-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-tag{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:3px}
+.tool-note{font-size:13.5px;color:var(--muted)}
+.tool-note b{color:var(--fg)}
+.tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+.btn{font:600 13px var(--f-body);background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:6px 12px;cursor:pointer;align-self:flex-end}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout div{border-top:2px solid var(--line);padding-top:6px}
+.readout b{display:block;font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.grid2 figure{padding:12px}
+/* code */
+.code{position:relative;background:var(--code-bg);border-radius:4px;min-width:0}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:12.8px;line-height:1.55;white-space:pre}
+.code .c{color:var(--muted)}
+.code button{position:absolute;top:6px;right:6px;font:12px var(--f-mono);background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:2px 8px;cursor:pointer}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td b{font-family:var(--f-display)}
+.tag{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.s{color:var(--accent);border-color:var(--accent)}
+.tag.l{color:var(--het);border-color:var(--het)}
+.note{border-left:3px solid var(--het);padding:10px 14px;background:var(--panel);font-size:14.5px;max-width:none}
+.note.warn{border-left-color:var(--bad)}
+.formula{font-family:var(--f-mono);font-size:14px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:nowrap}
+details.simple{border:1px dashed var(--line);border-radius:4px;background:var(--panel);padding-inline:14px}
+details.simple summary{cursor:pointer;padding-block:10px;font-weight:600;color:var(--accent);font-size:14.5px}
+details.simple summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.simple[open]{padding-bottom:14px}
+details.simple .in{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.toy{font-family:var(--f-mono);font-size:13px;background:var(--code-bg);padding:10px 12px;border-radius:4px;overflow-x:auto;white-space:pre;line-height:1.6}
+.toy .h{color:var(--het);font-weight:600}.toy .a{color:var(--accent);font-weight:600}.toy .x{color:var(--bad);font-weight:600}
+.calc{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end}
+.calc label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+.calc input,.calc select{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px}
+.calc input{width:110px}
+.calc input.wide{width:min(100%,560px)}
+.calc label.wide{flex:1 1 100%}
+.slider-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13.5px;color:var(--muted)}
+.slider-row input[type=range]{width:min(100%,520px)}
+.kmer-lines{font-family:var(--f-mono);font-size:13px;line-height:1.45;white-space:pre;overflow-x:auto;background:var(--code-bg);padding:10px 12px;border-radius:4px;max-height:640px;overflow-y:auto}
+.kmer-lines .rep{color:var(--het);font-weight:600}.kmer-lines .pos{color:var(--muted)}
+.spec-mini{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;font-family:var(--f-mono);font-size:12.5px;max-width:520px}
+.spec-mini i{display:block;height:10px;background:var(--accent);opacity:.7;border-radius:2px}
+.warn-text{color:var(--bad);font-size:13px}
+ul{margin:0;padding-left:20px;max-width:70ch}
+li+li{margin-top:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">Field guide · before you run an assembler</div>
+  <h1>Pre-Assembly Read Profiling</h1>
+  <p class="lede">Before assembling a genome, find out what you are dealing with. Raw short and long reads answer six questions:</p>
+  <ul class="qlist">
+    <li><b>Are the reads good enough?</b> How many bases you have, how long and how accurate the reads are, and whether they still contain adapter sequence.</li>
+    <li><b>How big is the genome?</b> The length of one chromosome set in bases. This is the length the assembly should reach.</li>
+    <li><b>How heterozygous is it?</b> The share of positions where the chromosome copy from the mother differs from the copy from the father.</li>
+    <li><b>What is the ploidy?</b> How many chromosome sets each cell carries: two in a diploid, three in a triploid, four in a tetraploid.</li>
+    <li><b>How repetitive is it?</b> The share of the genome made of sequences present in many copies, such as transposons and satellite DNA.</li>
+    <li><b>Is anything foreign mixed in?</b> DNA from bacteria, parasites, gut contents or the people who handled the sample, and the abundant mitochondrial DNA.</li>
+  </ul>
+  <p class="lede">Each answer changes which assembler you choose and how you set it. Laboratory measurements of DNA amount and chromosome number give an independent check.</p>
+</header>
+
+<section aria-labelledby="basics">
+  <h2 id="basics">Key ideas</h2>
+  <p>The page uses a small set of terms. They are defined here once, with a picture of the central idea: counting k-mers.</p>
+  <figure>
+    <h3>1 · From DNA to reads, and what coverage means</h3>
+    <div class="svgbox" id="primer-a" style="cursor:crosshair;touch-action:pan-y"></div>
+    <div class="slider-row"><label for="cov-pos">Move the marked base</label><input type="range" id="cov-pos" min="0" max="640" step="1" value="255"><span>or click and drag on the picture</span></div>
+    <figcaption>For sequencing, the DNA is broken into fragments, adapters are attached, and in most short-read libraries the fragments are copied by PCR. The sequencer then reads each library molecule. A <b>read</b> is that readout: a copy of the sequence of one genomic location, with occasional errors (red ticks) from the sequencer and, after PCR, from copying. Fragments come from scattered positions, so reads overlap unevenly. <b>Coverage</b> at a base is the number of reads that span it. Move the marked base: coverage changes from place to place, and the curve under the genome shows it along the whole region. The "average coverage" usually quoted is total read bases ÷ region length.</figcaption>
+  </figure>
+  <figure>
+    <h3>2 · Cutting a read into k-mers</h3>
+    <div class="svgbox" id="primer-b"></div>
+    <figcaption>A <b>k-mer</b> is a substring of length k. Slide a window of k bases along the read one base at a time: a read of L bases gives L − k + 1 k-mers. Here 10 − 5 + 1 = 6.</figcaption>
+    <section class="tool explain" aria-labelledby="lk-h">
+      <div class="tool-head"><span class="tool-tag">Why</span><h3 id="lk-h">Why does a read give L − k + 1 k-mers?</h3></div>
+      <div class="svgbox" id="primer-b2"></div>
+      <p style="font-size:14px">A k-mer can start at the read's first base. Moving right, the last possible start is the one where the k-mer's end touches the read's end. One step further and the window would need a base the read does not have. So the starts run from 1 to L − k + 1. Put differently: of the L positions in the read, the last k − 1 cannot begin a whole k-mer, and <span style="white-space:nowrap">L − (k − 1) = L − k + 1</span>.</p>
+    </section>
+    <div class="formula" style="white-space:normal;line-height:1.9">k-mers in one read = L − k + 1 (none if L &lt; k)<br>k-mers in N reads = N × (L − k + 1)<br>k-mer coverage = N × (L − k + 1) ÷ G = read coverage × (L − k + 1) ÷ L<br>possible different k-mers = 4<sup>k</sup></div>
+    <details class="simple"><summary>Simple explanation: why N ÷ G is the same as read coverage ÷ L</summary><div class="in">
+    <p>Read coverage is defined as all sequenced bases divided by the genome size: <b>read coverage = N × L ÷ G</b>. Divide both sides by L and you get <b>read coverage ÷ L = N ÷ G</b>. Both sides say the same thing: how many reads <i>start</i> at an average position of the genome.</p>
+    <div class="toy">N = 200 million reads, L = 150 bases, G = 1,000 million bases
+read coverage  = 200 M × 150 ÷ 1,000 M = <span class="a">30×</span>
+N ÷ G          = 200 M ÷ 1,000 M       = 0.2 read starts per base
+read cov. ÷ L  = 30 ÷ 150              = 0.2 read starts per base  (the same)
+k-mer coverage = 0.2 × (150 − 21 + 1)  = 0.2 × 130 = <span class="a">26×</span></div>
+    <p>Why read starts? A base is covered by every read that starts within the L positions before it, so read coverage = (starts per base) × L. A k-mer is contained in every read that starts within the L − k + 1 positions before it (the <a href="#lk-h">window shown above</a>), so k-mer coverage = (starts per base) × (L − k + 1). Same starts per base, shorter window.</p>
+    </div></details>
+    <section class="tool explain" aria-labelledby="kc2-h">
+      <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="kc2-h">Read coverage vs k-mer coverage</h3></div>
+      <p style="font-size:14px">They are two different counts, taken at the same place in the genome:</p>
+      <ul style="font-size:14px;margin:0;padding-left:20px;max-width:70ch">
+        <li><b>Read coverage</b> of a base: how many reads contain <i>that one base</i>.</li>
+        <li><b>k-mer coverage</b> of a k-mer: how many reads contain <i>all k of its bases</i>. A read that covers the k-mer's first base but ends before its last base does not contain the k-mer, so it does not count.</li>
+      </ul>
+      <p style="font-size:14px">In this toy one read starts at every base, so every base is covered by exactly L reads. The figure shows all the reads that cover the k-mer's first base (dashed column). Move the sliders: the shorter the read, or the longer the k-mer, the more reads cut the k-mer off.</p>
+      <div class="slider-row"><label for="kv-k">k</label><input type="range" id="kv-k" min="1" max="16" step="1" value="5" style="width:min(100%,240px)"><output id="kv-ko" class="mono">5</output>
+        <label for="kv-L">read length L</label><input type="range" id="kv-L" min="4" max="16" step="1" value="10" style="width:min(100%,240px)"><output id="kv-Lo" class="mono">10</output></div>
+      <div class="svgbox" id="kv-fig"></div>
+      <div class="readout" id="kv-out"></div>
+      <p style="font-size:14px"><b>Why it matters.</b> The spectrum peak and GenomeScope's <code>kcov</code> are k-mer coverage. To get read coverage back, multiply by L ÷ (L − k + 1). For 150-base reads and k = 21 that is × 1.16, so a peak at 26 means about 30× read coverage. For 15 kb HiFi reads the two are practically equal. The genome size estimate is not affected, because it divides k-mers by k-mer coverage (both sides counted the same way).</p>
+    </section>
+    <section class="tool" aria-labelledby="km-h">
+      <div class="tool-head"><span class="tool-tag">Calculator</span><h3 id="km-h">k-mers and coverage for your data</h3></div>
+      <p class="tool-note">Enter either the number of reads or the read coverage; the other one is filled in. Hover over a name to see what it means.</p>
+      <div class="calc">
+        <label for="km-L" title="Length of each read in bases. Illumina reads are usually 150; PacBio HiFi reads about 15,000."><span class="tip">Read length L (bases)</span><input id="km-L" type="number" min="1" step="1" value="150" title="Length of each read in bases. Illumina reads are usually 150; PacBio HiFi reads about 15,000."></label>
+        <label for="km-k" title="Length of the k-mers that are counted. 21 is usual for short reads; 31-40 for HiFi."><span class="tip">k</span><input id="km-k" type="number" min="1" max="64" step="1" value="21" title="Length of the k-mers that are counted. 21 is usual for short reads; 31-40 for HiFi."></label>
+        <label for="km-G" title="Haploid genome size in millions of bases (Mb), for example from flow cytometry or a genome-size database."><span class="tip">Genome size G (Mb)</span><input id="km-G" type="number" min="0.001" step="any" value="1000" title="Haploid genome size in millions of bases (Mb), for example from flow cytometry or a genome-size database."></label>
+        <label for="km-N" title="How many reads you have, in millions. For paired-end data count R1 and R2 reads together. Editing this fills in the read coverage."><span class="tip">Reads N (millions)</span><input id="km-N" type="number" min="0" step="any" value="200" title="How many reads you have, in millions. For paired-end data count R1 and R2 reads together. Editing this fills in the read coverage."></label>
+        <label for="km-C" title="Read coverage: total sequenced bases divided by genome size. Enter it here if you know it; the number of reads is then filled in."><span class="tip">or read coverage (×)</span><input id="km-C" type="number" min="0" step="any" value="30" title="Read coverage: total sequenced bases divided by genome size. Enter it here if you know it; the number of reads is then filled in."></label>
+      </div>
+      <div class="readout" id="km-out"></div>
+      <p class="tool-note"><b>Why k-mer coverage is lower than read coverage.</b> A read of L bases holds L bases but only L − k + 1 k-mers, because its last k − 1 positions cannot start a whole k-mer (figure above). Every base of the genome is covered by the reads, but each whole k-mer only by the reads that contain all k of its bases. So k-mer coverage = read coverage × (L − k + 1)/L: 87 % for 150-base reads with k = 21, but 99.9 % for 15,000-base HiFi reads.</p>
+    </section>
+    <h3>Split your own read</h3>
+    <div class="calc">
+      <label for="ks-read" class="wide">Read (A, C, G, T; up to 50 bases; other characters are removed)<input id="ks-read" class="wide" type="text" spellcheck="false" autocomplete="off" value="GATTACAGGTCACACACACAGATTACATTGC"></label>
+      <label for="ks-k">k<input id="ks-k" type="number" min="1" max="50" step="1" value="5"></label>
+      <label for="ks-len">Random read length<input id="ks-len" type="number" min="1" max="50" step="1" value="30"></label>
+      <button type="button" class="btn" id="ks-rand">Generate random read</button>
+    </div>
+    <div id="ks-msg" class="warn-text" aria-live="polite"></div>
+    <div class="kmer-lines" id="ks-lines"></div>
+    <div class="readout" id="ks-stats"></div>
+    <div><b style="font-size:13.5px">k-mer spectrum of this one read</b> <span style="font-size:13px;color:var(--muted)">(how many different k-mers occur once, twice, …)</span></div>
+    <div class="spec-mini" id="ks-spec"></div>
+    <details class="simple"><summary>All different k-mers in this read</summary><div class="in"><div class="tbl"><table style="min-width:0"><thead><tr><th>k-mer</th><th>reverse complement</th><th>canonical</th><th>times in read</th></tr></thead><tbody id="ks-table"></tbody></table></div></div></details>
+    <figcaption>Repeated k-mers are shown in colour.</figcaption>
+    <dl class="defs">
+      <dt>Reverse complement</dt><dd>The same stretch of DNA read from the other strand: reverse the order and swap A↔T, C↔G. GATTA on one strand is TAATC on the other.</dd>
+      <dt>Canonical k-mer</dt><dd>Because a read can come from either strand, GATTA and TAATC are the same place in the genome. k-mer counting programs therefore store only one of the pair, the one that comes first alphabetically (here GATTA), called the <b>canonical k-mer</b>. Jellyfish does this when given its <code>-C</code> option; KMC, Meryl and FastK do it by default. "Different canonical k-mers" counts the read's k-mers after this merging.</dd>
+      <dt>Palindromic k-mer</dt><dd>A k-mer that equals its own reverse complement, for example GAATTC (reverse it: CTTAAG; swap bases: GAATTC) or ACGT. Only even k can produce one, because the middle base would have to pair with itself. Try k = 6 with a read containing GAATTC.</dd>
+    </dl>
+  </figure>
+  <figure>
+    <h3>3 · Counting them: the k-mer spectrum</h3>
+    <div class="svgbox" id="primer-c"></div>
+    <section class="tool explain" aria-labelledby="nm-h">
+      <div class="tool-head"><span class="tool-tag">Axes</span><h3 id="nm-h">Reading the axes with names instead of k-mers</h3></div>
+      <p style="font-size:14px">A class has 7 children: Anna, Paul, Rose, John, Kate and two girls called Mary. Three teachers each write down the class list. All names have 4 letters, as all k-mers have k letters. Now count every name on all three lists, then ask: <b>how many different names were written once, twice, three times…?</b></p>
+      <div class="svgbox" id="names-fig"></div>
+      <div class="tbl"><table>
+        <thead><tr><th>In the class</th><th>In the genome</th><th>Where it shows</th></tr></thead>
+        <tbody>
+          <tr><td>a name (4 letters)</td><td>a k-mer (k letters)</td><td>one entry on the x axis count</td></tr>
+          <tr><td>a teacher's list</td><td>a read: a copy of what is there, with occasional mistakes</td><td></td></tr>
+          <tr><td>3 lists, so every child is written 3 times</td><td>coverage</td><td>the peak sits at x = 3</td></tr>
+          <tr><td>misspelt name (JHON, KTAE)</td><td>k-mer with a sequencing error</td><td>x = 1: the error spike</td></tr>
+          <tr><td>John and Kate lose one entry to the misspelling</td><td>real k-mers whose copy in a read carried an error</td><td>x = 2, a little below the peak</td></tr>
+          <tr><td>two girls called Mary</td><td>a k-mer present at two places (a repeat)</td><td>x = 6: twice the peak</td></tr>
+        </tbody>
+      </table></div>
+      <p style="font-size:14px"><b>x axis:</b> how many times one name (k-mer) was written in all lists together. <b>y axis:</b> how many different names were written exactly that many times. So the bar at x = 3, height 3, says: "three different names (Anna, Paul, Rose) were each written 3 times". Each bar counts names, not children. To get back the number of children, multiply each x by its bar height and add up (1×2 + 2×2 + 3×3 + 6×1 = 21 entries), then divide by the peak, 3: 7 children. That is the same division GenomeScope uses to estimate genome size.</p>
+    </section>
+    <figcaption>Count how often each distinct k-mer occurs in all reads, then plot how many k-mers have each count. k-mers copied correctly from the genome are seen about as often as the k-mer coverage (a little below the read coverage; see the boxes below), so they form a <b>peak</b>. A k-mer that contains a sequencing error exists in only one or two reads, so these k-mers pile up at the far left in the <b>error spike</b>; it is so tall that plots cut it off. The x axis starts at 1: a k-mer seen zero times does not appear in the reads.</figcaption>
+  </figure>
+  <dl class="defs">
+    <dt>Read</dt><dd>The sequencer's readout of one library molecule (genomic DNA broken into fragments, adapters attached, often copied by PCR). It is an imperfect copy of one genomic location and carries sequencing errors. A paired-end fragment gives two reads; a HiFi read is the consensus of many passes over one molecule.</dd>
+    <dt>Short reads</dt><dd>Illumina (or MGI/DNBSEQ, Element) reads, usually 150 bases, with about 0.1–0.5 % errors. Usually <dfn>paired-end</dfn>: two reads (files R1 and R2) from the two ends of the same fragment.</dd>
+    <dt>Long reads</dt><dd><dfn>PacBio HiFi</dfn>: 15–25 kb, about 99.9 % accurate. <dfn>Oxford Nanopore (ONT)</dfn>: from a few kb to over 100 kb; accuracy depends on the pore version and on the <dfn>basecaller</dfn> (the software that turns the electrical signal into bases), and is about 99 % or better with the current R10.4.1 pore.</dd>
+    <dt>bp, kb, Mb, Gb</dt><dd>Base pairs; thousands, millions and billions of bases.</dd>
+    <dt>Coverage (depth)</dt><dd>How many reads cover each position on average: total sequenced bases ÷ genome size. 30 Gb of reads for a 1 Gb genome is 30× coverage.</dd>
+    <dt>Base quality (Phred Q)</dt><dd>The sequencer's confidence in a base: Q = −10 · log<sub>10</sub>(error probability). Q20 = 1 error in 100 bases, Q30 = 1 in 1,000, Q40 = 1 in 10,000.</dd>
+    <dt>k-mer</dt><dd>A substring of fixed length k taken from a read (figure, middle). Counting k-mers needs no reference genome, which makes it the standard way to profile a genome from raw reads.</dd>
+    <dt>k-mer spectrum</dt><dd>The histogram of k-mer counts: how many different k-mers were seen once, twice, three times and so on (figure, right). Its peaks reveal coverage, genome size, heterozygosity and repeats.</dd>
+    <dt>Haplotype</dt><dd>The sequence of one chromosome set. A diploid has two, one from each parent.</dd>
+    <dt>Heterozygosity</dt><dd>The share of positions where the haplotypes differ. Humans: about 0.1 %. Many wild species: 0.5–2 % or more.</dd>
+    <dt>Ploidy</dt><dd>The number of chromosome sets per cell.</dd>
+    <dt>Repeats</dt><dd>Sequences present in many copies: transposable elements, and <dfn>satellite DNA</dfn> (a short unit repeated head to tail many times). Repeats are the main reason assemblies break.</dd>
+    <dt>Genome size, C-value</dt><dd>Genome size is the length of one chromosome set in bases. The <dfn>C-value</dfn> is DNA mass per nucleus: 1C is the DNA of an unreplicated gametic nucleus, 2C that of an unreplicated body-cell nucleus, whatever the ploidy. In a diploid, 1C equals one chromosome set. In a tetraploid, 1C holds two sets, and the size of one set is the <dfn>monoploid</dfn> size (1Cx). 1 picogram (pg) of DNA = 978 Mb.</dd>
+    <dt>Contig, scaffold</dt><dd>A <dfn>contig</dfn> is a continuous sequence assembled from overlapping reads, with no gaps. A <dfn>scaffold</dfn> is a chain of contigs placed in order, with gaps (runs of N) between them. The <dfn>assembly</dfn> is the full set.</dd>
+    <dt>N50</dt><dd>The length at which half of all bases sit in pieces (reads or contigs) of that length or longer. Shown step by step, with L50 and N90, in <a href="#n50">Measuring contiguity</a>.</dd>
+    <dt>Model fit</dt><dd>Tools such as GenomeScope do not measure the genome directly. They fit an idealised curve to the k-mer spectrum and read size and heterozygosity off that curve, so a poor fit gives wrong numbers.</dd>
+  </dl>
+  <details class="simple"><summary>Why is the error spike so tall when reads are 99.8 % accurate?</summary><div class="in">
+    <p>Each distinct k-mer adds <b>1</b> to the height of one bar, and <b>how often it was seen decides which bar</b>. A real k-mer seen 35 times adds 1 to the bar at x = 35. A k-mer containing an error, seen once, adds 1 to the bar at x = 1. Nothing is lost: the 35 sightings are kept as the bar's position, and they come back in every size calculation as x · n(x) (35 × the bar height). But the bar <i>heights</i> count k-mers, not sightings, and every sequencing error creates up to k new k-mers that exist nowhere else.</p>
+    <p><b>How one error spoils k-mers.</b> Every k-mer that overlaps the wrong base contains it, so each of them is a k-mer that exists nowhere in the genome.</p>
+    <div class="svgbox" id="err-prop"></div>
+    <p><b>Try it.</b> Set the error rate and watch the two parts of the spectrum. Bars at 1–2 are k-mers containing an error; the bell is the k-mers copied correctly.</p>
+    <div class="calc">
+      <label for="ed-G">Genome size (Mb)<input id="ed-G" type="number" min="1" step="any" value="1000"></label>
+      <label for="ed-c">Read coverage<input id="ed-c" type="number" min="1" step="any" value="40"></label>
+      <label for="ed-L">Read length<input id="ed-L" type="number" min="10" step="1" value="150"></label>
+      <label for="ed-k">k<input id="ed-k" type="number" min="5" max="64" step="1" value="21"></label>
+    </div>
+    <div class="slider-row"><label for="ed-e">Error rate per base</label><input type="range" id="ed-e" min="0" max="3" step="0.05" value="0.2"><output id="ed-eo" class="mono">0.20 %</output>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="ed-full"> show the whole spike</label></div>
+    <div class="svgbox" id="ed-plot"></div>
+    <div class="readout" id="ed-out"></div>
+    <p>So the spike is many times taller than the real peak, yet holds little sequence, which is why cutting at the valley loses almost nothing. Every real spectrum has it; GenomeScope and KAT clip the y axis so the peaks stay readable. It grows with coverage (errors accumulate, distinct real k-mers do not) and with the error rate (raw ONT), and is smallest for HiFi.</p>
+  </div></details>
+  <details class="simple"><summary>Why does the peak sit at the coverage? Step by step</summary><div class="in">
+    <p>Two statements on this page seem to clash: "one read contains many k-mers" and "each sighting of a k-mer is one read". Both are true. They describe the same table read in two directions: along a read, and along one k-mer. Parts A–G below use a toy genome with reads of 10 bases and k = 5.</p>
+
+    <p><b>A. One read gives many k-mers.</b> A 10-base read cut into 5-mers gives 10 − 5 + 1 = <b>6 k-mers</b>, one starting at each of its first six bases. This is the "many k-mers per read" direction.</p>
+
+    <p><b>B. Now follow one k-mer.</b> Take <span class="mono">CGATT</span>, which sits at genome positions 13–17. A read "contains" it only if the read covers all five of those positions. A read that covers four of them has a different 5-mer there, not CGATT.</p>
+    <figure><div class="svgbox" id="pk-fig1"></div>
+      <figcaption><b>Which reads contain CGATT?</b> Seven reads of 10 bases. Only reads that start at positions 8 to 13 cover all of positions 13–17. A read starting at 7 stops one base short; one starting at 14 begins one base too late. That window of start positions is 10 − 5 + 1 = 6 wide, the same number as the k-mers per read. This is not a coincidence: the read starting at 8 has CGATT as its last k-mer, and the read starting at 13 has it as its first.</figcaption></figure>
+
+    <p><b>C. For one k-mer, each read gives at most one sighting.</b> If CGATT occurs once in the genome, a read either contains it once or not at all. So: <b>sightings of CGATT = number of reads that start inside its 6-position window.</b> This is the "k-mers = reads" direction. It holds for one particular k-mer, not for k-mers in general.</p>
+
+    <p><b>D. How many reads start inside the window?</b> In this toy, reads start at random places. Real libraries come close, but GC content and PCR make some regions more covered than others. With N reads on a genome of G positions, on average N ÷ G reads start at each position. The window has L − k + 1 positions, so on average <b>N × (L − k + 1) ÷ G</b> reads start inside it.</p>
+
+    <p><b>E. Rewrite that as coverage.</b> Read coverage is C = N × L ÷ G (all bases sequenced ÷ genome size). Substituting gives sightings per k-mer = <b>C × (L − k + 1) ÷ L</b>: the read coverage, scaled down slightly because a read gives L − k + 1 k-mers, not L.</p>
+    <div class="toy">toy: 36 reads of 10 bases on a 60-base genome
+read coverage C          = 36 × 10 / 60  = <span class="a">6×</span>
+sightings per k-mer      = 36 × 6 / 60   = <span class="a">3.6</span>   = 6 × (10 − 5 + 1) / 10</div>
+
+    <p><b>F. Do it for every k-mer at once.</b> Put reads in rows and k-mer positions in columns, and mark which read contains which k-mer. Every row has exactly 6 marks (A). Each column has a random number of marks averaging 3.6 (B–E).</p>
+    <figure><div class="svgbox" id="pk-fig2"></div>
+      <figcaption><b>The same marks counted two ways.</b> Rows: 36 random reads, each containing 6 k-mers. Columns: the 60 k-mer positions of the toy genome (drawn as a circle, so its ends do not matter). The number under each column is how often that k-mer was seen. One read (row) and one k-mer (column) are highlighted.</figcaption></figure>
+    <figure><div class="svgbox" id="pk-fig3"></div>
+      <figcaption><b>Histogram of the column totals: this is the k-mer spectrum.</b> The counts scatter because reads land at random, but they pile up around 3.6, the value from E. At such low coverage a few k-mers are never seen at all (the bar at 0): no read happened to start in their window. This bar exists only because we know the toy genome; a real spectrum has no 0 bin. With real data, millions of k-mers and higher coverage turn this rough pile into a smooth peak.</figcaption></figure>
+
+    <p><b>G. Why this gives the genome size.</b> Rows and columns count the same marks. By rows: 36 reads × 6 = <b>216</b> sightings. By columns: 60 k-mers × 3.6 = <b>216</b>. So 216 ÷ 3.6 = <b>60</b> recovers the genome length. That is the size formula used in step 4 of the workflow: total sightings ÷ sightings per k-mer (the peak).</p>
+  </div></details>
+  <details class="simple"><summary>Do repeats within a read, k-mer order or DNA strand bias the counts?</summary><div class="in">
+    <p><b>A k-mer occurring several times in one read.</b> Counters count every occurrence, not the number of reads. That is correct: two occurrences in a read mean two places in the genome, and each place is seen ~16 times.</p>
+    <div class="toy">read: ...<span class="h">CACACACACA</span>...   k = 4
+k-mers: CACA ACAC CACA ACAC CACA ACAC CACA    → CACA ×4, ACAC ×3 in this read
+the genome has 4 positions starting with CACA, each seen ~16× → total ~64 → lands at <span class="a">4× the peak</span> (a repeat)</div>
+    <p>Counting "reads that contain it" instead would make this repeat look like a single-copy k-mer and break the size calculation (sightings ÷ peak).</p>
+    <p><b>Order (k1 then k2 in one read, k2 then k1 in another).</b> Counting ignores neighbours: the reads become an unordered collection of k-mers. Two different orders mean two different places in the genome, and each k-mer is counted at each place. Order matters for assembly, not for the spectrum.</p>
+    <p><b>The two DNA strands.</b> A read from the other strand contains the reverse complement of each k-mer, in reverse order. <dfn>Canonical counting</dfn> (Jellyfish <code>-C</code>; default in KMC and Meryl) files a k-mer and its reverse complement under one name, so both strands add to the same counter:</p>
+    <div class="toy">top strand read:     ...GATTA...   →  GATTA
+bottom strand read:  ...TAATC...   →  TAATC = reverse complement of GATTA
+canonical: both counted as <span class="a">GATTA</span> (the alphabetically first of the pair)
+without -C: GATTA ~8× and TAATC ~8× as separate entries → the peak moves to <span class="x">half</span> the coverage</div>
+    <p><b>Neighbouring k-mers</b> share k − 1 bases and are seen by nearly the same reads, so their counts are correlated. This does not move the peak; it only means the k-mers are not independent data points.</p>
+  </div></details>
+
+  <h3>One k-mer, one place in the genome, many reads</h3>
+  <p>Ideally, one distinct k-mer corresponds to one place in the genome. It is seen once in every read that covers all k of its bases, so its count is the k-mer coverage there, a little below the read coverage. Each read contains it once; the total is many reads, not one. The other peaks of the spectrum are exactly the cases where this one-to-one link breaks.</p>
+  <figure>
+    <div class="svgbox" id="corr-fig"></div>
+    <figcaption><b>How to read it.</b> One toy diploid animal: it has two copies of every chromosome, one from the mother and one from the father. Each panel shows the same short region on both: the letters are the DNA sequence, and the coloured box is the place of the k-mer. Each bar under a chromosome is one read copied from it (3 per chromosome here); the coloured part of the bar is the k-mer inside that read. The box at the bottom is the k-mer as the counter sees it, and the dashed line shows where it lands in the spectrum. <b>Sequencing error:</b> both chromosomes are correct, but one read has a wrong base (red block), so its k-mer CGTTT is in no chromosome and is seen once. <b>Heterozygous site:</b> the mother's copy has A, the father's has C, so the place gives two k-mers, each seen only by the 3 reads of its own chromosome. <b>Unique sequence:</b> both chromosomes are identical, so the one k-mer is seen by all 6 reads. <b>Repeat:</b> the same k-mer sits at two places, so it collects the reads of both: 12.</figcaption>
+  </figure>
+  <div class="tbl"><table>
+    <thead><tr><th>Case</th><th>k-mer ↔ place in genome</th><th>Times seen</th><th>Where it lands</th></tr></thead>
+    <tbody>
+      <tr><td>Unique sequence (the ideal)</td><td>1 k-mer ↔ 1 place</td><td>≈ coverage</td><td>main (homozygous) peak</td></tr>
+      <tr><td>Heterozygous site</td><td>1 place ↔ 2 k-mers, one per parental copy</td><td>≈ ½ coverage each</td><td>het peak</td></tr>
+      <tr><td>Repeat with n copies</td><td>1 k-mer ↔ n places</td><td>≈ n × coverage</td><td>repeat peaks at 2×, 3×, …</td></tr>
+      <tr><td>Sequencing error</td><td>1 k-mer ↔ no place; comes from one read</td><td>1–2</td><td>error spike</td></tr>
+    </tbody>
+  </table></div>
+  <p>From the read's side the link runs the other way: one read holds L − k + 1 k-mers, one for each of the L − k + 1 consecutive places where a k-mer can start inside it.</p>
+</section>
+
+<section aria-labelledby="flow">
+  <h2 id="flow">The order of work</h2>
+  <ol class="steps">
+    <li><div><b>Find the expected genome size and ploidy</b><a href="#dm">step 1</a><div class="d">Look up published C-values and chromosome counts for the species or a close relative; measure them if none exist.</div><div class="t">databases · flow cytometry · karyotype</div></div></li>
+    <li><div><b>Check the reads</b><a href="#qc">step 2</a><div class="d">Count reads and bases, compute coverage, check length and quality, remove adapters and poor reads.</div><div class="t">FastQC · fastp · MultiQC · seqkit · NanoPlot · chopper · Filtlong</div></div></li>
+    <li><div><b>Count k-mers</b><a href="#km">step 3</a><div class="d">Turn the reads into a k-mer spectrum.</div><div class="t">Jellyfish · KMC · Meryl · FastK</div></div></li>
+    <li><div><b>Read the spectrum</b><a href="#gp">step 4</a><div class="d">Estimate genome size, heterozygosity, repeat content and ploidy, and compare them with step 1.</div><div class="t">GenomeScope2 · Smudgeplot · KAT</div></div></li>
+    <li><div><b>Screen for foreign and organelle DNA</b><a href="#ct">step 5</a><div class="d">Find contaminating species and assemble the mitochondrial genome separately.</div><div class="t">Kraken2 · Mash · kat gcp · GetOrganelle · MitoHiFi</div></div></li>
+    <li><div><b>Plan the assembly</b><a href="#dc">step 6</a><div class="d">Choose extra data, assembler and settings from what steps 1–5 showed.</div><div class="t">hifiasm · purge_dups · Hi-C or trio data</div></div></li>
+    <li class="later"><div><b>After assembly: check it</b><a href="#n50">N50</a><div class="d">Measure contiguity (N50, L50), accuracy and completeness against the same read k-mers, and screen contigs for contamination.</div><div class="t">Merqury · BUSCO · NCBI FCS-GX</div></div></li>
+  </ol>
+</section>
+
+<!-- ============ 0 DIRECT METHODS ============ -->
+<section aria-labelledby="dm">
+  <h2 id="dm"><span class="n">Step 1</span>Expected size and ploidy, without sequencing</h2>
+  <p>Genome size and heterozygosity from k-mers are model fits (see <a href="#basics">Key ideas</a>). They fail in two predictable ways. k-mers from high-copy repeats get lost, so the size comes out too small. And the fitted curve can lock onto the wrong peak, which doubles or halves the size. A physical measurement of the DNA in a nucleus, and a chromosome count, give independent numbers. They also give the assembly length to aim for. Look up your species or a close relative first; measure only if nothing exists.</p>
+
+  <details class="simple"><summary>Why k-mer size estimates go wrong: two toy examples</summary><div class="in">
+    <p>A k-mer estimate of genome size is one division: <b>all k-mer sightings ÷ sightings per genome position</b>. The second number is the coverage of the homozygous peak, the peak made by k-mers present on both chromosome copies (see step 4). Each of the two numbers can go wrong in its own way.</p>
+
+    <p><b>1. High-copy repeats: sequence disappears from the top of the division.</b> A toy genome of 1,000 Mb, sequenced to a k-mer coverage of 35×:</p>
+    <div class="toy">part of the genome                length    distinct k-mers   each seen        k-mer estimate
+unique sequence                   850 Mb    850 million       ~35×             <span class="a">counted</span>
+low-copy repeats (2–4 copies)      50 Mb     ~17 million      70–140×          <span class="a">counted</span>
+satellite: 1 kb unit × 100,000    100 Mb     ~1,000           ~3.5 million×    <span class="x">lost</span>
+───────────────────────────────────────────────────────────────────────────────────────────
+k-mer estimate ≈ <span class="x">900 Mb</span>          flow cytometry: <span class="a">1,000 Mb</span>          → 10 % too small</div>
+    <p>The satellite holds 100 Mb of sequence, but because all its copies are nearly identical it yields only about a thousand distinct k-mers, each seen millions of times. Two things then drop it. Counters cap the histogram: Jellyfish <code>histo -h</code> and KMC <code>-cx</code> merge or discard everything above the cap. And GenomeScope's model describes unique sequence plus k-mers in a few copies, and GenomeScope2 ignores k-mers above its own maximum coverage setting (<code>-m</code>), so k-mers above any of these caps never enter the length it reports. The larger the share of satellites and young, nearly identical transposon copies, the bigger the shortfall: 10–20 % is common, and satellite-rich genomes can come out much smaller still.</p>
+    <figure>
+      <div class="svgbox" id="rpt-fig"></div>
+      <figcaption><b>The same toy genome, plotted by how much sequence sits at each coverage</b> (x · n(x) ÷ peak coverage, log x axis). The unique peak and the low-copy repeat bumps are inside the range the model describes. The satellite's 100 Mb sits at ~3.5 million×, beyond the histogram cap, and never reaches the estimate. Grey bars at the far left are error k-mers, excluded on purpose.</figcaption>
+    </figure>
+
+    <p><b>2. The wrong peak: the bottom of the division is off by a factor of two.</b> The same total of 35 billion sightings, divided by three different "homozygous peak" values:</p>
+    <div class="toy">peak taken as homozygous   genome size            when this happens
+<span class="a">35×</span> (true)                  35 / 35   = <span class="a">1.0 Gb</span>   correct
+17.5× (the het peak)       35 / 17.5 = <span class="x">2.0 Gb</span>   heterozygosity above ~1.5 %: the het peak is the tallest,
+                                                     and the fit takes it for the main peak
+70× (2-copy repeats)       35 / 70   = <span class="x">0.5 Gb</span>   the true homozygous peak is taken for the het peak: an
+                                                     inbred or haploid sample run as diploid, or the wrong -p</div>
+    <figure>
+      <div class="svgbox" id="wp-fig"></div>
+      <figcaption><b>A diploid with 1.6 % heterozygosity.</b> The het peak (left) is taller than the homozygous peak, which invites the wrong choice. Only the middle reading gives the true size.</figcaption>
+    </figure>
+
+    <p><b>Which problem do you have?</b> Compare the k-mer estimate with cytometry or a database C-value. A result close to ×2 or ×0.5 points to the wrong peak; a result 10–30 % too low points to repeats. Then check the coverage on its own: the expected k-mer coverage of one chromosome copy is about (sequenced bases ÷ 2C in bp) × (L − k + 1)/L. With 40 Gb of 150 bp reads and 2C = 2.0 Gb, that is 20 × 0.87 ≈ 17×. GenomeScope2 (the profiling tool of step 4) reports this per-copy value as <code>kcov</code>; if its kcov is near 35 or near 8 instead, the fit is on the wrong peak.</p>
+    <p><b>Fixes.</b> Wrong peak: rerun GenomeScope2 with <code>-l</code> set to the expected per-copy coverage (17 here) and the correct <code>-p</code>. Repeats: raise the histogram cap (<code>histo -h 1000000</code>, KMC <code>-cx</code>), and use the cytometry value as the expected assembly size.</p>
+  </div></details>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>Measures</th><th>Gives</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Flow cytometry</b> (propidium iodide)</td><td>Isolated nuclei are stained with a DNA dye and pass one by one through a laser; their brightness is compared with an <dfn>internal standard</dfn> (nuclei of a species with known DNA content, run in the same tube)</td><td>2C value in pg → genome size</td><td>The reference method. Needs fresh or well-frozen tissue. <dfn>Propidium iodide (PI)</dfn> binds DNA regardless of sequence; <dfn>DAPI</dfn> binds A/T-rich DNA more strongly, so it is only good for relative (ploidy) comparisons.</td></tr>
+      <tr><td><b>Feulgen image densitometry</b></td><td>Feulgen staining colours DNA in proportion to its amount; a microscope camera measures how dark each nucleus is</td><td>2C value</td><td>Works on blood smears and old slides; much of the older animal C-value data comes from it.</td></tr>
+      <tr><td><b>Chromosome count</b> (karyotype)</td><td><dfn>Metaphase spreads</dfn>: cells stopped during division, when chromosomes are condensed and can be counted under a microscope. Made from cell culture, bone marrow, testis or root tips</td><td><dfn>2n</dfn> (chromosome number of a body cell), number of sets, sex chromosomes</td><td>The direct ploidy answer. Cytometry gives DNA amount, not the number of sets.</td></tr>
+      <tr><td><b>Flow cytometry ploidy screen</b> (DAPI)</td><td>DNA content relative to a known diploid of the same group</td><td>Ploidy level, <dfn>mixoploidy</dfn> (cells of different ploidy in one individual)</td><td>Screens many individuals quickly; calibrate with at least one karyotyped individual.</td></tr>
+      <tr><td><b>FISH / GISH</b></td><td>Fluorescent DNA probes that stick to matching places on chromosomes. <dfn>FISH</dfn> uses specific sequences (rDNA, telomere repeats); <dfn>GISH</dfn> uses the whole genome of one parent species</td><td>Number of matching chromosome sets; which parent each set came from in hybrids</td><td>For <dfn>allopolyploids</dfn> (polyploids formed by crossing two species) and hybrid lineages.</td></tr>
+      <tr><td><b>Cell-size proxies</b></td><td>Length of stomatal guard cells (plants), size of red blood cells or nuclei (animals); bigger cells usually mean more chromosome sets</td><td>Rough ploidy</td><td>Cheap; valid only within a group of close relatives.</td></tr>
+      <tr><td><b>Databases</b></td><td>Published measurements</td><td>C-values, chromosome numbers</td><td>Animal Genome Size Database (genomesize.com), Plant DNA C-values (cvalues.science.kew.org), GoaT (goat.genomehubs.org), Chromosome Counts Database (plants).</td></tr>
+    </tbody>
+  </table></div>
+
+  <figure>
+    <h3>Flow cytometry histogram and size calculator</h3>
+    <div class="calc">
+      <label for="fc-pre">Standard<select id="fc-pre">
+        <option value="2.5">Chicken erythrocytes (2C ≈ 2.5 pg)</option>
+        <option value="7.0">Human leukocytes (2C ≈ 7.0 pg)</option>
+        <option value="1.11">Raphanus sativus 'Saxa' (1.11 pg)</option>
+        <option value="1.96">Solanum lycopersicum 'Stupické' (1.96 pg)</option>
+        <option value="2.50">Glycine max 'Polanka' (2.50 pg)</option>
+        <option value="5.43">Zea mays CE-777 (5.43 pg)</option>
+        <option value="9.09">Pisum sativum 'Ctirad' (9.09 pg)</option>
+      </select></label>
+      <label for="fc-pg">Standard 2C (pg)<input id="fc-pg" type="number" step="0.01" min="0.01" value="2.5"></label>
+      <label for="fc-t">Standard G1 peak (channel)<input id="fc-t" type="number" step="1" min="1" value="250"></label>
+      <label for="fc-s">Sample G1 peak (channel)<input id="fc-s" type="number" step="1" min="1" value="450"></label>
+    </div>
+    <div class="svgbox" id="fcplot"></div>
+    <div class="readout" id="fcout"></div>
+    <figcaption><b>Simulated propidium iodide run.</b> Sample and standard nuclei are stained and measured together, so the ratio of their <dfn>G0/G1</dfn> peak positions (nuclei that have not yet copied their DNA) equals the ratio of their DNA content. The small peaks at twice each position are <dfn>G2</dfn> nuclei, which have copied their DNA before dividing. Good runs have a peak <dfn>CV</dfn> (coefficient of variation: peak width relative to its position) below ~3–5 %. Standard values are those usually cited (Doležel et al. 2007 for plants); use the value your lab calibrates against.</figcaption>
+  </figure>
+  <div class="formula">1C (bp) = (sample peak / standard peak) × standard 2C (pg) / 2 × 0.978 × 10<sup>9</sup>       (1 pg DNA = 978 Mb)</div>
+
+  <details class="simple"><summary>Simple explanation with examples</summary><div class="in">
+    <p><b>The idea.</b> Each nucleus is stained with a dye that binds in proportion to the amount of DNA, then nuclei pass one by one through a laser. Brighter means more DNA. Because the brightness scale has no absolute units, you add nuclei of a standard with known DNA content to the same tube and read off the ratio.</p>
+    <div class="toy">standard (chicken red blood cells)  2C = 2.5 pg   peak at channel <span class="a">250</span>
+sample                                          peak at channel <span class="h">450</span>
+ratio  450 / 250 = 1.8
+sample 2C = 1.8 × 2.5 = 4.5 pg   →   1C = 2.25 pg
+1C in bases = 2.25 × 978 Mb = <span class="a">2.2 Gb</span>   ← this is the assembly length to aim for</div>
+    <p><b>Ploidy is a separate question.</b> Cytometry tells you how much DNA there is, not how many chromosome sets. Suppose a known diploid relative has 2C = 2.3 pg and your sample has 4.5 pg. That suggests a tetraploid, but a diploid with a genome that doubled through repeats would give the same number. A chromosome count usually decides: 2n = 48 against the relative's 24 points to four sets. Chromosome fission can mimic this, so check the shapes of the chromosomes too.</p>
+    <p><b>Comparing with k-mers.</b> GenomeScope reports the size of one chromosome set (the monoploid, 1x size). In a diploid that equals the 1C value. In a tetraploid, 1C holds two sets, so divide by 2 before comparing. k-mer estimates usually come out somewhat lower than cytometry, because high-copy repeats fall outside the model; a gap of 10–20 % is common, and a much larger one means the k-mer fit, or the assumed ploidy, needs checking.</p>
+  </div></details>
+</section>
+
+<!-- ============ 1-2 READ QC ============ -->
+<section aria-labelledby="qc">
+  <h2 id="qc"><span class="n">Step 2</span>Check the reads</h2>
+  <p>Short reads are judged position by position along the read. First, does quality fall toward the end? Second, do reads contain <dfn>adapters</dfn>? These are synthetic DNA attached to the fragments for sequencing; they appear in a read when the fragment is shorter than the read. Third, how many reads are <dfn>duplicates</dfn>: identical reads from copies of one molecule, made by PCR or by the sequencer's imaging, rather than independent molecules. Long reads are judged by their length distribution and per-read quality, because read length decides which repeats an assembler can cross. Always report yield in bases and divide by the expected genome size: that number is your coverage, and every later threshold depends on it.</p>
+
+  <div class="grid2">
+    <figure>
+      <h3>Illumina: quality by position</h3>
+      <div class="svgbox" id="qplot"></div>
+      <figcaption><b>FastQC / fastp view.</b> Median Q, with a band covering the middle 80 % of reads, for paired 150-base reads. Quality falling toward the <dfn>3′ end</dfn> (the end of the read, where the chemistry wears out) is normal and needs no trimming: the error k-mers it creates fall left of the valley. A drop in the middle points to a fault in the run.</figcaption>
+    </figure>
+    <figure>
+      <h3>GC content of reads</h3>
+      <div class="svgbox" id="gcplot"></div>
+      <figcaption><b>FastQC "per-sequence GC".</b> <dfn>GC content</dfn> is the share of G and C bases in a read; each genome has a typical value, so one peak is expected. A second peak (here at ~66 %) often means bacterial or other contamination, but organelle DNA, GC-rich satellites or adapter dimers can do the same; check it in step 5.</figcaption>
+    </figure>
+  </div>
+
+  <figure>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+      <h3>Long reads: length distribution, weighted by bases</h3>
+      <div class="seg" role="group" aria-label="Read type">
+        <button id="rl-ont" aria-pressed="true">ONT simplex</button><button id="rl-hifi" aria-pressed="false">PacBio HiFi</button>
+      </div>
+    </div>
+    <div class="svgbox" id="rlplot"></div>
+    <div class="readout" id="rlstats"></div>
+    <figcaption><b>NanoPlot / seqkit view (simulated 20,000 reads).</b> Plot bases, not read counts: many short reads carry few bases. Read N50 = half of all bases sit in reads at least this long. <dfn>ONT simplex</dfn> reads each molecule once (<dfn>duplex</dfn> reads both strands and is more accurate); its long tail of very long reads helps cross repeats. HiFi lengths are tight, and the reads are accurate because PacBio reads each circular molecule many times and averages the passes (≥Q20 by definition, typically Q30+).</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: N50, coverage, why plot bases</summary><div class="in">
+    <p><b>N50.</b> Sort reads from longest to shortest and add up their lengths until you pass half of all bases. The read where you cross that line is the N50.</p>
+    <div class="toy">reads (kb):  10  8  5  3  2  2      total = 30 kb, half = 15 kb
+running sum: 10 <span class="a">18</span> ...                  18 ≥ 15  →  <span class="a">N50 = 8 kb</span></div>
+    <p>Read this as: half of your sequence is in reads of 8 kb or longer (pictures, L50 and N90: <a href="#n50">Measuring contiguity</a>). A repeat longer than most of your reads cannot be crossed, so the assembly breaks there.</p>
+    <p><b>Why plot bases, not read counts.</b> 1,000 reads of 500 bp carry 0.5 Mb; a single 100 kb read carries 0.1 Mb. A count histogram is dominated by the short reads, which matter least for assembly.</p>
+    <p><b>Coverage.</b> Total bases divided by genome size: 30 Gb of reads for a 1 Gb genome is 30×. For a diploid, each haplotype gets half of that, 15×.</p>
+  </div></details>
+
+  <h3>Short-read QC tools compared: FastQC, MultiQC, fastp and others</h3>
+  <p>These tools do three different jobs. <b>Report</b> tools look at reads and change nothing. <b>Trimming</b> tools write new, cleaned read files. <b>MultiQC</b> aggregates: it reads the reports of other tools and combines them into one page, without looking at reads itself. A usual short-read run uses one of each: FastQC on the raw reads, fastp to trim (it also writes its own before-and-after report), and MultiQC over all of it.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Job</th><th>Changes reads?</th><th>Speed</th><th>Strengths</th><th>Weak points</th></tr></thead>
+    <tbody>
+      <tr><td><b>FastQC</b></td><td>report</td><td>no</td><td>moderate; one thread per file</td><td>The standard plots everyone recognises: per-position quality, adapter content, GC, duplication, <dfn>overrepresented sequences</dfn> (sequences far more common than chance allows, usually adapters or contaminants)</td><td>One HTML per file. Its pass/warn/fail flags are tuned to typical Illumina libraries: a "fail" for duplication, per-base composition or GC is often normal for other library types; read the plot, not the flag</td></tr>
+      <tr><td><b>Falco</b></td><td>report</td><td>no</td><td>several times faster than FastQC</td><td>Reimplementation of FastQC with the same report format; MultiQC reads it</td><td>Less widely used; check it supports the modules you rely on</td></tr>
+      <tr><td><b>MultiQC</b></td><td>aggregate</td><td>no</td><td>seconds</td><td>One interactive HTML for all samples and all tools, side by side; recognises the output of over a hundred tools (FastQC, fastp, Cutadapt, Trimmomatic, Kraken2, NanoStat, samtools, BUSCO, QUAST and others). Makes a bad lane or sample stand out at once</td><td>Only as good as its inputs; it shows nothing for tools it does not recognise and runs no analysis itself</td></tr>
+      <tr><td><b>fastp</b></td><td>trim + report</td><td>yes</td><td>fast, multithreaded</td><td>All in one pass: adapter detection (for paired reads, from where R1 and R2 overlap), quality and length filtering, <dfn>polyG</dfn> removal (on NovaSeq/NextSeq a cycle with no signal is read as G, giving false GGGG tails), <dfn>insert size</dfn> (length of the DNA fragment between the adapters), duplication rate, before/after HTML and JSON</td><td>Fewer fine controls than Cutadapt; sliding-window quality trimming is off unless you set <code>--cut_front</code>/<code>--cut_tail</code>/<code>--cut_right</code></td></tr>
+      <tr><td><b>Cutadapt</b></td><td>trim</td><td>yes</td><td>moderate, multithreaded</td><td>The most precise adapter removal for any adapter layout; also demultiplexes by barcode</td><td>You must supply the adapter sequences; quality trimming is basic</td></tr>
+      <tr><td><b>Trimmomatic</b></td><td>trim</td><td>yes</td><td>moderate (Java)</td><td>Long-established; sliding-window quality trimming; cited in many older methods</td><td>No automatic adapter detection; needs an adapter FASTA; largely replaced by fastp</td></tr>
+      <tr><td><b>BBDuk</b> (BBTools)</td><td>trim + filter</td><td>yes</td><td>very fast</td><td>Removes adapters, PhiX (a phage genome added to Illumina runs as a control) and vector sequence by k-mer matching; same suite as BBSplit (step 5)</td><td>Many parameters and terse documentation</td></tr>
+      <tr><td><b>seqkit stats</b></td><td>report</td><td>no</td><td>very fast</td><td>Read count, bases, length range, N50, Q20/Q30 share, for short and long reads alike</td><td>A table only, no plots</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Recommendation for a genome project:</b> FastQC (or Falco) on raw reads → fastp for adapter removal → MultiQC over the FastQC, fastp, Kraken2 and NanoPlot outputs.</p>
+
+  <div class="note">
+    <h3 style="margin-bottom:8px">Trimming: when and how much</h3>
+    <p style="margin-bottom:10px"><b>Short answer:</b> remove adapters early and lightly; in most cases skip quality trimming; always keep the raw reads.</p>
+    <ol class="steps">
+      <li><div><b>Look at the raw reads</b><div class="d">FastQC and seqkit on the untouched files, so you see what the sequencer delivered.</div></div></li>
+      <li><div><b>Remove adapters and polyG; keep fastp's default filters</b><div class="d">fastp with adapter detection on and sliding-window quality trimming left off (its default). It turns polyG trimming on automatically for NovaSeq/NextSeq data. Its default filters also drop reads with over 40 % of bases below Q15, more than 5 Ns, or fewer than 15 bases; that is fine.</div></div></li>
+      <li><div><b>Use the trimmed reads for everything after that</b><div class="d">k-mer counting, GenomeScope, Smudgeplot, Kraken2 and assembly. Build the Meryl database from the same reads, so Merqury (step 3) checks the assembly against the data it was built from.</div></div></li>
+      <li><div><b>Archive and submit the raw reads</b><div class="d">SRA/ENA expect the original files, not trimmed ones.</div></div></li>
+    </ol>
+    <p style="margin-block:10px"><b>Why adapters must go, even with excellent data.</b> Adapter sequence enters a read whenever the DNA fragment is shorter than the read, which happens in part of every library. Adapter k-mers form a small high-coverage bump in the spectrum, and after assembly they count as read k-mers missing from the assembly, which slightly lowers Merqury completeness. PolyG tails are pure artefact. Removing both costs almost no real sequence.</p>
+    <p style="margin-bottom:10px"><b>Why quality trimming is usually unnecessary.</b> A sequencing error only creates rare k-mers, which land in the error wall left of the valley and are excluded anyway. Heavy trimming lowers coverage, shortens reads (which lowers k-mer coverage further, by (L − k + 1)/L), and can remove some regions more than others, such as GC-rich stretches. Assemblers and polishers handle an occasional bad base themselves. The exception is a run where quality collapses well before the read end: then trim only that tail and keep reads of at least ~50 bases.</p>
+    <p><b>Long reads.</b> HiFi: remove reads that still contain adapters (HiFiAdapterFilt), because they cause assembly artefacts; do not quality-trim, since HiFi reads are already filtered to Q20 or better. ONT: recent Dorado versions trim adapters during basecalling by default (check your version and settings); filter only mildly with chopper or Filtlong (for example, drop reads under 1 kb or below Q10), and use Filtlong's target-bases option to cut excess coverage rather than to chase quality. Long, slightly noisy reads are still the ones that cross repeats.</p>
+  </div>
+
+  <h3>Long-read QC tools</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Reads</th><th>What it gives you</th><th>Use it for</th></tr></thead>
+    <tbody>
+      <tr><td><b>seqkit stats</b></td><td><span class="tag s">short</span> <span class="tag l">long</span></td><td>Read count, bases, min/mean/max, N50, Q20/Q30 %</td><td>Fast yield table for every file</td></tr>
+      <tr><td><b>NanoPlot</b> / NanoComp</td><td><span class="tag l">long</span></td><td>Length and Q histograms, length×Q density, N50, yield over time</td><td>ONT and HiFi; NanoComp compares runs</td></tr>
+      <tr><td><b>pycoQC</b></td><td><span class="tag l">ONT</span></td><td>Run-level plots from the run's summary file: activity of the <dfn>pores</dfn> (ONT reads DNA as it passes through protein pores on a <dfn>flow cell</dfn>, the consumable chip), yield over time, <dfn>barcodes</dfn> (short tags that mark samples pooled in one run)</td><td>Diagnosing a weak flow cell</td></tr>
+      <tr><td><b>LongQC</b></td><td><span class="tag l">long</span></td><td>Coverage and error estimate from how reads overlap each other, no reference needed</td><td>When you suspect <dfn>chimeras</dfn> (reads that join two unrelated molecules) or junk reads</td></tr>
+      <tr><td><b>chopper</b> / <b>Filtlong</b></td><td><span class="tag l">ONT</span></td><td>Length and Q filtering; Filtlong can keep the best N bases</td><td>Removing short or low-quality reads before assembly</td></tr>
+      <tr><td><b>HiFiAdapterFilt</b></td><td><span class="tag l">HiFi</span></td><td>Removes reads with leftover <dfn>SMRTbell adapters</dfn> (the hairpin adapters that close PacBio templates into circles)</td><td>Common step before assembly with <dfn>hifiasm</dfn>, the standard HiFi assembler</td></tr>
+      <tr><td><b>Dorado correct</b> (HERRO)</td><td><span class="tag l">ONT</span></td><td><dfn>Dorado</dfn> is ONT's basecaller; its <code>correct</code> mode fixes errors in each read using overlapping reads from the same haplotype (needs a GPU)</td><td>Bringing ONT <dfn>ultra-long</dfn> reads (&gt;100 kb) close to HiFi accuracy before hifiasm or <dfn>verkko</dfn> (an assembler built for complete, gap-free chromosomes)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># short reads</span>
+mkdir -p qc nanoplot
+fastqc -t 16 -o qc/ R1.fq.gz R2.fq.gz
+fastp -i R1.fq.gz -I R2.fq.gz -o R1.trim.fq.gz -O R2.trim.fq.gz \
+      --detect_adapter_for_pe -w 16 -h qc/fastp.html -j qc/fastp.json
+fastqc -t 16 -o qc/ R1.trim.fq.gz R2.trim.fq.gz   <span class="c"># optional: after trimming</span>
+
+<span class="c"># MultiQC: one report from every log/report it finds below the given folders</span>
+multiqc qc/ nanoplot/ kraken/ -o qc/multiqc/ -n reads_qc   <span class="c"># → qc/multiqc/reads_qc.html</span>
+
+<span class="c"># long reads: yield table, plots, filtering</span>
+seqkit stats -a -T -j 16 R1.fq.gz R2.fq.gz &gt; short.stats.tsv   <span class="c"># raw files only, one table per platform</span>
+seqkit stats -a -T -j 16 ont.fq.gz &gt; ont.stats.tsv
+NanoPlot --fastq ont.fq.gz -t 16 --loglength -o nanoplot/
+gunzip -c ont.fq.gz | chopper -q 10 -l 1000 -t 16 | gzip &gt; ont.filt.fq.gz
+filtlong --min_length 1000 --keep_percent 90 ont.fq.gz | gzip &gt; ont.filtlong.fq.gz
+
+<span class="c"># coverage = total bases / expected genome size</span>
+awk -F'\t' 'NR&gt;1{s+=$5} END{printf "%.1fx\n", s/1.0e9}' short.stats.tsv   <span class="c"># per platform; 1.0e9 = expected size</span></pre></div>
+</section>
+
+<!-- ============ 3 KMER COUNTING ============ -->
+<section aria-labelledby="km">
+  <h2 id="km"><span class="n">Step 3</span>Count k-mers</h2>
+  <p>Cut every read into k-mers (see <a href="#basics">Key ideas</a>), count how often each distinct k-mer occurs, and make the histogram: how many k-mers occur once, twice, … <i>n</i> times. The histogram is the input to every profiling tool in step 4. All counters give the same histogram when k, canonical counting and the count caps are set the same; they differ in speed, memory use, and what else you can do with the stored counts (the k-mer <dfn>database</dfn>).</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what a k-mer histogram is</summary><div class="in">
+    <p>A read of length L contains L − k + 1 overlapping k-mers. With k = 4:</p>
+    <div class="toy">read:    ATGCGTACG            (9 bp → 9 − 4 + 1 = 6 k-mers)
+k-mers:  ATGC  TGCG  GCGT  CGTA  GTAC  TACG</div>
+    <p>Sequence a genome at 30× and each genomic k-mer turns up about 30 times (a little less, since a 150 bp read yields only 130 21-mers). A sequencing error creates up to k new k-mers that occur nowhere else, so they are seen once or twice:</p>
+    <div class="toy">true:   ATGCGTACG   →  ATGC TGCG GCGT CGTA ...   seen ~30×
+error:  ATGC<span class="x">T</span>TACG   →  TGC<span class="x">T</span> GC<span class="x">T</span>T C<span class="x">T</span>TA <span class="x">T</span>TAC    seen 1×</div>
+    <p>The histogram is then a table such as <code>30  9000000</code>: nine million different k-mers were each seen 30 times. <b>Canonical counting</b> (<code>-C</code>) merges a k-mer with its reverse complement (ATGC and GCAT), because reads come from both strands.</p>
+  </div></details>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Counter</th><th>Strength</th><th>Watch out for</th><th>Pairs with</th></tr></thead>
+    <tbody>
+      <tr><td><b>Jellyfish</b> 2</td><td>Classic and simple; keeps all counts in memory; the GenomeScope tutorial default</td><td>Cannot read .gz files directly (use <code>&lt;(zcat …)</code>); memory grows with the number of error k-mers; set <code>-C</code> for <dfn>canonical</dfn> counting (a k-mer and its reverse complement count as one, because reads come from both DNA strands)</td><td>GenomeScope2</td></tr>
+      <tr><td><b>KMC</b> 3</td><td>Writes intermediate data to disk, so it is fast with little RAM; handles inputs over 100 Gb</td><td>Its default cap <code>-cs</code> is 255: set it high (e.g. 1000000) or counts of repeat k-mers get capped</td><td>GenomeScope2, Smudgeplot ≤0.2.5</td></tr>
+      <tr><td><b>Meryl</b></td><td>Combines databases (union, intersection, difference); used by Merqury (assembly quality from k-mers), by verkko for trio data, and by the VGP pipeline (hifiasm's trio mode uses its own yak counts)</td><td>Build it once from your best short or HiFi reads and keep it for checking the assembly</td><td>GenomeScope2, Merqury, <dfn>trio binning</dfn> (sorting a child's reads by k-mers found in only one parent)</td></tr>
+      <tr><td><b>FastK</b></td><td>Very fast; large k (40) works well for HiFi; its tables feed GeneScope.FK, Smudgeplot ≥0.3 and MerquryFK (FastK-based versions of GenomeScope and Merqury)</td><td>Its own file formats; convert the histogram with <code>Histex -G</code></td><td>GeneScope.FK, Smudgeplot 0.3+</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Choosing k</h3>
+  <p><b>k = 21</b> works for most genomes up to a few Gb with short reads. Very large genomes may need k = 23–25. HiFi reads tolerate k = 31–40 (the FastK tools commonly use 40). Merqury's <code>best_k.sh &lt;genome size&gt;</code> computes the k at which a random k-mer is unlikely to occur by chance:</p>
+  <div class="formula">k = log<sub>4</sub>( G · (1 − p) / p ),  p = 0.001   →   G = 1 Gb: k ≈ 19.9 · G = 3 Gb: k ≈ 20.7 · G = 30 Gb: k ≈ 22.4</div>
+  <details class="simple"><summary>Simple explanation with examples: why k = 21</summary><div class="in">
+    <p>There are 4<sup>k</sup> possible k-mers. If that number is small compared with the genome, k-mers repeat by chance and the spectrum shows nothing.</p>
+    <div class="toy">k = 11:  4^11 ≈ 4.2 million possible     1 Gb genome → each 11-mer ~240× by chance  <span class="x">useless</span>
+k = 21:  4^21 ≈ 4.4 × 10^12 possible     1 Gb genome uses ≤ 10^9 of them          <span class="a">almost all unique</span>
+k = 41:  even more unique, but each error or SNP now spoils 41 k-mers, and k-mer coverage drops</div>
+    <p>(<dfn>SNP</dfn>: a single-base difference between haplotypes or individuals.)</p>
+    <p>So k is the smallest value that makes chance matches rare. Larger genomes need slightly larger k; accurate HiFi reads tolerate k = 31–40.</p>
+  </div></details>
+
+  <h3>Too small or too big k</h3>
+  <p>The rule is: <b>take the smallest k at which chance matches are rare.</b> Merqury's <code>best_k</code> computes exactly that, aiming for about 1 in 1,000 k-mers having a random twin elsewhere in the genome. Each direction away from it has its own cost:</p>
+  <ul>
+    <li><b>Too small.</b> Unrelated places share k-mers by chance. Unique k-mers are pushed into the 2× and 3× peaks, so the model reads them as repeats and duplications; het k-mers that happen to match elsewhere make heterozygosity look lower. At the extreme there is no peak at all.</li>
+    <li><b>Too big, cost 1: lower k-mer coverage.</b> Coverage shrinks by (L − k + 1)/L. With 150 bp reads that is 87 % at k = 21, 67 % at k = 51 and 33 % at k = 101, so the peaks slide left toward the error spike.</li>
+    <li><b>Too big, cost 2: more k-mers ruined by errors.</b> A k-mer is error-free with probability (1 − error rate)<sup>k</sup>. At 0.3 % errors: 94 % at k = 21, 74 % at k = 101.</li>
+    <li><b>Too big, cost 3: the het peak takes over.</b> The share of k-mers touching a heterozygous site is 1 − (1 − h)<sup>k</sup>: at 1 % heterozygosity, 19 % at k = 21 and 64 % at k = 101. The het peak becomes the tallest, and the risk of fitting the wrong peak rises.</li>
+    <li><b>What a big k buys.</b> Repeats shorter than k stop looking like repeats. That helps assembly graphs more than profiling.</li>
+  </ul>
+  <p>Real genomes are not random: transposons and satellites share k-mers at any k. That shows up as repeat peaks, which is biology, not a fault of k.</p>
+  <figure>
+    <div class="calc">
+      <label for="kc-g">Genome size<select id="kc-g"><option value="1e8">100 Mb</option><option value="1e9" selected>1 Gb</option><option value="3e9">3 Gb</option><option value="3e10">30 Gb</option></select></label>
+      <label for="kc-r">Reads<select id="kc-r"><option value="150,0.3" selected>Illumina 150 bp, 0.3 % errors</option><option value="15000,0.1">HiFi 15 kb, 0.1 % errors</option></select></label>
+      <label for="kc-h">Heterozygosity<select id="kc-h"><option value="0.1">0.1 %</option><option value="1" selected>1 %</option><option value="2">2 %</option></select></label>
+    </div>
+    <div class="svgbox" id="kchart"></div>
+    <div class="legend">
+      <span><i style="background:var(--bad)"></i>k-mers with a chance twin (random genome)</span>
+      <span><i style="background:var(--accent)"></i>k-mer coverage as % of read coverage</span>
+      <span><i style="background:var(--good)"></i>k-mers free of errors</span>
+      <span><i style="background:var(--het)"></i>k-mers touching a het site</span>
+    </div>
+    <figcaption><b>The trade-off as k grows.</b> The red curve falls steeply: below Merqury's best k, chance twins are common. Above it, every other curve moves the wrong way. The dashed line marks best k for the chosen genome size; round it up to the next odd number (19.9 → 21), because with odd k no k-mer can be its own reverse complement, which keeps canonical counting unambiguous. With HiFi reads the coverage and error curves stay high, which is why larger k is fine there.</figcaption>
+  </figure>
+  <p>Use ONT reads for k-mer profiling only if they are recent R10.4.1 reads called with the <dfn>SUP</dfn> (super-accurate) basecalling model, or duplex reads (Q20+). Older ONT reads make the error peak swallow the spectrum. Use short reads or HiFi for profiling whenever you have them.</p>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Jellyfish</span>
+jellyfish count -C -m 21 -s 2G -t 16 -o reads.jf &lt;(zcat R1.fq.gz) &lt;(zcat R2.fq.gz)
+jellyfish histo -t 16 -h 1000000 reads.jf &gt; reads.histo
+
+<span class="c"># KMC</span>
+ls R1.fq.gz R2.fq.gz &gt; files.txt
+mkdir -p tmp &amp;&amp; kmc -k21 -t16 -m64 -ci1 -cs1000000 @files.txt reads tmp/   <span class="c"># high cap: keep satellites</span>
+kmc_tools transform reads histogram reads.histo -cx1000000
+
+<span class="c"># Meryl (keep reads.meryl: Merqury needs it after assembly)</span>
+meryl count k=21 threads=16 memory=64 R1.fq.gz R2.fq.gz output reads.meryl
+meryl histogram reads.meryl &gt; reads.histo
+
+<span class="c"># FastK (HiFi, k=40)</span>
+FastK -v -t4 -k40 -T16 -Nhifi hifi.fq.gz
+Histex -G -h1000 hifi &gt; hifi.histo   <span class="c"># default range stops at 100</span></pre></div>
+</section>
+
+<!-- ============ 4 GENOME PROFILE ============ -->
+<section aria-labelledby="gp">
+  <h2 id="gp"><span class="n">Step 4</span>Read the spectrum</h2>
+  <p>In a diploid genome, k-mers present on both haplotypes occur at full coverage (the <dfn>homozygous peak</dfn>). k-mers covering a <dfn>heterozygous site</dfn> (a position where the two haplotypes differ) exist on one haplotype only, so they sit at half coverage (the <dfn>heterozygous peak</dfn>). Sequencing errors make a wall of k-mers seen once or twice. Repeats sit at 2×, 3× … the homozygous peak. The low point between the error wall and the first real peak is the <dfn>valley</dfn>. GenomeScope2 fits a curve made of these peaks and reports genome size, heterozygosity, repeat fraction and error rate.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: where each peak comes from</summary><div class="in">
+    <p>Take a diploid sequenced at 40×, so each parental chromosome copy is covered 20×. At one position the two copies differ:</p>
+    <div class="toy">mother:  ...GGACGTT<span class="h">A</span>GCAATC...
+father:  ...GGACGTT<span class="h">G</span>GCAATC...
+
+k-mer not touching the site   GGACGTT       on both copies → seen ~<span class="a">35×</span>   (homozygous peak)
+k-mer covering the site       CGTT<span class="h">A</span>GC       on mother only → seen ~<span class="h">17×</span>   (heterozygous peak)
+                              CGTT<span class="h">G</span>GC       on father only → seen ~<span class="h">17×</span>
+k-mer with a read error       CGT<span class="x">C</span>AGC       in one read    → seen 1–2×  (error wall)
+k-mer in a 2-copy repeat      present twice per copy → seen ~70×     (repeat peak)</div>
+    <p>(35× rather than 40× because only 130 of 150 positions in a read start a 21-mer. The k-mers are drawn as 7-mers to fit; the counts are for k = 21.)</p>
+    <p><b>Why a little heterozygosity makes a big het peak.</b> At 1 % heterozygosity, 1 base in 100 differs. Each such site touches 21 k-mers, so the share of k-mers that cover at least one het site is 1 − 0.99<sup>21</sup> ≈ 19 %. At 2 % it is 35 %, and since every het site makes two het k-mers (one per allele), the het peak becomes taller than the homozygous peak.</p>
+  </div></details>
+
+  <figure>
+    <h3>Interactive spectrum (simulated 1 Gb genome, 150 bp reads, k = 21)</h3>
+    <div class="controls">
+      <label for="s-cov">Read coverage <output id="o-cov"></output><input type="range" id="s-cov" min="8" max="100" step="1" value="40"></label>
+      <label for="s-het">Heterozygosity <output id="o-het"></output><input type="range" id="s-het" min="0" max="3" step="0.05" value="0.6"></label>
+      <label for="s-err">Per-base error <output id="o-err"></output><input type="range" id="s-err" min="0.05" max="1.5" step="0.05" value="0.3"></label>
+      <label for="s-rep">Repeats (2-copy) <output id="o-rep"></output><input type="range" id="s-rep" min="0" max="40" step="1" value="10"></label>
+      <div class="seg" role="group" aria-label="Ploidy"><button id="pl-1" aria-pressed="false">haploid</button><button id="pl-2" aria-pressed="true">diploid</button></div>
+    </div>
+    <div class="svgbox" id="spec"></div>
+    <div class="legend">
+      <span><i style="background:var(--err)"></i>errors</span>
+      <span><i style="background:var(--het)"></i>heterozygous k-mers (1 haplotype)</span>
+      <span><i style="background:var(--accent)"></i>homozygous k-mers (both)</span>
+      <span><i style="background:var(--rep)"></i>repeats</span>
+      <span><i style="background:var(--fg);height:1px"></i>total = what jellyfish histo shows</span>
+    </div>
+    <div class="readout" id="specstats"></div>
+    <figcaption><b>Try it:</b> drop coverage to ~12× and the het peak merges with the error wall, so the valley cut loses k-mers and the size estimate drifts. Raise heterozygosity above ~1.5 % and the het peak becomes taller than the homozygous one: GenomeScope can then mistake it for the main peak and report double the size.</figcaption>
+  </figure>
+
+  <h3>Genome size by hand</h3>
+  <div class="formula">G ≈ Σ<sub>x ≥ valley</sub> x · n(x)  /  homozygous peak coverage        k-mer cov = read cov · (L − k + 1) / L</div>
+  <p>Exclude the error wall left of the first valley, multiply each coverage bin by its k-mer count, and divide by the homozygous peak. For a diploid, use the homozygous peak, not the het peak. With 150 bp reads and k = 21, k-mer coverage is 87 % of read coverage.</p>
+  <details class="simple"><summary>Simple explanation with examples: the size calculation</summary><div class="in">
+    <p>Every position in the genome starts one k-mer, and that k-mer is seen about as many times as the homozygous peak says. So the total number of k-mer sightings, divided by the sightings per position, is the number of positions.</p>
+    <div class="toy">bin (x)   distinct k-mers n(x)   x · n(x)
+  1–4     error wall             <span class="x">excluded (left of valley)</span>
+  17      40 million             0.68 billion
+  35      800 million            28.0 billion
+  70      45 million             3.15 billion
+  ...
+sum after valley ≈ 35 billion sightings
+genome size ≈ 35 billion / <span class="a">35</span> (homozygous peak) = <span class="a">1.0 Gb</span></div>
+    <p>Het k-mers still add up correctly: each het site has two alleles, each seen ~17×, which together make the 35× one position should get. That is why you divide by the homozygous peak, never the het peak. If you divide by 17 by mistake, the answer doubles to 2 Gb, which is exactly the error GenomeScope makes when its fit picks the wrong peak.</p>
+  </div></details>
+
+  <h3>Typical shapes</h3>
+  <div class="grid2" id="gallery"></div>
+
+  <figure>
+    <div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;align-items:center">
+      <h3>Smudgeplot: ploidy from k-mer pairs</h3>
+      <div class="seg" role="group" aria-label="Ploidy example">
+        <button data-sm="2" aria-pressed="true">diploid</button><button data-sm="3" aria-pressed="false">triploid</button><button data-sm="4" aria-pressed="false">autotetraploid</button><button data-sm="a" aria-pressed="false">allotetraploid</button>
+      </div>
+    </div>
+    <div class="svgbox" id="smudge"></div>
+    <figcaption><b>How it works:</b> Smudgeplot finds pairs of k-mers that differ at one base, the two <dfn>alleles</dfn> A and B (variants of the same position). It plots their summed coverage against the share of the rarer one, B/(A+B). Each <dfn>genotype</dfn> (how many copies carry A and how many B) forms a "smudge": AB at ½, AAB at ⅓, AAAB at ¼. The brightest smudge gives the ploidy. Run it whenever GenomeScope's fit is poor, or the organism could be polyploid, a hybrid, or <dfn>parthenogenetic</dfn> (reproducing from unfertilised eggs, often as clonal hybrid lineages).</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: reading a smudge</summary><div class="in">
+    <p>Smudgeplot looks for two k-mers that are identical except for one base, the two alleles A and B of a SNP. Let n be the coverage of one chromosome copy (here 20×). Count how often each allele is seen:</p>
+    <div class="toy">            copies   A seen  B seen   A+B (y axis)   B/(A+B) (x axis)
+diploid     AB        20      20      40 = <span class="a">2n</span>        20/40 = <span class="a">1/2</span>
+triploid    AAB       40      20      60 = <span class="a">3n</span>        20/60 = <span class="a">1/3</span>
+tetraploid  AAAB      60      20      80 = <span class="a">4n</span>        20/80 = <span class="a">1/4</span>
+tetraploid  AABB      40      40      80 = <span class="a">4n</span>        40/80 = <span class="a">1/2</span></div>
+    <p>The height of a smudge tells how many copies carry the SNP in total, and its left–right position tells the allele ratio. A diploid fills the AB smudge; a triploid's brightest smudge sits at ⅓; a tetraploid lights up AAAB and AABB at 4n. A faint AABB smudge in a diploid usually means duplicated regions, not tetraploidy.</p>
+  </div></details>
+
+  <details class="simple"><summary>Diploid or tetraploid? How to tell them apart</summary><div class="in">
+    <p><b>The trap.</b> AB (diploid) and AABB (tetraploid) both sit at ½ on the x axis. Only their height differs: 2n against 4n. But the y axis is measured in units of <i>n</i>, the coverage of one chromosome copy, and Smudgeplot estimates <i>n</i> from the data itself. If it estimates <i>n</i> twice too high, the AABB smudge is labelled "2n" and a tetraploid is reported as a diploid. Smudgeplot's own code warns that its <i>n</i> estimate can be wrong and should be checked against GenomeScope.</p>
+    <p><b>Checks, in order of strength:</b></p>
+    <ul>
+      <li><b>A smudge at ¼ (AAAB).</b> A diploid cannot produce it: with two copies the minor allele is always ½. A clear smudge at ¼ means at least four copies. Likewise, a clear smudge at ⅓ means at least three.</li>
+      <li><b>An independent value of <i>n</i>.</b> Reads come from all the DNA extracted. After discounting organelle and contaminant reads, the read coverage of one chromosome copy is roughly total sequenced bases ÷ 2C (in bp), whatever the ploidy. Multiply by (L − k + 1)/L to get <i>n</i> on the k-mer scale that Smudgeplot uses. With 2C from flow cytometry (step 1), compare: if the brightest smudge sits at about 2 × that <i>n</i>, it is AB (diploid); at about 4 × <i>n</i>, it is AABB (tetraploid).</li>
+      <li><b>GenomeScope at both ploidies.</b> Run <code>-p 2</code> and <code>-p 4</code>. Prefer the fit whose k-mer coverage agrees with the <i>n</i> above, not just the higher model-fit percentage.</li>
+      <li><b>Chromosome count.</b> 2n twice that of diploid relatives settles it (step 1).</li>
+    </ul>
+    <div class="toy">80 Gb of reads; flow cytometry 2C = 4.4 pg × 978 Mb = 4.3 Gb
+read coverage per copy ≈ 80 / 4.3 ≈ 19×  →  × 0.87  →  n ≈ <span class="a">16×</span> k-mer coverage per copy
+brightest smudge at ½, total coverage ≈ 65×  →  65 / 16 ≈ <span class="a">4n</span>  →  AABB, tetraploid
+(had it been at ≈ 33× → 2n → AB, diploid)</div>
+    <p><b>Auto- or allotetraploid.</b> An <dfn>autotetraploid</dfn> (genome doubled within one species) has four similar copies, so AAAB and AABB are both strong. An allotetraploid (two species combined) has two distinct subgenomes: differences between them are fixed, so AABB dominates and AAAB is weak (use the allotetraploid button above).</p>
+    <p><b>The hardest case.</b> For assembly, a strongly diverged allotetraploid behaves like a diploid with a large genome, and it is also the hardest case to detect. When the two subgenomes of an allotetraploid differ by more than a few percent, most k-mers from one subgenome have no single-base partner in the other. Then only the variants within each subgenome form pairs, at 2n and ½, and the plot looks diploid. GenomeScope reports a "haploid" size equal to both subgenomes together, so 2C from cytometry agrees with the diploid reading and cannot expose it. Only the chromosome count against relatives, or a high BUSCO duplication rate after assembly (see the VGP section), reveals it.</p>
+  </div></details>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Input</th><th>Reports</th><th>Notes</th></tr></thead>
+    <tbody>
+      <tr><td><b>GenomeScope2</b></td><td>histogram</td><td>Haploid size, heterozygosity, repeat %, error %, model fit plot (linear + log)</td><td>Set <code>-p</code> for ploidy; <code>-l</code> gives an initial k-mer coverage when the fit locks onto the wrong peak. Web version at genomescope.org.</td></tr>
+      <tr><td><b>GeneScope.FK</b></td><td>FastK table</td><td>Same model as GenomeScope2</td><td>Part of the FastK/MERQURY.FK suite</td></tr>
+      <tr><td><b>Smudgeplot</b></td><td>KMC dump or FastK table</td><td>Ploidy and genotype structure</td><td>0.2.5 uses KMC; 0.3+ uses FastK <code>hetmers</code></td></tr>
+      <tr><td><b>KAT</b> (K-mer Analysis Toolkit)</td><td>reads</td><td><code>kat hist</code> (spectrum), <code>kat gcp</code> (map of k-mer GC content against coverage), <code>kat comp</code> (one spectrum against another)</td><td>gcp separates contaminants by GC; comp compares HiFi with Illumina, or R1 with R2</td></tr>
+      <tr><td><b>findGSE</b>, <b>CovEst</b>, <b>GCE</b></td><td>histogram</td><td>Alternative size estimates</td><td>Useful cross-check for repeat-rich or highly heterozygous genomes</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="code"><button type="button">copy</button><pre><span class="c"># GenomeScope2 (diploid; use -p 3/4/... for polyploids)</span>
+genomescope2 -i reads.histo -o gscope/ -k 21 -p 2 -n sample
+<span class="c">#   gscope/sample_summary.txt          : size, heterozygosity, repeat length, error rate, model fit</span>
+<span class="c">#   gscope/sample_linear_plot.png etc. : fitted spectrum</span>
+
+<span class="c"># Smudgeplot 0.2.5 (KMC route)</span>
+L=$(smudgeplot.py cutoff reads.histo L)
+U=$(smudgeplot.py cutoff reads.histo U)
+kmc_tools transform reads -ci"$L" -cx"$U" dump -s kmcdb_L${L}_U${U}.dump
+smudgeplot.py hetkmers -o kmcdb_L${L}_U${U} &lt; kmcdb_L${L}_U${U}.dump
+smudgeplot.py plot kmcdb_L${L}_U${U}_coverages.tsv -o smudge
+
+<span class="c"># Smudgeplot 0.3+ (FastK route)</span>
+smudgeplot.py hetmers -L 12 -t 16 -o hifi_L12 hifi
+smudgeplot.py all -o hifi hifi_L12_text.smu
+
+<span class="c"># KAT: GC x coverage map and HiFi vs Illumina comparison (decompress first if your KAT build cannot read .gz)</span>
+kat gcp  -t 16 -m 21 -o kat_gcp R1.fq R2.fq
+kat comp -t 16 -m 21 -o hifi_vs_ill hifi.fq 'R1.fq R2.fq'</pre></div>
+</section>
+
+<!-- ============ 5 CONTAM / ORGANELLE ============ -->
+<section aria-labelledby="ct">
+  <h2 id="ct"><span class="n">Step 5</span>Screen for foreign and organelle DNA</h2>
+  <p>Contaminants inflate the size estimate and assemble into extra contigs. <dfn>Organelles</dfn> (mitochondria, and chloroplasts in plants) carry their own small genome in tens to thousands of copies per cell, depending on tissue and extraction. Their k-mers are seen tens to thousands of times more often than nuclear k-mers, but there are few of them, so they form a thin tail at the far right of the spectrum, not a peak. Screen the reads now, then assemble the <dfn>mitogenome</dfn> (mitochondrial genome) separately. That lets you remove its copies from the nuclear assembly later and recognise <dfn>NUMTs</dfn> (pieces of mitochondrial DNA inserted into nuclear chromosomes).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Question</th><th>Tool</th><th>Signal</th></tr></thead>
+    <tbody>
+      <tr><td>Is there bacterial, fungal or human DNA?</td><td><b>Kraken2</b> (assigns each read to a <dfn>taxon</dfn>, a species or higher group, by matching its k-mers to a reference database) + <b>Bracken</b> (corrects the abundance estimates); <b>Mash screen</b> and <b>sourmash gather</b> (estimate which reference genomes are present from small samples of k-mers)</td><td>Fraction of reads per taxon. Use a database that contains the groups you suspect (the Standard database has no fungi). In vertebrates, some hits to human or other relatives are expected. Confirm any signal with GC and coverage (kat gcp) before acting.</td></tr>
+      <tr><td>Do the contaminants separate by GC?</td><td><b>kat gcp</b>, FastQC GC plot</td><td>A blob at a different GC and coverage from the main genome</td></tr>
+      <tr><td>Mitogenome from short reads</td><td><b>GetOrganelle</b>, MitoFinder, NOVOPlasty</td><td>Circular mitogenome; also gives a set of organelle k-mers to filter out</td></tr>
+      <tr><td>Mitogenome from HiFi / long reads</td><td><b>MitoHiFi</b> (<code>-r</code> reads mode)</td><td>Circular mitogenome with genes marked; needs the mitogenome of a related species as a reference</td></tr>
+      <tr><td>Which contigs are foreign? <span class="tag">after assembly</span></td><td><b>NCBI FCS-GX</b> (NCBI's Foreign Contamination Screen) + FCS-adaptor; <b>BlobToolKit</b> (plots contigs by GC, coverage and best database match)</td><td>Report for each contig with an action (EXCLUDE, TRIM, FIX). This is the screen NCBI runs on submitted genomes, so run it before you submit.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>FCS-GX works on assembled sequences, not reads.</b> Use the read-level screens above to decide whether to filter reads or sequence again, then run FCS-GX on the draft assembly. It needs the GX database (about 470 GB) and runs fastest when the whole database fits in RAM (around 512 GB); on smaller machines it reads the database from disk and is much slower. Pass the correct NCBI <code>--tax-id</code> of your organism, because the calls depend on it. Without such a machine, run it in Galaxy, where the database is already in place (see <a href="#gx">Running it in Galaxy</a>).</p>
+
+  <h3>Removing contaminant reads before assembly: BBSplit</h3>
+  <p><dfn>BBSplit</dfn> (part of the BBTools suite) maps every read against several reference genomes at once and sends each read to the file of the reference it matches best; reads that match none go to a separate "unmatched" output. For a de novo project you give it only the contaminant genomes you expect (for example human, PhiX, a known symbiont or food organism) and keep the unmatched reads for assembly. Use it when Kraken2 or kat gcp points to a specific contaminant with a known genome.</p>
+  <ul>
+    <li><b>Risk: removing your own reads.</b> Conserved regions such as rDNA, mitochondrial genes and highly conserved coding genes can match a related contaminant genome. Screening a mammal against the human genome at default settings will remove real reads. Set a high identity threshold (<code>minid=0.97</code> or stricter), and compare the k-mer spectrum before and after: removal should shrink the contaminant bump, not the main peaks.</li>
+    <li><b>Ambiguous reads</b> (equally good matches to two references): <code>ambiguous2=toss</code> discards them, <code>best</code> keeps the first best hit, <code>all</code> writes them to every matching file. With only contaminant genomes as references, every read that maps is removed from the unmatched output, ambiguous or not; <code>ambiguous2</code> only decides which contaminant file it goes to.</li>
+    <li><b>Long reads:</b> BBSplit is built for short reads. For HiFi or ONT reads, map with minimap2 to the contaminant genomes and remove reads aligned over most of their length, or screen contigs after assembly with FCS-GX.</li>
+  </ul>
+  <p class="note"><b>BBSplit in nf-core/sarek.</b> <dfn>nf-core/sarek</dfn> is a Nextflow pipeline for variant calling (finding SNPs and other differences) by mapping reads to an existing reference genome of the same species. It is not an assembly pipeline. Recent releases (documented for 3.11.0) include BBSplit as an optional contamination-removal step that runs before read mapping. Enable it with <code>--tools bbsplit</code> and list the contaminant genomes with <code>--bbsplit_fasta_list</code>; <code>--bbsplit_index</code> reuses a prebuilt index, and <code>--save_bbsplit_reads</code> keeps the split FASTQ files. Reads assigned to the main reference (<code>--fasta</code> / <code>--genome</code>) continue to mapping. Typical uses are xenograft samples (removing mouse reads from human tumour tissue grown in mice) and resequencing of a species with known contaminants. The same idea, applied in sarek's way, is a reasonable pre-filter before assembly, but sarek itself needs a reference genome of your species.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># standalone BBSplit: keep reads that match none of the contaminant genomes</span>
+bbsplit.sh -Xmx64g threads=16 \
+    in1=R1.fq.gz in2=R2.fq.gz \
+    ref=human.fa,phix.fa,symbiont.fa path=bbsplit_idx/ \
+    minid=0.97 ambiguous2=all \
+    basename=contam_%_#.fq.gz \
+    outu1=clean_R1.fq.gz outu2=clean_R2.fq.gz \
+    refstats=bbsplit_refstats.txt          <span class="c"># % of reads per reference</span>
+
+<span class="c"># nf-core/sarek with BBSplit before mapping (resequencing, reference available)</span>
+<span class="c"># one line per genome: name,path (no header), as in nf-core/rnaseq; sarek's docs do not show the format</span>
+cat &gt; contaminants.csv &lt;&lt;'CSV'
+mouse,/refs/GRCm39.fa
+CSV
+nextflow run nf-core/sarek -r 3.11.0 -profile singularity \
+    --input samplesheet.csv --genome GATK.GRCh38 \
+    --tools bbsplit,haplotypecaller \
+    --bbsplit_fasta_list contaminants.csv --save_bbsplit_reads \
+    --outdir results/</pre></div>
+  <div class="code"><button type="button">copy</button><pre>kraken2 --db k2_standard --threads 16 --paired --gzip-compressed \
+        --report kraken.report R1.fq.gz R2.fq.gz &gt; /dev/null
+mash screen -w -p 16 refseq.genomes.msh R1.fq.gz | sort -gr | head -20
+
+get_organelle_config.py --add animal_mt   <span class="c"># once: installs seed and label databases</span>
+get_organelle_from_reads.py -1 R1.fq.gz -2 R2.fq.gz -R 10 -k 21,45,65,85,105 -F animal_mt -o mito_sr/
+seqkit fq2fa hifi.fq.gz &gt; hifi.fa   <span class="c"># MitoHiFi reads mode is safest with FASTA</span>
+mitohifi.py -r hifi.fa -f related_mito.fa -g related_mito.gb -t 16 -o 2 <span class="c"># -o 2 = vertebrate mito code</span>
+
+<span class="c"># after assembly: NCBI FCS (foreign organisms + adaptors/vectors)</span>
+python3 fcs.py screen genome --fasta asm.fa --out-dir fcsgx/ --gx-db "$GXDB/all" --tax-id &lt;taxid&gt;
+cat asm.fa | python3 fcs.py clean genome --action-report fcsgx/asm.&lt;taxid&gt;.fcs_gx_report.txt \
+    --output asm.clean.fa --contam-fasta-out asm.contam.fa
+run_fcsadaptor.sh --fasta-input asm.clean.fa --output-dir fcsadaptor/ --euk \
+    --container-engine singularity --image fcs-adaptor.sif</pre></div>
+</section>
+
+<!-- ============ 6 DECISIONS ============ -->
+<section aria-labelledby="dc">
+  <h2 id="dc"><span class="n">Step 6</span>Plan the assembly</h2>
+  <p>Assemblers can return one <dfn>primary assembly</dfn> (one sequence per region) plus <dfn>alternate haplotigs</dfn> (contigs from the second haplotype), or two separate haplotype assemblies. <dfn>Phasing</dfn> means assigning each piece of sequence to the right haplotype. Two kinds of extra data help with phasing and with building whole chromosomes: <dfn>Hi-C</dfn> (chromatin is cross-linked inside the nucleus, cut and re-joined, so each read pair joins two pieces of DNA that touched in 3D; most such pairs come from the same chromosome and the same haplotype) and <dfn>trio</dfn> data (short reads from both parents, used to sort the offspring's reads by parent).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>What you see</th><th>What it means</th><th>What to do</th></tr></thead>
+    <tbody>
+      <tr><td>Two peaks, left one ≈ half the height of the right</td><td>Diploid, heterozygosity around 0.5–1 % (below ~0.3 % the het peak is only a shoulder)</td><td>Standard run. hifiasm writes primary contigs plus two partially phased haplotype sets (hap1, hap2); add <code>--primary</code> to get primary + alternate contigs instead.</td></tr>
+      <tr><td>Left (het) peak taller than right</td><td>High heterozygosity (&gt;~1.5 %)</td><td>The two haplotypes assemble as separate contigs, so the primary assembly contains both copies of many regions. Run <dfn>purge_dups</dfn> (removes contigs that are a second-haplotype copy of another contig), and check that the GenomeScope size used the correct peak.</td></tr>
+      <tr><td>Single peak</td><td>Haploid, inbred or very low heterozygosity. Or too little coverage to see the het peak</td><td>Check coverage first. If coverage is fine, treat as homozygous (hifiasm <code>-l0</code> turns its own duplicate removal off).</td></tr>
+      <tr><td>Error wall runs into the first peak</td><td>k-mer coverage too low (het peak below ~10×, i.e. under ~25× total read coverage)</td><td>The fit is unreliable. Sequence more, or profile with a deeper short-read set.</td></tr>
+      <tr><td>Size estimate far below a flow-cytometry or C-value figure</td><td>Large repeat fraction / satellites; high-copy k-mers fall outside the fit</td><td>Trust the cytometry figure for planning. Raise <code>-h</code>/<code>-cs</code> limits so high counts are not capped.</td></tr>
+      <tr><td>Brightest smudge at ⅓ or ¼, or GenomeScope fails at p = 2</td><td>Triploid, tetraploid, or hybrid</td><td>Check <i>n</i> independently (see "Diploid or tetraploid?" in step 4), rerun GenomeScope2 with the matching <code>-p</code>, and plan a phased assembly with Hi-C or trio data.</td></tr>
+      <tr><td>Extra bump at an odd coverage, second GC peak</td><td>Contamination or <dfn>symbionts</dfn> (microbes living in or on the organism)</td><td>Kraken2 / kat gcp; remove reads of a known contaminant with BBSplit, or remove contigs after assembly with FCS-GX / BlobToolKit.</td></tr>
+      <tr><td>Thin tail of k-mers at hundreds × coverage or more</td><td>Mitochondria, chloroplast, <dfn>rDNA</dfn> (arrays of ribosomal RNA genes, tens to thousands of copies)</td><td>Assemble organelles separately; expect NUMT and rDNA artefacts in the nuclear assembly.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Coverage rules of thumb (total bases ÷ haploid genome size)</h3>
+  <ul>
+    <li><b>Illumina for profiling:</b> 30–60× gives a clean GenomeScope fit; about 25× is a practical minimum for a diploid.</li>
+    <li><b>PacBio HiFi:</b> 25–35× for a diploid hifiasm assembly; more helps phasing at high heterozygosity.</li>
+    <li><b>ONT:</b> 30–50×, with a share of ultra-long (&gt;100 kb) reads if you want to span long repeats. R10.4.1 SUP reads can go into hifiasm (<code>--ont</code>) or Dorado correct first.</li>
+    <li><b>Hi-C or trio short reads:</b> plan them now if heterozygosity is high or you need chromosome-scale phased haplotypes.</li>
+    <li><b>VGP minimum:</b> at least 30× HiFi and 60× Hi-C, which the VGP calls "diploid coverage".</li>
+  </ul>
+</section>
+
+<!-- ============ N50 ============ -->
+<section aria-labelledby="n50">
+  <h2 id="n50">Measuring contiguity: N50, L50 and Nx</h2>
+  <p>After assembly the first question is how many pieces the genome came out in. One number cannot say everything about a list of contigs of very different lengths, and the mean length is useless: a thousand tiny contigs drag it down even when most bases sit in a few huge ones. <dfn>N50</dfn> answers a better question: <b>half of all assembled bases are in contigs at least how long?</b> The same calculation works for reads (read N50, step 2), contigs and scaffolds.</p>
+  <figure>
+    <div class="slider-row"><label for="nx-x">x (%)</label><input type="range" id="nx-x" min="1" max="99" step="1" value="50"><output id="nx-xo" class="mono">50</output>
+      <label style="display:flex;gap:6px;align-items:center"><input type="checkbox" id="nx-ng"> use the expected genome size (NGx)</label>
+      <button class="btn" id="nx-new" type="button" style="align-self:center">New random assembly</button></div>
+    <div class="svgbox" id="nx-fig"></div>
+    <div class="readout" id="nx-out"></div>
+    <figcaption><b>Toy assembly of 12 contigs.</b> <b>1.</b> The assembler writes contigs in no useful order. <b>2.</b> Sort them, longest first; the running total of bases is written above each. <b>3.</b> Lay the sorted contigs end to end on one ruler and mark the point x % along it (50 % for N50). The contig that covers that point is the answer: <b>its length is Nx</b>, and <b>its position in the sorted list is Lx</b>. Blue contigs together hold the first x % of the bases; the orange one crosses the line. <b>4.</b> The Nx curve shows Nx for every x at once; this is the plot QUAST draws.</figcaption>
+  </figure>
+  <dl class="defs">
+    <dt>N50</dt><dd>The length of the contig that crosses the halfway point of the sorted, end-to-end ruler. Half of all bases are in contigs of this length or longer.</dd>
+    <dt>L50</dt><dd>How many contigs it takes to reach that halfway point: the rank of the N50 contig. It is a count, not a length. A good assembly has a large N50 and a small L50. (A few old tools swap the two names; check the units: bases or a count.)</dd>
+    <dt>N25, N75, N90, Nx</dt><dd>The same with the line placed at 25 %, 75 %, 90 % or any x % of the bases. N25 describes the longest contigs, N90 the tail. Nx can only fall as x rises. A large gap between N50 and N90 means much of the genome sits in small pieces.</dd>
+    <dt>NG50, NGx</dt><dd>The ruler is the expected genome size (from step 1 or GenomeScope), not the assembly length. This stops an assembly from looking better by dropping its short contigs, or worse by carrying duplicated haplotigs. If the assembly holds less than x % of the genome, NGx does not exist.</dd>
+    <dt>auN</dt><dd>The area under the Nx curve (Li 2020), equal to Σ length² ÷ Σ length. One number for the whole curve; it changes smoothly when a contig is joined or broken, whereas N50 jumps.</dd>
+    <dt>Contig N50 vs scaffold N50</dt><dd>Contig N50 counts gap-free sequence; scaffold N50 counts chains of contigs joined across gaps (runs of N), for example with Hi-C. VGP's "6.C" (see the <a href="#vgp">VGP route</a>) refers to contig N50 ≥ 1 Mb and chromosome-scale scaffolds.</dd>
+  </dl>
+  <details class="simple"><summary>Simple explanation with examples: N50 by hand, and what it does not tell you</summary><div class="in">
+    <div class="toy">contigs (Mb), sorted:  20  14   9   7   6   5   4   3  2.5   2  1.5   1     total 75
+running total:         20  34  <span class="a">43</span>  50  56  <span class="a">61</span>  65  <span class="a">68</span>  70.5 72.5 74  75
+50 % of 75 = 37.5  →  first total ≥ 37.5 is 43, reached by contig 3 (9 Mb)  →  <span class="a">N50 = 9 Mb, L50 = 3</span>
+75 % of 75 = 56.25 →  first total ≥ 56.25 is 61, contig 6 (5 Mb)            →  N75 = 5 Mb, L75 = 6
+90 % of 75 = 67.5  →  first total ≥ 67.5 is 68, contig 8 (3 Mb)             →  N90 = 3 Mb, L90 = 8</div>
+    <p><b>N50 does not measure correctness.</b> Joining two contigs that do not belong together raises N50. Check accuracy separately (Merqury QV, BUSCO, Hi-C contact maps).</p>
+    <p><b>N50 can be gamed.</b> Throwing away all contigs under 50 kb shortens the ruler, so the halfway point moves into longer contigs and N50 goes up, while sequence is lost. NG50 against the expected genome size does not move. Compare assemblies of one species with NG50 or with the full Nx curve.</p>
+    <p><b>Commands.</b> <code>seqkit stats -a -T asm.fa</code> (N50, N50_num = L50; add <code>-N 90</code> for N90); <code>gfastats asm.fa 1000000000</code> (contig and scaffold N50/L50, and NG50 when the genome size is given); <code>quast.py asm.fa --est-ref-size 1000000000</code> (N50, L50, NG50, LG50, auN and the Nx plot).</p>
+  </div></details>
+</section>
+
+<!-- ============ VGP ============ -->
+<section aria-labelledby="vgp">
+  <h2 id="vgp">The VGP route: today's reference standard</h2>
+  <p>The Vertebrate Genomes Project (VGP) builds <dfn>chromosome-level</dfn> (one scaffold per chromosome), <dfn>haplotype-resolved</dfn> (both parental copies assembled separately) reference genomes for every vertebrate order. The VGP publishes its whole pipeline as public workflows for <a href="#gx">Galaxy</a>, a free web platform for running bioinformatics tools (Larivière et al. 2024, <i>Nature Biotechnology</i>). Its pre-assembly stage is a short version of this page: k-mer profiling with Meryl and GenomeScope2, read statistics, and a Mash check that the reads come from the expected species.</p>
+
+  <p class="note"><b>Is it the gold standard?</b> For chromosome-level reference genomes of eukaryotes, yes in practice. The VGP, the Darwin Tree of Life project, the European Reference Genome Atlas (ERGA) and the Earth BioGenome Project (EBP) all use the same core: HiFi contigs with hifiasm, Hi-C phasing and scaffolding, duplicate purging, contamination screening, quality checks with k-mers and conserved genes, and <dfn>manual curation</dfn> (a person inspects the Hi-C contact map and fixes wrong joins and breaks). Two limits apply. The EBP accuracy target of Q40 is a floor; good HiFi assemblies now reach Q50–60. <dfn>Telomere-to-telomere (T2T)</dfn> assemblies, with every chromosome complete from end to end and no gaps, go further by adding ONT ultra-long reads (verkko, or hifiasm with ultra-long reads) to fill the gaps left in <dfn>centromeres</dfn> (the chromosome's attachment point during division, usually long satellite arrays), rDNA and other satellites. The EBP standards still describe T2T as emerging, not routine.</p>
+
+  <h3>The VGP Galaxy workflows, in order</h3>
+  <p>VGP numbers its workflows WF0–WF9; the numbers are names, not the running order.</p>
+  <ol class="steps">
+    <li><div><b>k-mer profiling</b> <span class="t">WF1, WF2</span><div class="d">Meryl and GenomeScope2 (WF2 also profiles the parents' reads). k = 21 for mammal-size genomes.</div></div></li>
+    <li><div><b>Mitogenome</b> <span class="t">WF0</span><div class="d">Assembles the mitochondrial genome from HiFi reads and marks its genes.</div></div></li>
+    <li><div><b>Contigs</b> <span class="t">WF3, WF4, WF5</span><div class="d">hifiasm with HiFi only, with Hi-C phasing (two haplotypes, hap1 and hap2), or with trio data.</div></div></li>
+    <li><div><b>Purging</b> <span class="t">WF6</span><div class="d">purge_dups, with coverage cutoffs taken from the k-mer profile; usually not needed with trio data.</div></div></li>
+    <li><div><b>Scaffolding</b> <span class="t">WF8 (WF7)</span><div class="d"><dfn>YaHS</dfn> orders and joins contigs into chromosomes using Hi-C. <dfn>Bionano optical maps</dfn> (images of very long DNA molecules labelled at a short sequence motif) are optional.</div></div></li>
+    <li><div><b>Decontamination</b> <span class="t">WF9</span><div class="d">Removes foreign and mitochondrial sequences from the assembly.</div></div></li>
+    <li class="later"><div><b>Curation and quality checks</b><div class="d"><dfn>Pretext</dfn> contact maps (Hi-C heatmaps used for curation); Merqury QV; <dfn>BUSCO</dfn> or compleasm (the share of a set of conserved single-copy genes found complete); gfastats (lengths, N50, gaps).</div></div></li>
+  </ol>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Data you have</th><th>VGP route (they call it "trajectory")</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>HiFi only</td><td>A</td><td>Primary + alternate contigs; minimum requirement</td></tr>
+      <tr><td>HiFi + Hi-C</td><td>B (most common)</td><td>Two Hi-C-phased haplotypes, chromosome-scale scaffolds</td></tr>
+      <tr><td>HiFi + Bionano (± Hi-C)</td><td>C, D</td><td>Better contiguity</td></tr>
+      <tr><td>HiFi + parental reads (± Hi-C, Bionano)</td><td>E–H</td><td>Trio-phased maternal and paternal haplotypes</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>What the pre-assembly numbers feed in the VGP pipeline</h3>
+  <ul>
+    <li><b>GenomeScope2 genome size</b> is the expected assembly length, and the denominator for the coverage check.</li>
+    <li><b>GenomeScope2 k-mer coverage</b> sets hifiasm's homozygous coverage (<code>--hom-cov</code>) and the purge_dups coverage cutoffs. A wrong peak here gives a wrongly purged assembly.</li>
+    <li><b>The Meryl database</b> is reused by Merqury after assembly for <dfn>QV</dfn> (consensus quality, on the same Phred scale as base quality), <dfn>k-mer completeness</dfn> (share of reliable read k-mers found in the assembly) and the <dfn>spectra-cn plot</dfn> (the read spectrum coloured by how many times each k-mer occurs in the assembly).</li>
+  </ul>
+
+  <h3>The quality target: 6.C.Q40</h3>
+  <p>The Earth BioGenome Project (EBP) writes its standard as three numbers. A typical high-quality target is <b>6.C.Q40</b>, together with at least 90 % k-mer completeness, at least 90 % BUSCO completeness and at least 90 % of the sequence assigned to chromosomes.</p>
+  <details class="simple"><summary>Simple explanation with examples: reading "6.C.Q40"</summary><div class="in">
+    <div class="toy"><span class="a">6</span>    contig N50 ≥ 10^6 bp = 1 Mb    (7 would mean ≥ 10 Mb)
+<span class="a">C</span>    scaffold N50 is chromosome-scale: scaffolds are whole chromosomes
+<span class="a">Q40</span>  consensus quality: at most 1 error per 10^4 bases  (Q50 = 1 per 10^5)</div>
+    <p>A published butterfly assembly reported as <b>6.7.Q55</b> has contig N50 of at least 1 Mb, scaffold N50 of at least 10 Mb, and about 1 error per 300,000 bases. It meets the contig and quality parts of 6.C.Q40. The "C" also requires scaffolds to be whole chromosomes, which a 10 Mb N50 alone does not prove.</p>
+    <p>QV is computed by Merqury from k-mers: an assembly k-mer that never occurs in the reads marks an error. This is why the read k-mer database built before assembly matters afterwards.</p>
+  </div></details>
+</section>
+
+<!-- ============ GALAXY ============ -->
+<section aria-labelledby="gx">
+  <h2 id="gx">Running it in Galaxy</h2>
+  <p>Galaxy is a free web platform for running bioinformatics tools on public servers (usegalaxy.org, usegalaxy.eu, usegalaxy.org.au and others) without installing anything. Every run keeps its parameters and tool versions, so the history doubles as a methods record. The VGP pipeline and most tools on this page are available there.</p>
+
+  <p class="note"><b>FCS-GX is the clearest case for Galaxy.</b> Run locally, it needs the ~470 GB GX database and, for normal speed, a machine with about 512 GB of RAM. On Galaxy the database is already mounted on the server, so you upload the assembly, choose the taxonomic division (a broad group such as "vertebrates" or "insects"), enter the NCBI taxonomy ID (the number NCBI assigns to each species), and run <i>NCBI FCS GX</i> screen and then clean, followed by <i>NCBI FCS Adaptor</i>. The Galaxy Training Network tutorial "Screening assembled genomes for contamination using NCBI FCS" includes a ready-made workflow. If a run fails on usegalaxy.org, switch to the newest tool version first, as the Galaxy help forum advises.</p>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Stage</th><th>Tools available in Galaxy</th></tr></thead>
+    <tbody>
+      <tr><td>Read QC &amp; filtering</td><td>FastQC, fastp, MultiQC, NanoPlot, Filtlong</td></tr>
+      <tr><td>k-mer profiling</td><td>Jellyfish, Meryl, GenomeScope2; the VGP k-mer profiling workflow wraps them</td></tr>
+      <tr><td>Species and contamination check</td><td>Mash, Kraken2; NCBI FCS GX and FCS Adaptor for assemblies</td></tr>
+      <tr><td>Mitogenome</td><td>MitoHiFi</td></tr>
+      <tr><td>Assembly and scaffolding</td><td>hifiasm, purge_dups, YaHS, PretextMap</td></tr>
+      <tr><td>Assembly QC</td><td>Merqury, BUSCO, compleasm, gfastats, QUAST</td></tr>
+    </tbody>
+  </table></div>
+
+  <ul>
+    <li><b>How to start:</b> on a Galaxy server, open Workflows → Public workflows (or WorkflowHub, or the IWC collection of reviewed Galaxy workflows) and import "VGP" or "NCBI Foreign Contamination Screen". The Galaxy Training Network (GTN) tutorial "Using the VGP workflows to assemble a vertebrate genome with HiFi and Hi-C data" walks through trajectory B on a small yeast dataset.</li>
+    <li><b>Getting data in:</b> upload large files by URL or FTP rather than through the browser, and pull public reads straight from SRA/ENA.</li>
+    <li><b>Limits:</b> each account has a storage quota and queue times vary, so tens of Gb of HiFi plus Hi-C can outgrow a free account. A common split is to run the heavy steps on your own server and use Galaxy for FCS-GX and other database-heavy steps.</li>
+    <li><b>Version caution:</b> Galaxy tool versions can lag behind the command-line releases. Record the version shown in the dataset info for your methods.</li>
+  </ul>
+</section>
+
+<footer style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted)">
+  <p>Plots are simulated examples drawn from simple models, for learning to read real output. Check commands against the version of each tool you have installed.</p>
+  <p><b>Sources for the VGP and Galaxy sections:</b>
+    <a href="https://www.nature.com/articles/s41587-023-02100-3">Larivière et al. 2024, Nat Biotechnol</a> ·
+    <a href="https://galaxyproject.org/projects/vgp/workflows">VGP-Galaxy workflows</a> ·
+    <a href="https://training.galaxyproject.org/training-material/topics/assembly/tutorials/vgp_workflow_training/tutorial.html">GTN: VGP workflow tutorial</a> ·
+    <a href="https://training.galaxyproject.org/training-material/topics/sequence-analysis/tutorials/ncbi-fcs/tutorial.html">GTN: NCBI FCS tutorial</a> ·
+    <a href="https://github.com/ncbi/fcs/wiki/FCS-GX">NCBI FCS-GX wiki</a> ·
+    <a href="https://www.earthbiogenome.org/report-on-assembly-standards">EBP assembly standards</a> ·
+    <a href="https://vertebrategenomesproject.org/phase-one">VGP Phase 1</a></p>
+  <p><b>Sources for Smudgeplot and BBSplit:</b>
+    <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC7080791">Ranallo-Benavidez, Jaron &amp; Schatz 2020, Nat Commun (GenomeScope 2.0 and Smudgeplot)</a> ·
+    <a href="https://rdrr.io/github/tbenavi1/smudgeplot/src/exec/smudgeplot_plot.R">smudgeplot_plot.R</a> ·
+    <a href="https://nf-co.re/sarek/latest/parameters">nf-core/sarek parameters</a> ·
+    <a href="https://nf-co.re/hackathon-projects/hackathon-march-2025/sarek-remove-genome-contaminants">nf-core hackathon: sarek contaminant removal</a></p>
+</footer>
+</div>
+
+<script>
+(function(){
+const NS='http://www.w3.org/2000/svg';
+const fmt=n=>{const a=Math.abs(n);return a>=1e9?(n/1e9).toFixed(a>=1e10?0:1)+'G':a>=1e6?(n/1e6).toFixed(a>=1e7?0:1)+'M':a>=1e3?(n/1e3).toFixed(a>=1e4?0:1)+'k':(+n.toFixed(2)).toString()};
+function ticks(max,n){const raw=max/n,p=Math.pow(10,Math.floor(Math.log10(raw)));const s=[1,2,2.5,5,10].map(m=>m*p).find(v=>v>=raw);const t=[];for(let v=0;v<=max+1e-9;v+=s)t.push(+v.toFixed(10));return t}
+// generic chart: returns svg string
+function chart(o){
+  const W=o.w||900,H=o.h||300,m={l:56,r:16,t:14,b:42};const iw=W-m.l-m.r,ih=H-m.t-m.b;
+  const x0=o.x0||0,x1=o.x1,y0=o.y0||0,y1=o.y1;
+  const X=o.xlog?v=>m.l+(Math.log10(v)-Math.log10(x0))/(Math.log10(x1)-Math.log10(x0))*iw:v=>m.l+(v-x0)/(x1-x0)*iw;
+  const Y=v=>m.t+ih-(Math.min(v,y1)-y0)/(y1-y0)*ih;
+  let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:${o.minw||520}px;display:block" role="img" aria-label="${o.aria||''}">`;
+  (o.yt||ticks(y1,4)).forEach(v=>{s+=`<line class="grid" x1="${m.l}" x2="${m.l+iw}" y1="${Y(v)}" y2="${Y(v)}"/><text x="${m.l-6}" y="${Y(v)+4}" text-anchor="end">${(o.yf||fmt)(v)}</text>`});
+  (o.xt||ticks(x1,8)).forEach(v=>{if(v<x0||v>x1)return;s+=`<line class="ax" x1="${X(v)}" x2="${X(v)}" y1="${m.t+ih}" y2="${m.t+ih+4}"/><text x="${X(v)}" y="${m.t+ih+17}" text-anchor="middle">${(o.xf||fmt)(v)}</text>`});
+  s+=`<line class="ax" x1="${m.l}" x2="${m.l+iw}" y1="${m.t+ih}" y2="${m.t+ih}"/><line class="ax" x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${m.t+ih}"/>`;
+  s+=`<text class="lab" x="${m.l+iw/2}" y="${H-6}" text-anchor="middle">${o.xlabel||''}</text>`;
+  s+=`<text class="lab" transform="translate(13 ${m.t+ih/2}) rotate(-90)" text-anchor="middle">${o.ylabel||''}</text>`;
+  s+=`<defs><clipPath id="c${o.id}"><rect x="${m.l}" y="${m.t}" width="${iw}" height="${ih}"/></clipPath></defs><g clip-path="url(#c${o.id})">`;
+  (o.bands||[]).forEach(b=>{const up=b.lo.map((v,i)=>`${X(b.x[i])},${Y(b.hi[i])}`),dn=b.lo.map((v,i)=>`${X(b.x[i])},${Y(v)}`).reverse();s+=`<polygon points="${up.concat(dn).join(' ')}" fill="${b.c}" fill-opacity="${b.op||.18}" stroke="none"/>`});
+  (o.bars||[]).forEach(b=>{s+=`<rect x="${X(b.a)}" y="${Y(b.v)}" width="${Math.max(0,X(b.b)-X(b.a)-1)}" height="${Y(y0)-Y(b.v)}" fill="${b.c}" fill-opacity="${b.op||.75}"/>`});
+  (o.series||[]).forEach(se=>{const pts=se.x.map((v,i)=>`${X(v).toFixed(1)},${Y(se.y[i]).toFixed(1)}`).join(' ');
+    if(se.area)s+=`<polygon points="${X(se.x[0])},${Y(y0)} ${pts} ${X(se.x[se.x.length-1])},${Y(y0)}" fill="${se.c}" fill-opacity="${se.op||.12}" stroke="none"/>`;
+    s+=`<polyline points="${pts}" fill="none" stroke="${se.c}" stroke-width="${se.w||2}" ${se.dash?'stroke-dasharray="'+se.dash+'"':''} stroke-linejoin="round"/>`});
+  (o.vlines||[]).forEach(v=>{s+=`<line x1="${X(v.x)}" x2="${X(v.x)}" y1="${m.t}" y2="${m.t+ih}" stroke="${v.c}" stroke-width="1.3" stroke-dasharray="4 3"/>`});
+  s+='</g>';
+  (o.vlines||[]).forEach(v=>{if(v.t)s+=`<text class="lab" x="${X(v.x)+(v.left?-5:5)}" y="${m.t+12+(v.dy||0)}" text-anchor="${v.left?'end':'start'}" style="fill:${v.c}">${v.t}</text>`});
+  (o.hlines||[]).forEach(v=>{s+=`<line x1="${m.l}" x2="${m.l+iw}" y1="${Y(v.y)}" y2="${Y(v.y)}" stroke="${v.c}" stroke-width="1.2" stroke-dasharray="4 3"/><text class="lab" x="${m.l+iw-4}" y="${Y(v.y)-5}" text-anchor="end" style="fill:${v.c}">${v.t}</text>`});
+  if(o.note)s+=`<text class="lab" x="${m.l+iw-4}" y="${m.t+14}" text-anchor="end">${o.note}</text>`;
+  return s+'</svg>';
+}
+const gauss=(x,mu,sd)=>Math.exp(-.5*((x-mu)/sd)**2)/(sd*2.5066283);
+const nb=(x,mu)=>gauss(x,mu,Math.sqrt(mu+mu*mu/45));
+function rng(seed){return()=>{seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function normal(r){return Math.sqrt(-2*Math.log(r()+1e-12))*Math.cos(2*Math.PI*r())}
+
+/* ---- key ideas figures: reads/coverage, k-mers, spectrum ---- */
+(function(){
+ // 1: reads and coverage (interactive)
+ const R=[[0,150,0],[90,170,1],[200,150,0],[250,140,2],[50,160,3],[330,120,1],[160,150,4],[290,160,3],[400,60,0],[10,100,2],[220,170,5],[370,95,4],[105,100,5],[390,70,2],[470,150,1],[500,140,0],[460,150,3],[520,130,5],[560,90,2],[480,130,4]];
+ const err={1:40,6:95,14:30,11:50};const gx=30,boxA=document.getElementById('primer-a'),slider=document.getElementById('cov-pos');
+ const depth=[];for(let x=0;x<=640;x+=2){let d=0;R.forEach(([st,l])=>{if(st<=x&&st+l>=x)d++});depth.push(d)}
+ const dmax=Math.max(...depth),dmin=Math.min(...depth),avg=R.reduce((t,r)=>t+r[1],0)/640;
+ function drawA(px){let a=`<svg viewBox="0 0 700 262" width="100%" style="min-width:520px;max-width:820px;display:block" role="img" aria-label="Reads stacked over a genome region, with coverage at a chosen base">`;let n=0;
+  R.forEach(([st,l,r],i)=>{const y=152-r*17,cov=st<=px&&st+l>=px;if(cov)n++;
+   a+=`<rect x="${gx+st}" y="${y}" width="${l}" height="9" rx="2" fill="${cov?'var(--het)':'var(--accent)'}" fill-opacity="${cov?.85:.45}"/>`;
+   if(err[i]!==undefined)a+=`<rect x="${gx+st+err[i]}" y="${y-2}" width="4" height="13" fill="var(--bad)"/>`});
+  a+=`<rect x="${gx}" y="174" width="640" height="7" fill="var(--fg)" fill-opacity=".75"/><text x="${gx}" y="196">genome (one region of it)</text>`;
+  const base=246,hh=36;const pts=depth.map((d,j)=>`${gx+j*2},${(base-d/dmax*hh).toFixed(1)}`).join(' ');
+  a+=`<polygon points="${gx},${base} ${pts} ${gx+640},${base}" fill="var(--accent)" fill-opacity=".18"/><polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="1.5"/>`;
+  a+=`<line class="ax" x1="${gx}" x2="${gx+640}" y1="${base}" y2="${base}"/><line class="grid" x1="${gx}" x2="${gx+640}" y1="${base-hh}" y2="${base-hh}"/>`;
+  a+=`<text x="${gx-4}" y="${base+4}" text-anchor="end">0</text><text x="${gx-4}" y="${base-hh+4}" text-anchor="end">${dmax}×</text>`;
+  a+=`<text x="${gx+640}" y="196" text-anchor="end">coverage along the region: lowest ${dmin}×, highest ${dmax}×, average ${avg.toFixed(1)}×</text>`;
+  a+=`<line x1="${gx+px}" x2="${gx+px}" y1="58" y2="${base}" stroke="var(--het)" stroke-width="1.5" stroke-dasharray="3 3"/><circle cx="${gx+px}" cy="${(base-(depth[Math.round(px/2)]||0)/dmax*hh).toFixed(1)}" r="4" fill="var(--het)"/>`;
+  a+=`<text class="lab" x="${gx}" y="20" style="font-weight:600">${n} read${n===1?'':'s'} span the marked base → coverage there is ${n}×</text><text x="${gx}" y="38">bars = reads · red tick = sequencing error in that read</text>`;
+  boxA.innerHTML=a+'</svg>'}
+ function setPos(px){px=Math.max(0,Math.min(640,Math.round(px)));slider.value=px;drawA(px)}
+ slider.addEventListener('input',()=>setPos(+slider.value));
+ let dragging=false;
+ function fromEvent(e){const svg=boxA.querySelector('svg');if(!svg)return;const pt=svg.createSVGPoint();pt.x=e.clientX;pt.y=e.clientY;const q=pt.matrixTransform(svg.getScreenCTM().inverse());setPos(q.x-gx)}
+ boxA.addEventListener('pointerdown',e=>{dragging=true;fromEvent(e)});
+ boxA.addEventListener('pointermove',e=>{if(dragging)fromEvent(e)});
+ window.addEventListener('pointerup',()=>{dragging=false});
+ setPos(255);
+ // 2: k-mers
+ const seq='GATTACAGGT',k=5,cw=26,ox=70;let b=`<svg viewBox="0 0 520 210" width="100%" style="min-width:420px;max-width:620px;display:block" role="img" aria-label="A 10-base read cut into six 5-mers">`;
+ b+=`<text x="10" y="26">read</text>`;
+ [...seq].forEach((c,i)=>{b+=`<text class="lab" x="${ox+i*cw+cw/2}" y="26" text-anchor="middle" style="font-size:15px;font-weight:600">${c}</text>`});
+ for(let i=0;i<=seq.length-k;i++){const y=38+i*24;b+=`<text x="10" y="${y+14}">k-mer ${i+1}</text><rect x="${ox+i*cw+1}" y="${y}" width="${k*cw-2}" height="19" rx="3" fill="var(--accent)" fill-opacity=".1" stroke="var(--accent)"/>`;
+  for(let j=0;j<k;j++)b+=`<text class="lab" x="${ox+(i+j)*cw+cw/2}" y="${y+14}" text-anchor="middle">${seq[i+j]}</text>`}
+ b+=`<text class="lab" x="${ox+seq.length*cw+16}" y="110">10 bases − 5 + 1</text><text class="lab" x="${ox+seq.length*cw+16}" y="128" style="font-weight:600">= 6 k-mers</text>`;
+ document.getElementById('primer-b').innerHTML=b+'</svg>';
+ // 3: spectrum
+ const sx=70,sw=480,sb=190,st=34;let c=`<svg viewBox="0 0 600 245" width="100%" style="min-width:460px;max-width:720px;display:block" role="img" aria-label="A k-mer spectrum with an error spike and a coverage peak">`;
+ c+=`<defs><marker id="arrE" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--bad)"/></marker></defs>`;
+ c+=`<line class="ax" x1="${sx}" x2="${sx+sw}" y1="${sb}" y2="${sb}"/><line class="ax" x1="${sx}" x2="${sx}" y1="${st}" y2="${sb}"/>`;
+ const pts=[];for(let i=2;i<=120;i++){const t=i/120;const v=Math.min(1,1.6*Math.exp(-t/0.03))+0.72*Math.exp(-(((t-0.55)/0.1)**2));pts.push(`${(sx+t*sw).toFixed(1)},${(sb-Math.min(v,1.02)*(sb-st-6)).toFixed(1)}`)}
+ c+=`<polygon points="${pts[0].split(',')[0]},${sb} ${pts.join(' ')} ${sx+sw},${sb}" fill="var(--accent)" fill-opacity=".12"/><polyline points="${pts.join(' ')}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+ c+=`<text class="lab" x="${sx+52}" y="${st+72}" style="fill:var(--bad);font-weight:600">error spike</text><text x="${sx+52}" y="${st+87}" style="fill:var(--bad)">error k-mers, seen 1–2×</text><text x="${sx+52}" y="${st+101}" style="fill:var(--bad)">top not drawn: really</text><text x="${sx+52}" y="${st+115}" style="fill:var(--bad)">many times taller</text>`;
+ c+=`<line x1="${sx+48}" y1="${st+68}" x2="${sx+13}" y2="${st+50}" stroke="var(--bad)" stroke-width="1.6" marker-end="url(#arrE)"/>`;
+ c+=`<text class="lab" x="${sx+0.55*sw}" y="${sb-0.72*(sb-st-6)-12}" text-anchor="middle">genome k-mers: peak ≈ coverage (here 30×)</text>`;
+ [1,10,20,30,40,50].forEach(v=>{const x=sx+v/55*sw;c+=`<line class="ax" x1="${x}" x2="${x}" y1="${sb}" y2="${sb+5}"/><text x="${x}" y="${sb+17}" text-anchor="middle">${v}</text>`});
+ c+=`<text class="lab" x="${sx+sw/2}" y="${sb+38}" text-anchor="middle">times a k-mer was seen →</text><text class="lab" transform="translate(${sx-18} ${(sb+st)/2}) rotate(-90)" text-anchor="middle">number of k-mers</text>`;
+ document.getElementById('primer-c').innerHTML=c+'</svg>'})();
+
+/* ---- why L - k + 1: window at the left edge, at the right edge, and one step too far ---- */
+(function(){const seq='GATTACAGGT',L=10,k=5,cw=30,ox=110,X=p=>ox+(p-1)*cw;
+ let s=`<svg viewBox="0 0 900 250" width="100%" style="min-width:640px;max-width:900px;display:block" role="img" aria-label="The first and last possible k-mer starts in a read, and a start that runs past the end">`;
+ for(let p=1;p<=L;p++){s+=`<text x="${X(p)+cw/2}" y="16" text-anchor="middle">${p}</text><text class="lab" x="${X(p)+cw/2}" y="40" text-anchor="middle" style="font-size:15px;font-weight:600">${seq[p-1]}</text>`}
+ s+=`<text x="10" y="40">read (L = 10)</text><text x="10" y="16">position</text>`;
+ s+=`<line class="ax" x1="${X(L)+cw}" x2="${X(L)+cw}" y1="4" y2="160"/><text x="${X(L)+cw+4}" y="40" style="font-size:10px">read ends</text>`;
+ const rows=[[1,'ok','start 1','first k-mer: starts at the left end'],[6,'ok','start 6 = L − k + 1','last k-mer: its end touches the read\'s end'],[7,'bad','start 7','✗ would need base 11, which the read does not have']];
+ rows.forEach(([st,kind,lab,why],i)=>{const y=58+i*34;const ok=kind==='ok';
+  s+=`<text x="10" y="${y+15}" style="fill:${ok?'var(--good)':'var(--bad)'}">${lab}</text>`;
+  s+=`<rect x="${X(st)+1}" y="${y}" width="${k*cw-2}" height="22" rx="3" fill="${ok?'var(--good)':'var(--bad)'}" fill-opacity="${ok?.15:.08}" stroke="${ok?'var(--good)':'var(--bad)'}" ${ok?'':'stroke-dasharray="4 3"'}/>`;
+  for(let j=0;j<k;j++){const p=st+j;s+=`<text class="lab" x="${X(p)+cw/2}" y="${y+16}" text-anchor="middle" style="${p>L?'fill:var(--bad);font-weight:700':''}">${p>L?'?':seq[p-1]}</text>`}
+  s+=`<text x="${X(st)+k*cw+10}" y="${y+15}" style="fill:${ok?'var(--fg)':'var(--bad)'}">${why}</text>`});
+ const by=176;
+ s+=`<path d="M${X(1)+2},${by} v8 H${X(6)+cw-2} v-8" fill="none" stroke="var(--accent)" stroke-width="1.6"/><text class="lab" x="${X(1)}" y="${by+28}" style="fill:var(--accent)">possible starts 1 … 6 = L − k + 1</text>`;
+ s+=`<path d="M${X(7)+2},${by} v8 H${X(10)+cw-2} v-8" fill="none" stroke="var(--muted)" stroke-width="1.6"/><text x="${X(10)+cw+12}" y="${by+4}">last k − 1 = 4 positions: too close</text><text x="${X(10)+cw+12}" y="${by+19}">to the end to start a whole k-mer</text>`;
+ document.getElementById('primer-b2').innerHTML=s+'</svg>'})();
+
+/* ---- error propagation picture and error-rate demo ---- */
+(function(){const g='GATTACAGGTCA',rd='GATTATAGGTCA',ep=6,k=5,cw=28,ox=150,X=p=>ox+(p-1)*cw,L=g.length;
+ let s=`<svg viewBox="0 0 900 340" width="100%" style="min-width:640px;max-width:900px;display:block" role="img" aria-label="One sequencing error and the k-mers it spoils">`;
+ for(let p=1;p<=L;p++){s+=`<text x="${X(p)+cw/2}" y="14" text-anchor="middle">${p}</text>`;
+  s+=`<text class="lab" x="${X(p)+cw/2}" y="36" text-anchor="middle" style="font-size:14px">${g[p-1]}</text>`;
+  s+=`<text class="lab" x="${X(p)+cw/2}" y="60" text-anchor="middle" style="font-size:14px;font-weight:700;${p===ep?'fill:var(--bad)':''}">${rd[p-1]}</text>`}
+ s+=`<text x="10" y="36">genome</text><text x="10" y="60" style="fill:var(--bad)">read (error at 6)</text>`;
+ s+=`<rect x="${X(ep)+2}" y="44" width="${cw-4}" height="22" rx="3" fill="none" stroke="var(--bad)" stroke-width="1.5"/>`;
+ for(let i=1;i<=L-k+1;i++){const y=74+(i-1)*28,bad=i<=ep&&ep<=i+k-1;
+  s+=`<text x="10" y="${y+15}" style="fill:${bad?'var(--bad)':'var(--good)'}">k-mer ${i}</text>`;
+  s+=`<rect x="${X(i)+1}" y="${y}" width="${k*cw-2}" height="21" rx="3" fill="${bad?'var(--bad)':'var(--good)'}" fill-opacity=".1" stroke="${bad?'var(--bad)':'var(--good)'}"/>`;
+  for(let j=0;j<k;j++){const p=i+j;s+=`<text class="lab" x="${X(p)+cw/2}" y="${y+15}" text-anchor="middle" style="${p===ep?'fill:var(--bad);font-weight:700':''}">${rd[p-1]}</text>`}
+  s+=`<text x="${X(i)+k*cw+12}" y="${y+15}" style="fill:${bad?'var(--bad)':'var(--good)'}">${bad?'✗ contains the error: not in the genome':'✓ same as the genome'}</text>`}
+ s+=`<text class="lab" x="10" y="${74+(L-k+1)*28+12}" style="font-weight:600">1 error → ${k} spoiled k-mers (k = ${k}). Fewer only when the error sits within k − 1 bases of a read end.</text>`;
+ document.getElementById('err-prop').innerHTML=s+'</svg>';
+ const $=id=>document.getElementById(id);
+ const big=n=>n>=1e9?(n/1e9).toFixed(2)+' billion':n>=1e6?(n/1e6).toFixed(1)+' million':Math.round(n).toLocaleString();
+ function demo(){const G=+$('ed-G').value*1e6,c=+$('ed-c').value,L=+$('ed-L').value,kk=Math.round(+$('ed-k').value),e=+$('ed-e').value/100;
+  $('ed-eo').textContent=(e*100).toFixed(2)+' %';
+  if(!(G>0&&c>0&&L>kk&&kk>0)){$('ed-out').innerHTML='<div>Read length must be longer than k, and all values positive.</div>';$('ed-plot').innerHTML='';return}
+  const T=G*c*(L-kk+1)/L,clean=Math.pow(1-e,kk),errOcc=T*(1-clean),lam=c*(L-kk+1)/L*clean;
+  const errAt={1:errOcc*.93,2:errOcc*.06/2,3:errOcc*.01/3};
+  const x1=Math.max(12,Math.ceil(lam*2+6)),bars=[];let peakMax=0,all=0;
+  for(let x=1;x<=x1;x++){const real=G*gauss(x,lam,Math.sqrt(lam+lam*lam/60));const er=errAt[x]||0;peakMax=Math.max(peakMax,real);all=Math.max(all,real+er);
+   if(er>0)bars.push({a:x-.42,b:x+.42,v:er+real,c:'var(--bad)',op:.75});bars.push({a:x-.42,b:x+.42,v:real,c:'var(--accent)',op:.75})}
+  const full=$('ed-full').checked,y1=full?all*1.08:peakMax*1.35;
+  const note=!full&&all>y1?`error spike at 1: ${big(errAt[1])} k-mers, off the chart`:'';
+  $('ed-plot').innerHTML=chart({id:'ed',w:900,h:280,x0:.4,x1:x1+.6,y1,xt:ticks(x1,10).filter(v=>v>=1).concat([1]),xlabel:'times a k-mer was seen',ylabel:'number of k-mers',bars,note,aria:'Spectrum with error k-mers and correct k-mers'});
+  $('ed-out').innerHTML=`<div>k-mers with an error (different)<b style="color:var(--bad)">${big(errOcc)}</b></div><div>correct k-mers (different)<b style="color:var(--accent)">${big(G)}</b></div><div>error k-mers per correct k-mer<b>${(errOcc/G).toFixed(2)}</b></div><div>share of all sightings that contain an error<b>${((1-clean)*100).toFixed(1)} %</b></div><div>peak position (k-mer coverage)<b>${lam.toFixed(1)}×</b></div>`}
+ ['ed-G','ed-c','ed-L','ed-k','ed-e','ed-full'].forEach(id=>$(id).addEventListener('input',demo));demo()})();
+
+/* ---- k-mer calculator and read splitter ---- */
+(function(){const $=id=>document.getElementById(id);
+ const f=n=>{if(!isFinite(n))return '–';const a=Math.abs(n);if(a>=1e15)return n.toExponential(2);if(a>=1e12)return (n/1e12).toFixed(2)+' trillion';if(a>=1e9)return (n/1e9).toFixed(2)+' billion';if(a>=1e6)return (n/1e6).toFixed(2)+' million';return (+n.toFixed(2)).toLocaleString()};
+ let drive='N';const tidy=v=>+(+v).toPrecision(4);
+ const item=(lab,tip,val,col)=>`<div title="${tip}"><span class="tip">${lab}</span><b${col?` style="color:${col}"`:''}>${val}</b></div>`;
+ function calc(src){if(src==='N'||src==='C')drive=src;
+  const L=+$('km-L').value,k=+$('km-k').value,G=+$('km-G').value*1e6;let N=+$('km-N').value*1e6,C=+$('km-C').value;
+  if(!(L>0&&k>0&&G>0)){$('km-out').innerHTML='<div>Read length, k and genome size must be positive numbers.</div>';return}
+  if(drive==='N'){if(!(N>=0)){$('km-out').innerHTML='<div>Enter the number of reads (0 or more).</div>';return}C=N*L/G;if(src!=='C')$('km-C').value=tidy(C)}
+  else{if(!(C>=0)){$('km-out').innerHTML='<div>Enter the read coverage (0 or more).</div>';return}N=C*G/L;$('km-N').value=tidy(N/1e6)}
+  const per=Math.max(0,L-k+1),tot=N*per,kc=tot/G,poss=Math.pow(4,k);
+  $('km-out').innerHTML=
+   item('sequenced bases','N × L: all bases in all reads',f(N*L))+
+   item('read coverage','N × L ÷ G: how many reads cover an average base of the genome',C.toFixed(1)+'×')+
+   item('k-mers per read','L − k + 1: how many k-mers one read gives',per.toLocaleString())+
+   item('k-mers in all reads','N × (L − k + 1): all k-mer sightings together',f(tot))+
+   item('k-mer coverage','N × (L − k + 1) ÷ G: how often an average genome k-mer is seen. This is where the main peak of the spectrum sits.',kc.toFixed(1)+'×','var(--accent)')+
+   item('k-mer ÷ read coverage','(L − k + 1) ÷ L: the share of read coverage that k-mers keep',(L>=k?(per/L*100).toFixed(1):0)+' %')+
+   item('possible different k-mers (4<sup>k</sup>)','How many different DNA sequences of length k exist',f(poss))}
+ $('km-N').addEventListener('input',()=>calc('N'));$('km-C').addEventListener('input',()=>calc('C'));
+ ['km-L','km-k','km-G'].forEach(id=>$(id).addEventListener('input',()=>calc()));calc('N');
+ const comp={A:'T',C:'G',G:'C',T:'A'};const rc=x=>[...x].reverse().map(c=>comp[c]).join('');
+ function split(){const raw=$('ks-read').value.toUpperCase();let r=raw.replace(/[^ACGT]/g,'');const msgs=[];
+  if(r.length!==raw.replace(/\s/g,'').length)msgs.push('Characters other than A, C, G, T were removed.');
+  if(r.length>50){r=r.slice(0,50);msgs.push('Only the first 50 bases are used.')}
+  let k=Math.round(+$('ks-k').value);const L=r.length;
+  if(!(k>=1)){k=1;msgs.push('k must be at least 1.')}
+  if(L===0){$('ks-msg').textContent='Enter a read made of A, C, G and T.';['ks-lines','ks-stats','ks-spec','ks-table'].forEach(id=>$(id).innerHTML='');return}
+  if(k>L){$('ks-msg').textContent=msgs.concat([`k (${k}) is longer than the read (${L} bases): a read shorter than k gives no k-mers.`]).join(' ');['ks-lines','ks-stats','ks-spec','ks-table'].forEach(id=>$(id).innerHTML='');return}
+  $('ks-msg').textContent=msgs.join(' ');
+  const km=[];for(let i=0;i+k<=L;i++)km.push(r.slice(i,i+k));
+  const cnt=new Map();km.forEach(x=>cnt.set(x,(cnt.get(x)||0)+1));
+  const can=new Map();km.forEach(x=>{const c=x<rc(x)?x:rc(x);can.set(c,(can.get(c)||0)+1)});
+  const w=String(km.length).length;
+  let lines=`<span class="pos">${' '.repeat(w)}  </span>${r}\n`;
+  km.forEach((x,i)=>{const isRep=cnt.get(x)>1;lines+=`<span class="pos">${String(i+1).padStart(w,' ')}  </span>${' '.repeat(i)}<span class="${isRep?'rep':''}">${x}</span>${isRep?`<span class="pos">  ×${cnt.get(x)}</span>`:''}\n`});
+  $('ks-lines').innerHTML=lines;
+  const rep=[...cnt.values()].filter(v=>v>1).length,pal=[...cnt.keys()].filter(x=>x===rc(x)).length;
+  const gc=(r.match(/[GC]/g)||[]).length/L*100;
+  $('ks-stats').innerHTML=`<div>read length L<b>${L}</b></div><div>k-mers in the read (L − k + 1)<b>${km.length}</b></div><div>different k-mers<b>${cnt.size}</b></div><div>k-mers occurring more than once<b>${rep}</b></div><div>different canonical k-mers<b>${can.size}</b></div><div>palindromic k-mers<b>${pal}</b></div><div>possible k-mers of length ${k} (4<sup>k</sup>)<b>${f(Math.pow(4,k))}</b></div><div>GC content of the read<b>${gc.toFixed(0)} %</b></div>`;
+  const hist=new Map();cnt.forEach(v=>hist.set(v,(hist.get(v)||0)+1));const hm=Math.max(...hist.values());
+  $('ks-spec').innerHTML=[...hist.entries()].sort((a,b)=>a[0]-b[0]).map(([t,n])=>`<span>${t}×</span><i style="width:${(n/hm*100).toFixed(1)}%"></i><span>${n} k-mer${n===1?'':'s'}</span>`).join('');
+  $('ks-table').innerHTML=[...cnt.entries()].sort((a,b)=>b[1]-a[1]||(a[0]<b[0]?-1:1)).map(([x,v])=>{const y=rc(x);return `<tr><td class="mono">${x}</td><td class="mono">${y}</td><td class="mono">${x<y?x:y}</td><td>${v}</td></tr>`}).join('')}
+ ['ks-read','ks-k'].forEach(id=>$(id).addEventListener('input',split));
+ $('ks-rand').addEventListener('click',()=>{const n=Math.max(1,Math.min(50,Math.round(+$('ks-len').value)||30));$('ks-len').value=n;let r='';for(let i=0;i<n;i++)r+='ACGT'[Math.floor(Math.random()*4)];$('ks-read').value=r;split()});
+ split()})();
+
+/* ---- quality by position ---- */
+(function(){const x=[],md=[],lo=[],hi=[];for(let p=1;p<=150;p++){x.push(p);const q=36.5-(p>100?((p-100)/50)**2*7:0)-(p<5?1.5:0);md.push(q);lo.push(q-3-(p/150)**3*9);hi.push(Math.min(40,q+1.5))}
+document.getElementById('qplot').innerHTML=chart({id:'q',w:560,h:250,minw:300,x0:1,x1:150,y1:41,xt:[1,25,50,75,100,125,150],yt:[0,10,20,30,40],xlabel:'position in read (bp)',ylabel:'Phred Q',
+ bands:[{x,lo,hi,c:'var(--accent)'}],series:[{x,y:md,c:'var(--accent)'}],hlines:[{y:30,c:'var(--good)',t:'Q30'},{y:20,c:'var(--bad)',t:'Q20'}],aria:'Quality by read position'})})();
+
+/* ---- GC ---- */
+(function(){const x=[],y=[],exp=[];for(let g=15;g<=85;g+=.5){x.push(g);exp.push(gauss(g,41,3.6));y.push(.94*gauss(g,41,3.6)+.06*gauss(g,66,3.2))}
+document.getElementById('gcplot').innerHTML=chart({id:'g',w:560,h:250,minw:300,x0:15,x1:85,y1:.12,xt:[20,30,40,50,60,70,80],yt:[0,.04,.08,.12],yf:v=>(v*100).toFixed(0)+'%',xlabel:'mean GC per read (%)',ylabel:'share of reads',
+ series:[{x,y:exp,c:'var(--muted)',dash:'4 3',w:1.4},{x,y,c:'var(--accent)',area:true}],vlines:[{x:66,c:'var(--bad)',t:'contaminant?',left:false}],aria:'GC content'})})();
+
+/* ---- read length ---- */
+function readLen(kind){const r=rng(kind==='ont'?7:11),L=[];for(let i=0;i<20000;i++){let v=kind==='ont'?Math.exp(Math.log(9000)+.95*normal(r)):Math.exp(Math.log(17000)+.2*normal(r));if(kind==='ont'&&r()<.04)v=Math.exp(Math.log(90000)+.5*normal(r));L.push(Math.max(200,Math.min(400000,v)))}
+ const tot=L.reduce((a,b)=>a+b,0);const s=[...L].sort((a,b)=>b-a);let c=0,n50=0;for(const v of s){c+=v;if(c>=tot/2){n50=v;break}}
+ const lo=2.3,hi=5.6,nb=66,bw=(hi-lo)/nb,bins=new Array(nb).fill(0);L.forEach(v=>{const b=Math.floor((Math.log10(v)-lo)/bw);if(b>=0&&b<nb)bins[b]+=v});
+ const bars=bins.map((v,i)=>({a:10**(lo+i*bw),b:10**(lo+(i+1)*bw),v:v/1e6,c:v&&10**(lo+i*bw)>=n50?'var(--accent)':'var(--err)'}));
+ const ymax=Math.max(...bins)/1e6*1.15;
+ document.getElementById('rlplot').innerHTML=chart({id:'rl',w:900,h:280,x0:10**lo,x1:10**hi,xlog:true,y1:ymax,xt:[300,1000,3000,10000,30000,100000,300000],xlabel:'read length (bp, log scale)',ylabel:'Mb in bin',bars,vlines:[{x:n50,c:'var(--het)',t:'N50 '+fmt(n50)}],aria:'Read length distribution'});
+ const mean=tot/L.length;const q=kind==='ont'?'~Q20 (SUP)':'~Q32';
+ document.getElementById('rlstats').innerHTML=`<div>reads<b>${L.length.toLocaleString()}</b></div><div>total bases<b>${fmt(tot)}b</b></div><div>mean length<b>${fmt(mean)}</b></div><div>read N50<b>${fmt(n50)}</b></div><div>longest<b>${fmt(s[0])}</b></div><div>typical read Q<b>${q}</b></div>`}
+const rlB={ont:document.getElementById('rl-ont'),hifi:document.getElementById('rl-hifi')};
+Object.entries(rlB).forEach(([k,b])=>b.addEventListener('click',()=>{Object.values(rlB).forEach(x=>x.setAttribute('aria-pressed',x===b));readLen(k)}));readLen('ont');
+
+/* ---- k-mer spectrum model ---- */
+function spectrum(p){const k=21,L=150,G=1e9;const kc=p.cov*(L-k+1)/L;const dip=p.ploidy===2;const lam=dip?kc/2:kc;const hom=dip?2*lam:lam;
+ const a=dip?1-Math.pow(1-p.het/100,k):0;const rf=p.rep/100,uniq=G*(1-rf);
+ const hetN=dip?2*a*uniq:0,homN=(1-a)*uniq,repN=G*rf/2,errN=G*p.cov*(p.err/100)*k;
+ const big=Math.ceil(hom*6),xmax=Math.ceil(hom*2.6);const X=[],E=[],Hh=[],Ho=[],R=[],T=[];
+ for(let x=1;x<=big;x++){const e=errN*0.72*Math.exp(-1.25*(x-1))*(x<=3?1:Math.exp(-(x-3)*.6));const h=hetN*nb(x,lam),o=homN*nb(x,hom),r=repN*nb(x,2*hom);X.push(x);E.push(e);Hh.push(h);Ho.push(o);R.push(r);T.push(e+h+o+r)}
+ let v=0;while(v<big-2&&T[v]>T[v+1])v++; // first local minimum
+ const valley=X[v];
+ let sum=0;for(let i=valley-1;i<big;i++)sum+=X[i]*T[i];
+ const est=sum/hom;
+ const cut=n=>n.slice(0,xmax);
+ let ym=0;for(let i=valley-1;i<xmax;i++)ym=Math.max(ym,T[i]);
+ // a peak finder for the "observed" main peak
+ let pk=valley-1;for(let i=valley-1;i<xmax;i++)if(T[i]>T[pk])pk=i;
+ return{X:cut(X),E:cut(E),Hh:cut(Hh),Ho:cut(Ho),R:cut(R),T:cut(T),xmax,ym:ym*1.3,lam,hom,valley,est,a,mainPeak:X[pk],dip,kc}}
+function drawSpec(el,p,small,id){const s=spectrum(p);const ser=[{x:s.X,y:s.T,c:'var(--fg)',w:small?1.4:1.8,area:true,op:.06},{x:s.X,y:s.E,c:'var(--err)',w:1.4},{x:s.X,y:s.Ho,c:'var(--accent)',w:1.6},{x:s.X,y:s.R,c:'var(--rep)',w:1.4}];if(s.dip)ser.splice(2,0,{x:s.X,y:s.Hh,c:'var(--het)',w:1.6});
+ const vl=[{x:s.valley,c:'var(--muted)',t:small?'':'valley',left:false,dy:16}];if(!small){vl.push({x:s.hom,c:'var(--accent)',t:'hom '+s.hom.toFixed(0)+'×'});if(s.dip)vl.push({x:s.lam,c:'var(--het)',t:'het '+s.lam.toFixed(0)+'×',left:true})}
+ el.innerHTML=chart({id,w:small?460:900,h:small?220:320,minw:small?260:520,x1:s.xmax,y1:s.ym,xlabel:'k-mer coverage (times seen)',ylabel:small?'k-mers':'distinct k-mers',series:ser,vlines:vl,aria:'k-mer spectrum'});return s}
+const st={cov:40,het:.6,err:.3,rep:10,ploidy:2};
+const specEl=document.getElementById('spec'),statEl=document.getElementById('specstats');
+function upd(){['cov','het','err','rep'].forEach(k=>{st[k]=+document.getElementById('s-'+k).value});
+ document.getElementById('o-cov').textContent=st.cov+'×';document.getElementById('o-het').textContent=st.het.toFixed(2)+' %';document.getElementById('o-err').textContent=st.err.toFixed(2)+' %';document.getElementById('o-rep').textContent=st.rep+' %';
+ const s=drawSpec(specEl,st,false,'sp');const dev=(s.est/1e9-1)*100;const wrong=s.dip&&Math.abs(s.mainPeak-s.lam)<Math.abs(s.mainPeak-s.hom);
+ statEl.innerHTML=`<div>k-mer coverage<b>${s.kc.toFixed(1)}×</b></div><div>k-mers spanning a het site<b>${(s.a*100).toFixed(1)} %</b></div><div>size from histogram<b style="color:${Math.abs(dev)>8?'var(--bad)':'var(--fg)'}">${(s.est/1e9).toFixed(2)} Gb (${dev>=0?'+':''}${dev.toFixed(0)} %)</b></div><div>tallest peak after valley<b style="color:${wrong?'var(--bad)':'var(--fg)'}">${s.mainPeak}× ${wrong?'= het peak!':s.dip?'= hom peak':''}</b></div>`}
+['cov','het','err','rep'].forEach(k=>document.getElementById('s-'+k).addEventListener('input',upd));
+const pl={1:document.getElementById('pl-1'),2:document.getElementById('pl-2')};
+Object.entries(pl).forEach(([k,b])=>b.addEventListener('click',()=>{st.ploidy=+k;Object.values(pl).forEach(x=>x.setAttribute('aria-pressed',x===b));upd()}));upd();
+
+/* ---- gallery ---- */
+const gal=[
+ {t:'Haploid / inbred',d:'One peak. Size = area / peak. Typical for doubled haploids, inbred lines, many fungi.',p:{cov:40,het:0,err:.3,rep:8,ploidy:1}},
+ {t:'Diploid, 0.3 % heterozygous',d:'Small het shoulder at half coverage. The common vertebrate case.',p:{cov:40,het:.3,err:.3,rep:8,ploidy:2}},
+ {t:'Diploid, 2 % heterozygous',d:'Het peak dominates. Check the fit used the right peak; plan purge_dups.',p:{cov:40,het:2,err:.3,rep:8,ploidy:2}},
+ {t:'Too little coverage (12×)',d:'Het peak drowned in errors; valley unclear. Fit unreliable: sequence more.',p:{cov:12,het:.6,err:.5,rep:8,ploidy:2}}];
+const gEl=document.getElementById('gallery');
+gal.forEach((g,i)=>{const f=document.createElement('figure');f.innerHTML=`<h3>${g.t}</h3><div class="svgbox"></div><figcaption>${g.d}</figcaption>`;gEl.appendChild(f);drawSpec(f.querySelector('.svgbox'),g.p,true,'g'+i)});
+
+/* ---- smudgeplot ---- */
+function smudge(pl){const lam=20,nx=34,ny=40,xMax=.5,yMax=10*lam;const sm={2:[['AB',.5,2,1],['AABB',.5,4,.12],['AAB',1/3,3,.05]],3:[['AAB',1/3,3,1],['AB',.5,2,.15],['AAAB',.25,4,.06]],4:[['AABB',.5,4,1],['AAAB',.25,4,.8],['AB',.5,2,.1],['AAB',1/3,3,.08]],a:[['AABB',.5,4,1],['AB',.5,2,.25],['AAAB',.25,4,.07]]}[pl];
+ const W=900,H=340,m={l:56,r:140,t:14,b:42},iw=W-m.l-m.r,ih=H-m.t-m.b,cw=iw/nx,ch=ih/ny;let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:520px;display:block" role="img" aria-label="Smudgeplot">`;
+ const grid=[];let mx=0;for(let i=0;i<nx;i++)for(let j=0;j<ny;j++){const x=(i+.5)/nx*xMax,y=(j+.5)/ny*yMax;let v=0;sm.forEach(([n,cx,cy,w])=>{const sx=.025+(cx===.5?.012:0),sy=cy*lam*.12;v+=w*Math.exp(-.5*(((x-cx)/sx)**2+((y-cy*lam)/sy)**2))});v+=.004*Math.exp(-y/(lam*3));grid.push([i,j,v]);mx=Math.max(mx,v)}
+ grid.forEach(([i,j,v])=>{const o=Math.pow(v/mx,.45);if(o>.02)s+=`<rect x="${(m.l+i*cw).toFixed(1)}" y="${(m.t+ih-(j+1)*ch).toFixed(1)}" width="${(cw+.4).toFixed(1)}" height="${(ch+.4).toFixed(1)}" fill="var(--accent)" fill-opacity="${o.toFixed(3)}"/>`});
+ [0,.1,.2,.25,1/3,.4,.5].forEach(t=>{const x=m.l+t/xMax*iw;s+=`<line class="ax" x1="${x}" x2="${x}" y1="${m.t+ih}" y2="${m.t+ih+4}"/><text x="${x}" y="${m.t+ih+17}" text-anchor="middle">${t===1/3?'1/3':t===.25?'1/4':t===.5?'1/2':t}</text>`});
+ [0,2,4,6,8,10].forEach(t=>{const y=m.t+ih-t*lam/yMax*ih;s+=`<line class="grid" x1="${m.l}" x2="${m.l+iw}" y1="${y}" y2="${y}"/><text x="${m.l-6}" y="${y+4}" text-anchor="end">${t?t+'n':'0'}</text>`});
+ s+=`<line class="ax" x1="${m.l}" x2="${m.l+iw}" y1="${m.t+ih}" y2="${m.t+ih}"/><line class="ax" x1="${m.l}" x2="${m.l}" y1="${m.t}" y2="${m.t+ih}"/>`;
+ sm.forEach(([n,cx,cy,w])=>{const x=m.l+cx/xMax*iw,y=m.t+ih-cy*lam/yMax*ih;s+=`<text class="lab" x="${x-(cx===.5?8:0)}" y="${y-14-(w>.5?6:0)}" text-anchor="${cx===.5?'end':'middle'}" style="font-weight:600">${n}</text>`});
+ s+=`<text class="lab" x="${m.l+iw/2}" y="${H-6}" text-anchor="middle">normalized minor k-mer coverage  B / (A + B)</text><text class="lab" transform="translate(13 ${m.t+ih/2}) rotate(-90)" text-anchor="middle">total coverage A + B  (n = 1n k-mer cov.)</text>`;
+ const top=sm.reduce((a,b)=>b[3]>a[3]?b:a);s+=`<text class="lab" x="${W-m.r+14}" y="${m.t+18}" style="font-weight:600">brightest:</text><text class="lab" x="${W-m.r+14}" y="${m.t+36}">${top[0]}</text><text class="lab" x="${W-m.r+14}" y="${m.t+54}">→ ${{2:'diploid',3:'triploid',4:'autotetraploid',a:'allotetraploid'}[pl]}</text>`;
+ for(let i=0;i<6;i++){s+=`<rect x="${W-m.r+14}" y="${m.t+80+i*16}" width="18" height="14" fill="var(--accent)" fill-opacity="${Math.pow(1-i/5,.45).toFixed(2)}" stroke="var(--line)"/>`}s+=`<text x="${W-m.r+38}" y="${m.t+91}">many pairs</text><text x="${W-m.r+38}" y="${m.t+171}">few</text>`;
+ document.getElementById('smudge').innerHTML=s+'</svg>'}
+document.querySelectorAll('[data-sm]').forEach(b=>b.addEventListener('click',()=>{document.querySelectorAll('[data-sm]').forEach(x=>x.setAttribute('aria-pressed',x===b));smudge(b.dataset.sm)}));smudge('2');
+
+/* ---- flow cytometry ---- */
+function flow(){const g=id=>+document.getElementById(id).value;const s=g('fc-s'),t=g('fc-t'),pg=g('fc-pg');const out=document.getElementById('fcout');
+ if(!(s>0&&t>0&&pg>0)){out.innerHTML='<div>Enter positive numbers for all three fields.</div>';return}
+ const x=[],y=[];for(let c=20;c<=1023;c+=2){const v=900*Math.exp(-c/45)+60*Math.exp(-c/400)+3000*gauss(c,t,t*.03)+5000*gauss(c,s,s*.035)+300*gauss(c,2*t,2*t*.03)+450*gauss(c,2*s,2*s*.035);x.push(c);y.push(v)}
+ let ym=0;x.forEach((c,i)=>{if(c>80)ym=Math.max(ym,y[i])});
+ const vl=[];if(t<=1023)vl.push({x:t,c:'var(--accent)',t:'standard G1',left:s>t});if(s<=1023)vl.push({x:s,c:'var(--het)',t:'sample G1',left:s<t,dy:16});
+ document.getElementById('fcplot').innerHTML=chart({id:'fc',w:900,h:260,x0:0,x1:1023,y1:ym*1.2,xt:[0,200,400,600,800,1000],xlabel:'PI fluorescence (channel)',ylabel:'nuclei',series:[{x,y,c:'var(--fg)',w:1.5,area:true,op:.08}],vlines:vl,aria:'Flow cytometry histogram'});
+ const r=s/t,c2=r*pg,c1=c2/2;out.innerHTML=`<div>peak ratio<b>${r.toFixed(3)}</b></div><div>sample 2C<b>${c2.toFixed(2)} pg</b></div><div>sample 1C<b>${c1.toFixed(2)} pg</b></div><div>1C genome size<b>${(c1*0.978).toFixed(2)} Gb</b></div>`}
+['fc-s','fc-t','fc-pg'].forEach(id=>document.getElementById(id).addEventListener('input',flow));
+document.getElementById('fc-pre').addEventListener('change',e=>{document.getElementById('fc-pg').value=e.target.value;flow()});flow();
+
+/* ---- read coverage vs k-mer coverage ---- */
+(function(){const $=id=>document.getElementById(id),G='ATGGCTTACGGATCCAGTTACGATCGGAATTCCGTAGCA',P=17,cw=21,ox=96,N=36;
+ function draw(){let L=+$('kv-L').value,k=+$('kv-k').value;if(k>L){k=L;$('kv-k').value=k}
+  $('kv-ko').textContent=k;$('kv-Lo').textContent=L;
+  const X=i=>ox+i*cw,top=56,rh=17,H=top+L*rh+40;
+  let s=`<svg viewBox="0 0 ${ox+N*cw+110} ${H}" width="100%" style="min-width:700px;display:block" role="img" aria-label="Reads covering the first base of a k-mer; those containing the whole k-mer and those that cut it off">`;
+  s+=`<text x="8" y="22">genome</text>`;
+  for(let i=0;i<N;i++){const inK=i>=P&&i<P+k;s+=`<text class="lab" x="${X(i)+cw/2}" y="22" text-anchor="middle" style="font-size:12.5px;${inK?'font-weight:700':''}">${G[i]}</text>`}
+  s+=`<rect x="${X(P)}" y="7" width="${k*cw}" height="21" rx="3" fill="var(--accent)" fill-opacity=".18" stroke="var(--accent)" stroke-width="1.5"/>`;
+  s+=`<text x="${X(P)+k*cw/2}" y="44" text-anchor="middle" style="font-size:10.5px;fill:var(--accent);font-weight:600">the ${k}-mer</text>`;
+  s+=`<rect x="${X(P)}" y="4" width="${cw}" height="${top+L*rh-4}" fill="none" stroke="var(--het)" stroke-width="1.3" stroke-dasharray="3 3"/>`;
+  let full=0;
+  for(let i=0;i<L;i++){const st=P-L+1+i,en=st+L-1,y=top+i*rh,ok=en>=P+k-1;if(ok)full++;
+   s+=`<text x="8" y="${y+11}" style="font-size:10px">read ${i+1}</text>`;
+   s+=`<rect x="${X(st)+1}" y="${y+2}" width="${L*cw-2}" height="11" rx="2" fill="var(--muted)" fill-opacity=".3"/>`;
+   if(ok)s+=`<rect x="${X(P)+1}" y="${y+2}" width="${k*cw-2}" height="11" rx="2" fill="var(--accent)" fill-opacity=".9"/>`;
+   else{const have=en-P+1;s+=`<rect x="${X(P)+1}" y="${y+2}" width="${have*cw-2}" height="11" rx="2" fill="var(--bad)" fill-opacity=".75"/><rect x="${X(en+1)+1}" y="${y+2}" width="${(k-have)*cw-2}" height="11" rx="2" fill="none" stroke="var(--bad)" stroke-dasharray="3 2"/><text x="${X(P+k)+6}" y="${y+11}" style="font-size:10px;fill:var(--bad)">✗ ${k-have} base${k-have>1?'s':''} missing</text>`}
+   if(ok)s+=`<text x="${X(Math.max(en,P+k-1)+1)+6}" y="${y+11}" style="font-size:10px;fill:var(--accent)">✓ whole k-mer</text>`}
+  s+=`<text x="8" y="${top-6}" style="font-size:10px">✗ = the read ends before the k-mer does, so it does not contain the k-mer</text>`;
+  s+=`<text x="${X(P)+cw/2}" y="${top+L*rh+14}" text-anchor="middle" style="font-size:10px;fill:var(--het)">k-mer's first base</text>`;
+  $('kv-fig').innerHTML=s+'</svg>';
+  $('kv-out').innerHTML=`<div>read coverage of the first base<b>${L} reads</b></div><div>k-mer coverage (whole k-mer inside)<b style="color:var(--accent)">${full} read${full>1?'s':''} = L − k + 1</b></div><div>reads that cut the k-mer off<b style="color:var(--bad)">${L-full} = k − 1</b></div><div>k-mer ÷ read coverage<b>${(full/L*100).toFixed(0)} %</b></div>`}
+ ['kv-k','kv-L'].forEach(id=>$(id).addEventListener('input',draw));draw()})();
+
+/* ---- names analogy for the spectrum axes ---- */
+(function(){const lists=[['ANNA','PAUL','ROSE','JOHN','KATE','MARY','MARY'],['ANNA','PAUL','ROSE','JHON','KATE','MARY','MARY'],['ANNA','PAUL','ROSE','JOHN','KTAE','MARY','MARY']];
+ const typo=new Set(['JHON','KTAE']),cnt={};lists.flat().forEach(n=>cnt[n]=(cnt[n]||0)+1);
+ const col=n=>typo.has(n)?'var(--bad)':n==='MARY'?'var(--rep)':(cnt[n]===3?'var(--accent)':'var(--het)');
+ let s=`<svg viewBox="0 0 900 300" width="100%" style="min-width:760px;display:block" role="img" aria-label="Three class lists, the count of each name, and the histogram of counts">`;
+ s+=`<text class="lab" x="10" y="18" style="font-weight:600">1 · three teachers' lists (= reads)</text>`;
+ lists.forEach((L,j)=>{const x=10+j*78;s+=`<rect x="${x}" y="30" width="68" height="${L.length*22+28}" rx="3" fill="var(--code-bg)" stroke="var(--line)"/><text x="${x+34}" y="46" text-anchor="middle" style="font-size:10px">list ${j+1}</text>`;
+  L.forEach((n,i)=>{s+=`<text class="lab" x="${x+34}" y="${68+i*22}" text-anchor="middle" style="font-size:13px;font-weight:600;fill:${typo.has(n)?'var(--bad)':'var(--fg)'}">${n}</text>`})});
+ s+=`<text x="10" y="${30+7*22+46}" style="font-size:10px;fill:var(--bad)">red = misspelt by a teacher</text>`;
+ // tally
+ const names=Object.keys(cnt).sort((a,b)=>cnt[b]-cnt[a]||a.localeCompare(b));const tx=280;
+ s+=`<text class="lab" x="${tx}" y="18" style="font-weight:600">2 · times each name was written</text>`;
+ names.forEach((n,i)=>{const y=52+i*25;s+=`<text class="lab" x="${tx}" y="${y}" style="font-size:13px;font-weight:600;fill:${typo.has(n)?'var(--bad)':'var(--fg)'}">${n}</text>`;
+  for(let d=0;d<cnt[n];d++)s+=`<circle cx="${tx+52+d*13}" cy="${y-4}" r="5" fill="${col(n)}"/>`;s+=`<text x="${tx+52+cnt[n]*13+4}" y="${y}">${cnt[n]}</text>`});
+ // histogram
+ const hx=560,hb=240,ht=50,bw=40,X=v=>hx+20+(v-1)*48,by={};names.forEach(n=>(by[cnt[n]]=by[cnt[n]]||[]).push(n));const uh=46;
+ s+=`<text class="lab" x="${hx}" y="18" style="font-weight:600">3 · the spectrum: names per count</text>`;
+ s+=`<line class="ax" x1="${hx}" x2="${hx+310}" y1="${hb}" y2="${hb}"/><line class="ax" x1="${hx}" x2="${hx}" y1="${ht}" y2="${hb}"/>`;
+ [1,2,3].forEach(v=>{s+=`<line class="grid" x1="${hx}" x2="${hx+310}" y1="${hb-v*uh}" y2="${hb-v*uh}"/><text x="${hx-6}" y="${hb-v*uh+4}" text-anchor="end">${v}</text>`});
+ for(let v=1;v<=6;v++){s+=`<text x="${X(v)+bw/2}" y="${hb+15}" text-anchor="middle">${v}</text>`;(by[v]||[]).forEach((n,i)=>{const y=hb-(i+1)*uh;
+  s+=`<rect x="${X(v)}" y="${y+1}" width="${bw}" height="${uh-2}" rx="2" fill="${col(n)}" fill-opacity=".22" stroke="${col(n)}"/><text class="lab" x="${X(v)+bw/2}" y="${y+uh/2+4}" text-anchor="middle" style="font-size:10.5px;font-weight:600">${n}</text>`})}
+ s+=`<text x="${X(1)+bw/2}" y="${hb-2*uh-8}" text-anchor="middle" style="font-size:10px;fill:var(--bad)">errors</text><text x="${X(3)+bw/2}" y="${hb-3*uh-8}" text-anchor="middle" style="font-size:10px;fill:var(--accent)">peak = 3 lists</text><text x="${X(6)+bw/2}" y="${hb-uh-8}" text-anchor="middle" style="font-size:10px;fill:var(--rep)">2 Marys</text>`;
+ s+=`<text class="lab" x="${hx+155}" y="${hb+36}" text-anchor="middle">x: times one name was written →</text><text class="lab" transform="translate(${hx-24} ${(hb+ht)/2}) rotate(-90)" text-anchor="middle">y: number of different names</text>`;
+ document.getElementById('names-fig').innerHTML=s+'</svg>'})();
+
+/* ---- N50 / L50 / Nx ---- */
+(function(){const $=id=>document.getElementById(id);let L=[3,9,1,14,2,6,4,20,1.5,7,5,2.5],seed=7;
+ const rnd=()=>{seed=(seed*16807)%2147483647;return seed/2147483647};
+ const f1=v=>(Math.round(v*10)/10).toLocaleString();
+ function stats(sorted,ruler,x){const tgt=ruler*x/100;let c=0;for(let i=0;i<sorted.length;i++){c+=sorted[i];if(c>=tgt-1e-9)return{n:sorted[i],l:i+1,tgt}}return{n:null,l:null,tgt}}
+ function draw(){const x=+$('nx-x').value,ng=$('nx-ng').checked;$('nx-xo').textContent=x;
+  const tot=L.reduce((a,b)=>a+b,0),G=Math.round(tot*1.25),ruler=ng?G:tot,srt=[...L].sort((a,b)=>b-a),st=stats(srt,ruler,x),mx=srt[0];
+  const rankOf=[];L.forEach((v,i)=>rankOf[i]=-1);{const used=new Set();L.forEach((v,i)=>{for(let r=0;r<srt.length;r++)if(srt[r]===v&&!used.has(r)){used.add(r);rankOf[i]=r+1;break}})}
+  const cOf=r=>st.l===null?'var(--muted)':r<st.l?'var(--accent)':r===st.l?'var(--het)':'var(--muted)';
+  const opOf=r=>r<=(st.l||0)?.75:.35;
+  let s=`<svg viewBox="0 0 900 560" width="100%" style="min-width:760px;display:block" role="img" aria-label="Contigs unsorted, sorted, laid end to end with the x percent line, and the Nx curve">`;
+  const pw=400,bw=pw/L.length,bh=110;
+  // panel 1 unsorted
+  const bars=(ox,arr,ranks,title,sums)=>{let r=`<text class="lab" x="${ox}" y="18" style="font-weight:600">${title}</text>`;let run=0;
+   arr.forEach((v,i)=>{const h=v/mx*bh,xx=ox+i*bw,rk=ranks[i];run+=v;
+    r+=`<rect x="${xx+2}" y="${150-h}" width="${bw-4}" height="${h}" rx="2" fill="${cOf(rk)}" fill-opacity="${opOf(rk)}" stroke="${cOf(rk)}"/>`;
+    r+=`<text x="${xx+bw/2}" y="166" text-anchor="middle" style="font-size:10px">${f1(v)}</text>`;
+    if(sums)r+=`<text x="${xx+bw/2}" y="${150-h-6}" text-anchor="middle" style="font-size:9.5px;fill:${rk===st.l?'var(--het)':'var(--muted)'};font-weight:${rk===st.l?700:400}">${f1(run)}</text>`});
+   r+=`<line class="ax" x1="${ox}" x2="${ox+pw}" y1="150" y2="150"/>`;return r};
+  s+=bars(10,L,rankOf,'1 · contigs as assembled (length, Mb)',false);
+  s+=bars(480,srt,srt.map((v,i)=>i+1),'2 · sorted, longest first (running total above)',true);
+  s+=`<text x="${480+pw}" y="182" text-anchor="end" style="font-size:10px">rank 1 → ${srt.length}</text>`;
+  // panel 3 ruler
+  const rx=40,rw=820,ry=250,sc=rw/ruler;let acc=0;
+  s+=`<text class="lab" x="10" y="212" style="font-weight:600">3 · sorted contigs laid end to end: the line at ${x} % of ${ng?'the expected genome size ('+G+' Mb)':'all assembled bases ('+f1(tot)+' Mb)'}</text>`;
+  if(ng)s+=`<rect x="${rx}" y="${ry}" width="${rw}" height="34" rx="2" fill="none" stroke="var(--muted)" stroke-dasharray="4 3"/><text x="${rx+rw-4}" y="${ry+68}" text-anchor="end" style="font-size:10px">dashed part: genome not in the assembly</text>`;
+  srt.forEach((v,i)=>{const w=v*sc,rk=i+1;s+=`<rect x="${rx+acc*sc}" y="${ry}" width="${w}" height="34" fill="${cOf(rk)}" fill-opacity="${opOf(rk)}" stroke="var(--panel)" stroke-width="1.5"/>`;
+   if(w>22)s+=`<text x="${rx+acc*sc+w/2}" y="${ry+21}" text-anchor="middle" style="font-size:10px;fill:var(--fg)">${f1(v)}</text>`;acc+=v});
+  [0,25,50,75,100].forEach(p=>{const xx=rx+rw*p/100;s+=`<line class="ax" x1="${xx}" x2="${xx}" y1="${ry+34}" y2="${ry+40}"/><text x="${xx}" y="${ry+52}" text-anchor="middle" style="font-size:10px">${p} %</text>`});
+  const lx=rx+rw*x/100;s+=`<line x1="${lx}" x2="${lx}" y1="${ry-14}" y2="${ry+44}" stroke="var(--bad)" stroke-width="2"/><text x="${lx}" y="${ry-18}" text-anchor="middle" style="font-size:10.5px;fill:var(--bad);font-weight:600">${x} % = ${f1(st.tgt)} Mb</text>`;
+  if(st.n!==null){const before=srt.slice(0,st.l-1).reduce((a,b)=>a+b,0),cx=rx+(before+st.n/2)*sc;
+   s+=`<path d="M${cx},${ry+62} v14" stroke="var(--het)" stroke-width="1.5"/><text class="lab" x="${Math.min(Math.max(cx,140),760)}" y="${ry+92}" text-anchor="middle" style="font-weight:600">this contig crosses the line: N${x} = ${f1(st.n)} Mb (its length) · L${x} = ${st.l} (its rank)</text>`}
+  else s+=`<text class="lab" x="${rx+rw/2}" y="${ry+92}" text-anchor="middle" style="font-weight:600;fill:var(--bad)">the assembly ends before the line: NG${x} does not exist</text>`;
+  // panel 4 Nx curve
+  const cx0=80,cw=760,cb=530,ct=380;s+=`<text class="lab" x="10" y="368" style="font-weight:600">4 · the Nx curve (N${ng?'G':''}x for every x)</text>`;
+  s+=`<line class="ax" x1="${cx0}" x2="${cx0+cw}" y1="${cb}" y2="${cb}"/><line class="ax" x1="${cx0}" x2="${cx0}" y1="${ct}" y2="${cb}"/>`;
+  let pth='',cum=0;srt.forEach((v,i)=>{const a=cum/ruler*100,b=(cum+v)/ruler*100;cum+=v;const y=cb-v/mx*(cb-ct);pth+=`${i?'L':'M'}${cx0+cw*a/100},${y} L${cx0+cw*Math.min(b,100)/100},${y} `});
+  s+=`<path d="${pth}" fill="none" stroke="var(--accent)" stroke-width="2"/>`;
+  [0,25,50,75,100].forEach(p=>{s+=`<text x="${cx0+cw*p/100}" y="${cb+14}" text-anchor="middle" style="font-size:10px">${p}</text>`});
+  [0,mx/2,mx].forEach(v=>{s+=`<text x="${cx0-6}" y="${cb-v/mx*(cb-ct)+4}" text-anchor="end" style="font-size:10px">${f1(v)}</text>`});
+  s+=`<text x="${cx0+cw}" y="${cb+28}" text-anchor="end" style="font-size:10px">x (%) →</text><text transform="translate(${cx0-40} ${(cb+ct)/2}) rotate(-90)" text-anchor="middle" style="font-size:10px">contig length (Mb)</text>`;
+  if(st.n!==null){const py=cb-st.n/mx*(cb-ct);s+=`<line x1="${cx0+cw*x/100}" x2="${cx0+cw*x/100}" y1="${py}" y2="${cb}" stroke="var(--bad)" stroke-dasharray="3 3"/><circle cx="${cx0+cw*x/100}" cy="${py}" r="5" fill="var(--het)" stroke="var(--panel)" stroke-width="1.5"/>`}
+  $('nx-fig').innerHTML=s+'</svg>';
+  const P=ng?'NG':'N',Lp=ng?'LG':'L',row=q=>{const t=stats(srt,ruler,q);return t.n===null?`<div>${P}${q}<b>none</b></div>`:`<div>${P}${q} · ${Lp}${q}<b>${f1(t.n)} Mb · ${t.l}</b></div>`};
+  $('nx-out').innerHTML=`<div>contigs<b>${L.length}</b></div><div>assembly length${ng?' / genome size':''}<b>${f1(tot)}${ng?' / '+G:''} Mb</b></div>`+[25,50,75,90].map(row).join('')+`<div>auN (Σ length² ÷ Σ length)<b>${f1(L.reduce((a,b)=>a+b*b,0)/tot)} Mb</b></div>`}
+ $('nx-x').addEventListener('input',draw);$('nx-ng').addEventListener('input',draw);
+ $('nx-new').addEventListener('click',()=>{L=Array.from({length:12},()=>Math.round(Math.exp(Math.log(0.5)+rnd()*Math.log(60))*2)/2);draw()});
+ draw()})();
+
+/* ---- k-mer / place / reads correspondence ---- */
+(function(){const W=900,H=390,ay=340,cw=13.5,NC=15;let s=`<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:760px;display:block" role="img" aria-label="How k-mers correspond to places in the genome and to reads">`;
+ const X=n=>60+n/14*820,C=(x,i)=>x+i*cw;
+ // one chromosome row: the DNA letters on a light strip, the k-mer's place boxed, one base optionally red
+ const row=(x,y,lab,seq,boxes,c,red)=>{let r=`<text x="${x}" y="${y-5}" style="font-size:10px">${lab}</text><rect x="${x-3}" y="${y}" width="${NC*cw+6}" height="18" rx="3" fill="var(--code-bg)" stroke="var(--line)"/>`;
+  boxes.forEach(([i0,i1])=>{r+=`<rect x="${C(x,i0)}" y="${y+1}" width="${(i1-i0+1)*cw}" height="16" rx="2" fill="${c}" fill-opacity=".28" stroke="${c}" stroke-width="1.3"/>`});
+  [...seq].forEach((ch,i)=>{r+=`<text class="lab" x="${C(x,i)+cw/2}" y="${y+13}" text-anchor="middle" style="font-size:12px;${i===red?'fill:var(--bad);font-weight:700':''}">${ch}</text>`});return r};
+ // reads under a row: grey bar = the read, coloured part = the k-mer inside it
+ const reads=(x,y,list)=>{let r='';list.forEach(([a,b,k0,k1,c,err],i)=>{const ry=y+24+i*7;
+  r+=`<rect x="${C(x,a)}" y="${ry}" width="${(b-a+1)*cw}" height="4" rx="1.5" fill="var(--muted)" fill-opacity=".45"/>`;
+  if(c)r+=`<rect x="${C(x,k0)}" y="${ry}" width="${(k1-k0+1)*cw}" height="4" rx="1.5" fill="${c}"/>`;
+  if(err!=null)r+=`<rect x="${C(x,err)+3}" y="${ry-3}" width="${cw-6}" height="10" fill="var(--bad)"/><text x="${C(x,b+1)+5}" y="${ry+5}" style="font-size:10px;fill:var(--bad)">error</text>`});return r};
+ const chip=(x,w,km,n,where,c)=>`<rect x="${x}" y="196" width="${w}" height="50" rx="3" fill="${c}" fill-opacity=".12" stroke="${c}"/><text class="lab" x="${x+w/2}" y="212" text-anchor="middle" style="font-weight:600;font-size:12px">${km}</text><text x="${x+w/2}" y="226" text-anchor="middle">seen ${n}×</text><text x="${x+w/2}" y="240" text-anchor="middle" style="font-size:10px">${where}</text>`;
+ const CV=n=>Math.min(1.25,1.4*Math.exp(-(n-.4)/.45))+.55*Math.exp(-(((n-3)/.9)**2))+.75*Math.exp(-(((n-6)/1.3)**2))+.18*Math.exp(-(((n-12)/1.8)**2));
+ const link=(x,n,c)=>{const cy=ay-CV(n)*40;return `<line x1="${x}" y1="246" x2="${X(n)}" y2="${cy-5}" stroke="${c}" stroke-width="1.3" stroke-dasharray="4 3"/><circle cx="${X(n)}" cy="${cy}" r="5" fill="${c}" stroke="var(--panel)" stroke-width="1.5"/><line class="ax" x1="${X(n)}" x2="${X(n)}" y1="${ay}" y2="${ay+5}"/>`};
+ const P=[12,234,456,678],mid=x=>x+NC*cw/2,yM=48,yP=118;
+ const title=(x,t)=>`<text class="lab" x="${x-3}" y="18" style="font-weight:700;font-size:12.5px">${t}</text>`;
+ const two=(x,seqM,seqP,boxes,c,redM,redP)=>row(x,yM,'maternal chromosome',seqM,boxes,c,redM)+row(x,yP,'paternal chromosome',seqP,boxes,c,redP);
+ const std=(c,k0=5,k1=9)=>[[3,11,k0,k1,c],[4,12,k0,k1,c],[5,13,k0,k1,c]];
+ // error: the genome is fine; one read has a wrong base, so its k-mer exists in no chromosome
+ let x=P[0];s+=title(x,'Sequencing error')+two(x,'TTCAACGATTGCATG','TTCAACGATTGCATG',[],'var(--bad)');
+ s+=reads(x,yM,[[3,11,5,9,'var(--bad)',7],[4,12],[5,13]])+reads(x,yP,[[3,11],[4,12],[5,13]]);
+ s+=chip(mid(x)-85,170,'CG<tspan style="fill:var(--bad)">T</tspan>TT',1,'in no chromosome','var(--bad)')+link(mid(x),1,'var(--bad)');
+ // het: same place, one base differs between the two chromosomes
+ x=P[1];s+=title(x,'Heterozygous site')+two(x,'GTTGACGATTGACCA','GTTGACGCTTGACCA',[[5,9]],'var(--het)',7,7);
+ s+=reads(x,yM,std('var(--het)'))+reads(x,yP,std('var(--het)'));
+ s+=chip(x,96,'CG<tspan style="fill:var(--bad)">A</tspan>TT',3,'maternal only','var(--het)')+chip(x+106,96,'CG<tspan style="fill:var(--bad)">C</tspan>TT',3,'paternal only','var(--het)')+link(x+48,3,'var(--het)')+link(x+154,3,'var(--het)');
+ // unique: one place, both chromosomes identical
+ x=P[2];s+=title(x,'Unique sequence (ideal)')+two(x,'CTACAGATTACTGGA','CTACAGATTACTGGA',[[5,9]],'var(--accent)');
+ s+=reads(x,yM,std('var(--accent)'))+reads(x,yP,std('var(--accent)'));
+ s+=chip(mid(x)-85,170,'GATTA',6,'1 place, both chromosomes','var(--accent)')+link(mid(x),6,'var(--accent)');
+ // repeat: the same k-mer at two places; the dots stand for a long stretch between them
+ x=P[3];const rq='ATACAGG…CTACAGA',rc='var(--rep)';s+=title(x,'Repeat: 2 places')+two(x,rq,rq,[[1,5],[9,13]],rc);
+ [yM,yP].forEach(y=>{s+=reads(x,y,[[0,5,1,5,rc],[1,6,1,5,rc],[0,6,1,5,rc]])+reads(x,y,[[8,13,9,13,rc],[9,14,9,13,rc],[8,14,9,13,rc]])});
+ s+=`<text x="${C(x,7)+cw/2}" y="${yP+58}" text-anchor="middle" style="font-size:10px">… = long stretch</text>`;
+ s+=chip(mid(x)-85,170,'TACAG',12,'2 places × 2 chromosomes',rc)+link(mid(x),12,rc);
+ // spectrum
+ const pts=[];for(let n=.4;n<=14;n+=.1)pts.push(`${X(n).toFixed(1)},${(ay-CV(n)*40).toFixed(1)}`);
+ s+=`<polyline points="${pts.join(' ')}" fill="none" stroke="var(--fg)" stroke-opacity=".45" stroke-width="1.5"/><line class="ax" x1="${X(0)}" x2="${X(14)}" y1="${ay}" y2="${ay}"/>`;
+ [[1,'error spike'],[3,'het peak (½)'],[6,'main peak = coverage'],[12,'repeat peak (2×)']].forEach(([n,t])=>{s+=`<text x="${X(n)}" y="${ay+16}" text-anchor="middle">${n}</text><text class="lab" x="${X(n)}" y="${ay+32}" text-anchor="middle">${t}</text>`});
+ s+=`<text x="${X(14)}" y="${ay+16}" text-anchor="end">times seen →</text>`;
+ document.getElementById('corr-fig').innerHTML=s+'</svg>'})();
+
+/* ---- peak = coverage, step by step ---- */
+(function(){const seq='ACGTTGCAAGTCCGATTACAGGTCATGCAT',L=10,k=5,ks=13;const cw=24,x0=230,W=x0+seq.length*cw+12;
+ const X=p=>x0+(p-1)*cw;let s=`<svg viewBox="0 0 ${W} 330" width="100%" style="min-width:720px;display:block" role="img" aria-label="Reads that do and do not contain the k-mer CGATT">`;
+ s+=`<rect x="${X(ks)}" y="22" width="${k*cw}" height="300" fill="var(--het)" fill-opacity=".12"/>`;
+ for(let p=1;p<=seq.length;p++){if(p===1||p%5===0)s+=`<text x="${X(p)+cw/2}" y="16" text-anchor="middle">${p}</text>`;
+  s+=`<text class="lab" x="${X(p)+cw/2}" y="44" text-anchor="middle" style="font-size:14px;font-weight:${p>=ks&&p<ks+k?700:400};fill:${p>=ks&&p<ks+k?'var(--het)':'var(--fg)'}">${seq[p-1]}</text>`}
+ s+=`<text class="lab" x="10" y="44" style="font-weight:600">genome</text><text x="10" y="60">k-mer CGATT = positions 13–17</text>`;
+ const rd=[[2,'✗ ends at 11'],[7,'✗ misses last T (17)'],[8,'✓ CGATT is its last k-mer'],[11,'✓ contains CGATT'],[13,'✓ CGATT is its first k-mer'],[14,'✗ misses first C (13)'],[19,'✗ starts after it']];
+ rd.forEach(([st,why],i)=>{const y=76+i*30,ok=why[0]==='✓';
+  s+=`<rect x="${X(st)+1}" y="${y}" width="${L*cw-2}" height="22" rx="3" fill="${ok?'var(--good)':'var(--err)'}" fill-opacity="${ok?.18:.15}" stroke="${ok?'var(--good)':'var(--err)'}"/>`;
+  for(let j=0;j<L;j++)s+=`<text class="lab" x="${X(st+j)+cw/2}" y="${y+15}" text-anchor="middle">${seq[st+j-1]}</text>`;
+  s+=`<text x="10" y="${y+15}" style="fill:${ok?'var(--good)':'var(--muted)'}">start ${String(st).padStart(2,' ')}  ${why}</text>`});
+ const wy=76+rd.length*30+6;
+ s+=`<rect x="${X(8)}" y="${wy}" width="${6*cw}" height="18" fill="var(--accent)" fill-opacity=".2" stroke="var(--accent)"/>`;
+ for(let p=8;p<=13;p++)s+=`<text class="lab" x="${X(p)+cw/2}" y="${wy+13}" text-anchor="middle">${p}</text>`;
+ s+=`<text x="10" y="${wy+13}" style="fill:var(--accent)">allowed start positions:</text><text x="${X(14)+6}" y="${wy+13}" style="fill:var(--accent)">6 = 10 − 5 + 1</text>`;
+ document.getElementById('pk-fig1').innerHTML=s+'</svg>';
+ // matrix
+ const G=60,N=36,r=rng(42),starts=[];for(let i=0;i<N;i++)starts.push(Math.floor(r()*G));starts.sort((a,b)=>a-b);
+ const cols=new Array(G).fill(0),c2=11,rh=7,mx=60,my=24,hiR=17,hiC=33;let m=`<svg viewBox="0 0 ${mx+G*c2+20} ${my+N*rh+56}" width="100%" style="min-width:720px;display:block" role="img" aria-label="Reads by k-mers matrix">`;
+ m+=`<rect x="${mx+hiC*c2}" y="${my}" width="${c2}" height="${N*rh}" fill="var(--het)" fill-opacity=".18"/><rect x="${mx}" y="${my+hiR*rh}" width="${G*c2}" height="${rh}" fill="var(--accent)" fill-opacity=".15"/>`;
+ starts.forEach((st,i)=>{for(let j=0;j<=L-k;j++){const c=(st+j)%G;cols[c]++;const hl=i===hiR||c===hiC;m+=`<rect x="${mx+c*c2+1.5}" y="${my+i*rh+1}" width="${c2-3}" height="${rh-2}" fill="${c===hiC?'var(--het)':'var(--accent)'}" fill-opacity="${hl?.95:.55}"/>`}});
+ m+=`<text class="lab" x="${mx}" y="14">k-mer positions 1–60 →</text><text class="lab" transform="translate(${mx-10} ${my+N*rh/2}) rotate(-90)" text-anchor="middle">36 reads ↓</text>`;
+ m+=`<text x="${mx+G*c2}" y="${my+hiR*rh-3}" text-anchor="end" style="fill:var(--accent)">this read: 6 k-mers</text>`;
+ cols.forEach((v,c)=>{m+=`<text x="${mx+c*c2+c2/2}" y="${my+N*rh+14}" text-anchor="middle" style="font-size:9px;${c===hiC?'fill:var(--het);font-weight:700':''}">${v}</text>`});
+ m+=`<text x="${mx+hiC*c2+c2/2}" y="${my+N*rh+30}" text-anchor="middle" style="fill:var(--het)">this k-mer: seen ${cols[hiC]}×</text><text class="lab" x="${mx}" y="${my+N*rh+48}">column totals = how often each k-mer was seen · all marks: 36 × 6 = ${cols.reduce((a,b)=>a+b,0)}</text>`;
+ document.getElementById('pk-fig2').innerHTML=m+'</svg>';
+ // histogram of column totals
+ const hist={};cols.forEach(v=>hist[v]=(hist[v]||0)+1);const mxv=Math.max(...cols);const bars=[];let ym=0;
+ for(let v=0;v<=mxv;v++){const n=hist[v]||0;bars.push({a:v-.4,b:v+.4,v:n,c:'var(--accent)',op:.7});ym=Math.max(ym,n)}
+ document.getElementById('pk-fig3').innerHTML=chart({id:'pk3',w:700,h:220,minw:460,x0:-.6,x1:mxv+.6,y1:ym+2,xt:[...Array(mxv+1).keys()],yt:ticks(ym+2,4),yf:v=>v,xf:v=>v,xlabel:'times a k-mer was seen',ylabel:'number of k-mers',bars,vlines:[{x:3.6,c:'var(--het)',t:'expected 3.6'}],aria:'Histogram of column totals'})})();
+
+/* ---- choosing k: trade-off curves ---- */
+function kchart(){const G=+document.getElementById('kc-g').value;const [L,e]=document.getElementById('kc-r').value.split(',').map(Number);const h=+document.getElementById('kc-h').value/100;
+ const ks=[],ch=[],cv=[],cl=[],ht=[];for(let k=11;k<=101;k++){ks.push(k);ch.push((1-Math.exp(-2*G/Math.pow(4,k)))*100);cv.push((L-k+1)/L*100);cl.push(Math.pow(1-e/100,k)*100);ht.push((1-Math.pow(1-h,k))*100)}
+ const best=Math.log(G*0.999/0.001)/Math.log(4);
+ document.getElementById('kchart').innerHTML=chart({id:'kc',w:900,h:280,x0:11,x1:101,y1:100,xt:[11,21,31,41,51,61,71,81,91,101],yt:[0,25,50,75,100],yf:v=>v+'%',xlabel:'k',ylabel:'percent',
+  series:[{x:ks,y:ch,c:'var(--bad)'},{x:ks,y:cv,c:'var(--accent)'},{x:ks,y:cl,c:'var(--good)'},{x:ks,y:ht,c:'var(--het)'}],vlines:[{x:best,c:'var(--fg)',t:'best k ≈ '+best.toFixed(1)}],aria:'Effects of k-mer length'})}
+['kc-g','kc-r','kc-h'].forEach(id=>document.getElementById(id).addEventListener('change',kchart));kchart();
+
+/* ---- why size estimates go wrong ---- */
+(function(){const comps=[{m:35,mb:850,c:'var(--accent)'},{m:70,mb:30,c:'var(--rep)'},{m:140,mb:20,c:'var(--rep)'},{m:3.5e6,mb:100,c:'var(--bad)'}];
+ const errs={1:80,2:20,3:10};const bpd=12,bars=[];let ymax=0;
+ for(let i=0;i<7*bpd;i++){const a=10**(i/bpd),b=10**((i+1)/bpd);let best=null,tot=0;
+  comps.forEach(cp=>{const sd=cp.m>1e5?cp.m*.08:Math.sqrt(cp.m+cp.m*cp.m/45);let f=0;const st=(b-a)/40;for(let x=a+st/2;x<b;x+=st)f+=gauss(x,cp.m,sd)*st;const v=f*cp.mb;tot+=v;if(!best||v>best.v)best={v,c:cp.c}});
+  let e=0;for(const k in errs)if(+k>=a&&+k<b)e+=errs[k];if(e>best.v)best={v:e,c:'var(--err)'};tot+=e;
+  if(tot>.5){bars.push({a,b,v:tot,c:best.c,op:.8});ymax=Math.max(ymax,tot)}}
+ document.getElementById('rpt-fig').innerHTML=chart({id:'rpt',w:900,h:260,x0:1,x1:1e7,xlog:true,y1:ymax*1.15,xt:[1,10,100,1000,1e4,1e5,1e6,1e7],xlabel:'times a k-mer was seen (log scale)',ylabel:'Mb of genome',bars,
+  vlines:[{x:35,c:'var(--accent)',t:'unique: 850 Mb',left:false},{x:1e4,c:'var(--bad)',t:'histogram cap',left:true},{x:3.5e6,c:'var(--bad)',t:'satellite 100 Mb: lost',left:true,dy:16}],aria:'Sequence amount by k-mer coverage'});
+ const s=spectrum({cov:40,het:1.6,err:.3,rep:6,ploidy:2});
+ document.getElementById('wp-fig').innerHTML=chart({id:'wp',w:900,h:280,x1:s.xmax,y1:s.ym,xlabel:'k-mer coverage (times seen)',ylabel:'distinct k-mers',
+  series:[{x:s.X,y:s.T,c:'var(--fg)',w:1.8,area:true,op:.06}],
+  vlines:[{x:s.lam,c:'var(--bad)',t:Math.round(s.lam)+'×: 2.0 Gb (wrong)'},{x:s.hom,c:'var(--good)',t:Math.round(s.hom)+'×: 1.0 Gb (right)',dy:18},{x:2*s.hom,c:'var(--bad)',t:Math.round(2*s.hom)+'×: 0.5 Gb (wrong)',dy:36}],aria:'Choosing the wrong peak'})})();
+
+/* ---- copy buttons ---- */
+document.querySelectorAll('.code button').forEach(b=>b.addEventListener('click',()=>{const t=b.nextElementSibling.innerText;const done=()=>{b.textContent='copied';setTimeout(()=>b.textContent='copy',1400)};
+ try{navigator.clipboard.writeText(t).then(done,()=>sel(b.nextElementSibling))}catch(e){sel(b.nextElementSibling)}}));
+function sel(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}
+})();
+</script>

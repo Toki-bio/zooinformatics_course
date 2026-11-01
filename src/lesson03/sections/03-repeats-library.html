@@ -1,0 +1,185 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>Repeats II: building a repeat library de novo</h2>
+  <p class="lede">A masking program such as RepeatMasker (<a href="#s04">section 04</a>) only finds repeats it has a description of. That description is a <dfn>repeat library</dfn>: a FASTA file with one <span class="tip" title="Consensus sequence: for every position of an alignment of many copies, the most common base. It approximates the sequence of the original active element, before the copies collected their own mutations.">consensus sequence</span> per repeat family. This section is about making that library from your own assembly, <i>de novo</i> (from scratch, without a reference), and about checking it.</p>
+
+  <h3>Why your species needs its own library</h3>
+  <ul>
+    <li><b>Lineage-specific families.</b> Transposable elements (TEs) keep arising and dying out. Many families exist only in one genus or family of animals. A public library built from other species (<span class="tip" title="Dfam: an open database of TE families with seed alignments and profile HMMs; RepeatMasker reads it through the FamDB package. Release 4.0 is the one used by RepeatModeler 2.0.9 and Earl Grey 7.3.x.">Dfam</span> or <span class="tip" title="RepBase: a curated TE library run by the Genetic Information Research Institute (GIRI); since 2019 it has needed a paid subscription (see section 02 for its announced move to an open licence).">RepBase</span>) cannot contain a family nobody has described.</li>
+    <li><b>Known families, wrong consensus.</b> Even when a related family is in Dfam, its consensus was made from another species. Your copies differ from it more than they differ from their own consensus, so matches are shorter, weaker or missed.</li>
+    <li><b>Classification needs relatives.</b> A de novo tool can tell you "this is repeated" without telling you <i>what</i> it is. Families that match nothing known are labelled <code>Unknown</code>. In a new lineage this can be a large share.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p style="margin-top:6px">The assembly of our rodent species A (not yet published, so no name or exact numbers here) was masked with a de novo library (family names like <code>rnd-1_family-5</code>, the naming RepeatModeler uses; the exact RepeatModeler and RepeatMasker versions of that run are not recorded in our folder). About half of the genome is soft-masked. Of the masked bases, the largest class by far is <code>Unknown</code>: hundreds of families, more than a third of the genome. <b>Not one family was labelled SINE.</b> Yet when the family consensuses were compared with a bank of known SINEs (rodent SINEs from SINEBase plus the lab's own SINE bank), over a hundred of the "Unknown" families matched a SINE, and together they cover more than a tenth of the genome. Example: one of the most abundant "Unknown" families, a consensus of about 200 bp with hundreds of thousands of copies, matches a known rodent SINE at about 90 % identity over nearly its whole length. The library found the SINEs; it just did not name them. How the "SINE-like" threshold was set in that comparison is not recorded, so treat that share as approximate.</p>
+  </div>
+
+  <h3>What every de novo tool does</h3>
+  <ol class="steps">
+    <li><div><b>Find sequence that occurs many times</b><div class="d">Either by sequence (count repeated words, or compare pieces of the genome all against all) or by structure (look for the shape of one TE type, for example two long terminal repeats a few kb apart).</div></div></li>
+    <li><div><b>Group copies into families</b><div class="d">Copies that align well to each other are one family.</div></div></li>
+    <li><div><b>Align the copies and call a consensus</b><div class="d">The consensus stands for the whole family in the library.</div></div></li>
+    <li><div><b>Extend to full length</b><div class="d">The first consensus is often only a piece of the element. Copies are extended into their neighbouring sequence until they stop agreeing: that is the end of the element (the toy below).</div></div></li>
+    <li><div><b>Classify</b><div class="d">Compare with known TE proteins and consensus sequences; give a label such as <code>LINE/L1</code> or <code>Unknown</code>.</div></div></li>
+    <li><div><b>Filter</b><div class="d">Remove simple repeats, duplicates of other families and pieces of real genes.</div></div></li>
+  </ol>
+  <p>The four tools below differ mainly in how they do steps 1 and 4.</p>
+
+  <h3>RepeatModeler2 (version 2.0.9)</h3>
+  <p>The standard tool, from the RepeatMasker authors (Hubley and Smit, with the LTR extension by Flynn; paper: Flynn et al. 2020, <i>PNAS</i>). It combines three repeat finders:</p>
+  <ol class="steps">
+    <li><div><b>BuildDatabase</b><div class="d">Turns the assembly into a <span class="tip" title="BLAST database: the genome stored in an indexed form so that BLAST (the classic sequence-similarity search program; RMBlast is RepeatMasker's version of it) can search it quickly.">BLAST database</span>. Sequence names are replaced by numbers; the <code>.translation</code> file keeps the link back.</div></div></li>
+    <li><div><b>Round 1: <span class="tip" title="RepeatScout (Price, Jones and Pevzner): counts short words (l-mers) that occur often, then extends each frequent word into a longer repeat. Good at young, abundant families.">RepeatScout</span> on a 40 Mb sample</b><div class="d">Finds the young, abundant families from a small random sample. Simple repeats are filtered out.</div></div></li>
+    <li><div><b>Rounds 2-5: <span class="tip" title="RECON (Bao and Eddy): compares sequences all against all and groups the pairwise matches into families, using where the matches start and stop to infer element ends.">RECON</span> on growing samples</b><div class="d">Samples of 10, 30, 90 and 270 Mb (defaults since version 2.0.4; <code>-quick</code> uses the older, smaller samples). Before each round, the sample is masked with the families already found, so the round looks for new ones. A family needs at least 15 copies in the sample; the code comments say this also keeps out <span class="tip" title="Segmental duplication: a long stretch of DNA (often more than 1 kb) copied once or a few times within a genome. It is repeated, but it is not a TE.">segmental duplications</span>, which have few copies.</div></div></li>
+    <li><div><b>Refiner</b><div class="d">Builds a seed alignment and consensus for each family. Since 2.0.7 it also tries to extend each family with <span class="tip" title="RepeatAfterMe: a Dfam tool that extends a multiple alignment outwards into the flanking genome sequence while the copies still agree.">RepeatAfterMe</span>. Large satellites and families contained in other families are then filtered out.</div></div></li>
+    <li><div><b>Optional LTR module</b> (<code>-LTRStruct</code>)<div class="d">Runs <span class="tip" title="LTRharvest (GenomeTools): finds pairs of similar long terminal repeats at the right distance apart, the structural signature of an LTR retrotransposon.">LTRharvest</span> and <span class="tip" title="LTR_retriever (Ou and Jiang): filters LTRharvest candidates and builds LTR family consensuses. RepeatModeler 2.0.9 requires exactly version 2.9.0.">LTR_retriever</span> and merges their families in (redundancy removed with <span class="tip" title="CD-HIT: a fast program that clusters similar sequences and keeps one representative per cluster.">CD-HIT</span>). The paper reports the largest gain for LTR retrotransposons.</div></div></li>
+    <li><div><b>RepeatClassifier</b><div class="d">Labels each family, in three steps described below.</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. database (use a local disk, not a network drive: the README says I/O is heavy)</span>
+BuildDatabase -name spA genome.fa
+
+<span class="c"># 2. de novo run with the LTR module; keep the log, it holds the random seed</span>
+<span class="c">#    (random seed: the start number for the random sampling; the same seed gives the same samples)</span>
+<span class="c">#    nohup ... &amp; : keep running in the background after you log out</span>
+<span class="c">#    BLAST_USAGE_REPORT=false stops RMBlast reporting usage over the network (README caveat)</span>
+export BLAST_USAGE_REPORT=false
+nohup RepeatModeler -database spA -threads 20 -LTRStruct &gt; run.out 2&gt;&amp;1 &amp;
+
+<span class="c"># 3. if it stops: continue from the last finished round</span>
+RepeatModeler -database spA -threads 20 -LTRStruct -recoverDir RM_12345.MonOct271200002026</pre></div>
+  <dl class="defs">
+    <dt><code>spA-families.fa</code></dt><dd>The library: one consensus per family, named <code>rnd-&lt;round&gt;_family-&lt;n&gt;#Class/Family</code> (LTR-module families start <code>ltr-1_family-</code>). This is what you give RepeatMasker with <code>-lib</code>.</dd>
+    <dt><code>spA-families.stk</code></dt><dd><span class="tip" title="Stockholm format: a text format for multiple alignments with annotation lines; Dfam uses it for seed alignments.">Stockholm</span> <span class="tip" title="Seed alignment: the alignment of a representative set of copies from which a family's consensus (and profile model) is built.">seed alignments</span>, the copies behind each consensus. Needed for curation and for submitting to Dfam.</dd>
+    <dt><code>spA-rmod.log</code></dt><dd>Summary log with the random seed. With <code>-srand &lt;seed&gt;</code> you can reproduce the same samples.</dd>
+    <dt><code>RM_&lt;PID&gt;.&lt;date&gt;/</code></dt><dd>Working folder with one subfolder per round. Keep it until the run is finished: <code>-recoverDir</code> needs it.</dd>
+  </dl>
+  <p><b>Time and memory.</b> The README recommends one machine with more than 32 GB RAM and many cores (their own: 28 cores, 128 GB) and says a well-assembled mammalian genome can take more than 1-2 days with 20 threads. RepeatModeler runs on one machine only; do not split a genome into batches and do not merge several runs into one library: the result is "largely redundant" (README). To sample more of the genome, raise <code>-genomeSampleSizeMax</code> instead.</p>
+
+  <h3>How RepeatClassifier names a family, and why SINEs stay "Unknown"</h3>
+  <ol class="steps">
+    <li><div><b>Simple repeats</b><div class="d">The consensus is masked for simple repeats; one with fewer than 40 unmasked bases is treated as a simple or tandem repeat.</div></div></li>
+    <li><div><b>Proteins</b><div class="d">The consensus is translated and compared with a library of TE proteins (<code>rmblastx</code>, cutoff p &lt; 0.001). A hit to an L1 reverse transcriptase gives <code>LINE/L1</code>, a transposase gives a DNA transposon class, and so on.</div></div></li>
+    <li><div><b>Known consensuses</b><div class="d">The consensus is compared with all TE consensuses in the installed Dfam (<code>rmblastn</code>, minimum score 250). The best match gives the label.</div></div></li>
+  </ol>
+  <p>A <span class="tip" title="SINE: short interspersed element, a non-autonomous retrotransposon, usually shorter than 700 bp (median about 250 bp), with a head derived from a tRNA, 7SL RNA or 5S rRNA gene. It encodes no protein and is copied by the machinery of a LINE (section 02).">SINE</span> encodes no protein, so step 2 can never label it. It is named only if step 3 finds a known SINE that is similar enough and that is in the Dfam partitions installed on your machine. A short, lineage-specific SINE often has neither, and comes out as <code>Unknown</code>. This fits what we saw in species A (box above). <code>Unknown</code> means "repeated, but not matched to anything known". It does not mean "not a TE".</p>
+
+  <h3>EDTA (version 2.3.3)</h3>
+  <p>The <i>Extensive de novo TE Annotator</i> (Ou et al. 2019, <i>Genome Biology</i>) runs one specialised finder per TE type and then filters the candidates hard. It was designed and benchmarked on rice with a curated rice library, and most of its users work on plants. The <code>--species</code> option knows only <code>Rice</code>, <code>Maize</code> and <code>others</code>; the default mutation rate for dating LTR elements (<code>--u 1.3e-8</code>) is also from rice.</p>
+  <ul>
+    <li><b>LTR:</b> LTRharvest and LTR_FINDER (parallel versions) with LTR_retriever.</li>
+    <li><b>SINE:</b> <span class="tip" title="AnnoSINE_v2: a SINE-specific finder; EDTA calls it for its SINE module and keeps candidates with at least 3 copies.">AnnoSINE_v2</span>, then <span class="tip" title="TEsorter: classifies TE sequences by the TE protein domains they contain (EDTA uses its REXdb database).">TEsorter</span> to drop misclassified candidates and a tandem-repeat clean-up.</li>
+    <li><b>LINE:</b> RepeatModeler2 (or your own classified RepeatModeler library via <code>--rmlib</code>).</li>
+    <li><b><span class="tip" title="TIR: terminal inverted repeat. DNA transposons of this type end in two inverted copies of the same sequence. MITEs are small non-autonomous TIR elements.">TIR</span>:</b> TIR-Learner. <b><span class="tip" title="Helitron: a DNA transposon that moves by rolling-circle replication; it has no terminal repeats, which makes it hard to find by structure.">Helitron</span>:</b> HelitronScanner.</li>
+    <li><b>Genes out:</b> with <code>--cds</code> (coding sequences of your species or a close relative, no introns, no UTRs), library entries matching genes are removed.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># sequence names must be short (&lt;= 13 characters) and simple, says the README</span>
+mamba create -n EDTA -c conda-forge -c bioconda edta
+conda activate EDTA
+perl EDTA.pl --genome genome.fa --species others --cds relative.cds.fa \
+    --sensitive 1 --anno 1 --threads 16
+<span class="c"># --sensitive 1 : run RepeatModeler afterwards to recover remaining TEs</span>
+<span class="c"># --anno 1      : also annotate the whole genome with the new library</span></pre></div>
+  <p>Main outputs: <code>genome.fa.mod.EDTA.TElib.fa</code> (the library, labelled with the <span class="tip" title="Wicker et al. 2007 (Nature Reviews Genetics): a unified TE classification with three-letter codes per superfamily, for example RLG = LTR/Gypsy, DTA = TIR/hAT. RepeatMasker uses its own names (LTR/Gypsy, DNA/hAT); EDTA ships a conversion table.">three-letter Wicker system</span>), and with <code>--anno 1</code> also <code>genome.fa.mod.EDTA.TEanno.gff3</code> and the summary <code>genome.fa.mod.EDTA.TEanno.sum</code>. A curated library given with <code>--curatedlib</code> is "trusted 100 %", so give it only hand-checked sequences; the README says curated SINEs and LINEs help most, because EDTA finds those types least well.</p>
+
+  <h3>HiTE (version 3.3.3)</h3>
+  <p>HiTE (Hu et al. 2024, <i>Nature Communications</i>) looks for <b>full-length</b> TEs: it finds repeated regions, extends them and adjusts their boundaries by comparing the copies (the authors call it "dynamic boundary adjustment"), then runs separate modules for LTR, TIR, Helitron and non-LTR elements (SINEs and LINEs; LINE candidates are checked for a complete LINE protein domain). <b>Trap:</b> <code>--plant</code> is <code>1</code> by default; set <code>--plant 0</code> for an animal. The README recommends 40 CPU cores and 128 GB RAM. For many genomes of one species or group, panHiTE does the same across a population.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># conda install from the repository's environment.yml, then:</span>
+python main.py --genome genome.fa --out_dir hite_out --thread 40 \
+    --plant 0 --annotate 1 --recover 1
+<span class="c"># output dir should be new and empty: HiTE deletes files in it</span></pre></div>
+  <p>Main outputs: <code>confident_TE.cons.fa</code> (the classified library, usable with <code>RepeatMasker -lib</code>), <code>low_confident_TE.cons.fa</code> (unclassified low-copy candidates), <code>all_TE.fa</code> (both), and with <code>--annotate 1</code> <code>HiTE.out</code>, <code>HiTE.gff</code>, <code>HiTE.tbl</code>.</p>
+
+  <h3>Earl Grey (version 7.3.1)</h3>
+  <p>Earl Grey (Baril, Galbraith and Hayward 2024, <i>Molecular Biology and Evolution</i>) is a complete pipeline around RepeatModeler2. Its own contribution is an automatic curation step, <dfn>BEAT</dfn> ("BLAST, Extract, Align, Trim"), done by its TEstrainer scripts: every consensus is extended and trimmed the way a person would do it by hand (the toy below shows the idea). Then it masks the genome, joins fragments of the same element, and draws plots.</p>
+  <ol class="steps">
+    <li><div><b>Optional pre-mask</b> with a known library (<code>-r</code> a Dfam group name, or <code>-l</code> your own FASTA). The README advises against it unless a good library exists for your species or a very close one.</div></div></li>
+    <li><div><b>RepeatModeler2</b> (Earl Grey calls it without <code>-LTRStruct</code>).</div></div></li>
+    <li><div><b>BEAT / TEstrainer</b>, up to 10 rounds (<code>-i</code>): BLAST the consensus to the genome, take the 20 best copies (<code>-n</code>) with 1,000 bp of <span class="tip" title="Flank: the genome sequence on either side of a copy, outside the element itself.">flank</span> on each side (<code>-f</code>), align them with <span class="tip" title="MAFFT: a widely used multiple sequence alignment program (Katoh and Standley).">MAFFT</span>, cut off the flank where copies stop aligning, call a new consensus (needs at least 3 copies, <code>-a</code>). A family goes into another round only if its consensus grew substantially (in the current code: by more than half the flank length). Then tandem-repeat finders (<span class="tip" title="TRF, mreps and sa-ssr: three programs that detect tandem repeats (a short unit repeated head-to-tail). Section 04 covers TRF.">TRF, mreps, sa-ssr</span>) set satellites aside and RepeatClassifier relabels the rest.</div></div></li>
+    <li><div><b>RepeatMasker</b> with the new library (<code>-s</code>, sensitive mode).</div></div></li>
+    <li><div><b>Defragmentation</b>: LTR_FINDER finds full-length LTR elements, and <span class="tip" title="RepeatCraft: merges RepeatMasker hits of the same family, strand and orientation that lie close together (Earl Grey: within 150 bp) into one element.">RepeatCraft</span> merges neighbouring pieces of one element.</div></div></li>
+    <li><div><b>Divergence and plots</b>: <span class="tip" title="Kimura 2-parameter distance between each copy and its consensus; used as a proxy for the age of the copy. Section 02 explains it.">Kimura divergence</span> per copy, repeat landscapes, a pie chart, summary tables.</div></div></li>
+  </ol>
+  <div class="code"><button type="button">copy</button><pre>mamba create -n earlgrey -c conda-forge -c bioconda earlgrey=7.3.1
+conda activate earlgrey
+<span class="c"># first run generates configure_dfam40.sh: download the Dfam 4.0 partitions you need, then rerun</span>
+earlGrey -g genome.fa -s spA -o ./earlgrey_out -t 16 -d yes
+<span class="c"># -d yes: also write a soft-masked genome. Rerun the same command after a crash:</span>
+<span class="c"># finished steps are skipped</span></pre></div>
+  <p>Results are in <code>spA_EarlGrey/spA_summaryFiles/</code>: <code>spA-families.fa.strained</code> (the curated library), <code>spA.filteredRepeats.gff</code> and <code>.bed</code> (annotation; fully nested TEs carry <code>nested=FULLY_NESTED</code>), summary tables, landscapes, pie chart. <b>Resources</b> (README): at least 3 GB RAM per thread (16 threads: at least 48 GB); "a 3Gb genome ~a week". Since version 7.0.2 Earl Grey no longer passes <code>-norna</code> to RepeatMasker, which the README says improves masking of small tRNA-derived SINEs. If you only want the library, <code>earlGreyLibConstruct</code> stops after TEstrainer.</p>
+
+  <h3>Side by side</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Finds by</th><th>Strong at</th><th>Watch out</th></tr></thead>
+    <tbody>
+      <tr><td><b>RepeatModeler2</b> 2.0.9</td><td>sequence (RepeatScout, RECON) + LTR structure</td><td>The reference for animals; few false families (1 and 5 on simulated TE-free fly and zebrafish genomes in its paper)</td><td>Consensuses often shorter than the element; many <code>Unknown</code>; needs LTR_retriever 2.9.0 exactly</td></tr>
+      <tr><td><b>EDTA</b> 2.3.3</td><td>structure per TE type + RepeatModeler2 for LINEs</td><td>Plant LTR, TIR and Helitron elements; gene filter via <code>--cds</code></td><td>Tuned on rice; many more library entries than families (see below); short names only</td></tr>
+      <tr><td><b>HiTE</b> 3.3.3</td><td>repeated regions + boundary adjustment + type modules</td><td>Full-length elements</td><td><code>--plant 1</code> by default; 40 cores / 128 GB recommended</td></tr>
+      <tr><td><b>Earl Grey</b> 7.3.1</td><td>RepeatModeler2 + automatic BEAT curation</td><td>Full-length consensuses, ready plots and tables, restartable</td><td>About a week for 3 Gb; RAM per thread; Dfam partitions must be set up first</td></tr>
+    </tbody>
+  </table></div>
+  <p>Benchmarks depend on who runs them. In the Earl Grey paper (simulated genomes with 30 inserted families), Earl Grey produced on average 57.8 consensuses, RepeatModeler2 57.6 and EDTA 1,303; 88.5 % of Earl Grey consensuses were within 5 % of the true length, against 21.7 % for RepeatModeler2 and 4.5 % for EDTA. The RepeatModeler2 paper found about three times more near-perfect families than its predecessor, mostly thanks to the LTR module. Neither benchmark tested short SINEs in a mammal.</p>
+
+  <h3>What de novo libraries get wrong</h3>
+  <dl class="defs">
+    <dt>Short, young SINEs</dt><dd>They are found, because they have many near-identical copies. But they come out as <code>Unknown</code> (no protein, see above), their ends can be fuzzy (A-rich tails of different lengths; parts shared with other SINEs), and several related subfamilies may be merged into one consensus or one family split into many.</dd>
+    <dt>Satellites</dt><dd>Long tandem arrays look like a repeat with many copies. RepeatModeler filters "large satellites" from its families, and TEstrainer moves them to a separate list. Tandem repeats are better found with tandem-repeat tools (<a href="#s04">section 04</a>).</dd>
+    <dt>Gene families</dt><dd>Multi-copy genes (for example olfactory receptors, immune genes) are repeated too, and can slip into the library. Masking them would hide real genes from gene prediction (<a href="#s06">section 06</a>). Remove them: EDTA <code>--cds</code>, or compare the library with a TE-free protein set (<code>blastx</code>) and drop gene hits; ProtExcluder from the MAKER-P toolkit (Campbell et al. 2014) is a widely used script for this.</dd>
+    <dt>Segmental duplications</dt><dd>Long duplicated blocks with only a few copies. RepeatModeler's minimum of 15 copies keeps most of them out.</dd>
+    <dt>Truncated consensuses</dt><dd>A 6-kb LINE may be represented only by its 3′ end, because most copies are 5′-truncated. Extension (RepeatAfterMe, BEAT) or manual curation fixes this.</dd>
+  </dl>
+
+  <h3>Manual curation in four steps</h3>
+  <p>The standard method is described in "A beginner's guide to manual curation of transposable elements" (Goubert et al. 2022, <i>Mobile DNA</i>). For one family:</p>
+  <ol class="steps">
+    <li><div><b>BLAST</b> the consensus against the genome; keep the best copies (tens, not thousands).</div></div></li>
+    <li><div><b>Extract and extend</b>: take each copy plus extra sequence on both sides (for example 1,000 bp).</div></div></li>
+    <li><div><b>Align</b> the extended copies (MAFFT) and look at the alignment.</div></div></li>
+    <li><div><b>Trim</b>: the TE ends where the copies stop agreeing with each other, because outside it each copy sits in a different, unique place in the genome. Cut there and call a new consensus. If the consensus grew to the edge of the extension, extend again.</div></div></li>
+  </ol>
+  <p><span class="tip" title="TE-Aid (Goubert): a shell + R program that takes one consensus and the genome and draws four plots: genome hits with their divergence, coverage of the consensus by hits, a self dot-plot, and ORFs with TE protein hits.">TE-Aid</span> draws four plots per consensus that help decide: genome hits along the consensus, how deep the consensus is covered, a self dot-plot (which shows terminal repeats), and open reading frames with TE protein hits. It also prints how many copies are "full length" (hit at least 90 % of the consensus by default, <code>-f 0.9</code>).</p>
+  <div class="code"><button type="button">copy</button><pre>git clone https://github.com/clemgoub/TE-Aid.git
+cd TE-Aid &amp;&amp; mamba env create -f TE_AID.yml &amp;&amp; mamba activate TE_AID
+./TE-Aid -q rnd-1_family-0.fa -g genome.fa -o te_aid_out -t</pre></div>
+
+  <section class="tool" aria-labelledby="s03-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-toy-h">Extend, align, find the boundary</h3></div>
+    <p class="tool-note">Twelve copies of one toy TE (70 bp), each sitting in its own unique genome sequence. A de novo tool gave you only a <b>seed</b>: bases 21-50 of the element (framed). Move the two sliders to take more sequence on each side. The bars under the alignment show, for each column, the share of copies that carry the most common base. Inside the TE the copies agree; in the flanks they do not. <b>Find where the bars drop</b>, then press "Trim" to let the toy rule find it. Then raise the family age and trim again: with old, diverged copies the agreement inside the element falls too, and the rule usually stops inside the element, giving a consensus that is too short.</p>
+    <div class="controls">
+      <label for="s03-L"><span class="tip" title="How many bases to the left of the seed are taken from every copy.">Extend left</span><output id="s03-Lo">0 bp</output><input type="range" id="s03-L" min="0" max="45" step="1" value="0"></label>
+      <label for="s03-R"><span class="tip" title="How many bases to the right of the seed are taken from every copy.">Extend right</span><output id="s03-Ro">0 bp</output><input type="range" id="s03-R" min="0" max="45" step="1" value="0"></label>
+      <label for="s03-div"><span class="tip" title="Share of bases in each copy changed since the copy was inserted. Old families have high divergence; their copies agree less, so the boundary is harder to see.">Family age (divergence)</span><output id="s03-divo">10 %</output><input type="range" id="s03-div" min="2" max="45" step="1" value="10"></label>
+      <label for="s03-trunc" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s03-trunc"> <span class="tip" title="Four of the twelve copies lose part of their left (5') end, as most LINE copies do. Left of the break they carry unique genome sequence.">some copies 5′-truncated</span></label>
+      <label for="s03-true" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s03-true"> <span class="tip" title="Shade the columns that really belong to the toy TE. In real data you do not have this.">show the true TE</span></label>
+    </div>
+    <div class="slider-row"><button type="button" class="btn" id="s03-trim" style="align-self:auto">Trim (toy rule)</button><button type="button" class="btn" id="s03-new" style="align-self:auto;background:transparent;color:var(--accent)">New copies</button><button type="button" class="btn" id="s03-reset" style="align-self:auto;background:transparent;color:var(--accent)">Back to seed</button></div>
+    <div class="svgbox" id="s03-aln"></div>
+    <div class="legend" id="s03-legend"></div>
+    <div class="readout" id="s03-out"></div>
+    <p id="s03-msg" style="font-size:14px" aria-live="polite"></p>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li>One random 70-bp element. Each of 12 copies gets its own random 45-bp flanks on both sides, and each TE base is changed with the chosen divergence. No insertions or deletions, so the copies are already aligned column by column (real copies need MAFFT).</li>
+        <li>Column agreement = copies carrying the most common base ÷ copies that have a base there. A column with at least 60 % agreement is shown in capitals in the consensus; below 60 % the consensus base is shown as lower case, and as <code>n</code> when two bases tie (the way TEstrainer's consensus function writes ties).</li>
+        <li>"Trim" walks outwards from the seed and stops at the first place where three columns in a row fall below 60 %. In random flanks one column now and then reaches 60 % by chance; requiring three in a row avoids stopping there. This rule is a teaching simplification, not the exact rule of any tool.</li>
+        <li>With truncated copies on, four copies have unique sequence instead of the TE left of a random break point. They lower agreement near the left end; the real start is still where agreement falls for <i>all</i> copies.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why "where copies stop agreeing" is the end of a TE</summary><div class="in">
+    <p>Think of a poster glued on many different walls in a city. Photograph each poster with a wide frame, so you also get some wall around it. Lay the photographs on top of each other, lined up on the poster. Inside the poster every photo shows the same picture (some faded, some torn: that is divergence). Just outside its edge, one photo shows brick, another glass, another a tree. The edge of the poster is the place where the photos stop looking alike.</p>
+    <p>A TE copy is the poster, the genome around it is the wall. A de novo tool may have photographed only the middle of the poster (the seed). Extending means widening the frame; trimming means cutting the frame back to the poster's edge.</p>
+    <p>Two things make it harder. Old posters are faded (high divergence), so the inside also looks less alike and the edge is less sharp. And torn posters (5′-truncated copies) end early on one side: the edge must be read from the copies that are complete.</p>
+  </div></details>
+
+  <h3>After the tool: what to check</h3>
+  <ul>
+    <li><b>Look at the biggest families first.</b> Sort the RepeatMasker summary by bases covered; curate the top families (and every family you will discuss in a paper) with TE-Aid or an alignment.</li>
+    <li><b>Read the <code>Unknown</code> pile.</b> Compare it with a SINE database such as <span class="tip" title="SINEBase: a database of SINE families and their consensus sequences, organised by taxon (Vassetzky and Kramerov).">SINEBase</span> and with Dfam; look for a poly(A) tail (a run of A at the 3′ end, typical of SINEs and LINEs) or another simple tail, terminal repeats or protein domains.</li>
+    <li><b>Check for genes</b> (EDTA <code>--cds</code> or <code>blastx</code> against TE-free proteins) before the library is used to mask for gene prediction.</li>
+    <li><b>Record versions</b> of the tool and of Dfam (Earl Grey's README warns that Dfam 4.0, with new families, may change results compared with Dfam 3.9).</li>
+  </ul>
+
+  <div class="note"><b>In our projects: SINEs need a SINE tool</b>
+    <p style="margin-top:6px">For SINE families the lab uses its own pipeline, SINEderella (Toki-bio). It searches a genome with given SINE consensuses, refines their boundaries, assigns copies to subfamilies by shared diagnostic mutations, and reports alignments, divergence plots and an HTML page; a de novo stage can also start without a library. Run with the lab's SINE bank on species A, it found on the order of a million SINE loci, most of them firmly assigned and dominated by a single subfamily. SINE discovery and subfamilies get their own lesson later.</p>
+  </div>
+</section>

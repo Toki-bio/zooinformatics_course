@@ -1,0 +1,192 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Annotation by projection: Liftoff and TOGA2</h2>
+  <p class="lede">If a related species already has a good gene annotation, you can carry its genes over to your assembly. Each gene of the annotated genome is located in your genome, and its exons are aligned there. This is called <dfn>projection</dfn>. It works without RNA-seq, and it also tells you which genes look broken in your genome. That second answer is the one that needs the most care.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>Reference</dt><dd>The annotated genome you copy genes from (for us: human, or our own species A). Both tools call it the "reference".</dd>
+    <dt>Query / target</dt><dd>Your new, unannotated assembly. TOGA2 says "query", Liftoff says "target".</dd>
+    <dt>Projection</dt><dd>One reference transcript placed at one locus of the query. In TOGA2 a projection is one transcript plus one alignment chain, named <code>transcript#GENE#chainID</code>. One gene can have several projections (several loci, or one gene split over several contigs).</dd>
+    <dt>Ortholog, paralog</dt><dd>The same gene in two species, inherited from their common ancestor, versus an extra copy made by duplication (see <a href="../02-assembly/#s10">lesson 2, BUSCO</a>). Projection tools must decide which copy in the query is the true ortholog.</dd>
+    <dt>Processed pseudogene</dt><dd>A copy made when a spliced mRNA was reverse-transcribed and inserted back into the genome. It has the exons joined, without introns, and usually no promoter. It can look like an intact gene in the wrong place. If its reading frame is intact, TOGA2 calls it a <dfn>retrogene candidate</dfn>.</dd>
+    <dt>Reading frame</dt><dd>The grouping of coding bases into codons (three bases each). Inserting or deleting a number of bases that is not a multiple of 3 shifts the frame: a <dfn>frameshift</dfn>. Every codon after it is read wrongly and a stop codon soon appears.</dd>
+  </dl>
+
+  <h3>Step 1: a whole-genome alignment, as chains</h3>
+  <p>TOGA2 needs to know which part of the reference lines up with which part of the query, over the whole genome. This information is stored as <dfn>chains</dfn>. The UCSC Genome Browser team, who defined the format, explain it like this:</p>
+  <ul>
+    <li>A <b>gapless block</b> is a base-for-base alignment of a piece of the reference with a piece of the query, of equal length (mismatches allowed).</li>
+    <li>A <b>chain</b> is a series of gapless blocks in the same order and on the same strand in both genomes, with gaps between them. In a <b>single-sided gap</b> sequence is skipped in only one genome (an insertion in one, or a deletion in the other). In a <b>double-sided gap</b> sequence is skipped in both (the two pieces differ too much to align).</li>
+    <li>A <b>net</b> (made by the UCSC program <span class="tip" title="chainNet: a UCSC Kent utility. It puts the highest-scoring chain first and lets lower-scoring chains fill the gaps in it, so each reference base is covered once.">chainNet</span>) is a hierarchy of chains: the best chain on top, lower-scoring chains filling its gaps. It keeps one alignment per reference region and removes pile-ups. Nets are used for <span class="tip" title="liftOver: the UCSC tool that converts positions (for example of a SNP or a BED interval) from one assembly to another through chains or nets.">liftOver</span> of coordinates. TOGA2 takes the chain file itself as input: it wants all candidate chains, because choosing between them is part of its job.</li>
+  </ul>
+
+  <figure>
+    <div class="svgbox" id="s07-chainfig"></div>
+    <figcaption><b>One toy chain.</b> Four gapless blocks (filled) join the reference and the query. Gap 1 is single-sided (40 reference bases have no partner, drawn as a single line). Gap 2 is double-sided (30 and 25 bases that do not align, drawn as a double line in the browser). Gap 3 is single-sided on the query side. The text below is the same chain in UCSC chain format.</figcaption>
+    <div class="toy">chain <span class="tip" title="Chain score: alignment score of all blocks minus gap penalties. Higher means longer and more similar. TOGA2 ignores chains below --min_chain_score (default 15000). This number is a toy value.">48000</span> chr7 159345973 + 1000 1490 ctg12 21000000 + 5000 5460 1
+120 40 0      <span class="h">size of a block, then gap in reference (dt), gap in query (dq)</span>
+90 30 25
+150 0 15
+60            <span class="h">the last block has only its size</span></div>
+    <figcaption>Header fields, in order: <code>score</code>, reference name, size, strand, start, end, query name, size, strand, start, end, chain <code>id</code>. Coordinates are zero-based, half-open. On a query strand of <code>-</code> the query coordinates count from the end of the reverse strand.</figcaption>
+  </figure>
+
+  <p><b>How the Hiller lab makes chains.</b> Their pipeline <a href="https://github.com/hillerlab/make_lastz_chains">make_lastz_chains</a> (v3.1.7, August 2026) runs <span class="tip" title="LASTZ: a pairwise DNA sequence aligner (lastz/lastz on GitHub). Made for comparing whole chromosomes.">LASTZ</span> on pieces of both genomes, builds chains with <span class="tip" title="axtChain: UCSC program that merges local alignments on the same strand into chains when the merged alignment scores better.">axtChain</span>, fills chain gaps with a more sensitive second alignment (<span class="tip" title="RepeatFiller (Osipova et al. 2019 GigaScience): re-aligns the unaligned stretches inside chains, recovering megabases of repetitive sequence.">RepeatFiller</span>), and removes doubtful local alignments (<span class="tip" title="chainCleaner (Suarez et al. 2017 Bioinformatics): removes local alignments that break the real orthologous chain, improving specificity.">chainCleaner</span>). The final file is <code>07_final/&lt;ref&gt;.&lt;query&gt;.allfilled.chain.gz</code>.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># both genomes SOFT-masked (repeats in lowercase, see section 01); no spaces or dots in sequence names
+# needs Nextflow &gt;= 25.04.6 and Docker or Apptainer</span>
+git clone https://github.com/hillerlab/make_lastz_chains.git
+cd make_lastz_chains
+nextflow run main.nf -params-file params.json -profile apptainer \
+    --reference_genome ref.2bit --query_genome query.2bit --outdir results
+<span class="c">#   params.json holds reference_name, query_name and the alignment settings
+#   (LASTZ K=2400 L=3000 H=2000 Y=9400, chain min score 1000, gap filling, cleaning)
+#   → results/07_final/ref.query.allfilled.chain.gz   (input for TOGA2)
+#   resume after a crash: --from chain_antirepeat | fill_chains | clean_chains</span></pre></div>
+  <p class="note warn"><b>Soft-mask first.</b> The pipeline README asks for both genomes to be soft-masked (repeats in lowercase), not hard-masked, and suggests adding WindowMasker if LASTZ runtimes run away. Repeat masking is described in <a href="#s04">section 04</a>. Whole-genome LASTZ between distant species is the slowest part of the whole projection approach: plan for it.</p>
+
+  <h3>Liftoff: same or closely related species</h3>
+  <p><a href="https://github.com/agshumate/Liftoff">Liftoff</a> (Shumate &amp; Salzberg 2020; release 1.6.3, PyPI 1.6.3.2) maps a GFF or GTF annotation between assemblies of the same species or of closely related species. It does not need chains. It cuts each gene's sequence out of the reference and aligns it to the target with <span class="tip" title="minimap2: Heng Li's fast aligner for long sequences. Liftoff calls it with -a --end-bonus 5 --eqx -N 50 -p 0.5 by default (SAM output, = and X in CIGAR, more secondary alignments, a bonus for end-to-end alignment).">minimap2</span>. Then, for each gene, it chooses the exon alignments that give the highest identity while keeping the transcript structure. When two genes land on overlapping loci, it decides which one is mis-mapped and tries to place that one elsewhere.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># argument order: TARGET first, then REFERENCE</span>
+liftoff -g ref.gff3 -o target.gff3 -u unmapped_features.txt -p 16 \
+        -copies -sc 0.95 target.fa ref.fa
+<span class="c">#   -a 0.5 / -s 0.5 (defaults): a gene counts as mapped if its exons/CDS align with
+#                coverage &gt;= 50 % and identity &gt;= 50 %; weaker hits stay in the GFF with
+#                partial_mapping=True / low_identity=True unless -exclude_partial is set
+#   -copies      look for extra gene copies not annotated in the reference
+#   -sc 0.95     identity needed in exons to call an extra copy (default 1.0; must be &gt; -s)
+#   -chroms chroms.txt   lift chromosome by chromosome (lines "refchr,targetchr"); advised for
+#                        chromosome-level assemblies of the same species
+#   -flank 0.1   also align 10 % of flanking sequence; can help when gene structure differs
+#   -polish      re-align exons to repair lost start/stop codons and in-frame stops
+#                (writes target.gff3 and target.gff3_polished)</span></pre></div>
+  <p>Outputs: the target annotation in the same format as the input, and <code>unmapped_features.txt</code>. Each gene gets <code>sequence_ID</code> (exon identity to the reference), <code>coverage</code> and <code>valid_ORFs</code>. Each transcript gets flags: <code>valid_ORF</code>, <code>matches_ref_protein</code>, <code>missing_start_codon</code>, <code>missing_stop_codon</code>, <code>inframe_stop_codon</code>. Extra copies carry <code>extra_copy_number</code>.</p>
+  <p><b>Limits</b>, from the README: Liftoff works best when gene structure (for example intron sizes) is similar; when genes differ much in size, alignments fragment and small first or last exons are often lost. For more divergent species the README suggests raising minimap2's <code>-r</code> and <code>-z</code> through <code>-mm2_options="-r 2k -z 5000"</code>. Liftoff reports whether the reading frame is valid, but it does not classify orthologs against paralogs or call gene losses. Use it to move an annotation between two assemblies of one species (an old and a new assembly, or two haplotypes), or between very close species.</p>
+
+  <h3>TOGA2: orthologs and gene losses from chains</h3>
+  <p><a href="https://github.com/hillerlab/TOGA2">TOGA2</a> (Hiller lab; v2.0.10, September 2026) is the successor of TOGA (Kirilenko et al. 2023 <i>Science</i>). TOGA itself is no longer maintained. TOGA2 does three jobs in one run: it annotates genes in the query, decides which locus is the ortholog of each reference gene, and classifies each gene as intact, lost or missing.</p>
+  <ol class="steps">
+    <li><div><b>Inputs</b><div class="d">Reference and query genomes as <span class="tip" title=".2bit: a compact binary genome format from UCSC. Convert with faToTwoBit in.fasta out.2bit.">.2bit</span> files, the chain file, the reference annotation as <span class="tip" title="BED12: a 12-column text format, one transcript per line, with exon starts and sizes in the last columns. Columns 7-8 give the coding start and end.">BED12</span>, and three "semi-mandatory" inputs: an isoform table (gene → transcripts), a <span class="tip" title="U12 introns are a rare intron class spliced by the minor spliceosome; they can have splice site dinucleotides other than GT-AG. The file lists them so their unusual splice sites are not called mutations.">U12</span> intron file, and <span class="tip" title="SpliceAI: a deep-learning splice site predictor. TOGA2's spliceai mode produces four BigWig files of donor/acceptor probabilities for the query genome.">SpliceAI</span> predictions for the query. Since v2.0.7 you must either give each of these or set its placeholder flag (<code>--no_isoform_file</code>, <code>--no_u12_file</code>, <code>--no_spliceai</code>). Without an isoform file there is no gene-level result.</div></div></li>
+    <li><div><b>Which chain is the ortholog?</b><div class="d">For every transcript–chain pair TOGA2 measures features such as: the share of the transcript's coding bases the chain aligns (<code>gl_exo</code>, <code>loc_exo</code>), the share of intron bases it aligns (<code>intr_perc</code>), how much of 10 kb on each side of the gene it aligns (<code>flank_cov</code>), and how many other reference genes the same chain covers (<code>synt</code>, for synteny). An orthologous locus keeps its introns and neighbours aligned; a paralog or a processed pseudogene usually does not. Two <span class="tip" title="XGBoost: a machine-learning method built from many small decision trees. TOGA2 ships models trained on human-rat gene pairs of known orthology.">XGBoost</span> models (single-exon and multi-exon genes) turn the features into an orthology probability; 0.5 or more counts as orthologous. Processed pseudogenes are recognised by a rule: exons aligned but introns not. A chain that spans the gene without aligning any coding base is a <dfn>spanning chain</dfn>.</div></div></li>
+    <li><div><b>Realign each exon</b><div class="d">Within each locus, <span class="tip" title="CESAR2 (Coding Exon-Structure Aware Realigner, Hiller lab): aligns a reference exon to the query sequence keeping codons and splice sites in mind, using splice-site profiles.">CESAR2</span> aligns every reference exon to the query, keeping the reading frame and the splice sites in view. Each exon is then <b>Present</b>, <b>Missing</b> (outside the chain, or in an assembly gap; 90 % or more N) or <b>Deleted</b> (neither).</div></div></li>
+    <li><div><b>List the mutations</b><div class="d">Frameshifting insertions and deletions, premature stop codons, broken splice sites (not GT/GC…AG), and deleted or missing exons. Some are <dfn>masked</dfn>: recorded, but not used to call a loss (rules below).</div></div></li>
+    <li><div><b>Classify</b><div class="d">Each projection gets a status. A transcript takes the best status among its projections, and a gene the best among its transcripts, in the order <code>FI &gt; I &gt; PI &gt; UL &gt; L &gt; M &gt; (PG, PP) &gt; N</code>. So a gene is "lost" only if every projection is lost. Finally TOGA2 groups overlapping projections into query genes and names the orthology class: one2one, one2many, many2one, many2many, one2zero.</div></div></li>
+  </ol>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Status</th><th>Meaning (TOGA2 wiki)</th><th>BED colour (itemRgb, column 9)</th></tr></thead>
+    <tbody>
+      <tr><td><b>FI</b> fully intact</td><td>Reading frame complete; no inactivating mutation, not even a masked one; all exons present. New in TOGA2.</td><td>navy <code>0,0,100</code></td></tr>
+      <tr><td><b>I</b> intact</td><td>The middle 80 % of the coding sequence is present and has no inactivating mutation. Mutations or missing sequence may sit in the first or last 10 %.</td><td>blue <code>0,0,200</code></td></tr>
+      <tr><td><b>PI</b> partially intact</td><td>No inactivating mutation in the middle 80 %, at least 50 % of the coding sequence present; some of it missing (often an assembly gap).</td><td>cyan <code>0,200,255</code></td></tr>
+      <tr><td><b>UL</b> uncertain loss</td><td>At least one inactivating mutation, but not enough evidence for loss. The wiki names three reasons: an early stage of loss, <b>rare base errors in the assembly</b>, or an exon that is badly predicted.</td><td>salmon <code>255,160,120</code></td></tr>
+      <tr><td><b>L</b> lost</td><td>Strong evidence the frame cannot make a functional protein: typically mutations in at least two exons (≤10 exons) or in ≥20 % of exons (&gt;10 exons), or large deletions.</td><td>red <code>255,50,50</code></td></tr>
+      <tr><td><b>M</b> missing</td><td>Less than 50 % of the coding sequence present and no inactivating mutation in the middle 80 %. Also when the only chain spans the gene over an assembly gap.</td><td>grey <code>130,130,130</code></td></tr>
+      <tr><td><b>PG</b>, <b>PP</b></td><td>Paralogous projection; processed pseudogene.</td><td>brown <code>159,129,112</code>; pink <code>250,50,200</code></td></tr>
+      <tr><td><b>N</b> <i>Undefined</i></td><td>Thrown out for technical reasons before any alignment, for example a reference transcript whose coding length is not a multiple of 3, or a transcript name with illegal characters. <b>Says nothing about the query genome.</b></td><td>not in the output</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Masking: which mutations do not count</h3>
+  <p>Frameshifts and stop codons near the ends of genes are common in conserved, working genes. TOGA2 therefore <b>masks</b> (records but ignores) these:</p>
+  <ul>
+    <li>Mutations in the <b>last 10 %</b> of the reference coding sequence (C-terminal), always.</li>
+    <li>Mutations in the <b>first 10 %</b> (N-terminal) only if the query has another in-frame start codon (ATG) downstream of the mutation, still within the first 10 %. With <code>--mask_n_terminal_mutations</code> (<code>-m10m</code>), all mutations in the first 10 % are masked.</li>
+    <li>Two or more frameshifts that <b>compensate</b> each other (they add up to a multiple of 3 and there is no stop codon in the shifted stretch).</li>
+    <li>Deletion of a whole exon whose length is a multiple of 3 (<b>frame-preserving</b>); mutations inside Missing or Deleted exons; non-canonical splice sites of known U12 introns; missing start or stop codons.</li>
+  </ul>
+  <p><b>The unmasking rule.</b> In the source code (<code>processed_segment.py</code>, v2.0.10), masks for the first and last 10 % and for compensated frameshifts are removed again when the projection has at least one other unmasked inactivating mutation. The wiki explains the reason: a gene with one frameshift in the middle plus a terminal stop has more evidence of loss than a gene with the frameshift alone.</p>
+
+  <section class="tool" aria-labelledby="s07-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-toy-h">Break a toy gene and watch TOGA2's verdict</h3></div>
+    <p class="tool-note">A reference transcript of 6 exons and 400 codons, projected onto a query. Choose a mutation type, then <b>click the query row</b> to place it (or type a codon number and press Place). Click with <b>erase</b> to remove one. The toy follows the TOGA2 v2.0.10 rules for masking, unmasking and classification, simplified (see the rules under the figure). Exons 3 and 4 are 135 and 297 bases long, multiples of 3, so deleting one of them keeps the frame.</p>
+    <div class="slider-row"><span>Place:</span><span class="seg" id="s07-mode" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-m="fsdel" aria-pressed="true" title="Frameshifting deletion of 1 base (FS_DEL -1). The typical long-read homopolymer error.">−1 deletion</button><button type="button" data-m="fsins" aria-pressed="false" title="Frameshifting insertion of 1 base (FS_INS +1).">+1 insertion</button><button type="button" data-m="stop" aria-pressed="false" title="Premature stop codon (nonsense mutation): TAA, TAG or TGA inside the reading frame.">stop codon</button><button type="button" data-m="delex" aria-pressed="false" title="Whole exon deleted in the query (Deleted exon). Click anywhere on the exon.">delete exon</button><button type="button" data-m="missex" aria-pressed="false" title="Exon falls in an assembly gap or outside the chain (Missing exon). Click anywhere on the exon.">exon in gap</button><button type="button" data-m="erase" aria-pressed="false" title="Remove the nearest mutation, or restore the exon you click.">erase</button>
+    </span></div>
+    <div class="calc">
+      <label for="s07-codon">Codon (1-400)<input type="number" id="s07-codon" min="1" max="400" value="150"></label>
+      <button type="button" class="btn" id="s07-place">Place</button>
+      <label for="s07-preset" class="wide" style="flex:1 1 260px">Example<select id="s07-preset"></select></label>
+      <button type="button" class="btn" id="s07-clear">Clear all</button>
+    </div>
+    <div class="controls">
+      <label for="s07-atg" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s07-atg"> <span class="tip" title="The query has an in-frame ATG at codon 30, inside the first 10 %. TOGA2 then masks N-terminal mutations upstream of it: translation can start there and make a slightly shorter protein.">query has an in-frame ATG at codon 30</span></label>
+      <label for="s07-m10m" style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s07-m10m"> <span class="tip" title="TOGA2 option --mask_n_terminal_mutations / -m10m: mask every frameshift or stop in the first 10 % of the coding sequence, with or without an alternative start.">run with -m10m</span></label>
+    </div>
+    <div class="svgbox" id="s07-fig" style="cursor:crosshair"></div>
+    <div class="legend" id="s07-legend"></div>
+    <div class="readout" id="s07-out" aria-live="polite"></div>
+    <p id="s07-why" style="font-size:14px;max-width:none" aria-live="polite"></p>
+    <div class="tbl"><table id="s07-tbl" style="min-width:560px"></table></div>
+    <details class="simple"><summary>Toy rules (what the figure computes)</summary><div class="in">
+      <ul>
+        <li><b>Masking.</b> A frameshift or stop at codon ≥ 360 (last 10 %) is masked "C-terminal". At codon ≤ 40 it is masked "N-terminal" with <code>-m10m</code>, or "Alternative start found" if the ATG box is ticked and the mutation lies before codon 30. Mutations inside a deleted or missing exon are masked by that exon. A deleted exon of 135 or 297 bases is masked "Frame-preserving deletion". Frameshifts whose sizes add up to a multiple of 3, with no stop between them, are masked "Compensated".</li>
+        <li><b>Unmasking.</b> If any frameshift, stop or frameshifting exon deletion stays unmasked, the terminal and compensation masks are lifted (code: <code>if inactivating_found</code>).</li>
+        <li><b>Codon string.</b> Every codon is I (intact), L (hit by an unmasked mutation, or in an exon deleted with a frameshift), M (missing exon) or D (exon deleted in frame). From it: is the first 90 % free of L (the "middle", since the first 10 % is excluded only with <code>-m10m</code>)? Is the middle 80 % free of M? How long is the longest run of intact codons, as a share of all 400?</li>
+        <li><b>Classes</b> (from <code>classify_projection</code>): no unmasked mutation and no missing exon → FI, or I if anything was masked. Middle free of mutations → I, or PI if missing exons reach into the middle 80 % and are &lt; 50 % of the sequence, else M. Otherwise → L if the longest intact run is &lt; 60 % <b>and</b> at least 2 exons are hit (threshold for ≤ 10 exons), else UL. Also L if fewer than 35 % of non-missing codons are intact.</li>
+        <li><b>Left out:</b> splice-site mutations, SpliceAI, sequence identity, alternative-frame codons, the single-exon and "large exon" rules, paralogs and orthology. A compensated frameshift's codons count as intact. Real TOGA2 aligns real sequence; here you just declare the mutations.</li>
+      </ul>
+    </div></details>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: copying a recipe book from a neighbour</summary><div class="in">
+    <p>Your neighbour has a recipe book with every recipe indexed. You have a shelf of the same recipes in a different order, and no index. Projection means: for each recipe in the neighbour's index, find the matching page on your shelf and copy the page numbers into a new index.</p>
+    <div class="toy">recipe found, all lines readable                     <span class="a">FI</span>
+recipe found, last line smudged                      <span class="a">I</span>   (the C-terminal 10 % is forgiven)
+recipe found, a page torn out (a gap in the copy)    <span class="a">PI</span>  or <span class="a">M</span> if most is torn out
+recipe found, one word misprinted in the middle      <span class="h">UL</span>  a misprint in YOUR copy, or a real change?
+recipe found, misprints on two different pages       <span class="x">L</span>
+two misprints on the same page                       <span class="h">UL</span>  (one page hit, not two)
+a photocopy glued in somewhere else, no index tabs   <span class="h">PP</span>  processed pseudogene</div>
+    <p>The neighbour's book is the reference, your shelf is the query, and the chains tell you which shelf corresponds to which chapter. A Liftoff user copies a book of the same edition: almost every page matches. A TOGA2 user copies from a book in another language (human to mouse): pages differ, and the tool must also decide whether a missing recipe was really removed or just printed badly.</p>
+    <p><b>Example with numbers.</b> A 6-exon gene, 400 codons. A 1-base deletion at codon 150 (exon 3) and nothing else: one unmasked mutation in the middle, only one exon hit, so <b>UL</b>. Add a stop at codon 385 (last 10 %): alone it would be masked, but the deletion unmasks it; now two exons are hit and the longest intact run is 234 of 400 codons (58.5 %, below 60 %), so <b>L</b>. Remove the deletion (polish the homopolymer): the stop is masked again and the gene is <b>I</b>.</p>
+  </div></details>
+
+  <h3>Running TOGA2</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># install: git clone --recurse-submodules https://github.com/hillerlab/TOGA2; cd TOGA2; make
+#          (Python &gt;= 3.13; Nextflow and Cargo, the Rust build tool, are not installed by make); check with: toga2.py test</span>
+faToTwoBit query.fa query.2bit
+toga2.py run \
+    --ref_2bit hg38.2bit --query_2bit query.2bit \
+    --chain_file hg38.query.allfilled.chain.gz \
+    --ref_annotation hg38.toga.bed --isoform_file hg38.toga.isoforms.tsv \
+    --u12_file hg38.U12.tsv --spliceai_dir spliceai_query/ \
+    --parallel_strategy local --output toga2_out
+<span class="c">#   --min_chain_score 15000 (default) ignores weaker chains; do not go below ~1000 (wiki)
+#   no SpliceAI / U12 data? set --no_spliceai / --no_u12_file instead (less accurate)
+#   toga2.py prepare-input  checks and builds the reference BED/isoform/U12 files
+#   toga2.py spliceai       makes the SpliceAI BigWig files for the query</span></pre></div>
+  <p>Main output files in <code>toga2_out/</code>:</p>
+  <dl class="defs">
+    <dt><code>query_annotation.bed</code></dt><dd>BED12 of all projections, coloured by status (column 9). Also <code>.with_utrs.bed</code> and a GTF. Select intact ones with <code>awk -F'\t' '$9=="0,0,100" || $9=="0,0,200"'</code>.</dd>
+    <dt><code>loss_summary.tsv</code></dt><dd>Status at three levels: <code>PROJECTION</code>, <code>TRANSCRIPT</code>, <code>GENE</code>.</dd>
+    <dt><code>inactivating_mutations.tsv</code></dt><dd>Every mutation with exon, codon, query coordinates, type (<code>FS_INS</code>, <code>FS_DEL</code>, stop, <code>SSMD</code>/<code>SSMA</code> splice donor/acceptor, missing or deleted exon), <code>is_masked</code> and <code>masking_reason</code>. Only <code>NOT_MASKED</code> rows decide the status.</dd>
+    <dt><code>orthology_classification.tsv</code></dt><dd>Reference gene and transcript, query gene and transcript, orthology class.</dd>
+    <dt><code>protein.fa</code>, <code>nucleotide.fa</code>, <code>*_aln.fa</code></dt><dd>Sequences and codon/exon/protein alignments of the projections.</dd>
+    <dt><code>rejected_items.tsv</code>, <code>summary.txt</code></dt><dd>What was thrown out and why (the source of N); counts of everything.</dd>
+  </dl>
+  <p><b>What changed from TOGA to TOGA2</b> (wiki and preprint, Malovichko et al. 2026 bioRxiv): the new FI class; the old "partially missing" class removed (now UL or M); processed pseudogenes and retrogene candidates as their own class; SpliceAI used for splice-site shifts and new introns; UTRs added; exon-wise annotation that the preprint reports uses 513-fold less memory and runs 6.1 times faster; masked terminal and compensated mutations now count towards L once another unmasked mutation exists.</p>
+
+  <h3>Why every "lost" gene needs checking</h3>
+  <p>TOGA2's L means: in <b>this assembly</b>, no projection keeps an intact reading frame. Several things other than real gene loss give the same result:</p>
+  <ul>
+    <li><b>Base errors in the assembly.</b> A 1-base indel in a homopolymer (a run of one base, like <code>GGGGG</code>) is a frameshift. Long-read assemblies carry such errors unless polished (<a href="../02-assembly/#s06">lesson 2, polishing</a>). One error gives UL; two in different exons give L.</li>
+    <li><b>Assembly gaps.</b> TOGA2 calls an exon Missing, and a gene spanned by an unaligned chain gap M rather than L, only when the query sequence there contains Ns. Gaps still matter for every follow-up test (see the flank example below).</li>
+    <li><b>The other haplotype.</b> A primary assembly holds one copy of each region; the intact allele may be in the other haplotype.</li>
+    <li><b>Paralogs and gene families.</b> Large families of similar genes, such as immunoglobulin and T-cell receptor segments, make the ortholog hard to pick.</li>
+    <li><b>Real divergence.</b> An exon too different to align can be reported as deleted.</li>
+  </ul>
+  <p>Look at <code>inactivating_mutations.tsv</code> for each candidate: are the events in homopolymers? Do the reads agree with the assembly at those bases? Is there a gap nearby? Only events that survive these checks support a loss. The same base errors also break gene models from ab initio predictors (<a href="#s06">section 06</a>), and BUSCO completeness does not reveal them (<a href="#s08">section 08</a>).</p>
+
+  <div class="note"><h3 style="margin-bottom:8px">In our projects</h3>
+    <ul>
+      <li><b>Human → our rodent species A, run by the Hiller lab</b> (species A is not yet published, so no name or exact numbers here; TOGA2 v2.0.8e, LASTZ chains, <code>--min_chain_score 15000</code>, with SpliceAI and U12 files). <code>summary.txt</code>: most of the 19,990 human reference genes have at least one potentially functional ortholog, the large majority as 1:1 orthologs, plus about a thousand retrogene candidates; around a thousand genes are called lost and a few dozen missing. Among projections, more than half are FI, about a fifth UL, and I, L, PI and M follow with smaller shares. The BED colour counts agree with the wiki colour table.</li>
+      <li><b>Read the summary critically.</b> Its gene-level percentages are divided by the number of projections, not by the 19,990 genes, so the share of FI genes is printed far too low. And "reference genes considered present" repeats the transcript-level number.</li>
+      <li><b>The frameshift caveat.</b> Variant calls from our own reads found hundreds of simple indels inside TOGA2's exons that the reads contradict: nearly all shift the frame and most are homopolymer-type. Genes with at least one such false frameshift: about one in ten UL genes, somewhat fewer L genes, a few per cent of I genes and almost no FI genes. About half of the "lost-only" genes carry a read-contradicted indel or a homopolymer that differs from the close relative. Our recorded decision: polish with our own reads and rerun TOGA2 before interpreting the lost-gene list.</li>
+      <li><b>One bad base versus several defects</b> (one class-L gene). One frameshift deletion sits in a G<sub>5</sub> homopolymer, and the reads are split on its length (only about a third support the assembled length). But the gene has two more unmasked events outside homopolymers and not contradicted by the reads (a frameshift insertion in exon 1, a TAG stop in exon 3). It stays lost even if the G run is corrected. The toy's "three events" example copies this pattern.</li>
+      <li><b>Species A → a published close relative, our own run.</b> Human-vs-relative LASTZ was abandoned: one test pair (human chr21 against a 17-Mb piece) took more than 1.6 CPU-hours, so the whole genome would take weeks. For the close pair we used minimap2 (<code>-c --cs -x asm10</code>) and turned its output into chains with <code>transanno minimap2chain</code>; that tool gives every chain the score 4900, so chains had to be rescored (<code>chainScore -linearGap=medium</code>, then <code>chainSort</code>). This is experimental: minimap2 chains are not validated for TOGA2. The reference was the intact species A transcripts from the Hiller run, so genes lost in species A could not be tested. Among the gene results, the largest group was N: reference transcripts rejected at setup (thousands had a coding length not divisible by 3), which says nothing about the relative's genome.</li>
+      <li><b>Lost is not deleted (a flank test).</b> To ask whether an L or M gene is really gone, we use the sequence flanking the gene as anchors in the relative's genome (close species only): if both flanks are found next to each other with nothing between, the site is empty. Of several hundred L+M genes, about a third were found present, similar numbers had no anchor or only one flank, and just 2 looked empty; many lie in immunoglobulin and T-cell receptor segments, where flanks are not unique. Both "empty sites" were false: a 100-N scaffolding gap lay a few hundred bases away. HiFi reads spanning the site confirmed a homozygous deletion for one gene; two others look heterozygous (reads support both versions; a paralog is not excluded).</li>
+    </ul>
+  </div>
+
+  <p class="note"><b>Which tool when.</b> Same species, new assembly or other haplotype: Liftoff. Close or distant species with a good reference annotation, and you also want orthologs and loss calls: TOGA2 (needs chains; for distant pairs LASTZ chains are the tested input). In both cases the projected genes are only as good as the bases of your assembly: polish first. Projected genes can also serve as evidence for gene prediction (<a href="#s05">section 05</a>, <a href="#s06">section 06</a>).</p>
+</section>

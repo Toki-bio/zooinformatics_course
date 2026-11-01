@@ -1,0 +1,186 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>Repeats I: what is repeated in a genome</h2>
+  <p class="lede">In a typical placental mammal, transposable elements alone make up close to half of the assembly. Before you can find these repeats (<a href="#s03">section 03</a>) or mask them (<a href="#s04">section 04</a>), you need their names: what kinds exist, how they are grouped into families, and how the difference between a copy and its family's "master" sequence tells you its age.</p>
+
+  <h3>Two ways to be repeated</h3>
+  <dl class="defs">
+    <dt>Interspersed repeats</dt><dd>Copies scattered all over the genome, each sitting in its own place with its own unique neighbours. Almost all of them are <dfn>transposable elements</dfn> (TEs): DNA segments that can make new copies of themselves at new places in the genome. A copy that stopped moving long ago is still called a TE.</dd>
+    <dt>Tandem repeats</dt><dd>Copies lying side by side, head to tail, in one block (an <dfn>array</dfn>): <code>CACACACACA</code>, or a unit of a few hundred bp repeated many times. Microsatellites, minisatellites, satellite DNA and ribosomal-RNA gene arrays are tandem repeats.</dd>
+    <dt>Segmental duplications</dt><dd>Long stretches (genes included) copied to another place. Usually defined as copies longer than 1 kb that are more than 90 % identical. They are not made by a TE's own machinery and are not found with repeat libraries.</dd>
+  </dl>
+
+  <h3>Transposable elements: two classes, a few orders</h3>
+  <p>The scheme used by almost everyone was proposed by <span class="tip" title="Wicker T. et al. 2007. A unified classification system for eukaryotic transposable elements. Nature Reviews Genetics 8:973-982.">Wicker et al. (2007)</span>. It sorts TEs first by <b>how they move</b> (the <dfn>class</dfn>), then by structure and enzymes into <dfn>orders</dfn>, <dfn>superfamilies</dfn> and <dfn>families</dfn>. Its orders are LTR, DIRS, PLE, LINE and SINE in class I, and TIR, Crypton, Helitron and Maverick in class II. <span class="tip" title="Dfam: the open public database of repeat families (consensus sequences and profile models); described at the end of this section.">Dfam</span> and <span class="tip" title="RepeatMasker: the standard program that finds and masks copies of known repeat families in a genome (section 04).">RepeatMasker</span> use their own, more detailed tree that maps onto it.</p>
+  <ul>
+    <li><b>Class I, retrotransposons ("copy and paste").</b> The element is first read into an RNA copy. A <span class="tip" title="Reverse transcriptase: an enzyme that writes a DNA copy from an RNA template. Retroviruses such as HIV carry one too.">reverse transcriptase</span> then writes that RNA back into DNA at a new place. The old copy stays, so every round adds copies.</li>
+    <li><b>Class II, DNA transposons.</b> No RNA step. Most of them encode a <span class="tip" title="Transposase: the enzyme that cuts a DNA transposon out of one place and joins it into another. Most belong to the DDE type, named after three amino acids in the active site.">transposase</span> that cuts the element out and pastes it elsewhere ("cut and paste"). Helitrons copy themselves by a <span class="tip" title="Rolling-circle replication: one DNA strand is nicked and copied as a single strand that is then inserted elsewhere, a mechanism also used by some plasmids and viruses.">rolling-circle</span> mechanism; Mavericks carry a virus-like DNA polymerase.</li>
+  </ul>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Order</th><th>How it copies, what it looks like</th><th>RepeatMasker label (examples)</th><th>Share of 248 placental mammal genomes: mean (range)</th></tr></thead>
+    <tbody>
+      <tr><td><b>LINE</b><br><span class="tag">class I</span></td><td><span class="tip" title="Long INterspersed Element">Long interspersed elements</span>. <dfn>Autonomous</dfn>: they encode the proteins they need (one to three <span class="tip" title="Open reading frame: a stretch of sequence without stop codons that can be translated into a protein.">open reading frames</span>, including the reverse transcriptase). In mammals the main group is L1; of the ~868,000 L1 copies in the human genome only a few are thought to be still able to move.</td><td><code>LINE/L1</code>, <code>LINE/L2</code>, <code>LINE/RTE-BovB</code></td><td>22.6 % (8.2-52.8 %)</td></tr>
+      <tr><td><b>SINE</b><br><span class="tag">class I</span></td><td><span class="tip" title="Short INterspersed Element">Short interspersed elements</span>, a few hundred bp. <dfn>Non-autonomous</dfn>: they encode no protein and are copied by the reverse transcriptase of a partner LINE. Anatomy below.</td><td><code>SINE/Alu</code>, <code>SINE/B2</code>, <code>SINE/ID</code>, <code>SINE/MIR</code></td><td>10.5 % (0.4-32.1 %)</td></tr>
+      <tr><td><b>LTR</b><br><span class="tag">class I</span></td><td>Retrotransposons framed by two identical <span class="tip" title="Long Terminal Repeat: a sequence of a few hundred bp present at both ends of the element, in the same orientation.">long terminal repeats</span>; endogenous retroviruses (ERVs) belong here. In mammals most copies are <dfn>solo LTRs</dfn>, a single LTR without the internal part, so libraries keep the LTR and the internal part as separate models.</td><td><code>LTR/ERVK</code>, <code>LTR/ERV1</code>, <code>LTR/ERVL-MaLR</code></td><td>7.8 % (2.0-17.8 %)</td></tr>
+      <tr><td><b>DIRS, PLE</b><br><span class="tag">class I</span></td><td>Other retrotransposon orders (DIRS use a <span class="tip" title="Tyrosine recombinase: an enzyme that cuts and rejoins DNA at specific sites; it is a different enzyme family from the DDE transposases.">tyrosine recombinase</span>; PLE = Penelope-like elements). Not among the five categories counted in the mammal survey.</td><td><code>LTR/DIRS</code>, <code>PLE/…</code></td><td>not reported</td></tr>
+      <tr><td><b>TIR</b><br><span class="tag">class II</span></td><td>DNA transposons with <span class="tip" title="Terminal Inverted Repeats: the two ends of the element are the same sequence read in opposite directions. The transposase binds them.">terminal inverted repeats</span>, moved by a cut-and-paste transposase. Superfamilies hAT, Tc1-Mariner (Tigger), piggyBac, PIF-Harbinger.</td><td><code>DNA/hAT-Charlie</code>, <code>DNA/TcMar-Tigger</code></td><td>3.5 % (0.5-8.4 %)</td></tr>
+      <tr><td><b>Helitron</b><br><span class="tag">class II</span></td><td>Rolling-circle transposons. In placental mammals they have been found only in vesper bats (Vespertilionidae), so a Helitron hit in any other mammal is most likely a false annotation.</td><td><code>RC/Helitron</code></td><td>0.5 % (0.01-19.7 %)</td></tr>
+      <tr><td><b>Maverick, Crypton</b><br><span class="tag">class II</span></td><td>Rare elements: Mavericks (Polintons) encode a DNA polymerase and look like viruses; Cryptons use a tyrosine recombinase.</td><td><code>DNA/Crypton</code>, <code>DNA/Maverick</code></td><td>not reported</td></tr>
+    </tbody>
+  </table></div>
+  <p>The right-hand column is from the Zoonomia TE survey (Osmanski et al. 2023, <i>Science</i>), which curated libraries for 248 placental mammal assemblies and masked them with RepeatMasker 4.1.0. Total TE content ranged from 27.6 % in the star-nosed mole (<i>Condylura cristata</i>) to 74.5 % in the aardvark (<i>Orycteropus afer</i>), with a mean of 45.6 %. LINEs and SINEs always made up most of it. Rolling-circle and DNA transposons were almost silent recently: 240 and 210 of the 248 genomes had less than 0.1 % of young copies of these two types.</p>
+
+  <h3>What makes a SINE</h3>
+  <p>SINEs matter in this course because our lab works on them and because generic tools often miss or mislabel them (<a href="#s03">section 03</a>). SINEBase (Vassetzky &amp; Kramerov 2013) describes them as short non-autonomous retroposons, usually under 700 bp, that are transcribed by the cell's <span class="tip" title="RNA polymerase III: the cell's enzyme that makes small RNAs such as tRNAs, 5S rRNA and 7SL RNA. Its promoter lies INSIDE the gene, so any copy of the sequence carries its own promoter.">RNA polymerase III</span> (Pol III) from a promoter inside the element itself. They are built from modules:</p>
+  <figure>
+    <div class="svgbox"><svg viewBox="0 0 760 186" width="100%" style="min-width:560px" role="img" aria-label="SINE anatomy: head with A and B boxes, body with core and LINE-derived part, tail of simple repeats">
+      <rect x="20" y="50" width="250" height="44" rx="3" style="fill:var(--het);opacity:.25;stroke:var(--het)"/>
+      <rect x="270" y="50" width="150" height="44" style="fill:var(--accent);opacity:.18;stroke:var(--accent)"/>
+      <rect x="420" y="50" width="200" height="44" style="fill:var(--rep);opacity:.2;stroke:var(--rep)"/>
+      <rect x="620" y="50" width="110" height="44" rx="3" style="fill:var(--err);opacity:.3;stroke:var(--err)"/>
+      <rect x="60" y="58" width="34" height="28" style="fill:var(--het)"/>
+      <rect x="170" y="58" width="34" height="28" style="fill:var(--het)"/>
+      <text x="77" y="76" text-anchor="middle" style="fill:var(--bg);font-weight:600">A</text>
+      <text x="187" y="76" text-anchor="middle" style="fill:var(--bg);font-weight:600">B</text>
+      <text class="lab" x="145" y="38" text-anchor="middle">head</text>
+      <text class="lab" x="345" y="38" text-anchor="middle">body: core</text>
+      <text class="lab" x="520" y="38" text-anchor="middle">body: LINE-derived end</text>
+      <text class="lab" x="675" y="38" text-anchor="middle">tail</text>
+      <text x="675" y="77" text-anchor="middle" style="fill:var(--fg)">AAAAAAAA</text>
+      <text x="20" y="114">from a Pol III RNA:</text>
+      <text x="20" y="129">tRNA, 7SL RNA or 5S rRNA</text>
+      <text x="20" y="144">boxes A + B = Pol III promoter</text>
+      <text x="278" y="114">shared by distant</text>
+      <text x="278" y="129">SINE families</text>
+      <text x="278" y="144">(optional)</text>
+      <text x="428" y="114">same 3′ end as the</text>
+      <text x="428" y="129">partner LINE</text>
+      <text x="428" y="144">(optional)</text>
+      <text x="626" y="114">simple repeats,</text>
+      <text x="626" y="129">e.g. poly-A</text>
+      <text x="20" y="178">5′</text><text x="720" y="178">3′</text>
+      <line x1="40" y1="174" x2="700" y2="174" class="ax"/>
+    </svg></div>
+    <figcaption><b>A canonical SINE.</b> Dfam's class description: the median described SINE is about 250 bp (± 130 bp SD); the canonical SINE has a tRNA-derived 5′ end with the internal promoter, a core of unknown function shared with other SINE families, a 3′ end identical to that of the LINE that mobilises it, and a simple-repeat tail. Many SINEs lack the core, the LINE-derived part, or both. Not to scale.</figcaption>
+  </figure>
+  <ul>
+    <li><b>Head.</b> Derived from a small RNA made by Pol III: a <b>tRNA</b> (the canonical case in Dfam), <b>7SL RNA</b> (primate Alu, rodent B1) or <b>5S rRNA</b>. Dfam's class tree is built on this: <code>SINE;tRNA_Promoter</code>, <code>SINE;7SL-RNA_Promoter</code>, <code>SINE;5S-RNA_Promoter</code>, <code>SINE;U-RNA_Promoter</code>. Rodent B4 is filed under a combined "tRNA_and_7SL_RNA" head.</li>
+    <li><b>Body.</b> Either of unknown origin or taken from the partner LINE's 3′ end, which lets the SINE RNA be recognised by that LINE's enzyme. Some bodies contain a "core" domain shared by distant SINE families.</li>
+    <li><b>Tail.</b> Simple, often degenerate, repeats of variable length; the tail can differ between copies of one family.</li>
+    <li><b>Dimeric SINEs</b> join two monomers (single SINE units): the primate Alu is a dimer of 7SL-derived monomers. <b>Simple SINEs</b> have a head and a tail only.</li>
+  </ul>
+  <p>SINEBase's working definition, useful when you judge a candidate: (1) shorter than 1 kb and not tandem; (2) at least 100 copies per genome; (3) at least 60 % identity with a tRNA, 5S rRNA or 7SL RNA over at least 60 nt. The A and B boxes are <b>evidence, not proof</b>: pattern searches for them give many false positives and misses. A SINE is also not an <dfn>RNA pseudogene</dfn> (a reverse-transcribed copy of the cellular RNA itself): pseudogenes are fewer and lack the extra body.</p>
+
+  <h3>Tandem repeats, rDNA and duplications</h3>
+  <dl class="defs">
+    <dt>Microsatellites</dt><dd>Very short units repeated in short runs: <code>(CA)n</code>, <code>(TTAGGG)n</code>. RepeatMasker reports them as <code>Simple_repeat</code> (Dfam: "short pattern tandem repeats found in short runs"). RepeatMasker's help file says it scans only di- to pentameric and some hexameric units and ignores runs shorter than 20 bp; in the 4.2.6 code its internal TRF passes accept units of up to 10 bp (<a href="#s04">section 04</a>). Their length often differs between the two chromosome copies, and a <span class="tip" title="Variant caller: a program that compares reads with the assembly and lists the positions where they differ (variants), e.g. Clair3 or DeepVariant (section 09).">variant caller</span> may then report a run of false <span class="tip" title="SNP (single-nucleotide polymorphism): a position where one base differs, e.g. between the two chromosome copies of one animal.">SNPs</span> (<a href="#s04">section 04</a>).</dd>
+    <dt>Minisatellites</dt><dd>Units longer than microsatellite units. Authors draw the size boundaries between micro-, mini- and satellites differently, so check the definition used by each tool or paper.</dd>
+    <dt>Satellite DNA</dt><dd>Dfam: "medium to long pattern tandem repeats found in long runs". Dfam's subclasses show where they sit: centromeric, subtelomeric, acrocentric short arms, Y- and W-chromosomal (RepeatMasker labels such as <code>Satellite/centromeric</code>). Like rDNA and segmental duplications below, long near-identical arrays are among the regions assemblies most often collapse.</dd>
+    <dt><span class="tip" title="rDNA: the DNA that encodes the ribosomal RNAs. In humans one repeat unit of the large rDNA array is about 45 kb.">rDNA</span> arrays</dt><dd>The ribosomal RNA genes sit in tandem arrays of identical units. In the human <span class="tip" title="T2T-CHM13: the first complete (telomere-to-telomere) human genome sequence, made from a cell line whose two genome copies are identical.">T2T-CHM13</span> genome these lie on the short arms of the <span class="tip" title="Acrocentric chromosome: one whose centromere sits very near one end, so one arm is tiny. In humans chromosomes 13, 14, 15, 21 and 22.">acrocentric</span> chromosomes; with a ~45-kb unit, the first T2T assembly still missed about 10 Mb (about 200 units) of rDNA, which had to be assembled separately. Expect these arrays to be collapsed or missing in your assembly too.</dd>
+    <dt>Segmental duplications</dt><dd>&gt; 1 kb, &gt; 90 % identity. In humans they cover 7.0 % of the complete T2T-CHM13 genome (218 Mb), up from 5.4 % estimated on <span class="tip" title="GRCh38: the previous human reference assembly (2013), which still had gaps and collapsed repeats.">GRCh38</span>; much of the gain was sequence that older assemblies had collapsed. Duplicated genes inside them confuse gene annotation (<a href="#s07">section 07</a>).</dd>
+    <dt>Low complexity</dt><dd>Stretches of biased composition (for example AT-rich) without a clear unit. RepeatMasker label <code>Low_complexity</code>.</dd>
+  </dl>
+  <div class="note">The classes blur. A satellite can be built from a piece of a SINE: SINE-derived satellites with 67-290 bp monomers are known from scaled reptiles (Vassetzky, Kosushkin &amp; Ryskov 2023), and in the bat <i>Rhinolophus sinicus</i> we found a 140-bp, 58-copy satellite derived from an r2 SINE. A SINE library will "mask" such an array as SINE and a tandem-repeat finder will call it a satellite: both are right.</div>
+
+  <h3>Families, subfamilies and the consensus</h3>
+  <dl class="defs">
+    <dt>Family</dt><dd>All copies descended from one ancestral active element. The practical rule used by most programs, from Wicker et al. (2007): two elements belong to one family if they share at least <b>80 % identity over at least 80 % of their length, in a region of at least 80 bp</b> (the "80-80-80 rule"). Some groups use other thresholds.</dd>
+    <dt>Subfamily</dt><dd>Within a family, the copies made by one of several successive "master" source genes. They share a set of <b>diagnostic</b> substitutions and small <span class="tip" title="Indel: an insertion or deletion of one or a few bases, seen as a gap in an alignment.">indels</span> that the master carried when it made them. Average identity alone separates subfamilies badly, because most differences between two copies are private mutations each acquired after it was inserted.</dd>
+    <dt><span class="tip" title="Consensus sequence: at every column of an alignment of many copies, take the most common base.">Consensus</span></dt><dd>Align many copies of a family and take the majority base at each column. Because each copy decays independently, the majority recovers, approximately, the sequence of the active element that made them. A repeat <b>library</b> is a file of such consensus sequences (or <span class="tip" title="Profile hidden Markov model: a statistical model of the whole alignment that records which base is expected at each position and how variable it is. More sensitive than a single consensus for old, diverged copies.">profile HMMs</span> built from the alignments), one per family or subfamily, each with a name and a class label.</dd>
+  </dl>
+  <div class="toy">consensus  GGCT<span class="a">C</span><span class="a">G</span>TGGCCTAGC<span class="a">C</span><span class="a">G</span>GAATTCAGG
+copy 1     ....<span class="h">T</span>.......<span class="x">C</span>..........<span class="h">G</span>..    <span class="c">2 transitions, 1 transversion in 26 bp</span>
+copy 2     ....<span class="h">T</span>..<span class="h">A</span>.......<span class="h">T</span><span class="h">A</span>.........    <span class="c">4 transitions; the CpG at 16-17 changed on both sides (CG&gt;TA)</span>
+copy 3     .....<span class="h">A</span>....<span class="x">G</span>........<span class="x">C</span>......    <span class="c">1 transition, 2 transversions in 26 bp</span>
+copy 4     ..........................    <span class="c">no difference: a young copy</span>
+<span class="c">orange = transition, red = transversion, underlined = CpG site in the consensus.
+Copies 1 and 2 share the T at position 5: if many copies share it, it may mark a subfamily.</span></div>
+
+  <h3>How old is a copy? Divergence from the consensus</h3>
+  <p>Most TE insertions have no effect on fitness, so a copy collects mutations at the <span class="tip" title="Neutral rate: the rate at which mutations become fixed when they have no effect on fitness. In mammals about 2.2 x 10^-9 substitutions per site per year is a commonly used average.">neutral rate</span>. Its difference from the consensus (which stands for the source element) therefore grows with time since insertion. Counting raw mismatches underestimates old copies, because a site can mutate twice and only one change is visible. The <dfn>Kimura two-parameter</dfn> (K2P) distance corrects for this, treating <span class="tip" title="Transition: a change between the two purines (A↔G) or the two pyrimidines (C↔T). Transitions happen more often than transversions.">transitions</span> and <span class="tip" title="Transversion: a change between a purine and a pyrimidine, e.g. A↔C or G↔T.">transversions</span> separately. RepeatMasker computes it per alignment (<code>SearchResult.pm</code>, sub <code>calcKimuraDivergence</code>):</p>
+  <div class="formula">p = transitions / L &nbsp;&nbsp; q = transversions / L &nbsp;&nbsp; K = −½ · ln[ (1 − 2p − q) · √(1 − 2q) ] × 100 %</div>
+  <p>Here L counts the aligned positions where both the copy and the consensus have a clear base (A, C, G or T); positions opposite a gap are not counted. One more correction is specific to mammals and other animals with methylated DNA: a <span class="tip" title="CpG: a C followed by a G on the same strand. Methylated C in CpG mutates to T (and on the other strand G to A) many times faster than other sites.">CpG</span> site in the consensus mutates by transition much faster than other sites. With the <b>CpG modification</b> (on by default in RepeatMasker), at each CpG of the consensus:</p>
+  <ul>
+    <li>two transitions (CG → TA) count as <b>one</b> transition;</li>
+    <li>a single transition (CG → TG or CA) counts as <b>1/10</b> of a transition;</li>
+    <li>transversions count normally.</li>
+  </ul>
+  <p>The source comment notes that CpG transitions are about 15 times faster than other transitions in human, and less in rodents. Three different "divergence" numbers come out of one RepeatMasker run, so always check which one a table shows:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Where</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td><code>.out</code>, column "perc div."</td><td>Raw mismatches / (matches + mismatches), from the search engine's alignment. No multiple-hit or CpG correction.</td></tr>
+      <tr><td><code>.align</code>, line "Kimura (with divCpGMod) ="</td><td>K2P with the CpG rule, per alignment. The same block also prints "CpG sites = …, Kimura (unadjusted) = …" when available.</td></tr>
+      <tr><td><code>.divsum</code> from <code>util/calcDivergenceFromAlign.pl</code></td><td>Recomputes K2P with the CpG rule from the <code>.align</code> file (<code>-noCpGMod</code> turns the rule off) and sums base pairs per family and per 1 % divergence bin. This is the input of the repeat landscape in <a href="#s04">section 04</a>.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># RepeatMasker 4.2.6, util/calcDivergenceFromAlign.pl (usage line from its built-in help)</span>
+calcDivergenceFromAlign.pl -s mygenome.divsum mygenome.fa.align.gz
+<span class="c"># -noCpGMod : plain Kimura, no CpG rule;  -a new.align : also write per-alignment values</span></pre></div>
+  <p>To turn divergence into time you need a neutral substitution rate, and rates differ between lineages and along the genome. The Zoonomia survey used one mammal-wide rate, 2.2 × 10<sup>−9</sup> per site per year, under which 4 % K2P divergence is about 20 million years; the authors treat such dates as rough and use them only to call copies under 4 % "young". Copies of one family made in a short burst have similar ages, so they form a <b>peak</b> in a histogram of divergence: a <dfn>repeat landscape</dfn>.</p>
+
+  <section class="tool explain" aria-labelledby="s02-sim-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s02-sim-h">A toy genome collects transposon copies</h3></div>
+    <p class="tool-note">Three toy families insert into a 2-Mb toy genome over 100 million years (My = million years in the readouts). Move the time slider (or press Play): every copy starts identical to its consensus and then mutates at the Zoonomia rate. Watch each burst become a peak in the landscape and the peak slide to the right as the copies age. Switch the divergence measure to see what the K2P and CpG corrections do.</p>
+    <div class="slider-row"><label for="s02-t">Time</label><input type="range" id="s02-t" min="0" max="100" step="1" value="100" aria-describedby="s02-tval"><output id="s02-tval">today</output><button type="button" class="btn" id="s02-play">Play</button></div>
+    <div class="controls">
+      <div><div class="eyebrow">History</div><div class="seg" id="s02-preset" role="group" aria-label="Insertion history">
+        <button type="button" data-p="burst" aria-pressed="true">three bursts</button><button type="button" data-p="steady" aria-pressed="false">steady trickle</button><button type="button" data-p="old" aria-pressed="false">one old burst</button></div></div>
+      <div><div class="eyebrow">Divergence measure</div><div class="seg" id="s02-metric" role="group" aria-label="Divergence measure">
+        <button type="button" data-m="cpg" aria-pressed="true">K2P + CpG rule</button><button type="button" data-m="k2p" aria-pressed="false">K2P, no CpG rule</button><button type="button" data-m="raw" aria-pressed="false">raw mismatches</button></div></div>
+    </div>
+    <div class="legend" id="s02-leg"></div>
+    <div class="svgbox"><svg id="s02-act" viewBox="0 0 760 120" width="100%" style="min-width:560px" role="img" aria-label="Insertion activity of each family through time"></svg></div>
+    <div class="svgbox"><svg id="s02-genome" viewBox="0 0 760 64" width="100%" style="min-width:560px" role="img" aria-label="Toy genome with inserted copies"></svg></div>
+    <div class="svgbox"><svg id="s02-land" viewBox="0 0 760 270" width="100%" style="min-width:560px" role="img" aria-label="Repeat landscape: share of the toy genome by divergence from consensus"></svg></div>
+    <div class="readout" id="s02-out"></div>
+    <div class="controls"><div><div class="eyebrow">Show copies of</div><div class="seg" id="s02-fam" role="group" aria-label="Family shown in the alignment">
+      <button type="button" data-f="0" aria-pressed="true">SINE-like</button><button type="button" data-f="1" aria-pressed="false">LINE-like</button><button type="button" data-f="2" aria-pressed="false">DNA transposon</button></div></div></div>
+    <div class="toy" id="s02-aln" aria-live="polite"></div>
+    <p class="tool-note"><b>The model.</b> Insertion times follow the activity curves in the top panel; positions are random. Each site of a copy mutates at 2.2 × 10<sup>−9</sup> per year (two thirds transitions, one third transversions); the C and G of a CpG in the copy undergo transitions 10 times faster, until the CpG is gone. The 10 is a round toy value. Divergence is computed per copy with the same counting rules as RepeatMasker's <code>calcKimuraDivergence</code>. "Age estimate" = median divergence / rate. Real genomes add what the toy leaves out: indels, deletion of old copies, fragments, nested insertions, mutation-rate differences, and old copies so decayed that no search finds them.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: photocopies of photocopies</summary><div class="in">
+    <p>Think of a TE family as a page that a photocopier keeps copying and sticking into random places of a long book. Every page in the book then slowly fades and collects smudges, each in its own random spots.</p>
+    <p>To read the original page, line up many copies and, letter by letter, take what most of them say: that is the <b>consensus</b>. A copy with few smudges compared with the consensus was stuck in recently; a heavily smudged one is old. If the copier ran hard for a short while long ago (a <b>burst</b>), you find many copies with the same amount of smudging: a peak in the histogram.</p>
+    <p>Sometimes the copier itself got a smudge and kept copying with it. All later copies share that smudge: they form a <b>subfamily</b>. That shared smudge is "diagnostic"; the private smudges each page collected afterwards are not.</p>
+    <p>An example from our rodent species A: its largest single family is an L1 with a low mean divergence, i.e. young and recently very active (see the box below).</p>
+  </div></details>
+
+  <h3>How much of a mammal genome is repeat?</h3>
+  <p>Numbers depend on the library and the masking program as much as on the animal, so compare only results made the same way. With one curated mammal library and RepeatMasker 4.1.0, the Zoonomia survey found TE contents of 27.6-74.5 % (mean 45.6 %, mean assembly 2.67 Gb). Rodents spread widely: the hazel dormouse reached 65.8 %, the Brazilian guinea pig 28.1 %. In the same study, SINEs and LTR retrotransposons were more prevalent in Euarchontoglires (rodents, primates and their relatives), and LINEs dominated most other lineages. Genome size rose with TE content, driven mostly by young LINEs.</p>
+
+  <div class="note"><b>In our projects</b>
+    <p>For the assembly of our species A (a rodent, about 3 Gb; not yet published, so no name or exact numbers here), a RepeatMasker run with a RepeatModeler2 <span class="tip" title="De novo library: repeat families found in this genome itself, without prior knowledge (section 03).">de novo</span> library (made by the Hiller lab; exact versions not recorded) <a href="#s01">soft-masked</a> about half of the genome. Summed by RepeatMasker class, <b>Unknown was by far the largest class</b> (more than a third of the genome, hundreds of families); LINEs (all L1) came next, roughly a tenth of the genome; LTR elements (ERVK, ERV1, ERVL, ERVL-MaLR), simple repeats and DNA transposons (mostly hAT-Charlie and TcMar-Tigger) each covered only a few per cent or less; and <b>SINE: no family at all</b>. The largest single family is a young L1: a full-length consensus of several kb, tens of thousands of copies covering about 5 % of the genome, with a low mean divergence in the table (the exact divergence measure of that column is not recorded).</p>
+    <p>A rodent with no SINEs would be odd, and it is not true: over a hundred of the "Unknown" families match known rodent SINE consensus sequences (B1- and B4-like and others) and together cover more than a tenth of the genome. The de novo library found them but could not name them. <a href="#s03">Section 03</a> shows why classification is the weak step of automatic libraries.</p>
+  </div>
+
+  <h3>Repeat libraries: Dfam and RepBase</h3>
+  <p>A masker needs a library of consensus sequences or profile HMMs. Two public collections exist, and you will usually add your own de novo library (<a href="#s03">section 03</a>).</p>
+  <dl class="defs">
+    <dt>Dfam</dt><dd>Open database (licence <b>CC0</b>, public domain) run by the Dfam consortium; RepeatMasker reads it through FamDB, which its README calls optional but highly recommended. Release 4.0 (May 2026) holds 7.6 million families across 6,549 taxa. <b>Curated</b> families have <code>DF</code> accessions and were checked by people; for Mammalia these are 8,864 retrotransposon, 1,744 DNA-transposon and 177 other families. <b>Uncurated</b> families have <code>DR</code> accessions: de novo libraries submitted as they came, such as 1,704 RepeatModeler libraries from EBI in this release; for Mammalia 200,058, 40,316 and 64,079. Uncurated libraries can contain gene families, <span class="tip" title="Processed pseudogene: a dead copy of a gene made when its spliced messenger RNA was reverse-transcribed and inserted elsewhere; it has no introns. Many copies of one such gene look like a repeat family.">processed pseudogenes</span> and tandem artefacts: the Zoonomia curators removed 152 pseudogene models and more than 210 tandem-artefact models from their own de novo set before submitting it.</dd>
+    <dt>FamDB</dt><dd>Dfam's download format (<span class="tip" title="HDF5: a general binary file format for large structured data, read here with the Python package h5py.">HDF5</span> files), read by RepeatMasker and by <code>famdb.py</code>. Since FamDB 3.0 (May 2026) it is split into <b>components</b>, each partitioned along the taxonomy: <code>cc</code> curated consensus, <code>ch</code> curated HMMs, <code>uc</code> uncurated consensus, <code>uh</code> uncurated HMMs, plus one root file that is always required. For Dfam 4.0 the root file is 61 MB and the whole curated-consensus component a single 28 MB file (gzip sizes), while the uncurated HMMs come in 110 partition files of 1-4 GB each. Download only what your taxon needs; <code>famdb.py check</code> tells you which partitions a species query uses.</dd>
+    <dt>RepBase</dt><dd>The older collection of the Genetic Information Research Institute (GIRI). Since 12 April 2019 access has needed a paid subscription, and Dfam's 4.0 release notes still call it "a closed database". On 25 June 2026 GIRI announced it <b>will</b> release RepBase under CC0 and partner with Dfam. Check the current state on <a href="https://www.girinst.org/">girinst.org</a> before you plan around it.</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># famdb.py from FamDB 3.0 (syntax from its README; FamDB is now a separate package; needs Python 3 + h5py)</span>
+<span class="c"># download into one folder from https://www.dfam.org/releases/current/families/FamDB/ :</span>
+<span class="c">#   dfam40.0.h5.gz (root)  +  dfam40.curated.consensus.0.h5.gz (all curated consensi), then gunzip</span>
+famdb.py -i ./famdb info                                  <span class="c"># release, installed components and partitions</span>
+famdb.py -i ./famdb names Microtus                        <span class="c"># is the genus in the taxonomy? which partitions?</span>
+famdb.py -i ./famdb lineage -ad --format totals Rodentia  <span class="c"># families from ancestors vs. lineage-specific</span>
+famdb.py -i ./famdb check 'Mus musculus'                  <span class="c"># which partition files a query needs</span>
+<span class="c"># all curated families valid for rodents, as FASTA with "#Class/Family" in the name:</span>
+famdb.py -i ./famdb families -f fasta_name -ad --curated --include-class-in-name Rodentia &gt; rodentia_curated.fa</pre></div>
+  <p>The names in such a FASTA end in RepeatMasker's <code>#class/family</code> label (for example <code>#SINE/B2</code>), the same label that appears in the <code>.out</code> table. Each label maps to a path in Dfam's tree, for example <code>SINE/Alu</code> = Class_I_Retrotransposition; LINE-dependent_Retroposon; SINE; 7SL-RNA_Promoter; …; Alu, and to a Wicker code (R/S for SINE).</p>
+
+  <h3>Pitfalls</h3>
+  <ul>
+    <li><b>"Unknown" is not "not a TE".</b> In de novo libraries a large Unknown share often hides whole classes (our SINEs above). Report it, and try to classify it, rather than leave it out of class totals.</li>
+    <li><b>Know which divergence you plot.</b> Raw <code>.out</code> divergence, K2P, and K2P with the CpG rule give different numbers; landscapes and ages need the <code>.align</code>-based values.</li>
+    <li><b>Divergence is not a date.</b> Converting it uses an assumed neutral rate that varies between lineages; give ages as rough ranges.</li>
+    <li><b>Collapsed arrays look small.</b> Satellites, rDNA and young segmental duplications are under-assembled; their share in the assembly is a lower bound.</li>
+    <li><b>Compare like with like.</b> Repeat percentages from different libraries, tools or assembly qualities are not comparable across species.</li>
+  </ul>
+
+  <div class="note"><b>Later deep-dive: SINEs in our lab.</b> SINEs are the lab's own research topic, and they get a lesson of their own. In short: our SINEderella pipeline searches a genome with a SINE consensus bank, refines consensus sequences and boundaries, and assigns every copy to a subfamily by its diagnostic pattern of small indels and substitutions; it also has a de novo stage that finds SINEs without a library. With a lab SINE bank for the right rodent group it found on the order of a million SINE loci in species A and in its published close relative, far more than the generic library labelled as SINE (none). Our boundary and subfamily results so far come mostly from one SINE type and should not be generalised to all SINEs.</div>
+</section>

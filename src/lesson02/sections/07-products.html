@@ -1,0 +1,155 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>What the assembler gives you: collapsed, primary/alternate, haplotypes, phasing</h2>
+  <p class="lede">A diploid animal carries two copies of every chromosome (except the sex chromosomes in one sex): one from the mother, one from the father. Where the two copies are identical, an assembler can write one sequence. Where they differ, it must decide: write one copy, write both, and if both, which pieces belong together. The answer is the "product" you get, and the file names tell you which product is in your hands.</p>
+
+  <h3>Words first</h3>
+  <dl class="defs">
+    <dt>Haplotype</dt><dd>One of the two parental copies of a chromosome (or of a piece of it): the maternal haplotype and the paternal haplotype.</dd>
+    <dt>Heterozygous site / region</dt><dd>A position where the two copies carry different letters (or one has an insertion). A <dfn>heterozygous region</dfn> is a stretch with such differences close to each other. A <dfn>homozygous region</dfn> is a stretch where the two copies are identical. Lesson 1 showed how GenomeScope estimates their share (<a href="../01-pre-assembly/#gp">heterozygosity</a>).</dd>
+    <dt>Bubble</dt><dd>In the assembly graph, the two copies of a heterozygous region form two parallel paths that split and join again, like a bubble on a line. Each assembler decides what to do with every bubble.</dd>
+    <dt>Haplotig</dt><dd>A contig built from one haplotype only (<span class="tip" title="Heng Li: author of hifiasm, minimap2, yak and many other tools. The definitions quoted here come from his 2021 blog post 'Concepts in phased assemblies', which hifiasm's FAQ links to.">Heng Li</span>'s definition: "a contig that comes from the same haplotype"). A contig that mixes the mother's and the father's letters is not a haplotig.</dd>
+    <dt>Phasing</dt><dd>Sorting the letters at heterozygous sites into the two haplotypes: deciding which letters sit together on the same parental copy.</dd>
+    <dt>Phase block</dt><dd>A stretch in which all heterozygous sites are sorted relative to each other. Two neighbouring sites can be linked only if some read (or Hi-C pair, see <a href="#s05">section 05</a>) covers both. A homozygous stretch longer than the reads breaks the chain: a new block starts, and nothing tells you which side of the break goes with which.</dd>
+    <dt>Switch error</dt><dd>Inside one contig, the sequence jumps from the mother's letters to the father's (or back). Defined as "a change from one parental allele to another parental allele on a contig".</dd>
+    <dt>Hamming error</dt><dd>A letter at a heterozygous site that is not on the contig's main parent ("an allele not on the most supported haplotype of a contig"). One switch in the middle of a contig makes about half of its sites Hamming errors; one wrong letter makes two switches but only one Hamming error.</dd>
+  </dl>
+
+  <section class="tool" aria-labelledby="s07-tool-h">
+    <div class="tool-head"><span class="tool-tag">Interactive</span><h3 id="s07-tool-h">One animal, five products</h3></div>
+    <p class="tool-note">A toy genome: two chromosomes (A, 100 kb; B, 70 kb), each in a maternal and a paternal copy. Ticks are heterozygous sites; between them the two copies are identical. Pick a product to see what each output file contains. <b>Colour</b> shows which parent each stretch came from; <b style="color:var(--bad)">red marks</b> are switches. The read-length slider changes where phase blocks break (a read must reach from one heterozygous site to the next to link them). "New random choices" repeats the arbitrary decisions the assembler makes where nothing links two blocks.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Assembly product" id="s07-seg">
+        <button type="button" data-v="col" aria-pressed="true">collapsed</button><button type="button" data-v="pa" aria-pressed="false">primary + alternate</button><button type="button" data-v="bp" aria-pressed="false">partially phased</button><button type="button" data-v="hic" aria-pressed="false">Hi-C phased</button><button type="button" data-v="trio" aria-pressed="false">trio phased</button>
+      </div>
+      <label for="s07-rl"><span class="tip" title="Length of the reads that link neighbouring heterozygous sites. In this toy a read links two sites if it is longer than the distance between them.">Read length</span><output id="s07-rlo">12 kb</output><input id="s07-rl" type="range" min="3" max="40" step="1" value="12"></label>
+      <button type="button" class="btn" id="s07-roll">New random choices</button>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--het)"></i>from mother</span>
+      <span><i style="background:var(--accent)"></i>from father</span>
+      <span><i style="background:var(--muted)"></i>homozygous (identical in both)</span>
+      <span><i style="background:var(--bad)"></i>switch</span>
+    </div>
+    <div class="svgbox"><svg id="s07-svg" viewBox="0 0 960 300" width="100%" style="min-width:680px" role="img" aria-label="Toy diploid genome and the contigs written by the selected assembly product"></svg></div>
+    <div class="readout" id="s07-out" aria-live="polite"></div>
+    <p class="tool-note" id="s07-desc"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: two copies of one book</summary><div class="in">
+    <p>You inherited two copies of the same book, one from your mother and one from your father. They are the same edition, but here and there a word differs. Both copies were shredded into strips (the reads), the strips were mixed, and you must rebuild the book.</p>
+    <div class="toy">mother  The <span class="h">grey</span> cat sat on the mat. It was a ... long identical page ... day. The dog <span class="h">ran</span>.
+father  The <span class="a">black</span> cat sat on the mat. It was a ... long identical page ... day. The dog <span class="a">slept</span>.
+
+collapsed     The <span class="h">grey</span> cat ... The dog <span class="a">slept</span>.     one book, words mixed from both parents
+primary       The <span class="h">grey</span> cat ... The dog <span class="a">slept</span>.     one complete book; mixing only across the long identical page
+alternate     The <span class="a">black</span> cat sat    The dog <span class="h">ran</span>.      only the differing passages, as loose scraps
+hap1 / hap2   two complete books; each may jump parent at the identical page   (partially phased)
+trio / Hi-C   two complete books, each from one parent only              (fully phased)</div>
+    <p>A strip that contains both "grey" and "sat on the mat" proves these words belong to the same copy. A strip cannot span a long identical page, so nothing tells you whether "ran" belongs with "grey" or with "black". That page is a phase-block break. Reading a strip of the parents' own books (trio) or knowing which strips lay close together in the same copy (Hi-C) resolves it.</p>
+  </div></details>
+
+  <h3>The products, one by one</h3>
+  <ol class="steps">
+    <li><div><b>Collapsed (haploid, "pseudohaploid") assembly</b> <span class="t">Flye default; most short-read assemblers</span><div class="d">One sequence per region. At each bubble the assembler keeps one path, so parental letters "randomly switch in a contig" (Heng Li calls this a collapsed, squashed or consensus assembly). Flye's manual says it "will produce collapsed assemblies of diploid genomes, represented by a single mosaic haplotype". Where the copies differ a lot, Flye may still write the second copy as an extra contig (switch off with <code>--no-alt-contigs</code>); such leftovers are why a collapsed assembly is usually followed by duplicate purging (<a href="#s06">section 06</a>).</div></div></li>
+    <li><div><b>Primary + alternate</b> <span class="t">hifiasm <code>--primary</code> or <code>-l0</code></span><div class="d">The <span class="tip" title="Heng Li: 'a complete assembly with long stretches of phased blocks'. Contig names start with ptg.">primary</span> is complete and stays on one parent inside each phase block, but may switch at block breaks. The <span class="tip" title="Heng Li: 'an incomplete assembly consisting of haplotigs in heterozygous regions'. Contig names start with atg.">alternate</span> holds only the other copy of the heterozygous regions, as short haplotigs; it is incomplete and fragmented. hifiasm also writes this primary set (as <code>bp.p_ctg</code>) next to the partially phased sets below.</div></div></li>
+    <li><div><b>Partially phased hap1 / hap2 (a "dual assembly")</b> <span class="t">hifiasm default, reads only</span><div class="d">Two sets of contigs, each meant to be a whole haploid genome. Heng Li named this a <dfn>dual assembly</dfn>: "two sets of contigs with each set representing one complete haploid genome", which "may have occasional switches between parental haplotypes". hifiasm's README: the frequency of switches "is determined by the heterozygosity of the input sample". The labels hap1 and hap2 do not mean father and mother.</div></div></li>
+    <li><div><b>Haplotype-resolved (fully phased) with Hi-C</b> <span class="t">hifiasm <code>--h1 --h2</code></span><div class="d">Hi-C pairs (<a href="#s05">section 05</a>) link heterozygous sites millions of bases apart, so each contig "is supposed to be a haplotig". hifiasm "often puts all contigs from the same parental chromosome in one assembly", but "contigs from different parental chromosomes are randomly mixed": hap1 may hold the mother's chromosome A and the father's chromosome B.</div></div></li>
+    <li><div><b>Haplotype-resolved with trio data</b> <span class="t"><span class="tip" title="yak: Heng Li's k-mer counter; it collects the k-mers of each parent from their short reads.">yak</span> + hifiasm <code>-1 -2</code></span><div class="d">Short reads of both parents give k-mers found only in the father or only in the mother. Reads of the offspring are sorted by these k-mers before assembly ("trio binning"), so hap1 is the paternal genome and hap2 the maternal one, across all chromosomes. hifiasm's FAQ: if parental data exist, the <code>dip.hap*</code> files "should be always preferred"; otherwise Hi-C.</div></div></li>
+  </ol>
+  <p class="note"><b>One word, three meanings.</b> "Pseudohaploid" or "pseudohaplotype" is used loosely. Some people mean a collapsed assembly. The VGP Galaxy tutorial calls a primary + alternate pair a "pseudohaplotype assembly". NCBI's submission portal labels a primary/alternate pair "principal/alternate pseudohaplotype". "Diploid assembly" is just as loose: it can mean a dual assembly or a fully phased one. Always ask which files, made in which mode.</p>
+
+  <h3>Which file is which (hifiasm 0.25.0)</h3>
+  <p>hifiasm writes graphs in <span class="tip" title="Graphical Fragment Assembly format: a text file with S lines (contig name + sequence) and L lines (links between contigs). Convert to FASTA before using most tools.">GFA</span> format. The part after the prefix you gave with <code>-o</code> names the mode; the beginning of each contig name names the set. The name pattern comes from the source code: <code>ptg</code> + six digits + <code>l</code> (linear) or <code>c</code> (circular).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Data / option</th><th>Files (prefix.…)</th><th>Contig names</th><th>What it is</th></tr></thead>
+    <tbody>
+      <tr><td>HiFi or ONT reads only (default)</td><td><code>bp.p_ctg.gfa</code><br><code>bp.hap1.p_ctg.gfa</code>, <code>bp.hap2.p_ctg.gfa</code></td><td><code>ptg…</code><br><code>h1tg…</code>, <code>h2tg…</code></td><td>primary; two partially phased sets (switches between blocks)</td></tr>
+      <tr><td>reads only, <code>--primary</code> or <code>-l0</code></td><td><code>p_ctg.gfa</code>, <code>a_ctg.gfa</code></td><td><code>ptg…</code>, <code>atg…</code></td><td>primary (complete) + alternate (incomplete haplotigs)</td></tr>
+      <tr><td>+ Hi-C, <code>--h1 --h2</code></td><td><code>hic.hap1.p_ctg.gfa</code>, <code>hic.hap2.p_ctg.gfa</code>, <code>hic.p_ctg.gfa</code> (+ <code>hic.a_ctg.gfa</code> with <code>--primary</code>)</td><td><code>h1tg…</code>, <code>h2tg…</code>, <code>ptg…</code></td><td>two fully phased sets; parents mixed between chromosomes</td></tr>
+      <tr><td>+ parents, <code>-1 pat.yak -2 mat.yak</code></td><td><code>dip.hap1.p_ctg.gfa</code>, <code>dip.hap2.p_ctg.gfa</code></td><td><code>h1tg…</code>, <code>h2tg…</code></td><td>father (hap1) and mother (hap2); no duplicate purging by default</td></tr>
+      <tr><td>any of the above</td><td><code>r_utg.gfa</code>, <code>p_utg.gfa</code>, <code>*.noseq.gfa</code>, <code>*.lowQ.bed</code>, <code>*.bin</code></td><td><code>utg…</code></td><td><span class="tip" title="Unitig: a stretch of the assembly graph with no branching; unitig graphs are the raw material before hifiasm chooses contigs.">unitig</span> graphs (all haplotype detail kept), sequence-free copies for viewing, low-quality regions, saved corrected reads and overlaps (reused on re-runs with the same prefix)</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">The trio page of hifiasm's online manual writes <code>NA12878.asm.hap1.p_ctg.gfa</code> without <code>dip</code>; the README, the output page and the source code (<code>get_outfile_name()</code> adds <code>.dip</code> in trio mode) agree on <code>dip.hap1</code>.</p>
+
+  <h3>Options that change the products</h3>
+  <dl class="defs">
+    <dt><code>-l</code> <span class="tip" title="purge level">INT</span></dt><dd>How hard hifiasm removes one copy of a heterozygous region from the primary set ("purge level"): 0 none, 1 light, 2 or 3 aggressive. Default 3 without parents, 0 with trio data. <code>-l0</code> for inbred or homozygous animals; it also switches the output to primary + alternate.</dd>
+    <dt><code>-s</code> <span class="tip" title="a fraction between 0 and 1">FLOAT</span></dt><dd>How similar two copies must be to count as the same region (default 0.55 at <code>-l3</code>). If one haplotype set comes out much larger than the other, the manual says to lower it.</dd>
+    <dt><code>--hom-cov</code> <span class="tip" title="a whole number, in read coverage">INT</span></dt><dd>Read coverage of homozygous regions (the main k-mer peak, <a href="../01-pre-assembly/#gp">lesson 1</a>). Set it when hifiasm guesses it wrong: its log line <code>[M::purge_dups] homozygous read coverage threshold</code> should sit near that peak, otherwise the assembly comes out "either too large or too small".</dd>
+    <dt><code>--dual-scaf</code></dt><dd>Self-scaffolding: a gap in hap1 is bridged using the matching region of hap2, and the other way round. Inserts runs of N. In the source code it acts only when the two haplotype sets are written; the primary is not touched.</dd>
+    <dt><code>--n-hap</code> <span class="tip" title="number of haplotypes">INT</span></dt><dd>Number of haplotypes (default 2). See polyploids below.</dd>
+  </dl>
+
+  <h3>Commands</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># reads only (HiFi; add --ont for ONT R10 reads): primary + partially phased hap1/hap2</span>
+hifiasm -o sp.asm -t 32 reads.fq.gz 2&gt; sp.asm.log
+<span class="c">#   -&gt; sp.asm.bp.p_ctg.gfa   sp.asm.bp.hap1.p_ctg.gfa   sp.asm.bp.hap2.p_ctg.gfa</span>
+
+<span class="c"># primary + alternate instead</span>
+hifiasm -o sp.asm -t 32 --primary reads.fq.gz
+<span class="c">#   -&gt; sp.asm.p_ctg.gfa   sp.asm.a_ctg.gfa</span>
+
+<span class="c"># Hi-C reads from the SAME animal: two fully phased sets</span>
+hifiasm -o sp.asm -t 32 --h1 hic_R1.fq.gz --h2 hic_R2.fq.gz reads.fq.gz
+<span class="c">#   -&gt; sp.asm.hic.hap1.p_ctg.gfa   sp.asm.hic.hap2.p_ctg.gfa</span>
+
+<span class="c"># trio: k-mers of father and mother from their short reads (paired files given as two identical streams)</span>
+yak count -k31 -b37 -t16 -o pat.yak &lt;(zcat pat_R1.fq.gz pat_R2.fq.gz) &lt;(zcat pat_R1.fq.gz pat_R2.fq.gz)
+yak count -k31 -b37 -t16 -o mat.yak &lt;(zcat mat_R1.fq.gz mat_R2.fq.gz) &lt;(zcat mat_R1.fq.gz mat_R2.fq.gz)
+hifiasm -o sp.asm -t 32 -1 pat.yak -2 mat.yak reads.fq.gz
+<span class="c">#   -&gt; sp.asm.dip.hap1.p_ctg.gfa (father)   sp.asm.dip.hap2.p_ctg.gfa (mother)</span>
+
+<span class="c"># GFA -&gt; FASTA (from the hifiasm README); name the output after what it IS</span>
+awk '/^S/{print "&gt;"$2;print $3}' sp.asm.bp.p_ctg.gfa &gt; sp.primary.fa
+
+<span class="c"># check what you have before any QC: count contig-name prefixes</span>
+grep -o '^&gt;[a-z0-9]*tg' sp.primary.fa | sort | uniq -c       <span class="c"># expect only "&gt;ptg"</span>
+
+<span class="c"># switch and Hamming error rates (needs the parents' yak files)</span>
+yak trioeval -t16 pat.yak mat.yak sp.asm.dip.hap1.fa
+<span class="c">#   W  #switchErr   denominator  switchErrRate</span>
+<span class="c">#   H  #hammingErr  denominator  hammingErrRate</span></pre></div>
+  <p class="tool-note">The output example in hifiasm's trio manual reads <code>W 26714 3029448 0.008818</code> and <code>H 24315 3029885 0.008025</code>: 0.88 % switch and 0.80 % Hamming error. Time and memory: the README lists a human genome (3.1 Gb, 36× HiFi) at 7.7 h wall time and 137 GB RAM on 48 threads, and the same for the trio run. Re-running with the same <code>-o</code> prefix reuses the saved <code>*.bin</code> files, so a second mode (for example trio after a reads-only run, with <code>/dev/null</code> in place of the reads) is much faster.</p>
+
+  <h3>How phasing is measured</h3>
+  <ul>
+    <li><b>With parents:</b> <code>yak trioeval</code> counts switch and Hamming errors directly from parent-specific k-mers. <code>-e</code> prints where they are; hifiasm's FAQ uses it to find contigs that join the two parents halfway.</li>
+    <li><b>Without parents:</b> map the reads back, call heterozygous variants and phase them with <span class="tip" title="A read-based phasing program. Its phase sets (the PS tag in the VCF) are groups of variants connected by reads.">WhatsHap</span>. Its phase blocks are the groups of variants that reads connect; <code>whatshap stats</code> reports their lengths, including <span class="tip" title="Like N50 but measured against the true contig length: half of the contig is in blocks this long or longer.">block NG50</span>. This tells you how far your reads can link; it does not give switch errors.</li>
+    <li><b>Completeness of each set:</b> BUSCO (<a href="#s10">section 10</a>) and Merqury k-mer completeness (<a href="#s08">section 08</a>) on each file separately. Merqury also takes both haplotypes at once (<code>merqury.sh reads.meryl hap1.fa hap2.fa out</code>); its <span class="tip" title="The read k-mer spectrum coloured by whether each k-mer is found only in hap1, only in hap2, or in both.">spectra-asm</span> plot then shows how the read k-mers are shared between the two sets. Given parental k-mer sets as well, it reports phase blocks and switch errors.</li>
+  </ul>
+
+  <h3>What to submit, and how</h3>
+  <p>NCBI accepts the haplotypes of one animal as separate assemblies. Its rules (page "Submitting Multiple Haplotype Assemblies", updated 2025-03-25):</p>
+  <ul>
+    <li>all haplotypes share <b>one <span class="tip" title="NCBI record describing the biological specimen: species, individual, sex, tissue, locality.">BioSample</span></b> (the animal that was sequenced);</li>
+    <li>each haplotype has its <b>own <span class="tip" title="NCBI record grouping the data of one study; an umbrella BioProject groups several BioProjects.">BioProject</span></b>, and an <b>umbrella BioProject</b> links them (GenBank staff create it if needed);</li>
+    <li>labels: "principal / alternate" if one is much better, "haplotype 1 / haplotype 2" if similar, "maternal / paternal" when known (trio).</li>
+  </ul>
+  <p>VGP practice follows the data. With Hi-C (the VGP's recommended route when there are no parents), hap1 and hap2 are scaffolded <em>separately</em> and finished as two assemblies. With long reads only, the primary is purged with purge_dups and taken through scaffolding. For your own work you still need one file as "the reference" (gene annotation, BUSCO, read mapping, demography): use a complete set, the primary or the better phased haplotype, and say which one in the methods. Data deposition is covered in <a href="#s13">section 13</a>.</p>
+
+  <p class="note"><b>Polyploids and hybrids.</b> hifiasm's FAQ: its contig modules "are designed for diploid samples"; for polyploids "use primary assembly" with <code>--n-hap</code> set to the ploidy, and remove extra copies with several rounds of purge_dups. At the other extreme, a hybrid between two species or a very heterozygous animal has two copies that differ so much that hifiasm may not recognise them as one region: both land in the primary and one haplotype set comes out much larger. The manual's fix is a smaller <code>-s</code> or a correct <code>--hom-cov</code>. Trio binning sorts reads by parent-specific k-mers, so it does not depend on the copies being similar.</p>
+
+  <div class="note">
+    <p><b>In our projects</b></p>
+    <ul>
+      <li><b>Species A (an unpublished rodent genome): the hap1-vs-primary mix-up.</b> hifiasm 0.25.0 ran with <code>--ont --telo-m CCCTAA -f38</code> (ONT-type reads; keep telomere ends with motif CCCTAA; <code>-f38</code>, which the README suggests for genomes larger than human to save memory in k-mer counting) and no Hi-C, so it wrote <code>bp.p_ctg</code>, <code>bp.hap1.p_ctg</code> and <code>bp.hap2.p_ctg</code>. A follow-up script took the first file matching <code>*.p_ctg.gfa</code>; <code>bp.hap1.p_ctg.gfa</code> sorts before <code>bp.p_ctg.gfa</code>, so every "hifiasm" number first sent to collaborators (a lower BUSCO and about half the N50) was haplotype 1. The converted file <code>…_hifiasm.p_ctg.fa</code> had headers <code>h1tg…</code>. Once the real primary was measured it was the best assembly on both contiguity and BUSCO.</li>
+    </ul>
+    <div class="tbl"><table>
+      <thead><tr><th>file</th><th>contigs</th><th>contig N50</th><th>BUSCO complete / missing</th><th>Merqury QV / k-mer completeness</th></tr></thead>
+      <tbody>
+        <tr><td><b>primary</b> <code>bp.p_ctg</code> (<code>ptg</code>)</td><td>fewest</td><td>longest (above 10 Mb)</td><td>highest / below 1 %</td><td>highest / highest</td></tr>
+        <tr><td>hap1, <code>--dual-scaf</code> (<code>h1tg</code>)</td><td>more</td><td>about half the primary's (scaffold, with many Mb of N)</td><td>about 8 points lower / about 8 %</td><td>almost the same / about 7 points lower</td></tr>
+        <tr><td>hap1, no scaffolding</td><td>about 3 times the primary</td><td>about 4 times shorter</td><td>about 8 points lower / about 8 %</td><td>–</td></tr>
+        <tr><td>hap2 (<code>h2tg</code>)</td><td>more</td><td>–</td><td>lower still / –</td><td>–</td></tr>
+      </tbody>
+    </table></div>
+    <ul>
+      <li><b>Partially phased sets need not be complete.</b> hap1 lost genes as Missing (several percent), not as Fragmented; polishing it did not bring them back.</li>
+      <li><b>QV cannot see what is absent.</b> hap1 and the primary have nearly the same QV (a fraction of a unit apart), because QV only penalises wrong k-mers. The missing sequence shows up in BUSCO and in k-mer completeness (about 7 points lower in hap1). These QVs come from the long reads' own k-mers, so they rank assemblies but are not absolute accuracy.</li>
+      <li><b><code>--dual-scaf</code> changes only hap1/hap2.</b> The primary <code>bp.p_ctg.gfa</code> was byte-identical with and without it.</li>
+      <li><b>How far reads phase.</b> WhatsHap on the same reads phased nearly all heterozygous <span class="tip" title="Single-nucleotide polymorphisms: positions where the two copies differ by one letter.">SNPs</span>, with blocks spanning most of each contig (one of the longest contigs fell into just two blocks; block NG50 in the tens of Mb). Linking blocks across whole chromosomes needs Hi-C; about 45× Hi-C was recommended for this animal.</li>
+      <li><b>Species B and C.</b> Flye followed by purge_dups gives one collapsed set per animal; there are no haplotype files to mix up, but also no second haplotype.</li>
+    </ul>
+  </div>
+</section>

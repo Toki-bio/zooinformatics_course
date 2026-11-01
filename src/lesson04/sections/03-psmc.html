@@ -1,0 +1,155 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>PSMC: reading population size from one genome</h2>
+  <p class="lede">PSMC (the <dfn>pairwise sequentially Markovian coalescent</dfn>, Li &amp; Durbin 2011) takes the heterozygous sites of one diploid genome and returns a curve of "effective population size" through time. It is the most used method of this lesson and the one every other method is compared with. This section explains what the program actually does, what each option means, how to bootstrap it, how to plot it, and what the curve can and cannot tell you.</p>
+
+  <h3>The idea in four terms</h3>
+  <dl class="defs">
+    <dt>Coalescence and TMRCA</dt><dd>Follow the two copies of one piece of chromosome back in time. At some generation they come from the same ancestral copy: they <dfn>coalesce</dfn>. The time back to that copy is the <dfn>TMRCA</dfn> (time to the most recent common ancestor). The older the TMRCA, the more mutations have built up on the two lineages, so the more heterozygous sites that piece carries.</dd>
+    <dt>Segments</dt><dd>Recombination cuts the chromosome into pieces with different ancestors, so the TMRCA changes along the genome. Neighbouring positions usually share an ancestor, which is why a genome can be read as a mosaic of segments, each with its own age.</dd>
+    <dt>Coalescence rate and population size</dt><dd>In a single randomly mating (<span class="tip" title="Panmictic: every individual is equally likely to mate with any other; no subpopulations, no isolation by distance.">panmictic</span>) population of N diploid individuals, two lineages coalesce with probability 1/(2N) per generation. A small population makes coalescence fast (many young segments); a large one makes it slow (many old segments). PSMC turns the distribution of segment ages back into N through time.</dd>
+    <dt>Hidden Markov model (HMM)</dt><dd>A model that walks along the sequence, at each step in one of several hidden states it cannot see directly (here: the TMRCA of that position), and scores what it does see (heterozygous or not) under each state. The <dfn>Markov</dfn> part means the state at the next step depends only on the current one; in PSMC a state change is a recombination event.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: how one genome holds many ages</summary><div class="in">
+    <p>Line up the two copies of a chromosome of one mouse and mark every difference. You will see stretches with almost no differences and stretches where they are dense:</p>
+    <div class="toy">copy 1  ACGTTAGCATGACCTTAGACGTTAGGA<span class="h">T</span>CCAGTTA<span class="h">C</span>AGGCT<span class="h">A</span>CCTAGTACG<span class="h">G</span>TAGCT
+copy 2  ACGTTAGCATGACCTTAGACGTTAGGA<span class="h">C</span>CCAGTTA<span class="h">T</span>AGGCT<span class="h">G</span>CCTAGTACG<span class="h">A</span>TAGCT
+        <span class="a">|--- young segment: few hets ---|</span><span class="h">|---- old segment: many hets ----|</span></div>
+    <p>The left piece was inherited from an ancestor who lived, say, 20,000 generations ago; the right piece from one who lived 200,000 generations ago and had ten times as long to collect mutations. In a 2.5-Gb genome there are millions of such pieces. If the population was small 50,000 years ago, many pieces will have coalesced then, and the genome will hold an excess of segments of that age. PSMC finds the population-size history that best explains how often each age appears.</p>
+    <p>Two limits follow directly. Very young segments are rare (two copies rarely share an ancestor that recent unless the population is tiny), so the recent past is poorly sampled. Very old segments are rare too, because most pairs of lineages have found their common ancestor long before, and they are short (recombination had a long time to cut them), so the far past is poorly sampled as well. And each segment carries only a few heterozygous sites, so the age of any single segment is known only roughly: the curve is a blurred image of the history.</p>
+  </div></details>
+
+  <h3>What PSMC does, step by step</h3>
+  <ol class="steps">
+    <li><div><b>Input: one line of bins per sequence</b><div class="d">The callable genome, cut into 100-bp bins: <code>T</code> = no heterozygous site, <code>K</code> = at least one, <code>N</code> = not enough callable bases. How to build this <code>.psmcfa</code> file is in <a href="#s02">s02</a>.</div><div class="t">fq2psmcfa · our own script</div></div></li>
+    <li><div><b>Hidden states: discretised coalescence times</b><div class="d">Time is cut into atomic intervals (64 with the usual setting). Each bin's hidden state is the interval its TMRCA falls in. The chance of a <code>K</code> bin depends on that state: older TMRCA, more mutations.</div></div></li>
+    <li><div><b>Transitions: recombination</b><div class="d">Moving to the next bin, a recombination can change the TMRCA. How often it changes and to which interval follows from the coalescent with the current population sizes.</div></div></li>
+    <li><div><b>Fit by EM</b><div class="d">The <span class="tip" title="Expectation-maximisation: alternate between (E) computing, for the current parameters, how probable each hidden state is at each bin, and (M) choosing new parameters that best explain those expected states. Each round can only improve the likelihood.">EM algorithm</span> adjusts the scaled mutation rate θ<sub>0</sub>, recombination rate ρ<sub>0</sub> and one relative size λ per parameter group, round after round (<code>-N</code>).</div><div class="t">psmc</div></div></li>
+    <li><div><b>Scale and plot</b><div class="d">Everything comes out in units of 2N<sub>0</sub> generations; a mutation rate and a generation time turn it into years and individuals.</div><div class="t">psmc_plot.pl · <a href="#s04">s04</a></div></div></li>
+  </ol>
+
+  <h3>The time intervals and the <code>-p</code> pattern</h3>
+  <p>PSMC cuts time between 0 and a maximum T<sub>max</sub> (option <code>-t</code>, in units of 2N<sub>0</sub> generations) into n atomic intervals whose boundaries grow exponentially: fine near the present, coarse in the past. From the source (<code>core.c</code>):</p>
+  <div class="formula">t<sub>k</sub> = 0.1 × ( e<sup>β·k</sup> − 1 ),   β = ln(1 + 10·T<sub>max</sub>) / n,   k = 0 … n   (last interval: T<sub>max</sub> to ∞)</div>
+  <p>Estimating a separate size in each of 64 intervals would overfit, so the <code>-p</code> pattern ties neighbouring intervals to one shared parameter. In <code>"4+25*2+4+6"</code> each number is a group and <code>25*2</code> means 25 groups of 2:</p>
+  <div class="tbl"><table style="min-width:480px">
+    <thead><tr><th>Part of the pattern</th><th>Groups</th><th>Atomic intervals</th><th>Where in time</th></tr></thead>
+    <tbody>
+      <tr><td><code>4</code></td><td>1</td><td>1–4</td><td>the most recent group: one size for the whole recent past</td></tr>
+      <tr><td><code>25*2</code></td><td>25</td><td>5–54</td><td>the main body of the curve</td></tr>
+      <tr><td><code>4</code></td><td>1</td><td>55–58</td><td>old</td></tr>
+      <tr><td><code>6</code></td><td>1</td><td>59–64</td><td>oldest, including the open-ended last interval</td></tr>
+      <tr><td><b>total</b></td><td><b>28</b> free sizes</td><td><b>64</b></td><td></td></tr>
+    </tbody>
+  </table></div>
+  <p>The README states the rule for choosing <code>-p</code> and <code>-t</code>: after 20 iterations at least about 10 recombinations should be inferred in the intervals each parameter spans; "impropriate settings may lead to overfitting", and the example line "has been shown to be suitable for modern humans". Nothing guarantees it suits your species. One example: with N<sub>0</sub> = 50,000 and one year per generation (round toy values), the first group of 4 intervals covers roughly the last 3,800 years and the oldest group begins near 1 million years (our arithmetic from the formula; <code>-t</code> is only a starting value, since PSMC also refits T<sub>max</sub>, printed on the <code>MT</code> line). How splitting that first group changes the youngest part of the curve is a check in <a href="#s06">s06</a>.</p>
+
+  <h3>Options</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Option</th><th>Meaning (from the source)</th><th>Program default</th><th>README / our runs</th></tr></thead>
+    <tbody>
+      <tr><td><code>-p STR</code></td><td>Pattern of atomic intervals and grouped parameters (above)</td><td><code>4+5*3+4</code></td><td><code>4+25*2+4+6</code></td></tr>
+      <tr><td><code>-t FLOAT</code></td><td>Maximum coalescence time, in units of 2N<sub>0</sub>; starting value, refitted during EM</td><td>15</td><td>15</td></tr>
+      <tr><td><code>-r FLOAT</code></td><td>Initial θ/ρ ratio: the starting recombination rate is the starting θ divided by this. θ<sub>0</sub> starts from the share of <code>K</code> bins; both are then re-estimated</td><td>4</td><td>5</td></tr>
+      <tr><td><code>-N INT</code></td><td>Number of EM iterations; the output holds every round</td><td>30</td><td>25</td></tr>
+      <tr><td><code>-o FILE</code></td><td>Output file</td><td>standard output</td><td></td></tr>
+      <tr><td><code>-b</code></td><td>Bootstrap: resample the input sequences with replacement to the original total length (input made by <code>splitfa</code>)</td><td>off</td><td>20 rounds</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">The program defaults differ from the README command, so always write all four options. Other switches (<code>-d</code> decoding, <code>-S</code> simulation, <code>-T</code> divergence model, <code>-i</code> starting parameters) are not needed for a standard run.</p>
+
+  <h3>The <code>.psmc</code> output</h3>
+  <p>A text file with one block per EM round, each block starting with <code>RD</code> and the round number (<code>RD 0</code> = the starting values). The lines that matter:</p>
+  <ul>
+    <li><code>MM</code>: messages, including the version (<code>MM Version: 0.6.5-r…</code>), the pattern and the number of bins used (<code>sum_L</code>) and heterozygous bins (<code>sum_n</code>).</li>
+    <li><code>LK</code>: the <span class="tip" title="Log-likelihood: the logarithm of how probable the data are under the fitted model. Higher (closer to zero) is a better fit; only differences between fits to the same data mean anything.">log-likelihood</span> of the data; it should rise and level off over the rounds.</li>
+    <li><code>TR θ<sub>0</sub> ρ<sub>0</sub></code>: scaled mutation and recombination rate per bin. θ<sub>0</sub> sets the scale of everything: N<sub>0</sub> = θ<sub>0</sub> / (4 μ s), with μ per site per generation and s the bin size (100).</li>
+    <li><code>RS k t<sub>k</sub> λ<sub>k</sub> …</code>: one line per atomic interval: its start time (units of 2N<sub>0</sub>), the relative size λ<sub>k</sub>, and, in our reading of the source, the number of recombinations the model expects in that interval (sum it over each parameter group to check the README's "about 10" rule). Size = λ<sub>k</sub> × N<sub>0</sub>; time = t<sub>k</sub> × 2N<sub>0</sub> generations.</li>
+  </ul>
+
+  <h3>Bootstrap</h3>
+  <p>A single curve has no error bars. <code>splitfa</code> cuts every sequence of the <code>.psmcfa</code> into pieces of 500,000 bins (50 Mb at 100-bp bins; the second argument changes it; a remainder shorter than half a piece stays attached to the last piece). With <code>-b</code>, PSMC draws pieces at random with replacement until it has the original total length, and fits that. Twenty to a hundred such rounds, drawn as thin lines around the main curve, show how much the curve would change if the genome had been a different sample of segments. Li &amp; Durbin used 5-Mb pieces; the README example uses 100 rounds.</p>
+  <p class="note warn"><b>What bootstraps do not measure.</b> They resample the same calls under the same model. False heterozygous sites, a bad callable mask, a pattern that overfits the first interval, or population structure move every bootstrap line together, and the band stays narrow. Those need the separate checks of <a href="#s06">s06</a>.</p>
+
+  <h3>What the y axis really is</h3>
+  <p>PSMC estimates how fast two lineages coalesced at each time and reports the inverse of that rate, scaled as a population size. Mazet et al. (2016) named this quantity the <dfn>IICR</dfn> (inverse instantaneous coalescence rate) and showed that it "is equivalent to a population size only in panmictic models". With subpopulations exchanging migrants, a population of constant size can give a curve with apparent bottlenecks and expansions, and Li &amp; Durbin themselves offered population structure as an alternative reading of the human hump between 60 and 250 thousand years ago. So the y axis is an <b>effective</b> size, a summary of how related the two genome copies were, not a count of animals. A change in it can mean a change in numbers, in connectivity between populations, or both (<a href="#s01">s01</a>).</p>
+
+  <section class="tool explain" aria-labelledby="s03-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-toy-h">A true history and what a PSMC-like fit makes of it</h3></div>
+    <p class="tool-note">You write the true history: an ancestral population of 100,000 with one bottleneck. The toy computes the exact distribution of coalescence times for that history, then blurs each segment's age the way a few heterozygous sites per segment do, and fits sizes in PSMC's own time intervals and <code>-p</code> groups by 25 EM rounds starting from a constant size. Grey lines are bootstrap fits to random samples of segments. It is <b>not</b> PSMC (no HMM, segments independent, one generation = one year), but it reproduces the three things to learn: sharp changes come out smooth and shallow, the most recent and the oldest parts are noisy, and the bands show only sampling noise. Time units used from here on: kya = thousand years ago, ky = thousand years, My (Mya) = million years (ago).</p>
+    <div class="controls" role="group" aria-label="True history">
+      <label for="s03-t">Bottleneck time (its middle) <output id="s03-t-o">30 kya</output><input type="range" id="s03-t" min="3" max="6.3" step="0.05" value="4.477"></label>
+      <label for="s03-d">Size during the bottleneck <output id="s03-d-o">10 %</output><input type="range" id="s03-d" min="-2" max="0" step="0.05" value="-1"></label>
+      <label for="s03-w">Bottleneck length <output id="s03-w-o">10 ky</output><input type="range" id="s03-w" min="2.7" max="5.3" step="0.05" value="4"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">After the bottleneck
+        <div class="seg" role="group" aria-label="After the bottleneck" id="s03-after"><button type="button" data-v="rec" aria-pressed="true">recovers</button><button type="button" data-v="low" aria-pressed="false">stays small</button></div></div>
+    </div>
+    <div class="controls" role="group" aria-label="The fit">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Pattern (-p)
+        <div class="seg" role="group" aria-label="Pattern" id="s03-pat"><button type="button" data-v="4+25*2+4+6" aria-pressed="true">4+25*2+4+6</button><button type="button" data-v="2+2+25*2+4+6" aria-pressed="false">2+2+…</button><button type="button" data-v="1+1+1+1+25*2+4+6" aria-pressed="false">1+1+1+1+…</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Independent segments per bootstrap
+        <div class="seg" role="group" aria-label="Independent segments" id="s03-n"><button type="button" data-v="3000" aria-pressed="false">3,000</button><button type="button" data-v="30000" aria-pressed="true">30,000</button><button type="button" data-v="300000" aria-pressed="false">300,000</button></div></div>
+      <button type="button" class="btn" id="s03-new" style="align-self:center">new bootstraps</button>
+    </div>
+    <div class="legend" id="s03-legend"></div>
+    <div class="svgbox" id="s03-fig"></div>
+    <div class="readout" id="s03-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) With the default 10-ky bottleneck at 30 kya, the fitted dip is wider than the truth, its lowest step about twice the true minimum, and its decline begins tens of thousands of years before the true drop: the history is smeared over neighbouring intervals, as Li &amp; Durbin saw when an instant ten-fold drop at 100 kya "was spread over the preceding 50,000 years". The fit may also overshoot just after the dip; here that is a side effect of undoing the blur, and in real data a peak next to a dip deserves the checks of <a href="#s06">s06</a>. (2) Make the bottleneck short (2 ky) and it nearly disappears; make it long (100 ky) and the fit finds its real depth. (3) Move it below about 10 kya: it falls into the first parameter group and the fit cannot place it. Split that group (<code>2+2+…</code>, <code>1+1+1+1+…</code>) and the grey lines in the newest intervals scatter or run off the top: more parameters than recent segments can support. (4) The oldest group is noisy too, because few segments are that old; move a 10-ky bottleneck to 2 Mya and it leaves no trace at all. (5) Choose 300,000 segments: the grey band shrinks, but the smoothing of the main line does not. More data narrows the band around the same smoothed answer.</p>
+  </section>
+
+  <h3>From the fit to the figure: psmc_plot.pl</h3>
+  <p><code>utils/psmc_plot.pl</code> (version 0.2.0 in the current repository) reads one or more <code>.psmc</code> files, scales them and draws an EPS figure (a vector image format that can be converted to PDF) with the plotting program gnuplot. Its defaults are set for humans, so set them yourself:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Option</th><th>Meaning</th><th>Default</th></tr></thead>
+    <tbody>
+      <tr><td><code>-u</code></td><td>Mutation rate per site per generation, μ</td><td>2.5e-8 (human)</td></tr>
+      <tr><td><code>-g</code></td><td>Years per generation</td><td>25 (human)</td></tr>
+      <tr><td><code>-s</code></td><td>Bin size used to make the input</td><td>100</td></tr>
+      <tr><td><code>-x</code> / <code>-X</code></td><td>Left / right end of the time axis, in plotted units (years)</td><td>10,000 / automatic</td></tr>
+      <tr><td><code>-Y</code></td><td>Top of the size axis (units of 10<sup>4</sup>)</td><td>automatic</td></tr>
+      <tr><td><code>-n</code></td><td>Which EM round to plot</td><td>20</td></tr>
+      <tr><td><code>-R</code></td><td>Keep the text tables (<code>prefix.0.txt</code>, <code>prefix.1.txt</code>, …): years, size in units of 10<sup>4</sup>, expected recombinations, two model probabilities</td><td>tables deleted</td></tr>
+      <tr><td><code>-L</code></td><td>Also draw the last (oldest) parameter group, which is otherwise left out</td><td>left out</td></tr>
+      <tr><td><code>-N</code> / <code>-M</code></td><td>False-negative rate of het calls, to correct low coverage; several samples with titles</td><td>0 / none</td></tr>
+      <tr><td><code>-p</code></td><td>Also make a PDF (needs <code>epstopdf</code>)</td><td>EPS only</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Three defaults catch people. <code>-x 10000</code> cuts off everything younger than 10,000 years; for a rodent with one generation per year that hides the first few parameter groups (fine, if you remember why). <code>-n 20</code> plots round 20 even when you ran 25; give <code>-n 25</code> to see the last round. Without <code>-R</code> you have only a picture; with it you have the numbers to replot, rescale (<a href="#s04">s04</a>) or compare. In the tables the size column is λ<sub>k</sub>N<sub>0</sub>/10,000, so multiply by 10,000.</p>
+  <p>With <code>-u</code> and <code>-g</code> the script computes N<sub>0</sub> = θ<sub>0</sub> / (4 μ s), times as 2N<sub>0</sub> t<sub>k</sub> g years and sizes as λ<sub>k</sub> N<sub>0</sub>. A different μ or g moves the whole curve along both axes without changing its shape; that is the subject of <a href="#s04">s04</a>.</p>
+
+  <h3>Commands</h3>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># PSMC from github.com/lh3/psmc (current master reports 0.6.5-r74; our runs used 0.6.5-r67)</span>
+git clone https://github.com/lh3/psmc.git && cd psmc
+make && (cd utils && make)
+
+<span class="c"># main fit: 25 EM rounds, T_max 15 x 2N0, theta/rho starts at 5, 64 intervals in 28 groups</span>
+psmc -N25 -t15 -r5 -p "4+25*2+4+6" -o sample.psmc sample.psmcfa
+
+<span class="c"># bootstrap: cut into 500,000-bin pieces, then 20 resampled fits, 8 at a time</span>
+utils/splitfa sample.psmcfa > split.psmcfa
+seq 20 | xargs -P 8 -I{} psmc -N25 -t15 -r5 -b -p "4+25*2+4+6" -o round-{}.psmc split.psmcfa
+cat sample.psmc round-*.psmc > combined.psmc
+
+<span class="c"># plot: mu per site per generation, years per generation (placeholders, see s04);</span>
+<span class="c"># x axis from 1,000 years, last EM round, keep the tables, also write a PDF</span>
+utils/psmc_plot.pl -u 5.4e-9 -g 1 -x 1000 -n 25 -R -p combined combined.psmc
+<span class="c"># -> combined.eps, combined.pdf, combined.0.txt (main fit) ... combined.20.txt (bootstraps)</span></pre></div>
+  <p class="tool-note">The plot script needs Perl and gnuplot. In the README's bootstrap example the resampled input is named <code>split.fa</code> although <code>splitfa</code> wrote <code>split.psmcfa</code> one line above; use the file you actually wrote. Each bootstrap is a full PSMC run, so run them in parallel (<code>-P</code>) and on a server, not a laptop. The psmc, splitfa and psmc_plot.pl options above were checked against the source code; we could not run this exact plotting line on this machine.</p>
+
+  <h3>Reading a PSMC curve</h3>
+  <ul>
+    <li><b>The middle is the most reliable part.</b> For their human data Li &amp; Durbin wrote that "more recently than 20 kya or more anciently than 3 Mya few recombination events are left in the present sequence", and the estimate there "is not as accurate and has large variance". Those numbers are for humans at μ = 2.5 × 10<sup>-8</sup> and 25 years per generation; for your species the limits move with N<sub>0</sub>, μ and g. In our species A genome (below) the youngest intervals did not survive the checks; as a rule of thumb for mammals, do not interpret the last 10 to 20 thousand years unless several independent checks agree.</li>
+    <li><b>Sharp events come out smooth.</b> A sudden drop appears as a slope starting earlier than the real event, and a short bottleneck as a shallow dip or not at all. Read the timing of a change to within its neighbouring intervals, not to a year.</li>
+    <li><b>A hump is not necessarily growth.</b> Rising IICR can mean more animals or less connected subpopulations (Mazet et al. 2016). A sharp recent peak followed by a collapse can be an artefact of the first parameter group (<a href="#s06">s06</a>).</li>
+    <li><b>Compare like with like.</b> Two curves on one figure need the same μ, g, bin size, pattern and comparable call filters; otherwise their difference may come from the settings.</li>
+  </ul>
+
+  <div class="note"><b>In our projects</b>
+    <p>Species A, one male, ONT reads at a depth of a few tens ×, autosomal contigs only; <code>psmc -N25 -t15 -r5 -p "4+25*2+4+6"</code>, 20 bootstraps; scaled with μ = 5.4 × 10<sup>-9</sup> per generation and one year per generation, which are placeholders not verified for this species. The present-day N<sub>0</sub> was about half the long-term N<sub>e</sub> computed from the same genome's average heterozygosity (<a href="#s01">s01</a>). This is not a contradiction: N<sub>0</sub> is only PSMC's reference size for the most recent time interval, the unit in which the curve is drawn, while the value from heterozygosity is a long-term average over the whole history the genome remembers, older and larger periods included.</p>
+    <p>The shape, described in words: a long plateau in the distant past, a decline to less than half of it, a short bump, and a collapse to a small fraction of the plateau in the most recent intervals. The bootstrap lines are tight in the old part and spread in the recent part.</p>
+    <p>A second test showed why the recent part needs more than bootstraps. On a test subset of the genome, six call sets (all reads or either of two independent halves of the reads, each with two different filters) gave curves that coincide over the old part of the history, scatter in the middle, and diverge wildly in the youngest intervals. Old is reproducible; recent depends on the call set.</p>
+    <p>The relative (public HiFi assembly, same settings) gives a different shape: a large peak about twice the height of species A's old plateau, with a deep low point further back in time, against the flatter species A curve with its recent collapse. Whether such differences reflect numbers or connectivity is the question of <a href="#s05">s05</a> to <a href="#s07">s07</a>.</p>
+  </div>
+
+  <p class="note"><b>Next.</b> Every number on a PSMC axis depends on the mutation rate and the generation time you assumed. <a href="#s04">s04</a> shows how to choose them and how the curve moves when they change.</p>
+</section>

@@ -1,0 +1,9 @@
+#s01-wrap .seg{flex-wrap:wrap}
+#s01-wrap .s01-tbl td:first-child{width:22px}
+@media (max-width:640px){
+  #s01-wrap .s01-tbl table{min-width:0}
+  #s01-wrap .s01-tbl thead{display:none}
+  #s01-wrap .s01-tbl tr{display:grid;grid-template-columns:22px 1fr auto;column-gap:8px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  #s01-wrap .s01-tbl td{border:0;padding:0}
+  #s01-wrap .s01-tbl td:last-child{grid-column:2 / 4;margin-top:4px}
+}

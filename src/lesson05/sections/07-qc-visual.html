@@ -1,0 +1,137 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Quality checks and viewing methylation</h2>
+  <p class="lede">A methylation table looks equally convincing whether it is right or wrong: every CpG gets a percentage. This section shows how to check that the numbers deserve trust before you interpret them, how to look at methylation on single reads and along a chromosome, and what to keep from a sequencing run so that methylation can still be measured years later.</p>
+
+  <h3>Step 0: does the file carry methylation at all?</h3>
+  <p>Methylation calls travel inside the reads, in two tags described in <a href="#s02">section 02</a>: <code>MM</code> (which bases carry which <span class="tip" title="A chemical change to a DNA base that does not change which base it is, for example a methyl group added to a C (5mC).">modification</span>) and <code>ML</code> (how likely each one is). A file without these tags has no methylation in it, whatever its name says. Check three things before any analysis:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. Which modification tags are present, and are they valid? (modkit 0.6.4)</span>
+modkit modbam check-tags reads.bam -n 100000 --out-dir tag_check
+<span class="c"># 2. Which basecall model and which modification model made them?</span>
+samtools view -H reads.bam | grep '^@RG'
+<span class="c">#    Dorado writes them into the read-group DS field:</span>
+<span class="c">#    ... basecall_model=dna_r10.4.1_e8.2_400bps_sup@v5.2.0 modbase_models=..._5mCG_5hmCG@v2</span>
+<span class="c"># 3. Did you receive FASTQ? Then look at a header: tags survive only if someone copied them</span>
+head -1 reads.fastq</pre></div>
+  <p><code>check-tags</code> counts records whose tags are broken (and exits with an error if there are any, unless given <code>--permissive</code>) or do not follow the <span class="tip" title="The SAM tags specification of the hts-specs project, which defines MM and ML. Every tool on this page reads the tags as that document defines them.">SAM tag specification</span>, and lists which base carries which code (for example <code>C+m?</code>: 5mC on cytosine). Modkit otherwise skips unusable records with only a log message, so this is the step that tells you how much of your data is silently ignored. FASTQ is a text format without a place for tags: they reach a FASTQ header only if they were copied on purpose, for example with <code>samtools fastq -T MM,ML</code>, and reach an alignment only if the aligner copies header comments (minimap2 <code>-y</code>). Methylation is most often lost not in the laboratory but in a file conversion.</p>
+
+  <div class="note">In our projects: the long reads of species A (a rodent) arrived as one FASTQ whose headers carry no basecaller model, no read group, no <code>MM</code>/<code>ML</code> tags, and no raw signal files came with them. Step 0 ends there: there is nothing to check, and the methylation of this animal cannot be read from these files. Our request to the provider for the raw signal and run details is recorded in the lab project log as still pending.</div>
+
+  <h3>Call probabilities: is the model sure?</h3>
+  <p>For every C in a CpG the basecaller gives a probability that it is 5mC (and, with a 5mCG_5hmCG model, 5hmC). Modkit computes the probability that the base is unmodified as one minus the sum of the modification probabilities, and keeps a call only when the most likely class reaches a <dfn>pass threshold</dfn>. Calls below it are not removed from the read; they are counted as failed. By default modkit <b>estimates</b> the threshold from your data: it samples the call probabilities and takes the value below which the lowest-confidence 10 % lie (option <code>--filter-percentile</code> of <code>pileup</code>, called <code>--filter-quantile</code> in <code>modbam summary</code>; default 0.1). So about one call in ten fails by design, and the threshold it prints is itself a quality number: the lower it is, the less sure the model is about its weakest tenth.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># distribution of call probabilities, with histograms (HTML) and a table, from ~10,000 reads</span>
+modkit modbam sample-probs reads.bam --num-reads 10000 --hist -o probs_out
+<span class="c"># the thresholds that pileup would use, per base</span>
+modkit modbam sample-probs reads.bam --num-reads 10000</pre></div>
+  <p>The modkit documentation shows output such as <code>C 10 0.6972656</code>: the 10th-percentile threshold for cytosine calls was 0.70 in that example dataset. The docs recommend letting modkit estimate the threshold, and inspecting the histograms when working with "exotic organisms or specialized assays", which describes most zoological genomes. Our reading of the shape (not a rule from the docs): a model that recognises its input puts most probabilities near 0 and near 1; a big hump in the middle means it is guessing.</p>
+
+  <h3>The summary table</h3>
+  <div class="code"><button type="button">copy</button><pre>modkit modbam summary reads.bam --num-reads 20000
+<span class="c"># only CpG positions where the read base matches the reference (needs an aligned, indexed BAM)</span>
+modkit modbam summary aligned.bam -r genome.fa --cpg --num-reads 20000</pre></div>
+  <p>The output starts with lines beginning with <code>#</code> (bases with calls, reads used, modification codes, the pass threshold per base) and then a table with one row per base and code: <code>-</code> for unmodified, <code>m</code> for 5mC, <code>h</code> for 5hmC. <code>pass_frac</code> is the share of passing calls with that code; <code>all_frac</code> the share of all calls. Two quick checks: the codes are the ones you expected from the model name, and the <code>m</code> fraction is plausible for your animal and context (<a href="#s01">section 01</a>). Without <code>--cpg</code> or <code>--matched-only</code>, modkit also counts calls on read bases that do not match the reference.</p>
+
+  <h3>Coverage per site</h3>
+  <p><code>modkit pileup</code> (<a href="#s03">section 03</a>) writes a bedMethyl row per site. Columns 10 to 18 are the QC columns:</p>
+  <dl class="defs">
+    <dt><code>N<sub>valid_cov</sub></code> (col. 10)</dt><dd>Calls that passed the threshold: modified + other modification + unmodified. The percentage in column 11 is calculated only from these. A site with 3 valid calls can only be 0, 33, 67 or 100 %.</dd>
+    <dt><code>N<sub>fail</sub></code> (col. 16)</dt><dd>Calls below the threshold. If one region has a much higher failed share than the genome average, the model is unsure there. Repeats, intergenic regions (the DNA between genes) and regions with few CpGs are where a benchmark of nanopore callers found calls least accurate (Liu et al. 2021).</dd>
+    <dt><code>N<sub>diff</sub></code>, <code>N<sub>delete</sub></code> (col. 17, 15)</dt><dd>Reads with another base or a deletion at the site. Many of them at one site point to a <span class="tip" title="A single-nucleotide variant: a position where this animal (or one of its two parental copies) differs from the reference.">SNV</span> that destroys the CpG on one parental copy, or to a reference error.</dd>
+    <dt><code>N<sub>nocall</sub></code> (col. 18)</dt><dd>Reads with the right base but no modification call, for example because a CpG-only model sees a CG changed to CA in that read.</dd>
+  </dl>
+  <p>How much coverage is enough depends on the question. In a 2026 benchmark on human saliva (Tiras et al.), single-read estimates were unstable, at least 5× clearly improved agreement with an array reference, and 10× was often the best compromise; higher limits gave little and removed many sites. Count how many CpGs pass your minimum before choosing it.</p>
+
+  <h3>Strand balance</h3>
+  <p>A CpG reads CG on both strands, and in vertebrates its methylation is usually <span class="tip" title="Both cytosines of the CpG pair, one on each strand, are methylated together, because the maintenance methylation copies the mark onto the new strand after every DNA replication.">symmetric</span>: if one C is methylated, so is the C on the other strand (the Jasmine documentation states this and therefore makes one call per CpG pair). Nanopore reads each come from one strand, so <code>modkit pileup</code> without <code>--combine-strands</code> gives separate + and − rows for each CpG. Two checks follow:</p>
+  <ul>
+    <li><b>Read numbers:</b> about half the reads at a site should come from each strand. A strong excess on one strand means a library or mapping problem in that region.</li>
+    <li><b>Percent methylated:</b> + and − should agree within sampling noise. A consistent difference across many sites points to a model problem, not to biology; real <span class="tip" title="Hemi-methylation: only one strand of a CpG is methylated, as happens briefly after DNA replication. Modkit has a separate pileup-hemi command for duplex data.">hemi-methylation</span> needs special (duplex) data to be shown.</li>
+  </ul>
+  <p>Once both look fine, sum the strands (<code>--cpg --combine-strands</code>): this doubles the coverage per CpG. PacBio HiFi data from Jasmine already gives one call per CpG pair, so there is no strand check to make.</p>
+
+  <h3>Controls: places where you know the answer</h3>
+  <p>A quality check needs a <dfn>control</dfn>: a sample or region where the true methylation is known, so that the difference between measured and true is the error.</p>
+  <dl class="defs">
+    <dt>Amplified DNA</dt><dd>A polymerase copies DNA from ordinary nucleotides, so DNA amplified by PCR or <span class="tip" title="Whole-genome amplification: copying the whole genome many times with a polymerase, for example to get enough DNA from a small sample. The copies carry no methyl groups.">whole-genome amplification (WGA)</span> has no methylation. Every 5mC call in it is a false positive. Sequencing a little amplified DNA of the same animal on the same platform with the same model gives the false-positive rate directly. Simpson et al. (2017) trained one of the first nanopore 5mC callers on synthetically methylated and unmethylated DNA in the same spirit.</dd>
+    <dt>CpG islands</dt><dd>Short CpG-rich stretches, mostly at gene starts, that are predominantly unmethylated in vertebrates (Deaton &amp; Bird 2011). The promoter islands of <span class="tip" title="Genes expressed in nearly all cells, for example those for ribosomal proteins or actin. Their promoters are expected to be unmethylated in every tissue.">housekeeping genes</span> should be near 0 % in every tissue. Restrict pileup to them with <code>--include-bed</code>.</dd>
+    <dt>Imprinted regions (mammals)</dt><dd>At an <span class="tip" title="A region whose methylation depends on which parent the chromosome came from; it controls genomic imprinting, where only the maternal or only the paternal copy of a gene is active.">imprinting control region</span> one parental copy is methylated and the other is not (Tucci et al. 2019), so unphased data give about 50 %, and reads split by haplotype (<a href="#s04">section 04</a>) should give one copy near 100 % and the other near 0 %. Examples are the regions at <i>H19</i>/<i>IGF2</i> and <i>PEG10</i>, which are methylated on one parental copy even in marsupials (Renfree et al. 2008, <a href="#s01">section 01</a>); find their orthologs in your assembly by projection (<a href="../03-annotation/#s07">lesson 3, section 07</a>). Imprinting is known in marsupials and placental mammals, not in monotremes (<a href="#s01">section 01</a>), so this control is not available in a lizard or a fish.</dd>
+    <dt>Synthetic standards</dt><dd>Oxford Nanopore published (October 2024) a validation set of synthetic DNA with known canonical, 5mC and 5hmC positions as raw signal files, to be called with Dorado and scored with <code>modkit validate</code>. It is a test of the model, not of your sample, but it is the public example of what a ground truth looks like.</dd>
+  </dl>
+
+  <h3>The model is part of the measurement</h3>
+  <p>A methylation value is a result of the sample <b>and</b> the model that called it. A Dorado model name records both parts, for example <code>dna_r10.4.1_e8.2_400bps_sup@v5.2.0_5mCG_5hmCG@v2</code>: pore and chemistry (<code>r10.4.1_e8.2</code>), speed, accuracy level (<code>sup</code>, the slowest and most accurate), basecall model version, then the modification model (5mC and 5hmC in CpG context) and its own version. Dorado's model list contains several versions of this one modification model, and a 2026 benchmark (Kulkarni et al.) found that tools and model versions differ, that the newest model is not always the best for CpG methylation, and that read quality and basecalling mode also change the result. Liu et al. (2021) found that part of the disagreement between nanopore and bisulfite sequencing comes from 5hmC, which bisulfite cannot tell apart from 5mC (<a href="#s02">section 02</a>).</p>
+  <p>Practical consequences (our advice): compare samples only when they were called with the same model and version (<a href="#s06">section 06</a>); write the model name into every table and figure legend; when a new model appears, re-call <b>all</b> samples or none. A modification model is trained on one platform's signal: an Oxford Nanopore model cannot be assumed to work on reads from another platform.</p>
+  <div class="note">In our projects: the long reads of species B and C were made on a CycloneSEQ instrument with the provider's own basecaller and model, yet an Oxford Nanopore R10.4.1 Medaka model was used on them for polishing, which we have flagged as questionable. The same trap applies to methylation: whether CycloneSEQ offers 5mC calling at all we have not verified. In species A, heterozygous SNP calls seen in only one half of the reads had a high <span class="tip" title="Transition: a change between the two purines (A↔G) or the two pyrimidines (C↔T). Transversion: purine↔pyrimidine. Ti/Tv is their ratio; methylation-related errors are C→T transitions, which raise it.">Ti/Tv</span>; we suspect, without proof, that some are 5mC-related C→T basecalling errors. Methylation that the basecaller does not report can still show up as false variants.</div>
+
+  <section class="tool" aria-labelledby="s07-dash-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-dash-h">A methylation QC dashboard</h3></div>
+    <p class="tool-note">A toy run of CpG calls. The histogram shows the probability of 5mC for every call: blue calls pass as unmethylated, red calls pass as methylated, grey calls fail the threshold. Move the sliders or pick a preset; each check gets a traffic light and a reason. <b>All limits are teaching choices, not published standards.</b> The toy draws probabilities from simple curves, not from a real model.</p>
+    <div class="controls">
+      <label for="s07-k"><span class="tip" title="How far the model pushes its probabilities towards 0 or 1. High = confident model that recognises the signal; low = the signal looks unfamiliar (wrong model, other platform, poor reads).">Model confidence</span><output id="s07-ko"></output><input type="range" id="s07-k" min="1.5" max="40" step="0.5" value="22"></label>
+      <label for="s07-n"><span class="tip" title="Share of calls that are pure guesswork: any probability between 0 and 1 is equally likely. Stands for damaged reads, read ends, or contexts the model never saw.">Guesswork calls</span><output id="s07-no"></output><input type="range" id="s07-n" min="0" max="50" step="1" value="4"></label>
+      <label for="s07-m"><span class="tip" title="The true share of methylated CpGs in this toy sample. In real data you do not know it; here it lets you see how far the estimate is from the truth.">True methylation</span><output id="s07-mo"></output><input type="range" id="s07-m" min="0" max="100" step="1" value="70"></label>
+      <label for="s07-t"><span class="tip" title="Pass threshold: a call is kept only if the probability of its most likely class (methylated or unmethylated) is at least this value.">Pass threshold</span><output id="s07-to"></output><input type="range" id="s07-t" min="0.5" max="0.99" step="0.01" value="0.75"></label>
+      <label for="s07-s"><span class="tip" title="Share of reads at a typical CpG that come from the + strand. About 50 % is expected.">Reads on + strand</span><output id="s07-so"></output><input type="range" id="s07-s" min="10" max="90" step="1" value="50"></label>
+      <label for="s07-d"><span class="tip" title="Average difference in percent methylated between the + and the − strand row of the same CpG, over many sites.">Strand difference</span><output id="s07-do"></output><input type="range" id="s07-d" min="0" max="30" step="0.5" value="1.5"></label>
+      <label for="s07-c"><span class="tip" title="Typical number of reads covering a CpG (both strands together). The toy assumes coverage varies like a Poisson count around this value; real coverage is more uneven.">Coverage per CpG</span><output id="s07-co"></output><input type="range" id="s07-c" min="1" max="60" step="1" value="25"></label>
+    </div>
+    <div class="slider-row"><span>Presets:</span><span class="seg" id="s07-presets" style="display:flex;flex-wrap:wrap">
+      <button type="button" data-p="0" aria-pressed="true" title="Matched model, good reads, enough coverage">good run</button><button type="button" data-p="1" aria-pressed="false" title="Model trained on another kind of signal">unfamiliar signal</button><button type="button" data-p="2" aria-pressed="false" title="Fine calls, but too few reads">low coverage</button><button type="button" data-p="3" aria-pressed="false" title="Reads mostly from one strand, strands disagree">strand problem</button><button type="button" data-p="4" aria-pressed="false" title="A strict threshold on a merely average run">strict threshold</button></span>
+      <button type="button" class="btn" id="s07-auto" style="align-self:center" title="Set the threshold the way modkit does by default: the value below which the lowest-confidence 10 % of calls lie">use modkit's estimate</button></div>
+    <div class="svgbox" id="s07-hist"></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>passes as unmethylated</span><span><i style="background:var(--bad);height:10px"></i>passes as 5mC</span><span><i style="background:var(--err);height:10px"></i>fails threshold</span><span><i style="background:var(--het);height:10px;width:3px"></i>modkit's estimated threshold</span></div>
+    <div id="s07-rows" aria-live="polite"></div>
+    <p id="s07-verdict" style="font-size:15px"></p>
+  </section>
+
+  <h3>Viewing reads in IGV</h3>
+  <p>IGV (desktop 2.19.8; a 3.0 beta is also out) colours bases on reads that carry <code>MM</code> tags (the <code>ML</code> tag is optional). The options appear under <b>Color by</b> in the alignment track menu, separately for each modification type found. The display rules, from the IGV user guide:</p>
+  <ul>
+    <li>Reads are grey on the forward strand and sage green on the reverse strand, and can be grouped by strand (<b>Base Mods</b> tab of the preferences).</li>
+    <li>A base is coloured only if its modification probability exceeds a threshold; with several modifications, the most likely one wins. The user guide gives 0.5 as the default and says reads are grouped by strand, but the preferences file in the IGV source code (2.19.8 and 3.0 beta 7) sets the threshold to 0 and grouping off. Check <b>View &gt; Preferences &gt; Base Mods</b> before you read colours. Transparency shows the probability from <code>ML</code>.</li>
+    <li><b>Mono-colour</b> (default) colours only modified bases. <b>Two-colour</b> also colours likely unmodified bases (blue by default), taking their probability as one minus the sum of modification probabilities. For 5mC this gives red = methylated, blue = unmethylated, the same convention IGV uses for bisulfite data, so the two kinds of experiment look alike.</li>
+    <li>Since 2.17, IGV checks each <code>MM</code> tag against the number of matching bases in the read and hides invalid tags (a <b>Base Mods</b> preference, on by default, can turn the check off). Reads that suddenly show no colour may have broken tags; run <code>check-tags</code>.</li>
+    <li>IGV 2.17 and later also open bedMethyl files directly, so pileup results can sit under the reads.</li>
+  </ul>
+
+  <section class="tool" aria-labelledby="s07-igv-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-igv-h">Mono-colour or two-colour?</h3></div>
+    <p class="tool-note">Six toy reads over ten CpGs at the edge of a CpG island (methylated on the left, unmethylated on the right). Change the mode and the threshold the way IGV's menu and preferences do. Hover a CpG to see its probability. In mono-colour mode an unmethylated site and a site the model could not decide look the same: both stay uncoloured.</p>
+    <div class="slider-row"><span class="seg" id="s07-mode"><button type="button" data-m="1" aria-pressed="true">mono-colour</button><button type="button" data-m="2" aria-pressed="false">two-colour</button></span>
+      <label for="s07-it" style="display:flex;gap:8px;align-items:center">threshold <input type="range" id="s07-it" min="0.5" max="0.95" step="0.05" value="0.5"><output id="s07-ito" class="mono"></output></label></div>
+    <div class="svgbox" id="s07-igv"></div>
+    <p id="s07-igvsum" style="font-size:13.5px;color:var(--muted)"></p>
+  </section>
+
+  <h3>Plots along the genome</h3>
+  <p>For tracks that load fast in IGV or the UCSC browser, convert the bedMethyl to <span class="tip" title="bigWig: an indexed binary file holding one number per genomic position or interval; genome browsers read only the part on screen.">bigWig</span>; a bigWig holds one value per position, so 5mC and 5hmC become separate tracks:</p>
+  <div class="code"><button type="button">copy</button><pre>cut -f1,2 genome.fa.fai &gt; genome.sizes
+modkit bedmethyl tobigwig sample.cpg.bed.gz sample.5mC.bw --mod-codes m -g genome.sizes</pre></div>
+  <dl class="defs">
+    <dt>methylartist</dt><dd>Python tools for plots from <span class="tip" title="modBAM: a BAM file whose reads carry MM/ML modification tags.">modBAM</span> files (Cheetham et al. 2022); version 1.6.0, released 6 October 2026, so actively maintained. <code>locus</code> draws reads, a smoothed methylation profile and genes for one region, with <code>--phased</code> for reads tagged by WhatsHap (<a href="#s04">section 04</a>); <code>region</code> does the same for large regions; <code>segmeth</code> + <code>segplot</code> compare methylation of many intervals (for example every copy of a repeat family, <a href="#s05">section 05</a>); <code>composite</code> stacks all copies of a transposable element onto its consensus. <code>scoredist</code> plots the distribution of call scores, another view of the probability check above.</dd>
+    <dt>modbamtools</dt><dd>Plots single-read modification data and region statistics. Its last release (0.4.8) and last commit are from August 2022 and its setup file accepts only Python 3.8 to 3.10.5, so treat it as unmaintained; methylartist and IGV cover the same views.</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># one region, phased, CpG only (methylartist 1.6.0)</span>
+methylartist locus -b sample.haplotagged.bam -i scaffold_12:1200000-1260000 \
+    -m m --motif CG --ref genome.fa --gtf genes.gtf.gz --phased</pre></div>
+
+  <h3>What to keep from every sequencing run</h3>
+  <p>Methylation can be added to old reads later only if the run's raw information still exists. Ask for these at the time of ordering, not afterwards:</p>
+  <ol class="steps">
+    <li><div><b>Raw signal files</b><div class="d">pod5 (or the older fast5) for nanopore; with them any future model can be run again. They are much larger than FASTQ: by our own rough estimate, roughly ten times the size of the reads. For PacBio, ask for the HiFi BAM with <span class="tip" title="Kinetics: the timing of each base incorporation, stored as tags in the PacBio BAM (fi/fp and ri/rp for the two strands). Methylation slows the polymerase slightly, and Jasmine reads that delay.">kinetics</span>, or with the <code>MM</code>/<code>ML</code> tags written on the instrument; Jasmine's 5mC model needs the kinetics of both strands.</div></div></li>
+    <li><div><b>Unaligned BAM, not FASTQ</b><div class="d">The BAM keeps <code>MM</code>/<code>ML</code>, the read group with the model names, and on request the move table (<code>--emit-moves</code>) that some later tools need.</div></div></li>
+    <li><div><b>Model names and versions</b><div class="d">Basecaller name and version, basecall model, modification model. If the provider did not use a modification model, ask whether they can re-call with one.</div></div></li>
+    <li><div><b>Run details</b><div class="d">Instrument, flow cell, library kit, read filtering, number of runs; the sequencing summary and run reports.</div></div></li>
+    <li class="later"><div><b>A control, if methylation is a goal</b><div class="d">A little amplified DNA of the same animal on the same run, as an unmethylated control.</div></div></li>
+  </ol>
+  <div class="note">In our projects: the first four points are exactly what the lab asked the species A provider for after the fact (raw signal; whether a 5mC/5hmC model was used, and BAMs with <code>MM</code>/<code>ML</code>; a re-call with a 5mCG_5hmCG model and <code>--emit-moves</code> if not; run details and reports). The lizard sequencing sheet lists a <i>Darevskia armeniaca</i> PacBio HiFi run in a folder ending <code>_met</code>, but the read file is a FASTQ; whether it was meant as a methylation run, and whether the original BAM kept kinetics or <code>MM</code>/<code>ML</code>, we have not checked. A FASTQ cannot answer that: ask for the BAM.</div>
+
+  <details class="simple"><summary>Simple explanation with examples: why a methylation map needs its own quality checks</summary><div class="in">
+    <p>Think of a weather station that reports a temperature every minute. A number always appears, even if the thermometer sits in the sun or the battery is low. You trust the record only after checking the instrument (is it the right sensor, is it calibrated?), the readings (how jumpy are they?), and known cases (does it read 0 °C in melting ice?).</p>
+    <p>Methylation calls are the same. The <b>model</b> is the sensor: it must match the sequencer. The <b>probability histogram</b> shows how jumpy the readings are. <b>Coverage</b> is how many readings you average. <b>Strand balance</b> compares two thermometers that should agree. The <b>controls</b> are the melting ice: amplified DNA should read 0 % methylated, an imprinted region should read 50 % in bulk and 0 / 100 % per parental copy.</p>
+    <div class="toy">site      reads   methylated   %      verdict
+CpG A       3          2        <span class="x">67</span>    too few reads: 67 % could be 30 % or 95 %
+CpG B      28         26        <span class="a">93</span>    enough reads, trust it
+CpG C (WGA control) 30   5      <span class="x">17</span>    should be ~0 %: the model calls false 5mC</div>
+    <p style="font-size:13px;color:var(--muted)">Invented numbers for illustration.</p>
+  </div></details>
+</section>

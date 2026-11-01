@@ -1,0 +1,214 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Chromosome-level scaffolding with Hi-C and YaHS</h2>
+  <p class="lede">An assembler gives you <dfn>contigs</dfn>: stretches of sequence with no gaps. It cannot tell you which contig lies next to which on a chromosome, or which way round it goes. Hi-C reads can. A Hi-C scaffolder such as YaHS uses them to put contigs in order, turn them the right way, and join them with runs of N into <dfn>scaffolds</dfn>. When it works well, each scaffold is one whole chromosome.</p>
+
+  <dl class="defs">
+    <dt>Scaffold</dt><dd>Contigs placed in order and orientation, joined by a <dfn>gap</dfn>: a run of the letter N that stands for sequence we do not have. The length of the N run is a placeholder unless the tool says it measured it. YaHS writes 100 N at every join.</dd>
+    <dt>Orientation</dt><dd>DNA has two strands. A contig can be written as read on one strand (<code>+</code>, forward) or on the other (<code>−</code>, its <span class="tip" title="The other strand read in its own 5'→3' direction: the order of letters is reversed and each letter is swapped A↔T, C↔G.">reverse complement</span>). A scaffolder must pick one for every contig.</dd>
+    <dt>Chromosome-level</dt><dd>Most of the assembly (the EBP target is at least 90 %) sits in scaffolds that each match one chromosome. The "C" in the quality code 6.C.Q40 from <a href="../01-pre-assembly/#vgp">lesson 1</a>.</dd>
+  </dl>
+
+  <h3>How Hi-C works</h3>
+  <p>Inside the nucleus each chromosome is folded into its own region, a <dfn>chromosome territory</dfn>. Hi-C (Lieberman-Aiden et al. 2009) freezes this folding and turns "these two pieces of DNA were touching" into a pair of sequencing reads. Step through the protocol:</p>
+
+  <figure>
+    <div class="controls">
+      <span class="seg" id="s05-pseg" role="group" aria-label="Hi-C protocol step"></span>
+    </div>
+    <div class="svgbox" id="s05-proto"></div>
+    <figcaption id="s05-pcap"></figcaption>
+  </figure>
+
+  <p>Two rules follow from the folding, and every Hi-C scaffolder relies on them:</p>
+  <ol class="qlist">
+    <li><b>Same chromosome ≫ different chromosomes.</b> Most read pairs join two places on the same chromosome (in <span class="tip" title="Latin 'on this side': two positions on the same chromosome molecule. The opposite, two different chromosomes, is 'trans'.">cis</span>). Pairs between different chromosomes are rare and look like an even, faint background.</li>
+    <li><b>Near ≫ far.</b> Along one chromosome, the number of contacts falls steadily as the distance between the two places grows. Neighbours touch most often.</li>
+  </ol>
+  <p>So if the end of contig A has many contacts with the start of contig B, and few with anything else, the most likely explanation is that A's end and B's start are neighbours on the same chromosome.</p>
+
+  <h3>Reading a contact map</h3>
+  <p>A <dfn>contact map</dfn> is a square picture of all Hi-C read pairs. The assembly is laid along both axes in the same order, cut into equal <span class="tip" title="A bin is a fixed-size window of the assembly, for example 10 kb. Every read pair adds one count to the cell (row = bin of read 1, column = bin of read 2). Map 'resolution' means bin size.">bins</span>. The colour of each cell is the number of read pairs with one read in the row bin and the other in the column bin. Rule 2 makes the <b>diagonal</b> (each bin with itself and its neighbours) the darkest line. If the order is right, every chromosome appears as a dark square on the diagonal and the rest of the map is pale. Wrong order or orientation shows up as dark patches <b>off</b> the diagonal.</p>
+
+  <section class="tool explain" aria-labelledby="s05-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-toy-h">Put the contigs in order</h3></div>
+    <p style="font-size:14px">A toy genome with two chromosomes, 1 (bins 1–28) and 2 (bins 1–24), was assembled into 7 contigs, A to G. They came out of the assembler in a random order and some are reversed. The map is computed from where each bin really lies, with rules 1 and 2 above plus a little noise. Select a contig (click its button or its stripe on the map), then move or flip it until the off-diagonal blobs are gone. Or let the "YaHS-like" button join contigs automatically, one join at a time.</p>
+    <div class="controls">
+      <span class="seg" id="s05-cseg" role="group" aria-label="Select contig"></span>
+    </div>
+    <div class="controls">
+      <span class="seg" role="group" aria-label="Edit selected contig">
+        <button type="button" id="s05-left">◀ move left</button><button type="button" id="s05-right">move right ▶</button><button type="button" id="s05-flip">flip ⇄</button>
+      </span>
+      <span class="seg" role="group" aria-label="Whole map">
+        <button type="button" id="s05-shuffle">new shuffle</button><button type="button" id="s05-auto">YaHS-like join</button><button type="button" id="s05-solve">show answer</button>
+      </span>
+      <label style="flex-direction:row;align-items:center;gap:6px;min-width:0"><input type="checkbox" id="s05-mis"> one contig is a misjoin</label>
+    </div>
+    <div class="svgbox" id="s05-map"></div>
+    <div class="readout" id="s05-out"></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px;width:10px"></i>many read pairs</span><span><i style="background:var(--accent);opacity:.12;height:10px;width:10px"></i>few</span><span><i style="background:var(--het);height:10px;width:10px"></i>selected contig</span><span><i style="background:var(--bad);height:10px;width:10px"></i>strongest off-diagonal contact of the selected contig</span></div>
+    <p style="font-size:14px" id="s05-log" aria-live="polite"></p>
+    <p style="font-size:14px"><b>What to look for.</b> A flipped contig makes its darkest off-diagonal corner sit away from the diagonal: the contact is strongest at the end that should touch its neighbour. A contig from the other chromosome gives a whole pale cross through the chromosome's square. With "one contig is a misjoin" ticked, contig D carries the end of chromosome 1 and the start of chromosome 2 glued together; its own square splits into two blocks with a pale gap between them, which no reordering can fix. Only breaking it can (the YaHS-like button does that first, as YaHS does).</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why contacts give order and orientation</summary><div class="in">
+    <p>Think of a long necklace of numbered beads, crumpled in a bag. Bead 10 touches bead 11 almost always, bead 15 often, bead 60 rarely. Now cut the necklace into pieces and shake them. If you photograph the bag many times before cutting, the "who touched whom" counts still tell you that the last bead of one piece kept touching the first bead of another: they were neighbours.</p>
+    <div class="toy">contig A (bins a1..a5)   contig B (bins b1..b5)
+contacts a5–b1 = <span class="a">38</span>    a1–b1 = 6     a5–b5 = 7     a1–b5 = 2
+→ the strongest pair is A's right end with B's left end:   A+ B+   (A forward, then B forward)
+if instead a5–b5 were strongest:                        A+ B−   (B is reversed)
+contacts A–C ≈ 1 everywhere (the background)            → C is on another chromosome</div>
+    <p>This is also why a scaffolder can only order pieces that are long enough. A contig of one bin has no "left end" and "right end" to compare, so its orientation stays uncertain. Very small contigs are often left unplaced.</p>
+  </div></details>
+
+  <h3>Hi-C libraries</h3>
+  <p>The cutting step differs between kits. It matters because YaHS can take the cut-site sequence (<code>-e</code>) and use it to correct for bins that simply have more cut sites. The motifs below are the ones YaHS's README gives; N means any base.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Library</th><th>How DNA is cut</th><th>YaHS <code>-e</code></th></tr></thead>
+    <tbody>
+      <tr><td><b>Classic Hi-C</b>, Dovetail Hi-C kit</td><td><span class="tip" title="A protein that cuts DNA only at one short sequence (the 'site'). DpnII cuts at GATC.">Restriction enzyme</span> DpnII</td><td><code>GATC</code></td></tr>
+      <tr><td><b>Arima-HiC</b>, 2-enzyme</td><td>Two restriction enzymes</td><td><code>GATC,GANTC</code></td></tr>
+      <tr><td><b>Arima-HiC</b>, 4-enzyme</td><td>Four restriction enzymes; cut sites closer together, more even coverage</td><td><code>GATC,GANTC,CTNAG,TTAA</code></td></tr>
+      <tr><td><b>Dovetail Omni-C</b></td><td>A <span class="tip" title="An enzyme that cuts DNA regardless of the letters, so cuts are spread evenly instead of only at motif sites.">sequence-independent endonuclease</span>. The kit's documentation says up to 20 % of a genome can lack coverage with restriction-enzyme Hi-C; Omni-C avoids that bias</td><td>none (omit <code>-e</code>)</td></tr>
+      <tr><td><b>Pore-C</b></td><td>The same proximity-ligation idea, but the ligated molecules are read whole on a long-read sequencer, so one read can hold several contacts. Needs long, intact DNA</td><td>input is long-read alignments, not covered here</td></tr>
+    </tbody>
+  </table></div>
+  <p>YaHS's README adds a warning: giving the enzyme "may not change the scaffolding result very much if not make it worse", especially for assemblies built from noisy long reads, because cut-site counts depend on the assembly's base accuracy. If unsure, run once with and once without <code>-e</code> and compare the maps.</p>
+  <p><b>How much Hi-C?</b> Count it like any coverage: Hi-C read bases ÷ genome size. YaHS's README reports scaffolding the human genome with about 45× Hi-C. The VGP tutorial asks for around 60× (see <a href="../01-pre-assembly/#dc">lesson 1, step 6</a>). Only a minority of Hi-C pairs are informative for scaffolding (the far-apart ones), so Hi-C coverage is not comparable with shotgun coverage.</p>
+
+  <h3>Step 1 · Map the Hi-C reads to the contigs</h3>
+  <p>Hi-C reads break two assumptions of normal mapping. The two reads of a pair can lie megabases apart or on different contigs, so the aligner must <b>not</b> try to pair them. And a read can run across the <dfn>ligation junction</dfn>, so its first part comes from one place and its second part from another (a <span class="tip" title="A read whose parts align to two different places. Aligners report the second part as a 'supplementary' alignment.">chimeric read</span>). The usual fix is to keep only the part nearest the read's start (its <span class="tip" title="The beginning of a read, where sequencing started. The 5' part is the one that really comes from the fragment end next to the read start.">5′ end</span>). YaHS does not map reads itself; its README points to the Arima mapping pipeline, the Omni-C pipeline and <span class="tip" title="HiC-Pro: a pipeline that maps, filters and counts Hi-C read pairs.">HiC-Pro</span>, and recommends marking <span class="tip" title="Copies of the same molecule made by PCR or by the sequencer's optics. They look like extra contacts but carry no new information.">PCR/optical duplicates</span> first. The commands below use <span class="tip" title="BWA: a widely used aligner for short reads (bwa mem is its main mode).">bwa</span>, <span class="tip" title="A toolkit for SAM/BAM alignment files: convert, sort, index, filter.">samtools</span> and <span class="tip" title="A Java toolkit for alignment files; MarkDuplicates flags or removes duplicate read pairs.">Picard</span>; <span class="tip" title="BAM: the compressed binary form of SAM, the standard file of read alignments.">BAM</span> is the alignment file they produce.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Arima-HiC mapping pipeline (ArimaGenomics/mapping_pipeline, version 07/26/2023), file names shortened</span>
+samtools faidx contigs.fa
+bwa index contigs.fa
+bwa mem -t 16 contigs.fa hic_R1.fastq.gz | samtools view -@ 16 -Sb - &gt; r1.bam     <span class="c"># read 1 alone</span>
+bwa mem -t 16 contigs.fa hic_R2.fastq.gz | samtools view -@ 16 -Sb - &gt; r2.bam     <span class="c"># read 2 alone</span>
+samtools view -h r1.bam | perl filter_five_end.pl | samtools view -Sb - &gt; r1.f.bam  <span class="c"># keep 5' part</span>
+samtools view -h r2.bam | perl filter_five_end.pl | samtools view -Sb - &gt; r2.f.bam
+perl two_read_bam_combiner.pl r1.f.bam r2.f.bam samtools 10 \
+  | samtools view -bS -t contigs.fa.fai - | samtools sort -@ 16 -o paired.bam -     <span class="c"># pair up, MAPQ ≥ 10</span>
+java -jar picard.jar AddOrReplaceReadGroups INPUT=paired.bam OUTPUT=paired.rg.bam \
+  ID=hic LB=hic SM=sample PL=ILLUMINA PU=none
+java -Xmx30G -jar picard.jar MarkDuplicates INPUT=paired.rg.bam OUTPUT=hic.bam \
+  METRICS_FILE=dup_metrics.txt ASSUME_SORTED=TRUE REMOVE_DUPLICATES=TRUE
+
+<span class="c"># Omni-C style alternative (Dovetail docs): one bwa run that maps the mates independently</span>
+bwa mem -5SP -T0 -t 16 contigs.fa hic_R1.fastq.gz hic_R2.fastq.gz | <span class="tip" title="pairtools: a program that turns Hi-C alignments into a table of read pairs and marks duplicates.">pairtools</span> parse ...</pre></div>
+  <dl class="defs">
+    <dt><code>bwa mem -5SP</code></dt><dd>Used when both read files go into one bwa run (Omni-C docs; needs bwa 0.7.17 or newer). <code>-5</code>: for a split read, report the part with the smallest coordinate (the 5′ part) as the main alignment. <code>-S</code>: skip <span class="tip" title="bwa normally searches near one mate for a weak hit of the other mate, assuming they are close. Wrong for Hi-C.">mate rescue</span>. <code>-P</code>: skip pairing, so each mate is placed on its own. The Arima pipeline reaches the same goal by mapping the two read files separately.</dd>
+    <dt><span class="tip" title="Mapping quality, a Phred score for how sure the aligner is that the read belongs here and not elsewhere. 10 means about 1 chance in 10 of being wrong; reads in repeats get 0.">MAPQ</span> 10</dt><dd>The Arima combiner drops pairs where either read has mapping quality below 10. YaHS's own <code>-q</code> default is also 10.</dd>
+    <dt>Sorting</dt><dd>YaHS accepts a BAM sorted by read name or by position, with a difference (README, note 1): with name-sorted input it counts a link between the middles of the two alignments and applies <code>-q</code>; with position-sorted or unsorted input it uses the alignment starts and <b>does not</b> filter by mapping quality. So filter MAPQ before YaHS (the Arima pipeline above does) or give a name-sorted BAM.</dd>
+    <dt>Duplicates</dt><dd>In the YaHS source (v1.2.2, <code>parse_bam_rec</code>), alignments flagged as unmapped, secondary, failing QC, duplicate or supplementary are skipped. Marked duplicates are therefore ignored even if they are not removed.</dd>
+  </dl>
+
+  <h3>Step 2 · Run YaHS</h3>
+  <div class="code"><button type="button">copy</button><pre>samtools faidx contigs.fa                    <span class="c"># YaHS needs contigs.fa.fai next to contigs.fa</span>
+yahs -o asm contigs.fa hic.bam               <span class="c"># Omni-C: no -e</span>
+yahs -e GATC,GANTC -o asm contigs.fa hic.bam <span class="c"># Arima 2-enzyme</span>
+yahs -?                                      <span class="c"># long help with all options</span></pre></div>
+  <p>Inputs: the contigs in FASTA (indexed) and the Hi-C alignments as BAM, BED, <span class="tip" title="A text 'pairs' file: one line per read pair with both contig names and positions. Needs --read-length.">PA5</span> or YaHS's own <code>.bin</code>. The file type is taken from the extension, or set with <code>--file-type</code>. YaHS first converts the alignments to <code>asm.bin</code>; reuse it for reruns and for contact maps.</p>
+
+  <h3>What YaHS does, in order</h3>
+  <p>From the YaHS paper (Zhou, McCarthy &amp; Durbin 2023) and the v1.2.2 source code (<code>yahs.c</code>, <code>link.c</code>, <code>graph.c</code>):</p>
+  <ol class="steps">
+    <li><div><b>Find telomere ends</b> <span class="t">telo.c</span><div class="d">Each contig end is searched for a <span class="tip" title="The repeat at the tips of chromosomes; TTAGGG in vertebrates.">telomeric repeat</span> (YaHS has a built-in motif list; <code>--telo-motif</code> sets one). An end that is a real chromosome tip is never joined to anything.</div></div></li>
+    <li><div><b>Break contigs that look wrong</b> <span class="t">asm_inital_break_01.agp, _02 …</span><div class="d">The contacts inside each contig are counted in 1 kb bins. Where the contact signal across a position drops far below what the rest of the contig shows, the contig is cut there (a likely <dfn>misjoin</dfn>, two unrelated pieces glued by the assembler). Repeated until no new breaks are found. Skip with <code>--no-contig-ec</code>. (The file name really is spelled "inital".)</div></div></li>
+    <li><div><b>Learn what "neighbours" look like</b><div class="d">For one bin size (the <dfn>resolution</dfn>), YaHS cuts every contig into chunks and takes the median of the contacts inside contigs at each distance: the expected count for chunks 1, 2, 3 … apart. This is rule 2, measured on your own data.</div></div></li>
+    <li><div><b>Score every possible join</b><div class="d">For each pair of contigs and each of the 4 ways to put them end to end (A+B+, A+B−, A−B+, A−B−), the contacts between the chunks that would become neighbours are compared with the expected counts, after subtracting the background level. Cut-site counts correct the numbers when <code>-e</code> is given. The orientation with the largest score is kept.</div></div></li>
+    <li><div><b>Build and prune a graph</b><div class="d">Contigs are nodes, scored joins are edges. Edges are removed when they are weak: in the source, an edge is kept only if it is at least 0.7 × the best edge at that contig end (and above a floor of 0.1). Then tips, repeats, bubbles, <span class="tip" title="A→C when A→B→C also exists: the long-range edge is implied by the chain and removed.">transitive edges</span> and ambiguous edges are trimmed. The remaining unbranched paths become scaffolds.</div></div></li>
+    <li><div><b>Check the new joins</b> <span class="t">asm_r01_break.agp</span><div class="d">Joins without enough Hi-C support across them are broken again. Skip with <code>--no-scaffold-ec</code>.</div></div></li>
+    <li><div><b>Repeat with bigger chunks</b> <span class="t">asm_r01.agp, asm_r02.agp …</span><div class="d">Each round starts from the previous scaffolds with a larger bin. The default list is 10 kb, 20 kb, 50 kb, 100 kb … up to 500 Mb, cut off by assembly size (for a 2–5 Gb assembly the largest is 50 Mb). A round is only run if the current N50 is at least 10 × the bin size; otherwise YaHS retries a smaller bin (at most 3 extra tries) and then stops. <code>-r</code> sets your own list (ascending); smaller first values help very fragmented assemblies.</div></div></li>
+    <li><div><b>Write the result</b> <span class="t">asm_scaffolds_final.agp, asm_scaffolds_final.fa</span><div class="d">Scaffolds named <code>scaffold_1</code>, <code>scaffold_2</code> … sorted longest first; unplaced contigs are kept as their own scaffolds. The log ends with N50 and N90 and the peak memory.</div></div></li>
+  </ol>
+
+  <h3>The AGP file</h3>
+  <p>An <dfn>AGP</dfn> file (NCBI's "A Golden Path" format) is the recipe for building scaffolds from contigs: one line per piece, in order. <code>W</code> lines are contig pieces with their coordinates and orientation; <code>U</code> lines are gaps of unknown size. YaHS's defaults (source, <code>sdict.c</code>): gap type <code>U</code>, 100 bp, linkage evidence <code>proximity_ligation</code> (= Hi-C). An example of the layout:</p>
+  <div class="code"><pre><span class="c"># W line: scaffold, start, end, part no., W, contig, contig start, contig end, orientation
+# U line: scaffold, start, end, part no., U, gap length, gap type, linked?, evidence</span>
+scaffold_1  1      5200000  1    W     contig_12   1      5200000 +
+scaffold_1  5200001 5200100 2    U     100         scaffold yes proximity_ligation
+scaffold_1  5200101 8900100 3    W     contig_7    1      3700000 -</pre></div>
+  <p>The AGP matters more than the FASTA: contact-map tools, curation tools and genome submission (<a href="#s13">section 13</a>) all read it. <code>agp_to_fasta</code> (shipped with YaHS) turns an AGP plus contigs back into FASTA.</p>
+
+  <h3>Useful options</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Option</th><th>Default (v1.2.2)</th><th>What it does</th></tr></thead>
+    <tbody>
+      <tr><td><code>-o</code></td><td><code>yahs.out</code></td><td>Prefix of all output files (the directory must exist).</td></tr>
+      <tr><td><code>-e</code></td><td>none</td><td>Cut-site motif(s), comma-separated; at most one N per motif.</td></tr>
+      <tr><td><code>-r</code></td><td>automatic</td><td>Bin sizes for the rounds, ascending.</td></tr>
+      <tr><td><code>-R</code></td><td>1</td><td>Rounds per bin size.</td></tr>
+      <tr><td><code>-l</code></td><td>0</td><td>Minimum contig length to scaffold; shorter contigs are added back unplaced at the end.</td></tr>
+      <tr><td><code>-q</code></td><td>10</td><td>Minimum mapping quality (only applied to name-sorted BAM, BED, PA5).</td></tr>
+      <tr><td><code>-a</code></td><td>none</td><td>Start from an existing AGP (rescaffolding); turns contig error correction off.</td></tr>
+      <tr><td><code>--no-contig-ec</code> / <code>--no-scaffold-ec</code></td><td>off</td><td>Skip the initial contig breaking / the per-round join check.</td></tr>
+      <tr><td><code>--telo-motif</code></td><td>built-in list</td><td>Telomere motif; ends carrying it are not joined.</td></tr>
+      <tr><td><code>--gap-size</code></td><td>100</td><td>Ns written at each join (long help, <code>yahs -?</code>).</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Limits from the README.</b> At most 45,000 contigs (use <code>-l</code> to drop short ones, or <code>--no-contig-ec</code> if error correction created too many pieces). Memory can be very high for a large genome with many contigs; YaHS checks free memory and falls back to larger bins (disable with <code>--no-mem-check</code>). Speed: under 5 minutes for a human assembly of 5,483 contigs with about 45× Hi-C. Mapping the Hi-C reads takes far longer than YaHS. In rare cases YaHS has joined two chromosomes end to end (telomere to telomere).</p>
+
+  <h3>Step 3 · Look at the contact map, then fix it by hand</h3>
+  <p>No scaffolder is trusted without looking at the map. Reference genome projects (VGP, Darwin Tree of Life) add <dfn>manual curation</dfn>: a person inspects the contact map and fixes joins, breaks, orientation and leftover duplicates. Two viewer families are in use.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># A. Juicebox (Aiden lab). juicer = helper shipped with YaHS; juicer_tools = Aiden lab Java program</span>
+juicer pre -a -o asm_JBAT asm.bin asm_scaffolds_final.agp contigs.fa.fai &gt; asm_JBAT.log 2&gt;&amp;1
+java -Xmx32G -jar juicer_tools.1.9.9_jcuda.0.8.jar pre asm_JBAT.txt asm_JBAT.hic \
+     &lt;(grep PRE_C_SIZE asm_JBAT.log | awk '{print $2" "$3}')
+<span class="c">#   open asm_JBAT.hic + asm_JBAT.assembly in Juicebox, edit, save asm_JBAT.review.assembly</span>
+juicer post -o asm_JBAT asm_JBAT.review.assembly asm_JBAT.liftover.agp contigs.fa
+<span class="c">#   -&gt; asm_JBAT.FINAL.agp and asm_JBAT.FINAL.fa</span>
+
+<span class="c"># B. PretextMap + PretextView (Sanger Tree of Life "rapid curation")</span>
+samtools view -h hic_to_scaffolds.bam | PretextMap -o asm.pretext --sortby length --mapq 10
+<span class="c">#   open asm.pretext in PretextView (desktop app), edit, "Generate AGP", then pretext-to-asm</span></pre></div>
+  <ul>
+    <li><b><span class="tip" title="Juicebox Assembly Tools: the editing mode of the Juicebox desktop viewer, made for assembly curation (Dudchenko et al. 2018).">JBAT</span> and genomes over 2 Gb.</b> YaHS's README: if the assembly is larger than 2 Gb, <code>juicer pre</code> applies a scale factor (a power of two, printed in the log as <code>scale factor: …</code>). You must set it in Juicebox under <i>Assembly › Set Scale</i>, or map and assembly will not match. Every mammal genome in this course is above 2 Gb.</li>
+    <li><b>PretextMap</b> reads SAM/BAM (via <code>samtools view -h</code>) or pairs, needs about 3 GB of memory by default (16 GB with <code>--highRes</code>, 40 GB with <code>--ultraRes</code>), and writes a 30–50 MB map. Its default minimum MAPQ is 10. The map for curation should be made from the Hi-C reads mapped to the <b>scaffolds</b>, after YaHS.</li>
+    <li><b>Tracks.</b> PretextView can show coverage, telomere, gap and repeat tracks next to the map. Coverage is what tells a sex chromosome or a duplicated haplotype apart.</li>
+  </ul>
+
+  <div class="tbl"><table>
+    <thead><tr><th>Pattern in the map</th><th>Meaning</th><th>Fix</th></tr></thead>
+    <tbody>
+      <tr><td>Bright spot off the diagonal, at the corner between two scaffolds</td><td>Missed join; the corner tells the orientation</td><td>Join in that orientation</td></tr>
+      <tr><td>Block that is bright with the diagonal inside but forms a cross / "bow tie" with its neighbours</td><td>Inverted piece</td><td>Flip it</td></tr>
+      <tr><td>Square on the diagonal split by a pale cross, with signal somewhere else in the map</td><td>Misjoin, or a piece from another chromosome ("imposter")</td><td>Break and move it</td></tr>
+      <tr><td>Short line parallel or perpendicular to the diagonal, half coverage on the coverage track</td><td>Both haplotypes kept (haplotypic duplication)</td><td>Remove one copy (see <a href="#s06">section 6</a>, purge_dups)</td></tr>
+      <tr><td>Scaffold with no contacts to the rest of the genome</td><td>Possible contamination</td><td>Check it (see <a href="#s09">section 9</a>, FCS-GX)</td></tr>
+      <tr><td>Chromosome-sized square with half coverage</td><td>X or Z (or Y/W) in the sex with one copy</td><td>Label it (see <a href="#s12">section 12</a>)</td></tr>
+    </tbody>
+  </table></div>
+  <p style="font-size:14px;color:var(--muted)">Patterns summarised from the Sanger rapid-curation guide "Interpreting and using HiC maps for assembly improvement" (sanger-tol/rapid-curation).</p>
+
+  <h3>Other Hi-C scaffolders</h3>
+  <ul>
+    <li><b>SALSA2</b> (Ghurye et al.; marbl/SALSA). Takes a name-sorted BED of alignments, can use the assembly graph (GFA), <code>-e</code> takes enzymes or <code>DNASE</code>. Its README still lists Python 2.7.</li>
+    <li><b>3D-DNA</b> (Dudchenko et al. 2017; aidenlab/3d-dna). Iterative misjoin correction, then builds one "megascaffold" and splits it into chromosomes. Pairs with Juicer and JBAT.</li>
+    <li><b>pin_hic</b> (dfguan/pin_hic; maps with <code>bwa mem -SP -B10</code>). Joins contigs by a "dual selection" rule over 3 rounds by default.</li>
+  </ul>
+  <p>On a simulated human assembly in the YaHS paper, scaffold N50 / N90 were 132.6 / 36.5 Mb for YaHS, 43.9 / 3.3 Mb for SALSA2 and 51.5 / 8.5 Mb for pin_hic. YaHS is the scaffolder in the VGP Galaxy workflow (WF8).</p>
+
+  <h3>Reference-guided scaffolding: RagTag, and why it is not Hi-C</h3>
+  <p><code>ragtag.py scaffold reference.fa contigs.fa</code> (RagTag v2.1.1) aligns your contigs to a <b>related species'</b> genome (minimap2 <code>-x asm5</code> by default) and orders them along its chromosomes. It does not change contig sequence. Every join gets 100 N unless you add <code>-r</code> to infer gap sizes from the reference.</p>
+  <p class="note warn"><b>The danger.</b> The result has the related species' chromosome order, not yours. Inversions, fusions and fissions between the two species disappear: you get chromosome-sized N50 and good-looking statistics, but the arrangement is borrowed. Never use a reference-scaffolded genome for synteny, karyotype or rearrangement studies. Scaffold N50 from RagTag is not a quality measure. It is reasonable only as a temporary frame, for example for whole-genome alignment, with the contigs kept as the real result.</p>
+
+  <div class="note">
+    <p><b>In our projects</b></p>
+    <ul style="margin-top:6px">
+      <li><b>None of our assemblies has Hi-C yet.</b> Species B and C (two unpublished small-mammal genomes) are contig-level only: tens of thousands of contigs each, with contig N50 in the hundreds of kb. The sequencing provider declined Pore-C for them because the DNA was too short.</li>
+      <li>Species A (an unpublished rodent genome): the hifiasm primary has about a thousand contigs (N50 above 10 Mb), several times more pieces than the published chromosome-level genome of a close relative, whose scaffolds are whole chromosomes. The options considered for our animal were Hi-C at about 45× (recommended by collaborators) or Pore-C. RagTag onto the relative's genome was allowed only for whole-genome alignment and <span class="tip" title="A tool that projects the genes of a well-annotated genome onto a new one through a whole-genome alignment, to find kept and lost genes.">TOGA2</span>, never for rearrangement analyses.</li>
+      <li><b>What RagTag did to the desman.</b> The published <i>Desmana moschata</i> assembly (GCA_051107935.1) is SPAdes + MaSuRCA contigs scaffolded with RagTag 2.1 onto the <i>Galemys pyrenaicus</i> genome. Where a young <span class="tip" title="Short INterspersed Element: a ~100-500 bp retrotransposon present in thousands of near-identical copies; young copies are almost identical to each other, which breaks short-read assemblies.">SINE</span> copy sat at a contig break, the MaSuRCA contigs on <b>both</b> sides each contained the whole copy, and RagTag joined them with 100 N. The same ~250 bp copy is written twice: 19,250 such duplicated copies among 66,963 N-runs, almost all at 100-N joins. YaHS also joins with a fixed 100 N, so after any scaffolding it is worth checking whether the two sides of a join end in the same sequence.</li>
+      <li><i>Cricetulus sokolovi</i>: RagTag twice (<i>C. griseus</i>, then <i>Cricetus cricetus</i>) gave QUAST N50 267.7 Mb, chromosome-sized only because of reference scaffolding.</li>
+    </ul>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: Hi-C scaffolding vs reference scaffolding</summary><div class="in">
+    <p>You have torn pages of a book. <b>Hi-C</b> is like noticing which page edges were stuck together by a coffee stain: the evidence comes from your own copy. <b>Reference scaffolding</b> is like sorting your pages by the page order of a different edition. Most pages land correctly, but if your edition has a chapter moved or printed upside down, you will never see it, because you sorted by the other book.</p>
+    <div class="toy">your genome (truth):   chr1 = <span class="a">A  B  C  D</span>    chr2 = <span class="a">E  F</span>
+relative's genome:    chr1 = A  B <span class="x">−C</span>  D    chr2 = E  F    (C is inverted in the relative)
+RagTag result:        chr1 = A  B <span class="x">−C</span>  D    ← the relative's inversion is now "in" your genome
+Hi-C result:          chr1 = A  B  C  D    ← contacts between B's end and C's start fix the orientation</div>
+  </div></details>
+
+  <p style="font-size:14px">Related: Hi-C reads also <b>phase</b> the two haplotypes during assembly (hifiasm's Hi-C mode), see <a href="#s07">section 7</a>. Gaps left at joins and closing them: <a href="#s06">section 6</a>. Telomeres and scaffold statistics after scaffolding: <a href="#s08">section 8</a>.</p>
+</section>

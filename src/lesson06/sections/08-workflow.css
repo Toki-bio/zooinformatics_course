@@ -1,0 +1,7 @@
+#s08-wrap .steps>li>div>a{font-size:13px;margin-left:6px}
+#s08-wrap .s08-row{gap:6px 14px;margin-top:4px}
+#s08-wrap .s08-row label.s08-chk{min-width:0;flex-direction:row;font-size:13px;color:var(--fg)}
+#s08-wrap .s08-row input{accent-color:var(--good);margin-right:4px}
+#s08-wrap .s08-skip{font:13px var(--f-body);background:transparent;color:var(--accent);border:1px solid var(--line);border-radius:4px;padding:3px 10px;cursor:pointer}
+#s08-wrap .s08-skiptext{border-left:3px solid var(--bad);padding:4px 10px;margin-top:6px;background:var(--bg)}
+#s08-wrap #s08-chain{display:block}

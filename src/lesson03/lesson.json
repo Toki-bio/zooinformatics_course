@@ -1,0 +1,58 @@
+{
+ "number": 3,
+ "slug": "03-annotation",
+ "title": "Repeats, Genes and ROH",
+ "eyebrow": "Lesson 3 · from assembly to biology",
+ "intro": [
+  "An assembled genome is a few billion letters without labels. This lesson turns it into something a biologist can use. First we find the repeats: what kinds of repeated DNA a mammal genome holds, how to build a library of your species' own repeat families, and how to mark every copy so that later programs are not fooled by them. Then we find the genes, using RNA and proteins as evidence, gene-prediction pipelines, and genes carried over from a well-annotated relative. We give the genes names and test whether the gene set is believable. Last, we use the same reads and assembly for a question that needs no genes: how heterozygous the animal is and where its genome carries long identical stretches inherited twice from one ancestor.",
+  "The running example is one of our own rodent genomes, called species A here because the work is not yet published: a good long-read assembly, no RNA-seq, and a gene set projected from human with TOGA2. It shows both what these methods give you and how base errors in the assembly can turn into false biology. Population history (PSMC and relatives), DNA methylation and an in-depth treatment of SINEs and satellites are left for later lessons. Hover over a dotted term to see what it means."
+ ],
+ "steps": [
+  {
+   "title": "From assembly to annotation",
+   "what": "What annotation is, why repeats are masked before genes, soft vs hard masking, which evidence to collect and which route to take.",
+   "tools": "RepeatMasker -xsmall · GFF3 · BED"
+  },
+  {
+   "title": "Repeats I: what is repeated",
+   "what": "Transposable element classes, SINE anatomy, tandem repeats, families and consensus sequences, age by divergence.",
+   "tools": "Dfam · FamDB · RepBase"
+  },
+  {
+   "title": "Repeats II: a library de novo",
+   "what": "Build your species' own repeat library and curate it.",
+   "tools": "RepeatModeler2 · EDTA · HiTE · Earl Grey · TE-Aid"
+  },
+  {
+   "title": "Repeats III: masking and landscapes",
+   "what": "Mark every repeat copy, draw repeat landscapes, find tandem arrays.",
+   "tools": "RepeatMasker · WindowMasker · Red · TRF · ULTRA · TRASH"
+  },
+  {
+   "title": "Evidence for genes",
+   "what": "Gene structure; RNA-seq, long-read transcripts and proteins aligned to the genome.",
+   "tools": "HISAT2 · STAR · StringTie · miniprot"
+  },
+  {
+   "title": "Predicting genes",
+   "what": "Combine signals and evidence into gene models; clean and count them.",
+   "tools": "BRAKER · GALBA · Helixer · EGAPx · AGAT"
+  },
+  {
+   "title": "Annotation by projection",
+   "what": "Carry genes over from an annotated relative; orthology and gene-loss classes.",
+   "tools": "make_lastz_chains · Liftoff · TOGA2"
+  },
+  {
+   "title": "Naming and checking genes",
+   "what": "Domains and names; is the gene set believable; submission.",
+   "tools": "InterProScan · eggNOG-mapper · BUSCO · OMArk"
+  },
+  {
+   "title": "Heterozygosity and ROH",
+   "what": "From one animal: variant calling, callable mask, heterozygosity, runs of homozygosity.",
+   "tools": "DeepVariant · Clair3 · bcftools roh · PLINK · ROHan"
+  }
+ ],
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+}

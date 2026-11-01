@@ -1,0 +1,13 @@
+{
+  "name": "zooinformatics-course",
+  "private": true,
+  "description": "Build and check tools for the Zooinformatics course pages",
+  "scripts": {
+    "build": "python src/build.py",
+    "check": "node src/check.js",
+    "preview": "node src/preview.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.48.0"
+  }
+}

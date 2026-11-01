@@ -1,0 +1,10 @@
+#s02-wrap .s02-mm-in{display:grid;gap:8px;margin:10px 0}
+#s02-wrap .s02-mm-in label{display:flex;flex-direction:column;gap:3px;font-size:13px;color:var(--muted)}
+#s02-wrap .s02-mm-in input{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
+#s02-wrap .s02-mm-read{word-break:break-all;white-space:normal;line-height:2}
+#s02-wrap .s02-b{display:inline-block;min-width:1.1em;text-align:center;border-radius:3px;margin:0 1px}
+#s02-wrap .s02-call{color:var(--bg);font-weight:700}
+#s02-wrap .s02-skip{background:var(--line)}
+#s02-wrap .s02-ul{text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+#s02-wrap #s02-have,#s02-wrap #s02-mm-ex{display:flex;flex-wrap:wrap;max-width:100%}
+#s02-wrap #s02-have button,#s02-wrap #s02-mm-ex button{flex:1 1 auto;border-bottom:1px solid var(--line)}
