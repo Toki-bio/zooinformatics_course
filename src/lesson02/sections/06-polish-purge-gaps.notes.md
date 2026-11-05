@@ -25,9 +25,9 @@ Files: `06-polish-purge-gaps.html`, `.js` (no css). Researched 2026-10-31. Docs 
 | Sealer | github.com/bcgsc/abyss Sealer/README.md; ABySS 2.3.10 | 2.3.10 | Konnector, 2 x 100 bp flanks, Bloom filter, multiple -k, output files. |
 | GapCloser (SOAP) | sourceforge soapdenovo2 GapCloser-src-v1.12-r6.tgz (Main.cpp + GapCloser_Manual.pdf) | 1.12 r6 | options -a -b -o -l (<=155, default 100) -p 25 -t; ~200 GB/1 day for 3 Gb YH genome; .fill file; fill quality lower. |
 
-Project facts: only from the internal project-facts sheet (species B/C §1.4-1.6, species A §2.1, §2.3, §2.4 points 7, 1; desmans §4.1-4.4, §4.6). Species A-D are unpublished: the page gives only rounded or relative values (QV table as differences, mtDNA C-run preset rounded, sineclose benchmark on species B as percentages).
-The sineclose principle sentence ("recruits only read pairs whose mate carries a genome-unique 20-mer from the gap's own flanks")
-is from [lab record: README.md] (sineclose 0.3.1), which the facts sheet cites as [SC-README].
+Project facts: only from the internal project-facts sheet (species B/C §1.4-1.6, species A §2.1, §2.3, §2.4 points 7, 1; desmans §4.1-4.4, §4.6). Species A-D are unpublished: the page gives only rounded or relative values (QV table as differences, mtDNA C-run preset rounded, the lab gap closer benchmark on species B as percentages).
+The the lab gap closer principle sentence ("recruits only read pairs whose mate carries a genome-unique 20-mer from the gap's own flanks")
+is from [lab record: README.md] (lab gap closer), which the facts sheet cites as [SC-README].
 
 ## Verified statements in the page (beyond the table)
 - Medaka fallback: `medaka_consensus` prints "WARNING: Failed to detect a model version, will use default" and uses
@@ -43,7 +43,7 @@ is from [lab record: README.md] (sineclose 0.3.1), which the facts sheet cites a
   is a smoothed local-maximum search, not the derivative-voting code of calcuts; the one-peak/two-peak arithmetic is as in
   calcuts.c. Heterozygosity -> share of genome assembled twice (min(0.75, het% x 0.45)) is an arbitrary toy mapping.
 - Gap toy: "tied" = read (or mate) with >= 100 bases in unique flank; insert 350 +/- 30 (300-420); long-read lengths from a
-  gamma(2) distribution. Not a model of any specific closer; it illustrates the anchoring rule used by sineclose and the
+  gamma(2) distribution. Not a model of any specific closer; it illustrates the anchoring rule used by the lab gap closer and the
   bridging requirement of TGS-GapCloser/LR_Gapcloser.
 
 ## Not verified / left out / doubts

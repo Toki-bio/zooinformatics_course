@@ -181,7 +181,7 @@ blobtools view --local AssemblyName    <span class="c"># opens the interactive v
       <li>As far as our project notes show, none of our assemblies (species A–D, the desmans) has been screened with FCS-GX yet. FCS-GX should run before any of them goes to NCBI.</li>
       <li>The tax-ids and divisions are fixed by the species. A rodent such as <i>Mus musculus</i> (10090) has the BLAST name "rodents", so the GX division is <code>anml:rodents</code>. <i>Desmana moschata</i> is 182682, BLAST name "insectivores", so the division is the broader <code>anml:mammals</code>. Looked up in NCBI Taxonomy on 2026-10-31.</li>
       <li>Organelles: the hifiasm primary assembly of our species A (an unpublished rodent genome) contains dozens of mitochondria-like contigs (more than a megabase in total), which must be removed from the nuclear set. One of them is several tandem copies of the mitogenome. The same genome also holds dozens of full-length NUMTs, which belong to the nuclear genome. Telling the two apart is the job of section 11, not of FCS.</li>
-      <li>Memory: DRAGEN has 503 GB of RAM and therioserver about 499 GiB. Both are just under the 512 GiB that the FCS-GX documentation asks for. We have not tried it on either server, so whether the 464-GiB database runs at full speed there is unknown. Galaxy avoids the question.</li>
+      <li>Memory: server A has 503 GB of RAM and server B about 499 GiB. Both are just under the 512 GiB that the FCS-GX documentation asks for. We have not tried it on either server, so whether the 464-GiB database runs at full speed there is unknown. Galaxy avoids the question.</li>
     </ul>
   </div>
 </section>

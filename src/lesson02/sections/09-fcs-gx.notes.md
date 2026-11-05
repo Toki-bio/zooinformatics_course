@@ -24,12 +24,12 @@
 ## Project facts used (the internal project-facts sheet)
 - No FCS-GX run recorded (s09 hook; phrased as "as far as our project notes show").
 - Species A mt-like contigs, multimer contig, NUMT count and mito depth: given only as "dozens", "several copies", "thousands" (unpublished data).
-- DRAGEN 503 GB RAM, therioserver ~499 GiB.
+- server A 503 GB RAM, server B ~499 GiB.
 
 ## Not verified / doubts
 - Whether FCS-GX would actually give MITOCHONDRION for the species A multimer contig. This depends on the database having mitochondrial annotations for rodent hits. The page says "should pass that test", based on the rule only.
 - The interactive's rules are simplified. It leaves out the merging of grey/low-coverage rows, discard_small_primary_islands, integrant detection, REVIEW_RARE, the "no REVIEW without EXCLUDE in that division" rule (no_review_without_excludes_rule), and the classification thresholds in classify_taxonomy.py. A real report can differ.
-- The page says the database (~464 GiB) is "just under" our servers' RAM. Whether FCS-GX runs at full speed on DRAGEN or therioserver was not tested. Note that DRAGEN's "503 GB" unit (GB or GiB) is not recorded.
+- The page says the database (~464 GiB) is "just under" our servers' RAM. Whether FCS-GX runs at full speed on server A or server B was not tested. Note that server A's "503 GB" unit (GB or GiB) is not recorded.
 - The blob plot is simulated (GC and coverage values invented). The mitochondrial GC of 39 % is not a real value of any of our species.
 - The h-mer toy skips the minword step. The tooltip describes minword as "one fixed form of word vs reverse complement"; the docs say only "orientation-independent".
 - I did not run FCS (no server access). The commands are copied from the wiki, with the user's tax-id and paths substituted. `printf 'GX_NUM_CORES=32\n' > env.txt` is my own line; the format is from the wiki's env.txt example.

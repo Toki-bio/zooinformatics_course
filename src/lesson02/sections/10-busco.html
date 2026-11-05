@@ -160,7 +160,7 @@ busco --plot busco_plot --plot_percentages            <span class="c"># → busc
       <li><b>Coverage shows up as F and M.</b> C had less than half of B's long-read coverage, shorter contigs and a C score about 10 points lower, mostly through more fragmented and missing genes. Polishing (Medaka, then NextPolish) left C unchanged in both (within 0.1 point) while halving the error rate.</li>
       <li><b>One haplotype loses genes as Missing.</b> hifiasm's haplotype 1, made without Hi-C or parental data, lost about 8 points of C, almost all as missing and only about 1 % fragmented: whole regions are simply not in that file. Polishing it did not help. The first numbers sent to collaborators came from this file by mistake (a file-name pattern picked <code>bp.hap1.p_ctg.gfa</code> before <code>bp.p_ctg.gfa</code>). Check the contig names (<code>ptg</code> = primary, <code>h1tg</code>/<code>h2tg</code> = haplotypes) before you report.</li>
       <li><b>Label the file.</b> For B and C the BUSCO and QV were measured on the polished file before purge_dups, and size and N50 on the purged file; an early report mixed them.</li>
-      <li><b>The hang.</b> BUSCO 6.1 on therioserver sat for minutes after finishing, during the usage-stats upload; <code>--opt-out-run-stats</code> avoids it.</li>
+      <li><b>The hang.</b> BUSCO 6.1 on server B sat for minutes after finishing, during the usage-stats upload; <code>--opt-out-run-stats</code> avoids it.</li>
     </ul>
   </div>
 

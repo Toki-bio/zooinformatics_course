@@ -443,7 +443,7 @@
       svg.setAttribute('viewBox', '0 0 900 ' + Math.round(yE + 10));
       var verdict;
       if (R < K - 1) verdict = { v: 'no gap', c: 'good', l: 'The repeat is shorter than k − 1 = 98: a de Bruijn assembler with k = 99 already walks through it.' };
-      else if (placed === R && (bridged || mode === 'pe')) verdict = { v: 'closable', c: 'good', l: mode === 'pe' ? 'Every repeat base is carried by a tied pair: a pair-based closer such as sineclose can fill it.' : 'At least one read spans the whole copy plus 100 bases of flank on each side (green outline).' };
+      else if (placed === R && (bridged || mode === 'pe')) verdict = { v: 'closable', c: 'good', l: mode === 'pe' ? 'Every repeat base is carried by a tied pair: a pair-based closer can fill it.' : 'At least one read spans the whole copy plus 100 bases of flank on each side (green outline).' };
       else if (placed === R) verdict = { v: 'closable', c: 'good', l: 'Tied reads from both sides overlap inside the copy.' };
       else verdict = { v: 'stays a gap', c: 'bad', l: (longest) + ' bases in the middle are carried only by untied reads, which could come from any copy. ' + (mode === 'pe' ? 'Pairs reach about one insert (350 bases) into the copy from each side; longer repeats need long reads.' : 'Increase read length or coverage.') };
       readout(out, [

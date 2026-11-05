@@ -66,7 +66,7 @@ pin_hic, RagTag, omnic, vgp_tutorial.md).
 - Lesson 1 (`pre_assembly.html`): EBP 6.C.Q40 + 90 % assigned to chromosomes; VGP >= 60x Hi-C; WF8 YaHS.
 - the internal project-facts sheet: all "In our projects" facts (species B/C contig level, Pore-C declined, species A contigs vs
   a published chromosome-level relative, Hi-C ~45x recommended, RagTag only for WGA/TOGA2; species A-D unpublished, so rounded/relative only,
-  Desmana RagTag 2.1 onto Galemys + 19,250 duplicated copies among 66,963 N-runs, C. sokolovi N50 267.7 Mb).
+  Desmana RagTag 2.1 onto Galemys + thousands of duplicated copies among the N-runs, C. sokolovi N50 267.7 Mb).
 
 ## Verified facts used on the page
 All commands, defaults and file names above were read from the README or source listed. YaHS speed (<5 min human)

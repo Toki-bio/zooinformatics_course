@@ -42,7 +42,7 @@ local copies of the sources (not kept in the repository).
 - Species B Flye: wall time × 16 threads / read bases ≈ 7 thread-h per Gb (page gives only rounded times).
 
 ## Project facts used (all from the internal project-facts sheet)
-DRAGEN 64 cores/503 GB; therioserver 128 cores/~499 GiB, half-cores policy 64 threads; species B 16 threads, nice 19, ionice -c3, Flye about a day, Medaka about half a day at ~200 % CPU (contig count), NextPolish more than a day, 3 rounds; species A hifiasm -f38, jellyfish -s 40G (10G too small), p_ctg.gfa about 1 byte per base; species D SPAdes `-t 16 -m 256 --careful` with small k, error 12 in BayesHammer after downsampling; Monsoon requests ABySS 120G / MEGAHIT 240G / SPAdes 470G for Darevskia mixta ~16x; mouse 32x ABySS 5.4 h, MEGAHIT 8 h; RagTag nucmer almost a week vs minimap2 minutes; file sizes for gzip bytes/base.
+server A 64 cores/503 GB; server B 128 cores/~499 GiB, half-cores policy 64 threads; species B 16 threads, nice 19, ionice -c3, Flye about a day, Medaka about half a day at ~200 % CPU (contig count), NextPolish more than a day, 3 rounds; species A hifiasm -f38, jellyfish -s 40G (10G too small), p_ctg.gfa about 1 byte per base; species D SPAdes `-t 16 -m 256 --careful` with small k, error 12 in BayesHammer after downsampling; a university cluster requests ABySS 120G / MEGAHIT 240G / SPAdes 470G for Darevskia mixta ~16x; mouse 32x ABySS 5.4 h, MEGAHIT 8 h; RagTag nucmer almost a week vs minimap2 minutes; file sizes for gzip bytes/base.
 
 ## Could not verify / open doubts
 - hifiasm `--ont` resource needs: README benchmarks are HiFi only (v0.12). Estimator applies HiFi scaling to ONT and says so.
@@ -54,8 +54,8 @@ DRAGEN 64 cores/503 GB; therioserver 128 cores/~499 GiB, half-cores policy 64 th
 - No doc figures for SPAdes, MEGAHIT, NextPolish, purge_dups, BUSCO memory on large genomes; table says "not stated".
 - BAM sizes: no source with a number; page teaches measuring on a 1 % subsample instead.
 - dorado docs "latest" URL 404 on 2026-10-31; used 1.4.0 docs while the binary is at 2.1.x. Requirements may have changed.
-- FCS-GX on our servers: ~500 GB is a little under 512 GiB; whether it runs at full speed there is untested. DRAGEN "503 GB" may be GiB (unit unrecorded).
-- "A full /home stops everyone's conda, pip and login scripts" is stated as general behaviour (it is what happened on DRAGEN per the user's global notes, but that incident is not in the facts sheet, so no project detail is given).
+- FCS-GX on our servers: ~500 GB is a little under 512 GiB; whether it runs at full speed there is untested. server A "503 GB" may be GiB (unit unrecorded).
+- "A full /home stops everyone's conda, pip and login scripts" is stated as general behaviour (it is what happened on server A per the user's global notes, but that incident is not in the facts sheet, so no project detail is given).
 
 ## Interactive elements (02-resources.js)
 1. `s02-km-*`: distinct k-mer counts (genome / heterozygous / error / total) from genome size, coverage, error rate, heterozygosity, k; presets Illumina/Q15/HiFi; readout includes 2-bit packing size (8 or 16 bytes per k-mer).

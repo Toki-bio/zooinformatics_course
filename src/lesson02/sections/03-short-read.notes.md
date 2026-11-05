@@ -29,9 +29,9 @@ Local copies of fetched docs: `lesson2/src/s03/` (READMEs, release JSON, paper X
 ## Project facts used (all from the internal project-facts sheet)
 - species D (unpublished; page uses the code only): SPAdes command with generic file names, standard mode, BayesHammer failure "OS return value: 12" = ENOMEM, project report "apparently out of memory"; log suggests `--isolate`.
 - *Galemys*: ABySS 2.1.5 k = 100; libraries 350/550 bp + 5/9 kb mate pairs; 62,376 N-runs, 17,284 exactly 50 N; 64 % touch Tal SINE, 8.1x random; middle of element; d4 16 % vs d5 0.2 % gapped; 268 - 2x99 = 70; fills 74-109; 237/238 identical closes; contig N50 64.5 kb.
-- *Desmana*: SPAdes 4.0 k = 99 + MaSuRCA 4.1 + RagTag 2.1 onto Galemys; 65,059/66,963 N-runs exactly 100 N; 19,250 duplicated copies; raw SPAdes N50 24.2/21.4 kb; published 43.3 kb; k inferred from 99-bp overlaps at 75.5 % of ends; 50.3/48.0 % of ends in young SINE, median 98 bp; toy SPAdes 3.15.5 k = 77: 75-76 bp, 3 % divergence resolved.
+- *Desmana*: SPAdes 4.0 k = 99 + MaSuRCA 4.1 + RagTag 2.1 onto Galemys; almost all N-runs exactly 100 N; thousands of duplicated copies; raw SPAdes N50 24.2/21.4 kb; published 43.3 kb; k inferred from 99-bp overlaps at 75.5 % of ends; 50.3/48.0 % of ends in young SINE, median 98 bp; toy SPAdes 3.15.5 k = 77: 75-76 bp, 3 % divergence resolved.
 - 26 long-read assemblies without N at young SINEs; Scalopus = DISCOVAR de novo.
-- Monsoon benchmarks: mouse 32x ABySS 5.4 h N50 6.7 kb, MEGAHIT 8 h 13.9 kb; Darevskia requested memory ABySS 120G / MEGAHIT 240G / SPAdes 470G.
+- a university cluster benchmarks: mouse 32x ABySS 5.4 h N50 6.7 kb, MEGAHIT 8 h 13.9 kb; Darevskia requested memory ABySS 120G / MEGAHIT 240G / SPAdes 470G.
 - species B contig N50 "a few hundred kb" (read N50 under 3 kb), species A hifiasm "above 10 Mb" (rounded; unpublished data).
 - *Cricetulus* SPAdes (one-line mention only that SPAdes was run on it).
 
@@ -56,7 +56,7 @@ Copy buttons in `.code` are not wired by this JS (lesson page script wires `.cod
 - s02 (memory planning): species D ENOMEM, MaSuRCA hardware table, ABySS B values, SPAdes -m.
 - s04 (long reads): "26 long-read assemblies no N at young SINEs"; contig N50 comparison.
 - s05 (scaffolding): RagTag doubled copies; reference-guided order.
-- s06 (gap closing): k - 1 rule gaps, Sealer, sineclose, placeholder N-runs.
+- s06 (gap closing): k - 1 rule gaps, Sealer, the lab gap closer, placeholder N-runs.
 - s07 (products): bubble popping -> pseudohaploid; Platanus-allee phased output; MaSuRCA primary/alternative.
 - s08/s10: comparing k runs by N50 + BUSCO.
 - Lesson 1: #gp (spectrum, trusted k-mers), #km, #vgp.

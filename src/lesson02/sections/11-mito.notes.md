@@ -36,7 +36,7 @@ Running seqkit/MAFFT locally was blocked by the permission classifier, so the sc
 - MITOS2 output formats: page says GFF + protein FASTA because MitoHiFi's source reads those; full output list not checked.
 - Whether the published GenBank mitogenomes of species A were short-read assemblies: not stated in sources; not stated on the page.
 - Toy rules (90 % mapping threshold, depth = copies × nuclear depth, 2.7 Gb genome for the mtDNA share) are labelled as toy assumptions on the page.
-- The blastn command flags (-evalue 1e-5 -dust no -outfmt 6) match the species A record "e<1e-5, no dust"; the exact command line used on therioserver was not re-read.
+- The blastn command flags (-evalue 1e-5 -dust no -outfmt 6) match the species A record "e<1e-5, no dust"; the exact command line used on server B was not re-read.
 - "Merge hits split at position 1 of the linear mitogenome" is reasoning, not from a source.
 
 ## Interactives
