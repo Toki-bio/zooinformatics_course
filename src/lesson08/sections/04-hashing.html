@@ -1,0 +1,91 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>Hashing: finding k-mers in constant time</h2>
+  <p class="lede">Section 03 walked through the text with the patterns in hand. Hashing turns the problem around. Put the query k-mers in a table once, then ask of every k-mer in the data: "are you in my table?" If the table is built well, the answer takes about the same number of steps whether it holds a hundred k-mers or a hundred million.</p>
+
+  <h3 id="s04-hf">Hash functions and hash tables</h3>
+  <p>A <dfn>hash function</dfn> turns a key (here a k-mer) into a number. The same key always gives the same number, and different keys should give numbers that look random and spread evenly. A <dfn>hash table</dfn> is an array of numbered <dfn>slots</dfn>. To store a key, compute its hash, reduce it to a slot number, and write the key there. To look a key up, do the same calculation and go straight to that slot. Unless two keys compete for a slot (see below), nothing else in the table is read, and that is why the size of the set hardly matters.</p>
+  <details class="simple"><summary>Simple explanation with examples: a specimen cabinet with 64 drawers</summary><div class="in">
+    <p>Imagine a cabinet of 64 drawers and a fixed rule that turns any catalogue label into a drawer number. To file a specimen, apply the rule and open that drawer. To ask "do we have this specimen?", apply the rule and open the same drawer. You never walk along the cabinet reading labels.</p>
+    <p>Sooner or later two labels point to the same drawer. That is a <dfn>collision</dfn>, and it does not mean the two specimens are the same. So the drawer must keep the full label, and you must compare it with the one you hold. A hash table that stores the whole key, as this one does, can therefore answer exactly. The rest of this section is about what to do when the drawer is already taken.</p>
+  </div></details>
+
+  <h3 id="s04-2bit">Turning a k-mer into a number: 2 bits per base</h3>
+  <p>DNA has four letters, so two <span class="tip" title="A bit is one binary digit, 0 or 1. Two bits give four combinations: 00, 01, 10, 11">bits</span> are enough for a base: A = 00, C = 01, G = 10, T = 11. A k-mer becomes one whole number with no information lost, and it can be turned back into letters.</p>
+  <div class="toy">GATTA   10 00 11 11 00   = 572
+TAATC   11 00 00 11 01   = 781    <span class="a">(its reverse complement)</span></div>
+  <p>This code has two useful properties. The complement of a base is 3 minus its code (A 0 ↔ T 3, C 1 ↔ G 2), so a program can build the other strand with arithmetic. And the numbers sort in the same order as the letters, so the <a href="../01-pre-assembly/#basics">canonical k-mer of lesson 1</a>, the alphabetically first of the pair, is simply the smaller of the two numbers: 572, GATTA. Storing only canonical k-mers means a read matches whichever strand it came from. With odd k no k-mer is its own reverse complement (<a href="../01-pre-assembly/#km">lesson 1</a>).</p>
+  <p>At 2 bits per base, a k-mer of k = 31 takes 62 bits and fits in one 64-bit computer word; k = 32 is the limit for one word. A base such as N has no 2-bit code, so a program must treat it separately. ntHash, for example, skips every k-mer that contains a letter other than A, C, G, T or U.</p>
+  <p>Why not use the 2-bit number itself as the slot number? For small k you can: k = 12 needs 4<sup>12</sup>, about 17 million slots. For k = 31 it would need 4<sup>31</sup>, about 4.6 × 10<sup>18</sup>, nearly all empty. So the number must be squeezed into a table of practical size. Keeping only its last 6 bits would give 64 slots, but those bits are just the last three bases: every k-mer ending in AAA would fall in slot 0, and <span class="tip" title="Sequence built from a few repeated letters, such as the poly-A tail of a SINE or a simple repeat">low-complexity sequence</span> would pile up. This is why a hash function must mix all the bits before the slot is chosen.</p>
+
+  <h3 id="s04-col">Collisions and the load factor</h3>
+  <p>The <dfn>load factor</dfn> α is the share of slots in use: stored keys divided by slots. It decides how often a new key finds its slot taken. There are two standard answers to a collision.</p>
+  <div class="tbl"><table style="min-width:0"><thead><tr><th></th><th>Chaining</th><th>Open addressing</th></tr></thead><tbody>
+    <tr><td><b>A slot holds</b></td><td>a <span class="tip" title="A number that gives the place in memory where the real data are kept">pointer</span> to a list of keys</td><td>exactly one key</td></tr>
+    <tr><td><b>On a collision</b></td><td>add the key to that slot's list</td><td><dfn>probe</dfn>: look at other slots in a fixed order until a free one turns up</td></tr>
+    <tr><td><b>Load factor</b></td><td>can go above 1</td><td>cannot go above 1</td></tr>
+    <tr><td><b>Close to α = 1</b></td><td>slows down gradually</td><td>slows down sharply</td></tr>
+    <tr><td><b>In memory</b></td><td>list items may lie anywhere in memory</td><td>with <dfn>linear probing</dfn> (try the next slot, then the next) the slots tried lie side by side, which suits the <span class="tip" title="A small, fast memory on the processor. Reading from it is much quicker than reading from main memory, and it is filled in small blocks of neighbouring bytes">cache</span></td></tr>
+  </tbody></table></div>
+  <p>Linear probing has one weakness. Full slots join up into runs, and any key that lands anywhere in a run must walk to its end, then make the run one slot longer. Long runs therefore grow faster than short ones. This is called <dfn>primary clustering</dfn>. Other probe orders jump further to avoid it: Jellyfish, the k-mer counter of <a href="../01-pre-assembly/#km">lesson 1</a>, uses open addressing with a quadratic probe step, i(i + 1)/2, and writes the table to disk when it is full instead of growing it in memory.</p>
+  <p>Donald Knuth worked out the cost of linear probing in 1963, for home slots that fall uniformly at random. A <dfn>home slot</dfn> is the slot the hash chooses; each slot looked at is one probe.</p>
+  <div class="formula">new k-mer, or search for an absent one:  ≈ ½ (1 + 1/(1 − α)²)    <span style="color:var(--muted)">α 0.5: 2.5   0.75: 8.5   0.9: 50.5</span><br>search for a stored k-mer:               ≈ ½ (1 + 1/(1 − α))     <span style="color:var(--muted)">α 0.5: 1.5   0.75: 2.5   0.9: 5.5</span></div>
+  <p>Look at what is missing from the formulas: the number of keys. The cost depends only on how full the table is. That is what "constant time" means here. It is an average number of probes, not a promise for every key, and it holds only if the hash spreads keys well and the table is kept well below full. Each probe of a very large table can also take longer, as the Bloom filter part below explains. Knuth's estimates are upper bounds and become less accurate as α nears 1, as the figure below shows.</p>
+
+  <section class="tool" aria-labelledby="s04-tt-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-tt-h">Fill a small open-addressing table</h3></div>
+    <p class="tool-note">The 5-mers of a random read go into a table of 64 slots with linear probing, one at a time. Each 5-mer is made canonical, coded in 2 bits and hashed to its home slot. Press <b>Insert next k-mer</b> a few times, then <b>Fill</b>, and watch the dots in the lower plot climb. Then look up a 5-mer of your own, and run the control.</p>
+    <div class="controls" id="s04-btns">
+      <button type="button" class="btn" id="s04-one">Insert next k-mer</button>
+      <button type="button" class="btn" id="s04-ten">Insert 10</button>
+      <button type="button" class="btn" id="s04-fill">Fill</button>
+      <button type="button" class="btn" id="s04-reset">Start again</button>
+      <button type="button" class="btn" id="s04-new">New read</button>
+    </div>
+    <div class="toy s04-read" id="s04-read" aria-label="The toy read, with the current k-mer marked"></div>
+    <div class="toy" id="s04-step" aria-live="polite"></div>
+    <div class="svgbox" id="s04-tt-fig"></div>
+    <div class="legend">
+      <span><i style="background:var(--accent);height:10px;opacity:.35"></i>in its home slot</span>
+      <span><i style="background:var(--het);height:10px;opacity:.45"></i>pushed along by a collision</span>
+      <span><i style="background:var(--good);height:4px"></i>outline: slots probed in the last step, numbered in order</span>
+    </div>
+    <div class="svgbox" id="s04-tt-plot"></div>
+    <div class="legend">
+      <span><i style="background:var(--accent);height:8px;width:8px;border-radius:50%"></i>one insertion in this table</span>
+      <span><i style="background:var(--het)"></i>expected for a 64-slot table (Knuth, exact)</span>
+      <span><i style="background:var(--muted)"></i>dashed: large-table estimate ½(1 + 1/(1 − α)²)</span>
+    </div>
+    <div class="readout" id="s04-out"></div>
+    <div class="controls">
+      <label for="s04-q">look up a 5-mer<input id="s04-q" value="GATTA" maxlength="5" spellcheck="false" autocomplete="off" style="font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px;width:90px;text-transform:uppercase"></label>
+      <button type="button" class="btn" id="s04-look">Look up</button>
+      <button type="button" class="btn" id="s04-ctl">Check all 5-mers against a plain list</button>
+    </div>
+    <p class="tool-note" id="s04-ctl-out" aria-live="polite"></p>
+    <p class="tool-note"><b>What the control does.</b> It asks about all 1,024 possible 5-mers twice: once through the hash table, and once by reading through a plain list of the k-mers inserted so far, comparing letters on both strands. The list uses no 2-bit code, no canonical form and no hash, so a mistake in any of those would show as a disagreement. The table stops at 63 stored k-mers because a search for an absent k-mer ends only at an empty slot.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why the plot bends so sharply</summary><div class="in">
+    <p>When the table is half full, a new k-mer has an even chance of hitting a free home slot at once, and runs of full slots are short. At 90 % full, nearly every home slot is taken and the free slots are few and far apart, so a k-mer may walk a long way to reach one.</p>
+    <p>The lesson for a real program: give the table more slots than it has keys. Memory spent on empty slots buys speed. Doubling the slots of a 90 % full table takes it to 45 %, and by the formula above the expected probes for an absent k-mer fall from about 50 to about 2.</p>
+  </div></details>
+
+  <h3 id="s04-roll">Rolling: the next k-mer almost for free</h3>
+  <p>Consecutive k-mers of a read share k − 1 bases. Computing each one from scratch repeats nearly all the work. A <dfn>rolling</dfn> calculation updates the previous value instead. With the 2-bit code this takes one shift: push the bits two places left, drop the base that left, add the base that came in. The reverse strand rolls the other way at the same moment, so both strands are ready without ever writing out a reverse complement.</p>
+  <div class="toy">forward   GATTA   10 00 11 11 00   = 572
+          <span class="a">ATTAC</span>   00 11 11 00 01   = 241   shift left, add C (01) at the end
+reverse   TAATC   11 00 00 11 01   = 781
+          <span class="a">GTAAT</span>   10 11 00 00 11   = 707   shift right, add G (10) at the front
+canonical of ATTAC = the smaller of 241 and 707 = 241</div>
+  <p>The same idea can apply to the hash value itself. <dfn>ntHash</dfn> (Mohamadi et al. 2016) gives each base a fixed random 64-bit number, its seed, and updates the hash of a k-mer in a few operations whatever k is:</p>
+  <div class="formula">H(next k-mer) = rotate(H(this k-mer), 1) <span class="tip" title="XOR, exclusive or: compare two numbers bit by bit; the result bit is 1 where they differ. Doing it twice with the same number undoes it, which is how the leaving base is taken out">⊕</span> rotate(seed of leaving base, k) ⊕ seed of entering base</div>
+  <p>The value is a 64-bit hash for any k, so k is not limited to 32. It also keeps a second value for the reverse strand; the current code (version 2.4.0) adds the two to get one canonical hash, the same for both strands. Further hash values for a k-mer come from a few more operations on the first one, which suits Bloom filters. In the paper's test with multiple hash values for 50-mers in 250-bp reads, ntHash was over 20 times faster than the next best function. One difference from the 2-bit code: a hash cannot be turned back into the k-mer, and two k-mers can share it. A table that must answer exactly still has to compare the keys themselves.</p>
+
+  <h3 id="s04-bloom">A Bloom filter in front of the table</h3>
+  <p>When the query set is small and the data are large, most k-mers in the reads are <i>not</i> in the set. The table must still be asked each time, and a large table does not fit in the cache, so each probe may be a slow trip to main memory. A small <a href="../02-assembly/#s03">Bloom filter (lesson 2, section 03)</a> can stand in front of it. Bloom's 1970 paper was about just this: cutting the space and the time needed to reject a non-member, in exchange for a small rate of false "yes" answers. A "no" from the filter is certain, and the table is not touched. A "yes" goes on to the table, which compares the real key. So the pair still gives exact answers, because the filter's false positives stop at the table.</p>
+  <p>A standard Bloom filter has one weakness in memory. Its h bits lie anywhere in a large array, so a positive answer or an insertion costs h <span class="tip" title="A cache miss happens when the data are not in the processor's fast cache and must be fetched from main memory">cache misses</span>. (A negative answer stops at the first 0 bit: under two misses on average, when the filter is tuned to have half its bits set.) A <dfn>blocked Bloom filter</dfn> (Putze, Sanders and Singler 2007) splits the array into small filters, each the size of one <span class="tip" title="The block of neighbouring bytes that is moved from main memory into the cache in one go">cache line</span>; the paper gives 64 bytes, or 512 bits, as a common size. The first hash picks the block and the other hashes set or test bits inside it, so each operation costs one cache miss.</p>
+  <div class="toy">standard   ...<span class="a">1</span>..........<span class="a">1</span>..................<span class="a">1</span>.....   h places, far apart
+blocked    [........][.<span class="a">1</span>..<span class="a">1</span>..<span class="a">1</span>][........][........]   first hash picks the block</div>
+  <p>The price is accuracy. Chance loads some blocks more heavily than others, and the crowded blocks give more false positives. At 8 bits per element with 512-bit blocks the paper reports a false-positive rate of 0.0231 instead of 0.0215, which one more bit per element makes up. At 20 bits per element and 14 hash functions the rate almost triples. In the paper's own tests, on the hardware of the time, the blocked variants beat the standard filter for positive queries and insertions, by a factor close to 4 at best, and that best case used 32 % more memory.</p>
+  <p>Section <a href="#s05">05</a> puts these parts together in one working program: canonical 2-bit k-mers, an open-addressing table and a blocked Bloom filter.</p>
+</section>

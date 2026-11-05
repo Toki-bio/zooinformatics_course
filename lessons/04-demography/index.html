@@ -143,6 +143,11 @@ li+li{margin-top:4px}
 /* ---- section css ---- */
 #s01-wrap #s01-preset{flex-wrap:wrap;max-width:100%}
 #s01-wrap #s01-preset button{flex:0 0 auto}
+#s01-wrap .s01-cz{display:flex;flex-direction:column;gap:16px;min-width:0}
+#s01-wrap .s01-cz h4{font-family:var(--f-display);font-size:15.5px;font-weight:700;margin:10px 0 0;line-height:1.2}
+#s01-wrap #s01-cz-kind{flex-wrap:wrap;max-width:100%}
+#s01-wrap #s01-cz-kind button{flex:0 0 auto}
+#s01-wrap .btn:disabled{opacity:.45;cursor:default}
 
 #s02-wrap .s02-ck{flex-direction:row;align-items:center;gap:6px;min-width:auto}
 #s02-wrap .s02-segwrap{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
@@ -155,6 +160,10 @@ li+li{margin-top:4px}
 #s02-wrap #s02-psmcfa{max-height:none}
 #s02-wrap .readout .tool-note{display:block;font-size:12.5px;margin-top:2px}
 
+#s03-wrap .s03-pr{display:flex;flex-direction:column;gap:16px;min-width:0}
+#s03-wrap .s03-pr h4{font-family:var(--f-display);font-size:15.5px;font-weight:700;margin:10px 0 0;line-height:1.2}
+#s03-wrap .s03-pr ol{margin:0;padding-left:22px;max-width:70ch}
+#s03-wrap .s03-pr ol li+li{margin-top:4px}
 
 
 #s05-wrap .s05-dh{border-left:3px solid var(--line);padding:2px 10px;margin:14px 0 4px;font-size:14px}
@@ -237,10 +246,104 @@ img{max-width:100%}
   <h2 id="s01"><span class="n">01</span>What one genome remembers</h2>
   <p class="lede">One diploid animal carries two copies of every <span class="tip" title="Autosome: any chromosome that is not a sex chromosome (X, Y, Z, W). Each is present twice in a diploid animal, once from each parent.">autosome</span>. Followed back through the generations, the two copies of any stretch of DNA meet in one ancestral copy. How long ago that happened depends on how large the population was: in a small population two copies find their common ancestor quickly, in a large one it takes a long time. Recombination has cut the genome into many short stretches, each with its own ancestor and its own date. Heterozygosity records those dates. This section builds the intuition that every method in this lesson rests on, before any program is run.</p>
 
+  <div class="s01-cz">
+  <h3 id="s01-zero">Coalescent theory from zero</h3>
+  <p>Everything in this lesson rests on one idea, and it needs no mathematics beyond fractions. We will build it in five small steps, each with a picture first. Two words before we start. A <dfn>gene copy</dfn> is one copy of one stretch of DNA: a <span class="tip" title="Diploid: carrying two copies of each chromosome, one from each parent.">diploid</span> animal carries two, so a population of N animals holds 2N copies. A <dfn>generation</dfn> here is one row of a picture: all the copies alive at one time.</p>
+
+  <h4>Step 1. Forward in time: most lines die out</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f1"></div>
+    <figcaption><b>A toy population of 5 animals, so 10 gene copies per row.</b> Time runs down the page, from the oldest row to today. Each copy in a row picked its parent at random from the row above. <span id="s01-cz-f1n"></span></figcaption>
+  </figure>
+  <p>This simple rule is the <span class="tip" title="Wright-Fisher model: an idealised population. Generations do not overlap, the size stays the same, and each new copy picks its parent at random from the previous generation, every parent being equally likely.">Wright-Fisher model</span>. Some copies are picked twice or more, and some are never picked, so their line ends there. Nothing about those copies was worse. It is chance alone, and this change by chance is called <span class="tip" title="Genetic drift: random change in how common a gene copy is, caused only by which copies happen to leave offspring. It is stronger in small populations.">genetic drift</span>. Rows are drawn sorted so that the lines do not cross; the place of a copy within a row means nothing.</p>
+
+  <h4>Step 2. Turn it round: follow copies backward</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f2"></div>
+    <figcaption><b>The same population, read from the bottom up.</b> <span id="s01-cz-f2n"></span></figcaption>
+  </figure>
+  <p>Now forget everyone else. We have sampled a few copies today, and we ask only where they came from. Each copy has exactly one parent copy, so following it back gives one line, called a <dfn>lineage</dfn>. All the faint copies have no descendants in our sample, and we can ignore them. That is what saves the work: instead of simulating a whole population forward, we follow a few lines backward. When two lines reach the same parent they <dfn>coalesce</dfn> (they meet), and from there on they are one line. The model of this backward process is the <dfn>coalescent</dfn> (Kingman 1982), and Nordborg (2007) gives its starting point as "the realization that the genealogy is usually easier to model backward in time".</p>
+
+  <h4>Step 3. Two lines meet: count it</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f3a"></div>
+    <figcaption><b>One generation back.</b> Copy A has picked its parent. Copy B picks at random from the same 10 copies, so it picks the same one with a chance of 1 in 10. Nine times in ten the two lines stay apart and try again one generation further back.</figcaption>
+  </figure>
+  <figure>
+    <div class="svgbox" id="s01-cz-f3b"></div>
+    <figcaption><b>Counting 100 pairs in two toy populations.</b> <span id="s01-cz-f3n"></span></figcaption>
+  </figure>
+  <p>The counting says what the formula says. If something has a chance of 1 in 10 each time, you wait 10 tries on average; at 1 in 40 you wait 40.</p>
+  <div class="formula">meeting chance per generation = 1/(2N)<br>average wait = 2N generations</div>
+  <p>So <b>small populations meet sooner</b>. With few parents to choose from, two lines soon land on the same one. Look too at the spread in the bars: most pairs wait less than the average, and a few wait far longer.</p>
+
+  <h4>Step 4. More than two copies: short tips, long deep branches</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f4"></div>
+    <figcaption><b>An average tree of 6 copies, drawn to scale.</b> Each band is the time spent with a given number of lines. Bottom band: 6 lines make 15 possible pairs, so the first meeting comes after only 2N/15 generations on average. Top band: the last 2 lines are 1 pair, and wait 2N.</figcaption>
+  </figure>
+  <p>Every pair of lines is a separate chance to meet. With 6 lines there are 15 pairs, so a meeting comes 15 times sooner than for one pair. Each meeting removes a line and the number of pairs falls quickly: 15, 10, 6, 3, 1. Meetings therefore come fast near the present and slowly at the end.</p>
+  <div class="formula">n lines make n(n − 1)/2 pairs<br>average wait with k lines ≈ 2N ÷ [k(k − 1)/2]<br>average height of the tree ≈ 4N (1 − 1/n)</div>
+  <p>The tree has short tips and long deep branches. The last two lines alone take 2N generations on average, while the whole tree stands 4N(1 − 1/n) high: that is more than half of the height, whatever the sample (for 6 copies 60 %, for 50 copies 51 %). Nordborg (2007) puts it the same way: the time with only two branches is "greater than half the expected total tree height". Adding more copies mostly adds short twigs near the present. This is also why two copies, the ones in one animal, already reach deep into the past.</p>
+
+  <h4>Step 5. Mutations fall on the branches: differences measure time</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f5"></div>
+    <figcaption><b>Four copies with mutations (crosses) on the branches of their tree.</b> A and B met recently: only 2 crosses lie on the short path between them (blue and red branches at the left), so they differ at 2 sites. A and C met only at the root: 9 crosses lie on the long path between them (red), so they differ at 9 sites.</figcaption>
+  </figure>
+  <p>The tree comes first and mutations are scattered on it afterwards, like rain on branches. If a mutation does not change how many offspring a copy leaves (it is <span class="tip" title="Neutral: having no effect on survival or reproduction.">neutral</span>), it cannot change the tree, so the two can be treated separately (Nordborg 2007). A longer branch collects more mutations. Two copies differ at every mutation on the path that joins them, and that path has two arms, each as long as the time back to their ancestor. So the number of differences between two copies measures the time since they met. That is the reasoning behind the formula in <a href="#s01-clock">Heterozygosity is a clock</a>, below.</p>
+
+  <section class="tool explain" aria-labelledby="s01-cz-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s01-cz-h">Watch lines meet in different populations</h3></div>
+    <p class="tool-note">A real Wright-Fisher population, generated anew each time. Today is the bottom row. All parent links are faint. Press <b>play</b> and the sampled lines (blue) climb back until they meet; orange rings mark meetings, the red ring the common ancestor. Each setting changes the width of the rows through time. These are tiny toy populations, so that you can see every copy.</p>
+    <div class="controls" role="group" aria-label="Population setting">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Setting
+        <div class="seg" role="group" aria-label="Population setting" id="s01-cz-kind"><button type="button" data-v="const" aria-pressed="true">constant</button><button type="button" data-v="bott" aria-pressed="false">bottleneck</button><button type="button" data-v="exp" aria-pressed="false">expansion</button><button type="button" data-v="decl" aria-pressed="false">decline</button><button type="button" data-v="demes" aria-pressed="false">two demes</button></div></div>
+    </div>
+    <p class="tool-note" id="s01-cz-say"></p>
+    <div class="controls" role="group" aria-label="Population size and sample">
+      <label for="s01-cz-N">Population size N <output id="s01-cz-N-o">10</output><input type="range" id="s01-cz-N" min="5" max="30" step="1" value="10"></label>
+      <label for="s01-cz-n">Sampled copies <output id="s01-cz-n-o">4</output><input type="range" id="s01-cz-n" min="2" max="10" step="1" value="4"></label>
+    </div>
+    <div class="controls" role="group" aria-label="Run">
+      <button type="button" class="btn" id="s01-cz-new" style="align-self:center">new population</button>
+      <button type="button" class="btn" id="s01-cz-play" style="align-self:center">play</button>
+      <button type="button" class="btn" id="s01-cz-step" style="align-self:center">one generation back</button>
+      <button type="button" class="btn" id="s01-cz-back" style="align-self:center">back to today</button>
+    </div>
+    <div class="svgbox" id="s01-cz-grid"></div>
+    <div class="readout" id="s01-cz-read"></div>
+    <div class="controls" role="group" aria-label="Repeat">
+      <button type="button" class="btn" id="s01-cz-rep" style="align-self:center">repeat 1,000 times</button>
+    </div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>pairs in the simulation</span><span><i style="background:var(--fg)"></i>calculated expectation (dashed)</span><span><i style="background:var(--bad)"></i>calculated average</span><span><i style="background:var(--code-bg);height:10px"></i>the narrow period</span></div>
+    <div class="svgbox" id="s01-cz-hist"></div>
+    <div class="readout" id="s01-cz-rout"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) <b>Constant</b>: press repeat at N = 5 and at N = 30: the average wait follows 2N, and the histogram falls away from short waits to a long tail. Press new population a few times with 10 copies sampled: the height of a single tree jumps around, and the long top branch is the reason. (2) <b>Bottleneck</b>: the meetings pile up in the grey band. (3) <b>Expansion</b>: few meetings near today, then a burst. (4) <b>Decline</b>: the opposite, a burst near today and then a long wait. The shape of the histogram is the fingerprint of the history, and reading it backward is what the methods of this lesson do. (5) <b>Two demes</b>: the total size is the same as in constant, yet a pair from different demes waits longer, and the histogram has almost no very short waits. A history of size changes is not the only thing that shapes this histogram (<a href="#s06">s06</a>).</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: a class of pupils who each pick a parent</summary><div class="in">
+    <p>This is an analogy, not biology. Take a class of 20 pupils. Every pupil points at random at one pupil of last year's class and calls that pupil their "parent". Last year's pupils did the same with the class before, and so on.</p>
+    <p><b>Going forward:</b> some of last year's pupils are pointed at twice, some not at all. Those not chosen have no "descendants" in this year's class. It works like surnames in a village: a surname dies out when a generation happens to have no sons to carry it, and after enough time one surname can be all that is left, though it was no better than the others.</p>
+    <p><b>Going backward:</b> choose two pupils of this year's class, Ana and Ben. Ana has pointed at someone. The chance that Ben pointed at the same person is 1 in 20. If not, look one class further back and try again. On average they share a "parent" after 20 classes: sometimes after 1, sometimes after 60. In a class of 5 it takes about 5.</p>
+    <p><b>All the pupils:</b> take the whole class of 20. There are 190 possible pairs, so someone meets almost at once. As the lines join, pairs get scarce, and the last two lines left take as long as any pair does, about 20 classes.</p>
+    <p><b>Marks on the way:</b> suppose each pupil copies the family recipe and makes a small random change now and then. Ana's and Ben's recipes differ by the changes on both lines since the shared "parent". Few differences mean a recent meeting, many a distant one. Where the analogy stops: a person has two parents and a surname follows one line of them, whereas a gene copy really does have just one parent copy. That is why the model works so simply for gene copies.</p>
+  </div></details>
+
+  <h4>What this model assumes</h4>
+  <ul>
+    <li><b>Constant size.</b> The rows keep the same width. Relaxed further down in this section (<i>When the population size changes</i>), and estimating that change is the purpose of PSMC (<a href="#s03">s03</a>).</li>
+    <li><b>Random mating.</b> Every parent is equally likely. Related parents break this and leave long homozygous runs (<a href="#s06">s06</a>; <a href="../03-annotation/#s09">lesson 3, s09</a>).</li>
+    <li><b>Neutrality.</b> No copy has an advantage, so the mutations do not shape the tree. No section of this lesson relaxes this: the methods here treat the genome as neutral, and selection stays a caution when you read a result.</li>
+    <li><b>No structure.</b> One population with no groups. The <b>two demes</b> setting above breaks this; what it does to a PSMC curve is in <a href="#s03">s03</a> and <a href="#s06">s06</a>, and gene flow between species in <a href="#s07">s07</a>.</li>
+  </ul>
+  <p>The pictures above also follow one short stretch of DNA that is never cut. Recombination lifts that limit further down, in <i>Recombination cuts the genome into many histories</i>. Real populations are never this ideal; the size N that would make the ideal model fit is the effective size N<sub>e</sub>, defined next, and from here on the text writes N<sub>e</sub> instead of N.</p>
+  </div>
+
   <h3>Two copies, one ancestor</h3>
   <dl class="defs">
     <dt>Coalescence</dt><dd>Two gene copies, traced back in time, "coalesce" in the generation where they come from the same single parental copy. From there back they share one history. The mathematical model of this backward process is the <dfn>coalescent</dfn>.</dd>
-    <dt>TMRCA</dt><dd>Time to the most recent common ancestor: how many generations back the two copies coalesce. In this lesson it is always the TMRCA of the two copies inside one animal, the maternal and the paternal one.</dd>
+    <dt>TMRCA</dt><dd>Time to the most recent common ancestor: how many generations back the two copies coalesce. From here on it is the TMRCA of the two copies inside one animal, the maternal and the paternal one, unless a section says otherwise.</dd>
     <dt>Effective population size (N<sub>e</sub>)</dt><dd>The size of an idealised population (random mating, constant size, every individual equally likely to be a parent) that would give the same rate of coalescence as the real one. It is not a head count of the animals alive, and methods based on the coalescent measure exactly this: Spence et al. (2018) define the effective size these methods infer as "the inverse coalescence rate for a pair of haplotypes".</dd>
     <dt>Haplotype</dt><dd>One of the two copies of a chromosome (or of a stretch of it): the one from the mother or the one from the father.</dd>
   </dl>
@@ -256,11 +359,11 @@ large population   mother's copy  ACGT<span class="h">C</span>AGCATGACC<span cla
   </div></details>
 
   <h3>How fast two copies find their ancestor</h3>
-  <p>In the idealised population of N<sub>e</sub> diploid individuals there are 2N<sub>e</sub> copies of each autosomal stretch. Going back one generation, the chance that the two copies come from the same parental copy is one in 2N<sub>e</sub>. This is the starting point of the PSMC model (the method of <a href="#s03">s03</a>), which measures time in units of 2N<sub>0</sub> generations (N<sub>0</sub> is a reference size that the program estimates, close to the most recent size) and sets the coalescence rate at time <i>t</i> to 1/λ(<i>t</i>), where N(<i>t</i>) = N<sub>0</sub> λ(<i>t</i>) is the size at that time and λ the size relative to N<sub>0</sub> (Li &amp; Durbin 2011, model notes in the PSMC repository).</p>
+  <p>Step 3 above gave the chance of meeting: one in 2N<sub>e</sub> per generation, in a population of N<sub>e</sub> diploid individuals. This is the starting point of the PSMC model (the method of <a href="#s03">s03</a>), which measures time in units of 2N<sub>0</sub> generations (N<sub>0</sub> is a reference size that the program estimates, close to the most recent size) and sets the coalescence rate at time <i>t</i> to 1/λ(<i>t</i>), where N(<i>t</i>) = N<sub>0</sub> λ(<i>t</i>) is the size at that time and λ the size relative to N<sub>0</sub> (Li &amp; Durbin 2011, model notes in the PSMC repository).</p>
   <div class="formula">chance of coalescing per generation = 1 / (2 N<sub>e</sub>)       mean TMRCA = 2 N<sub>e</sub> generations</div>
   <p>The waiting time is very variable: with a constant size it follows an <span class="tip" title="Exponential distribution: the waiting time for an event that has the same small chance in every generation. Short waits are most common, but very long ones happen too; its spread (standard deviation) equals its mean.">exponential distribution</span>, so its spread is as large as its mean. With N<sub>e</sub> = 10,000, the mean TMRCA is 20,000 generations, but half of all stretches coalesce within about 13,900 generations (2N<sub>e</sub> × ln 2) and one in twenty takes longer than 60,000. That spread is not noise to be averaged away: it is the information. If the size changed over time, the coalescence rate changed with it, and the TMRCAs pile up in the periods when the population was small.</p>
 
-  <h3>Heterozygosity is a clock</h3>
+  <h3 id="s01-clock">Heterozygosity is a clock</h3>
   <p>While the two copies are separate, each collects mutations. If the mutation rate is <span class="tip" title="μ (mu): the number of new mutations per base per generation. Measured in pedigrees or calibrated from fossil dates; section 04 of this lesson deals with its uncertainty.">μ</span> per base per generation and the TMRCA is T generations, the two copies have been evolving independently for 2T generations in total, so they differ at about 2μT of their bases. A stretch with a recent common ancestor has almost no heterozygous sites; a stretch with an old one has many. Averaged over the genome under a constant size this gives the classic expectation for the expected heterozygosity per base, written <span class="tip" title="θ (theta): the population-scaled mutation rate. For two copies in one diploid it is the expected share of bases at which they differ, if the population size was constant.">θ</span>:</p>
   <div class="formula">heterozygosity of a stretch ≈ 2 μ T       genome average (constant size) ≈ 2 μ × 2 N<sub>e</sub> = 4 N<sub>e</sub> μ = θ</div>
   <p>Run it backwards and one number already gives a size. Take a genome with 1.5 heterozygous <span class="tip" title="SNV, single-nucleotide variant (often called SNP): a position where one base differs. Here: a position where the two copies of the animal carry different bases.">SNVs</span> per kb (0.0015 per base; a round example value). With an illustrative mutation rate of 5.4 × 10<sup>−9</sup> per base per generation, N<sub>e</sub> = 0.0015 / (4 × 5.4 × 10<sup>−9</sup>) ≈ 69,000; a genome with twice the heterozygosity gives twice that size. These are long-term averages over the whole history the genome samples, and they scale with the mutation rate you assume (<a href="#s04">s04</a>). The rest of the lesson is about getting the history instead of one average.</p>
@@ -318,7 +421,7 @@ large population   mother's copy  ACGT<span class="h">C</span>AGCATGACC<span cla
   <div class="note"><b>In our projects</b>
     <p>One male each of two closely related rodents: species A (our long-read genome) and a close relative with a public HiFi chromosome-level assembly ("the relative" in the rest of this lesson). Counted over the <span class="tip" title="Callable: positions where the reads were good enough that a heterozygous site would have been seen (s02; lesson 3, s09).">callable</span> sequence, the relative had about 1.7 times as many heterozygous SNVs per kb as species A, so by the formula above its long-term N<sub>e</sub> is about 1.7 times larger at any mutation rate the two share. The heterozygosity is far from uniform: about three times as much of the species A genome as of the relative's lies in runs of homozygosity (50-kb window method; <a href="../03-annotation/#s09">lesson 3, s09</a>). Those runs are the pieces with very recent TMRCAs; the rest of the genome holds the older history that the following sections read.</p>
   </div>
-  <p class="tool-note">Sources: Li &amp; Durbin 2011, <i>Nature</i> 475:493 (<a href="https://doi.org/10.1038/nature10231">doi</a>) and the model notes (psmc.tex) in the <a href="https://github.com/lh3/psmc">PSMC repository</a>; Spence et al. 2018, <i>Curr Opin Genet Dev</i> 53:70, a review of coalescent hidden Markov models (<a href="https://doi.org/10.1016/j.gde.2018.07.002">doi</a>); Mazet et al. 2016, <i>Heredity</i> 116:362 (<a href="https://doi.org/10.1038/hdy.2015.104">doi</a>). Textbook treatment of the coalescent: Hein, Schierup &amp; Wiuf 2005, <i>Gene Genealogies, Variation and Evolution</i>; Wakeley, <i>Coalescent Theory: An Introduction</i>.</p>
+  <p class="tool-note">Sources: Li &amp; Durbin 2011, <i>Nature</i> 475:493 (<a href="https://doi.org/10.1038/nature10231">doi</a>) and the model notes (psmc.tex) in the <a href="https://github.com/lh3/psmc">PSMC repository</a>; Spence et al. 2018, <i>Curr Opin Genet Dev</i> 53:70, a review of coalescent hidden Markov models (<a href="https://doi.org/10.1016/j.gde.2018.07.002">doi</a>); Mazet et al. 2016, <i>Heredity</i> 116:362 (<a href="https://doi.org/10.1038/hdy.2015.104">doi</a>). Coalescent from zero: Nordborg 2007, chapter 25 of the <i>Handbook of Statistical Genetics</i>, 3rd ed. (<a href="https://doi.org/10.1002/9780470061619.ch25">doi</a>); the coalescent was described by Kingman 1982, <i>Stoch Proc Appl</i> 13:235 (<a href="https://doi.org/10.1016/0304-4149(82)90011-4">doi</a>). Textbook treatment of the coalescent: Hein, Schierup &amp; Wiuf 2005, <i>Gene Genealogies, Variation and Evolution</i>; Wakeley, <i>Coalescent Theory: An Introduction</i>.</p>
 </section>
 
 <!-- ============ 02-input ============ -->
@@ -486,6 +589,63 @@ copy 2  ACGTTAGCATGACCTTAGACGTTAGGA<span class="h">C</span>CCAGTTA<span class="h
     <p>The left piece was inherited from an ancestor who lived, say, 20,000 generations ago; the right piece from one who lived 200,000 generations ago and had ten times as long to collect mutations. In a 2.5-Gb genome there are millions of such pieces. If the population was small 50,000 years ago, many pieces will have coalesced then, and the genome will hold an excess of segments of that age. PSMC finds the population-size history that best explains how often each age appears.</p>
     <p>Two limits follow directly. Very young segments are rare (two copies rarely share an ancestor that recent unless the population is tiny), so the recent past is poorly sampled. Very old segments are rare too, because most pairs of lineages have found their common ancestor long before, and they are short (recombination had a long time to cut them), so the far past is poorly sampled as well. And each segment carries only a few heterozygous sites, so the age of any single segment is known only roughly: the curve is a blurred image of the history.</p>
   </div></details>
+
+  <div class="s03-pr">
+  <h3 id="s03-principle">The principle of PSMC</h3>
+  <p>The coalescent display of <a href="#s01-zero">s01</a> followed one stretch of DNA in one population. PSMC does the reverse. It has one animal and wants the population. The idea is to walk along the two copies of a chromosome, stretch after stretch:</p>
+  <ol>
+    <li><b>Each stretch has its own meeting time.</b> Its two copies met in one ancestor, at one time.</li>
+    <li><b>Recombination changes the time at breakpoints.</b> Past a breakpoint, the two copies have a different ancestor and so a different time.</li>
+    <li><b>The density of heterozygous sites shows the time.</b> Dense <span class="tip" title="Het: a heterozygous site, a position where the two copies of the animal differ.">hets</span> mean an old stretch, sparse hets a recent one, because a stretch with meeting time T has about 2μT hets per base (<a href="#s01-clock">s01</a>).</li>
+    <li><b>PSMC reads the time from that density.</b> In its <span class="tip" title="Hidden Markov model: see the definition above. The hidden state is what we want to know; the observation is what we can see.">hidden Markov model</span> the hidden state is the time interval, and the observation for each 100-bp bin is "het or not" (Li &amp; Durbin 2011: "the hidden states are discretized TMRCA and the transitions represent ancestral recombination events").</li>
+    <li><b>It counts how much of the genome falls in each time interval.</b> The count per interval gives the rate of meeting in that interval, and the rate gives N<sub>e</sub>(t).</li>
+  </ol>
+
+  <h4>Key point 1. Population size sets the timing of meetings</h4>
+  <p>The size of the population at a time decides how fast lines meet at that time: the chance is 1/(2N) per generation, with the N of that moment. So <b>many meetings in a time interval mean a small population then, and few meetings mean a large one</b>. The whole PSMC curve is this one link, read interval by interval from the present backward:</p>
+  <div class="formula">rate in an interval ≈ (share meeting in it ÷ share still separate on entering it) ÷ its length<br>N<sub>e</sub> = 1 / (2 × rate)</div>
+  <p>The "still separate" part matters. A very old interval can hold few meetings just because few lines are left to meet, not because the population was large. That is why the reading goes from the present backward. Below, move one size slider and watch the bars of that period change, and the bars of older periods too: a small population in one period also leaves fewer lines for everything older.</p>
+
+  <h4>Key point 2. Recombination turns one genome into many samples</h4>
+  <p>Without recombination a chromosome pair would have one tree and one date: a single sample of the history, which is the problem with any one locus. In Li &amp; Durbin's words "the statistical resolution of inferences from any one locus is poor". Recombination cuts the pair into many stretches, each with its own date, so that a diploid genome "harbors hundreds of thousands of independent loci, each with its own TMRCA". That is why a single animal can show a whole curve: <b>one genome is many samples of the coalescent</b>. Neighbouring stretches are not fully independent, because the new time after a breakpoint depends on the old one, and the model includes this.</p>
+  <p>This has limits, and the slider below shows them:</p>
+  <ul>
+    <li><b>Each stretch tells little.</b> A stretch with meeting time T has hets at a density of 2μT and a length of about 1/(2rT) (r = recombination rate). The T cancels: on average a stretch holds about μ/r hets <b>whatever its age</b>, and some hold none. A single stretch can only be dated roughly. If r is high compared with μ, most stretches become too short to hold any het, and the times can be read only as a blur, however many stretches there are.</li>
+    <li><b>The recent past is poor for a different reason.</b> Recent stretches are not short, they are long: little time has passed for recombination to cut them. So few stretches have a recent time. Li &amp; Durbin: "More recently than 20kya or more anciently than 3Mya few recombination events are left in the present sequence". A long recent stretch is one sample only, however many bases it covers.</li>
+    <li><b>The far past is poor too.</b> Almost all lines have met by then, so few stretches are left to count, and they are short.</li>
+    <li><b>The recombination rate is a parameter of the model.</b> PSMC does not take it from a map. It estimates the scaled rate ρ together with the mutation rate θ and the sizes; the toy below hands the reader the true value.</li>
+  </ul>
+
+  <section class="tool explain" aria-labelledby="s03-pr-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-pr-h">Walk along one animal's chromosome pair</h3></div>
+    <p class="tool-note">The page simulates a 10-Mb chromosome pair under the model PSMC assumes (the sequentially Markovian coalescent, with the transition of Li &amp; Durbin 2011), then forgets the true times and reads them back from the het / no-het bins alone, with a small hidden Markov model. Toy values: μ = 2.5 × 10<sup>−8</sup> per base per generation, 100-bp bins, 12 time intervals placed with PSMC's own formula. Times are in generations.</p>
+    <div class="controls" role="group" aria-label="Population size per period">
+      <label for="s03-pr-n0">Nₑ, 0 to 2,000 generations ago <output id="s03-pr-n0-o">10,000</output><input type="range" id="s03-pr-n0" min="0" max="11" step="1" value="5"></label>
+      <label for="s03-pr-n1">Nₑ, 2,000 to 10,000 <output id="s03-pr-n1-o">3,000</output><input type="range" id="s03-pr-n1" min="0" max="11" step="1" value="2"></label>
+      <label for="s03-pr-n2">Nₑ, 10,000 to 50,000 <output id="s03-pr-n2-o">10,000</output><input type="range" id="s03-pr-n2" min="0" max="11" step="1" value="5"></label>
+      <label for="s03-pr-n3">Nₑ, before 50,000 <output id="s03-pr-n3-o">10,000</output><input type="range" id="s03-pr-n3" min="0" max="11" step="1" value="5"></label>
+    </div>
+    <div class="controls" role="group" aria-label="Recombination and animal">
+      <label for="s03-pr-r">Recombination rate r per base per generation <output id="s03-pr-r-o">1 × 10⁻⁸</output><input type="range" id="s03-pr-r" min="0" max="6" step="1" value="4"></label>
+      <button type="button" class="btn" id="s03-pr-new" style="align-self:center">new animal</button>
+    </div>
+    <div class="readout" id="s03-pr-out"></div>
+    <div class="legend"><span><i style="background:var(--fg)"></i>true N<sub>e</sub> / expected share (dashed)</span><span><i style="background:var(--accent);height:10px"></i>true times of the stretches</span><span><i style="background:var(--het);height:10px"></i>read from the het bins</span><span><i style="background:var(--bad)"></i>the stretch you selected</span></div>
+    <div class="svgbox" id="s03-pr-curve"></div>
+    <p class="tool-note" id="s03-pr-status" aria-live="polite"></p>
+    <div class="svgbox" id="s03-pr-chrom"></div>
+    <div class="controls" role="group" aria-label="Move along the chromosome">
+      <label for="s03-pr-z">Window starts at <output id="s03-pr-z-o">4.00 Mb</output><input type="range" id="s03-pr-z" min="0" max="9.9" step="0.01" value="4"></label>
+      <button type="button" class="btn" id="s03-pr-prev" style="align-self:center">previous stretch</button>
+      <button type="button" class="btn" id="s03-pr-next" style="align-self:center">next stretch</button>
+    </div>
+    <p class="tool-note"><b>Click a stretch</b> in the window above. The picture below is the coalescent display of <a href="#s01-zero">s01</a> for that stretch: row width follows N<sub>e</sub> at that time, and the two copies meet at the stretch's own time. It is a schematic: each row stands for many generations, time and width are on log scales, and the paths are drawn for illustration. Only the meeting time comes from the simulation.</p>
+    <div class="svgbox" id="s03-pr-tree"></div>
+    <div class="readout" id="s03-pr-sel"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) <b>Size and timing</b>: drag the 2,000 to 10,000 slider from 3,000 up to 30,000. The bars of that period shrink, the curve rises with them, and many more lines survive into the older periods. (2) <b>r = 0</b>: one stretch, one date, one bar. No curve is possible. (3) <b>Raise r</b> step by step: stretches multiply and the blue bars fill in the expected shape. (4) <b>r = 1 × 10⁻⁷</b>: there are more stretches than ever and the blue bars are excellent, but only the page knows them. Each stretch now holds about 0.25 hets and 4 in 5 hold none. The orange line in the window no longer follows the steps, and the orange curve flattens the dip. Stretches alone are not enough; each must also carry hets. (5) Compare the first interval with the middle ones: the recent end is noisy even at the default r, because few stretches are that young. (6) Press <b>new animal</b>: the same history gives a different recent end and a very similar middle.</p>
+    <p class="tool-note"><b>Where the toy differs from PSMC.</b> PSMC does not literally count and divide. Its EM algorithm computes the expected use of every state and transition under the current parameters, then searches numerically for the θ, ρ, T<sub>max</sub> and sizes that fit them best (<code>em.c</code>). It ties intervals together with <code>-p</code>, and it reads a whole genome. The toy uses only the shares per interval, in the formula above, for five rounds, on one 10-Mb chromosome, with r given. The principle is the same; the numbers are not PSMC output.</p>
+  </section>
+  </div>
 
   <h3>What PSMC does, step by step</h3>
   <ol class="steps">
@@ -753,18 +913,47 @@ done
   </div></details>
 
   <h3>The methods side by side</h3>
-  <div class="tbl"><table style="min-width:720px">
-    <thead><tr><th>Method</th><th>Data it needs</th><th>Phasing</th><th>What it estimates</th><th>From one diploid?</th></tr></thead>
+  <div class="tbl"><table style="min-width:980px">
+    <thead><tr><th>Method</th><th>Data it needs</th><th>Phasing</th><th>What it estimates</th><th>From one diploid?</th><th>Sample size</th><th>SNP-array data?</th></tr></thead>
     <tbody>
-      <tr><td><b>PSMC</b> (<a href="#s03">s03</a>)</td><td>One diploid: consensus sequence in 100-bp bins</td><td>no</td><td>Inverse coalescence rate of the two haplotypes over time (read as <i>N</i><sub>e</sub>)</td><td>yes, only this</td></tr>
-      <tr><td><b>MSMC2</b></td><td>1 to about 8 diploids (≤ 16 haplotypes); per-chromosome <span class="tip" title="multihetsep: MSMC's input text format. One line per segregating site: chromosome, position, number of callable sites since the previous segregating site (including this one), and the alleles of every haplotype.">multihetsep</span> files + masks</td><td>for more than one animal and for population pairs: yes</td><td>Coalescence rates within each population and across two populations; their ratio tracks separation</td><td>yes (two haplotypes: PSMC-like)</td></tr>
-      <tr><td><b>SMC++</b></td><td>1 to hundreds of diploids; VCF + mask of uncalled regions</td><td>no ("results independent of phasing")</td><td>Size history (smooth or stepped); clean split time of two populations</td><td>yes (one "distinguished" animal)</td></tr>
-      <tr><td><b>cobraa</b></td><td>One diploid (multihetsep)</td><td>no</td><td>A split into two ancestral populations, an <span class="tip" title="Admixture: two populations that were separate mix again; an admixture pulse is a single such event, after which a fraction γ of the ancestry comes from the second population.">admixture</span> pulse (fraction γ), and the size history; compared with a panmictic fit</td><td>yes, by design</td></tr>
-      <tr><td><b>Stairway Plot 2</b></td><td>SFS from a sample (its example uses 30 sequences = 15 diploids); total callable sites</td><td>no</td><td>Size history from the SFS, without a predefined model</td><td>no</td></tr>
-      <tr><td><b>fastsimcoal2</b></td><td>(Joint) SFS of one or more populations + a model you write</td><td>no</td><td>Parameters of your model (sizes, split times, migration, admixture); compares models</td><td>no</td></tr>
+      <tr><td><b>PSMC</b> (<a href="#s03">s03</a>)</td><td>One diploid: consensus sequence in 100-bp bins</td><td>no</td><td>Inverse coalescence rate of the two haplotypes over time (read as <i>N</i><sub>e</sub>)</td><td>yes, only this</td><td>1 diploid</td><td>no: needs every callable base, not chosen SNPs</td></tr>
+      <tr><td><b>MSMC2</b></td><td>1 to about 8 diploids (≤ 16 haplotypes); per-chromosome <span class="tip" title="multihetsep: MSMC's input text format. One line per segregating site: chromosome, position, number of callable sites since the previous segregating site (including this one), and the alleles of every haplotype.">multihetsep</span> files + masks</td><td>for more than one animal and for population pairs: yes</td><td>Coalescence rates within each population and across two populations; their ratio tracks separation</td><td>yes (two haplotypes: PSMC-like)</td><td>1 to about 8 diploids</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>SMC++</b></td><td>1 to hundreds of diploids; VCF + mask of uncalled regions</td><td>no ("results independent of phasing")</td><td>Size history (smooth or stepped); clean split time of two populations</td><td>yes (one "distinguished" animal)</td><td>1 to hundreds of diploids</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>cobraa</b></td><td>One diploid (multihetsep)</td><td>no</td><td>A split into two ancestral populations, an <span class="tip" title="Admixture: two populations that were separate mix again; an admixture pulse is a single such event, after which a fraction γ of the ancestry comes from the second population.">admixture</span> pulse (fraction γ), and the size history; compared with a panmictic fit</td><td>yes, by design</td><td>1 diploid</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>Stairway Plot 2</b></td><td>SFS from a sample (its example uses 30 sequences = 15 diploids); total callable sites</td><td>no</td><td>Size history from the SFS, without a predefined model</td><td>no</td><td>no rule stated; its example has 30 sequences</td><td>not designed for it: SNPs chosen in advance bias the spectrum (our inference)</td></tr>
+      <tr><td><b>fastsimcoal2</b></td><td>(Joint) SFS of one or more populations + a model you write</td><td>no</td><td>Parameters of your model (sizes, split times, migration, admixture); compares models</td><td>no</td><td>no rule stated</td><td>not designed for it: SNPs chosen in advance bias the spectrum (our inference)</td></tr>
     </tbody>
   </table></div>
+  <p class="tool-note">Methods that work on SNP-array data, such as GONE or some ARG methods, and the methods for many genomes, are not in this table: they come in <a href="../05-many-genomes/">lesson 5</a>. The array column here says only that the programs above are built for sequence data (our reading of their inputs; no tool documentation states "arrays are not supported").</p>
   <p class="tool-note">Sources: each tool's README or manual (versions in the notes file). PSMC, MSMC2, SMC++ and cobraa are <span class="tip" title="Sequentially Markovian coalescent: a hidden Markov model that walks along the genome; the hidden state is the age of the common ancestor of the haplotypes at this position, which changes only at recombinations.">SMC</span> methods: they use where heterozygous sites lie along the genome. Stairway Plot and fastsimcoal2 use only how many there are in each frequency class.</p>
+
+  <h3>What becomes possible as data grows</h3>
+  <ul>
+    <li><b>1 to 2 genomes.</b> PSMC, and beside it cobraa, SMC++ or MSMC2 in single-genome mode: an early look at old history and at size change versus structure. As s06 explains, they read the same genome, so they are not independent confirmations. Two species: s07.</li>
+    <li><b>Tens of animals.</b> MSMC2 with phased haplotypes (up to about 16) gives resolution in recent time and, for two populations, the cross-coalescence rate. SMC++ adds more animals without phasing. SFS methods become usable, because the spectrum now has many classes.</li>
+    <li><b>Hundreds of animals.</b> SMC++ is the method the documentation presents for this scale; SFS methods gain from the many sampled chromosomes. Methods that reconstruct the genealogy of the whole sample: <a href="../05-many-genomes/">lesson 5</a>.</li>
+    <li><b>SNP-array data.</b> The programs in this section need sequence data; what arrays allow: <a href="../05-many-genomes/">lesson 5</a>.</li>
+  </ul>
+
+  <section class="tool explain" aria-labelledby="s05-wf-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-wf-h">One set of ancestors, four ways of reading it</h3></div>
+    <p class="tool-note">This is the display from <a href="#s01">s01</a>: 30 gene copies in a population of constant size, today at the bottom, one row per generation going back. PSMC, MSMC, MSMC2 and SMC++ all assume this same process. They differ in <b>which lines they follow</b>. The picture stays the same when you change the reader, so you can compare them on one set of ancestors.</p>
+    <div class="controls" role="group" aria-label="Which method reads the ancestors">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Reader
+        <div class="seg" role="group" aria-label="Reader" id="s05-wf-reader" style="flex-wrap:wrap"><button type="button" data-v="psmc" aria-pressed="true">PSMC</button><button type="button" data-v="msmc" aria-pressed="false">MSMC (2014)</button><button type="button" data-v="msmc2" aria-pressed="false">MSMC2</button><button type="button" data-v="smcpp" aria-pressed="false">SMC++</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Copies sampled
+        <div class="seg" role="group" aria-label="Copies sampled" id="s05-wf-n"><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="8" aria-pressed="true">8</button></div></div>
+      <button type="button" class="btn" id="s05-wf-new" style="align-self:center">new population</button>
+    </div>
+    <div class="svgbox" id="s05-wf"></div>
+    <div class="readout" id="s05-wf-out" aria-live="polite"></div>
+    <p class="tool-note" id="s05-wf-say"></p>
+    <div class="controls" role="group" aria-label="Repeat the first meeting">
+      <button type="button" class="btn" id="s05-wf-rep" style="align-self:center">repeat 10,000 times</button>
+    </div>
+    <div id="s05-wf-tab"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) With 2 copies, all four readers do the same thing. (2) The wait for the first meeting falls much faster than the copies grow: 2, 4 and 8 copies make 1, 6 and 28 pairs, and the mean wait scales inversely with the square of the sample size. This is why MSMC reaches more recent times than PSMC, and why it says less about the old past: its authors state that its limits are set by the distribution of first coalescence times. (3) Each reader still walks along the chromosome as in <a href="#s03">s03</a>: recombination starts a new stretch, each stretch gives one meeting time, and the times together give the size curve. The picture shows one stretch.</p>
+  </section>
 
   <h3>MSMC2: many haplotypes, and two populations</h3>
   <p>MSMC2 (Schiffels &amp; Wang 2020) is the current version of MSMC (Schiffels &amp; Durbin 2014). It estimates the coalescence rate between pairs of haplotypes and combines all pairs you select with <code>-I</code>. Three uses:</p>
@@ -1439,7 +1628,7 @@ grep '^MM' sample.psmc | head -3</pre></div>
 <footer style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted)">
   <p>Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed.</p>
 </footer>
-<nav class="lesson-nav" aria-label="Previous and next lesson"><a href="../03-annotation/">← Lesson 3: Repeats, Genes and ROH</a><a class="next" href="../05-methylation/">Lesson 5: DNA Methylation from Long Reads →</a></nav>
+<nav class="lesson-nav" aria-label="Previous and next lesson"><a href="../03-annotation/">← Lesson 3: Repeats, Genes and ROH</a><a class="next" href="../05-many-genomes/">Lesson 5: Population History from Many Genomes →</a></nav>
 </div>
 
 <script>
@@ -1753,6 +1942,475 @@ grep '^MM' sample.psmc | head -3</pre></div>
   });
   legend();
   update(true);
+
+  // CORE-BEGIN: Wright-Fisher display. The same block is copied in 01-coalescent.js, 03-psmc.js and 05-beyond-psmc.js
+  // (sections are separate scripts with no shared globals). It needs mk() and css() of its section.
+  // spec = { size: g -> gene copies in generation g (0 = today, larger = older), demes: 1 or 2,
+  // m: chance per generation that a copy's parent sits in the other deme }.
+  function wfDeme(i, c){ return i < (c >> 1) ? 0 : 1; }
+  function wfPick(spec, g, i, r){
+    var c1 = spec.size(g + 1);
+    if (spec.demes !== 2) return Math.floor(r() * c1);
+    var d = wfDeme(i, spec.size(g)), h = c1 >> 1;
+    if (r() < spec.m) d = 1 - d;
+    return d === 0 ? Math.floor(r() * h) : h + Math.floor(r() * (c1 - h));
+  }
+  function wfPop(spec, r){                 // a population, grown backward on demand
+    var par = [];
+    return { spec: spec, par: par, grow: function(G){
+      while (par.length < G){
+        var g = par.length, c = spec.size(g), a = new Int32Array(c);
+        for (var i = 0; i < c; i++) a[i] = wfPick(spec, g, i, r);
+        par.push(a);
+      }
+    } };
+  }
+  function wfTrace(pop, sample){           // follow the sampled copies back until one line is left
+    var cur = sample.slice(), rows = [cur.slice()], meets = [], g = 0;
+    while (cur.length > 1 && g < 200000){
+      pop.grow(g + 1);
+      var seen = {}, next = [];
+      cur.forEach(function(c){ var p = pop.par[g][c]; if (seen[p]) seen[p]++; else { seen[p] = 1; next.push(p); } });
+      g++;
+      next.forEach(function(p){ if (seen[p] > 1) meets.push({ g: g, i: p, k: seen[p] }); });
+      cur = next; rows.push(cur.slice());
+    }
+    return { T: g, rows: rows, meets: meets };
+  }
+  function wfMax(spec, G){ var m = 2; for (var g = 0; g <= G; g++) m = Math.max(m, spec.size(g)); return m; }
+  // x position (0..1) of every copy. Each row is sorted by the position of the parents, so links do
+  // not cross; the place of a copy in its row therefore means nothing. Row width follows row size.
+  function wfLayout(pop, G){
+    var spec = pop.spec, two = spec.demes === 2, cmax = wfMax(spec, G), g, i, X = [];
+    var step = (two ? 0.46 : 1) / ((two ? cmax / 2 : cmax) - 1 || 1);
+    function place(c, order, out){
+      for (var d = 0; d < (two ? 2 : 1); d++){
+        var mine = two ? order.filter(function(k){ return wfDeme(k, c) === d; }) : order;
+        var mid = two ? (d === 0 ? 0.23 : 0.77) : 0.5;
+        mine.forEach(function(k, rank){ out[k] = mid + (rank - (mine.length - 1) / 2) * step; });
+      }
+    }
+    pop.grow(G);
+    var c0 = spec.size(G), top = new Float64Array(c0), ord = [];
+    for (i = 0; i < c0; i++) ord.push(i);
+    place(c0, ord, top); X[G] = top;
+    for (g = G - 1; g >= 0; g--){
+      (function(g){
+        var c = spec.size(g), row = new Float64Array(c), o = [], up = X[g + 1], pr = pop.par[g];
+        for (var k = 0; k < c; k++) o.push(k);
+        o.sort(function(a, b){ return up[pr[a]] - up[pr[b]] || a - b; });
+        place(c, o, row); X[g] = row;
+      })(g);
+    }
+    return X;
+  }
+  // Static part of the picture: every copy as a faint dot, every parent link as a faint line.
+  // o = { W, G, x0 (left margin), pitch, maxH, label(g) -> axis text or '', title, shade: [from, to], aria }
+  function wfBase(host, pop, o){
+    var G = o.G, W = o.W, x0 = o.x0 || 46, x1 = W - 12, y0 = o.title ? 34 : 14;
+    var pitch = Math.max(3, Math.min(o.pitch || 16, (o.maxH || 620) / G)), H = y0 + G * pitch + 22;
+    var X = wfLayout(pop, G), spec = pop.spec;
+    function px(g, i){ return x0 + X[g][i] * (x1 - x0); }
+    function py(g){ return y0 + (G - g) * pitch; }
+    var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': o.aria || 'Rows of gene copies, one row per generation, with the link from each copy to its parent' });
+    svg.style.minWidth = '300px';
+    if (o.shade){
+      var a = Math.min(o.shade[1], G + 1), b = Math.max(o.shade[0], 0);
+      if (a > b) svg.appendChild(mk('rect', { x: x0 - 6, y: py(a - 1) - pitch / 2, width: x1 - x0 + 12, height: (a - b) * pitch, fill: css('--code-bg') }));
+    }
+    if (o.title) svg.appendChild(mk('text', { x: x0 - 6, y: 14, 'class': 'lab' }, o.title));
+    var dl = '', dm = '', dd = '', g, i, c;
+    for (g = 0; g < G; g++){
+      c = spec.size(g);
+      for (i = 0; i < c; i++){
+        var p = pop.par[g][i], seg = 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'L' + px(g + 1, p).toFixed(1) + ' ' + py(g + 1).toFixed(1);
+        if (spec.demes === 2 && wfDeme(i, c) !== wfDeme(p, spec.size(g + 1))) dm += seg; else dl += seg;
+      }
+    }
+    var r = Math.max(1.2, Math.min(3.2, pitch * 0.3, (x1 - x0) / Math.max(1, wfMax(spec, G)) * 0.34));
+    for (g = 0; g <= G; g++){ c = spec.size(g); for (i = 0; i < c; i++) dd += 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'h0'; }
+    svg.appendChild(mk('path', { d: dl, fill: 'none', stroke: css('--err'), 'stroke-width': 0.8, opacity: '0.55' }));
+    if (dm) svg.appendChild(mk('path', { d: dm, fill: 'none', stroke: css('--het'), 'stroke-width': 1.2, opacity: '0.8' }));
+    if (pitch >= 5) svg.appendChild(mk('path', { d: dd, fill: 'none', stroke: css('--err'), 'stroke-width': 2 * r, 'stroke-linecap': 'round' }));
+    for (g = 0; g <= G; g++){
+      var t = o.label ? o.label(g) : '';
+      if (t !== '') svg.appendChild(mk('text', { x: x0 - 12, y: py(g) + 4, 'text-anchor': 'end' }, t));
+    }
+    var over = mk('g', {}); svg.appendChild(over);
+    host.replaceChildren(svg);
+    return { pop: pop, px: px, py: py, over: over, pitch: pitch, r: r, x0: x0, x1: x1, G: G, svg: svg };
+  }
+  // Moving part: the sampled lines from today back to generation cur, and where they met.
+  function wfOver(b, tr, cur, o){
+    o = o || {};
+    var over = b.over, pop = b.pop, col = css(o.colour || '--accent'); over.replaceChildren();
+    var last = Math.min(cur, tr.T, b.G), d = '', dots = '', g;
+    if (cur > 0 && !o.noBand) over.appendChild(mk('rect', { x: b.x0 - 6, y: b.py(last) - b.pitch / 2, width: b.x1 - b.x0 + 12, height: b.pitch, fill: css('--accent'), opacity: '0.14' }));
+    function link(c){
+      var p = pop.par[g][c];
+      d += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'L' + b.px(g + 1, p).toFixed(1) + ' ' + b.py(g + 1).toFixed(1);
+    }
+    function dot(c){ dots += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'h0'; }
+    for (g = 0; g < last; g++) tr.rows[g].forEach(link);
+    for (g = 0; g <= last; g++) if (g === 0 || g === last || b.pitch >= 7) tr.rows[g].forEach(dot);
+    if (d) over.appendChild(mk('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+    over.appendChild(mk('path', { d: dots, fill: 'none', stroke: col, 'stroke-width': 2 * b.r + 1.6, 'stroke-linecap': 'round' }));
+    tr.meets.forEach(function(m){
+      if (m.g > last) return;
+      var end = m.g === tr.T;
+      over.appendChild(mk('circle', { cx: b.px(m.g, m.i), cy: b.py(m.g), r: end ? 7 : 5.5, fill: 'none', stroke: css(end ? '--bad' : '--het'), 'stroke-width': 2 }));
+      if (end && o.endLabel){
+        var x = b.px(m.g, m.i), right = x < (b.x0 + b.x1) / 2;
+        over.appendChild(mk('text', { x: x + (right ? 12 : -12), y: b.py(m.g) - 9, 'text-anchor': right ? 'start' : 'end', 'class': 'lab', stroke: css('--bg'), 'stroke-width': 3, 'paint-order': 'stroke' }, o.endLabel));
+      }
+    });
+  }
+  // CORE-END
+  // SIM-BEGIN: quick simulation with the same parent rule as the grid, and exact expectations.
+  function czSpec(kind, N){
+    var C = 2 * N, small = Math.max(4, Math.round(2 * N / 5)), s = { kind: kind, demes: 1, m: 0, C: C, small: small };
+    if (kind === 'bott'){
+      var b0 = Math.round(N / 2), b1 = b0 + Math.max(3, Math.round(0.6 * N));
+      s.band = [b0, b1]; s.size = function(g){ return g >= b0 && g < b1 ? small : C; };
+    } else if (kind === 'exp'){
+      s.band = [N, Infinity]; s.size = function(g){ return g < N ? C : small; };
+    } else if (kind === 'decl'){
+      var D = Math.max(3, Math.round(0.4 * N));
+      s.band = [0, D]; s.size = function(g){ return g < D ? small : C; };
+    } else if (kind === 'demes'){
+      s.demes = 2; s.m = 0.05; s.size = function(){ return C; };
+    } else s.size = function(){ return C; };
+    return s;
+  }
+  // Follow the given copies back. Returns the height of their tree, the generations spent with exactly
+  // two lines, and how many deme changes happened before the last meeting.
+  function czRun(spec, start, r){
+    var cur = start.slice(), g = 0, last2 = 0, moved = 0;
+    while (cur.length > 1){
+      if (cur.length === 2) last2++;
+      var seen = {}, next = [], c0 = spec.size(g), c1 = spec.size(g + 1);
+      for (var k = 0; k < cur.length; k++){
+        var p = wfPick(spec, g, cur[k], r);
+        if (spec.demes === 2 && wfDeme(cur[k], c0) !== wfDeme(p, c1)) moved++;
+        if (!seen[p]){ seen[p] = 1; next.push(p); }
+      }
+      cur = next; g++;
+    }
+    return { T: g, last2: last2, moved: moved };
+  }
+  function czSample(spec, n, r){           // n different copies of today's row; two demes: alternate
+    var c = spec.size(0), all = [], out = [], i;
+    n = Math.min(n, c);
+    for (i = 0; i < c; i++) all.push(i);
+    for (i = c - 1; i > 0; i--){ var j = Math.floor(r() * (i + 1)), t = all[i]; all[i] = all[j]; all[j] = t; }
+    if (spec.demes !== 2) return all.slice(0, n);
+    var a = all.filter(function(k){ return wfDeme(k, c) === 0; }), b = all.filter(function(k){ return wfDeme(k, c) === 1; });
+    for (i = 0; i < n; i++) out.push((i % 2 ? b : a)[i >> 1]);
+    return out;
+  }
+  function czPairStart(spec, same){        // two different copies; two demes: one in each unless same
+    return spec.demes === 2 && !same ? [0, spec.size(0) - 1] : [0, 1];
+  }
+  // Exact chance that a pair meets in each generation (pmf[g]), its mean, and the share inside the band.
+  function czExact(spec, same){
+    var pmf = [0], live = 1, g = 0, mean = 0, inBand = 0, m = spec.m, D = same ? 0 : 1, Sm = same ? 1 : 0;
+    while ((spec.demes === 2 ? D + Sm : live) > 1e-7 && g < 200000){
+      var c = spec.size(g + 1), hit;
+      if (spec.demes === 2){
+        var stay = (1 - m) * (1 - m) + m * m, sw = 2 * m * (1 - m), s2 = Sm * stay + D * sw, d2 = D * stay + Sm * sw;
+        hit = s2 / (c / 2); Sm = s2 - hit; D = d2;
+      } else { hit = live / c; live -= hit; }
+      g++; pmf[g] = hit; mean += g * hit;
+      if (spec.band && g >= spec.band[0] && g < spec.band[1]) inBand += hit;
+    }
+    return { pmf: pmf, mean: mean, inBand: inBand };
+  }
+  // SIM-END
+  // --- Coalescent theory from zero: step pictures and the Wright-Fisher grid
+  function coalZero(){
+    var FOUND = ['--accent', '--het', '--rep', '--good'];
+    function width(h){ return Math.max(300, Math.min(900, h.clientWidth || 640)); }
+    function say(id, html){ var e = el(id); if (e) e.innerHTML = html; }
+
+    // One toy population of 5 animals (10 gene copies) serves steps 1 and 2. The seed search only picks
+    // a population in which the picture is easy to read: 2 or 3 founders left, sample meets within view.
+    var TG = 8, toySpec = { size: function(){ return 10; }, demes: 1 };
+    var toy = (function(){
+      for (var s = 1; s < 5000; s++){
+        var pop = wfPop(toySpec, rng(s)); pop.grow(TG);
+        var fd = [], g, i, row = [];
+        for (i = 0; i < 10; i++) row.push(i);
+        fd[TG] = row;
+        for (g = TG - 1; g >= 0; g--){ fd[g] = []; for (i = 0; i < 10; i++) fd[g].push(fd[g + 1][pop.par[g][i]]); }
+        var left = fd[0].filter(function(v, k, a){ return a.indexOf(v) === k; });
+        if (left.length < 2 || left.length > 3) continue;
+        var sample = czSample(toySpec, 3, rng(s + 1)), tr = wfTrace(pop, sample);
+        if (tr.T < 5 || tr.T > TG || tr.meets.length !== 2 || tr.meets[0].g > tr.T - 2) continue;
+        return { pop: pop, fd: fd, left: left, tr: tr };
+      }
+    })();
+
+    function fig1(){
+      var host = el('s01-cz-f1'), pop = toy.pop, fd = toy.fd, g, i;
+      var b = wfBase(host, pop, { W: width(host), G: TG, x0: 66, pitch: 30, aria: 'Ten gene copies per row and eight generations. Each copy links to one parent in the row above. Most lines end without descendants in the bottom row.',
+        label: function(g){ return g === 0 ? 'today' : g === TG ? 'oldest' : ''; } });
+      var alive = []; alive[0] = new Uint8Array(10).fill(1);
+      for (g = 0; g < TG; g++){ alive[g + 1] = new Uint8Array(10); for (i = 0; i < 10; i++) if (alive[g][i]) alive[g + 1][pop.par[g][i]] = 1; }
+      toy.left.forEach(function(f, n){
+        var d = '', dots = '', col = css(FOUND[n]);
+        for (g = 0; g <= TG; g++) for (i = 0; i < 10; i++) if (alive[g][i] && fd[g][i] === f){
+          dots += 'M' + b.px(g, i).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'h0';
+          if (g < TG) d += 'M' + b.px(g, i).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'L' + b.px(g + 1, pop.par[g][i]).toFixed(1) + ' ' + b.py(g + 1).toFixed(1);
+        }
+        b.over.appendChild(mk('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2 }));
+        b.over.appendChild(mk('path', { d: dots, fill: 'none', stroke: col, 'stroke-width': 9, 'stroke-linecap': 'round' }));
+      });
+      var names = ['one', 'two', 'three'];
+      say('s01-cz-f1n', 'Of the 10 copies in the oldest row, only ' + names[toy.left.length - 1] + ' still have descendants today (the coloured families). The other ' + (10 - toy.left.length) + ' lines ended, although no copy was better than any other.');
+    }
+    function fig2(){
+      var host = el('s01-cz-f2');
+      var b = wfBase(host, toy.pop, { W: width(host), G: TG, x0: 66, pitch: 30, aria: 'The same population. Three copies in the bottom row are followed upward and join into one ancestor.',
+        label: function(g){ return g === 0 ? 'today' : g === TG ? 'oldest' : ''; } });
+      wfOver(b, toy.tr, toy.tr.T, { noBand: true, endLabel: 'common ancestor' });
+      say('s01-cz-f2n', 'The same 8 rows as in step 1. Three copies picked today are followed upward. Two of them meet ' + toy.tr.meets[0].g + ' generations back (orange ring), and the third joins them ' + toy.tr.T + ' generations back (red ring).');
+    }
+    function fig3a(){
+      var host = el('s01-cz-f3a'), W = width(host), svg = mk('svg', { viewBox: '0 0 ' + W + ' 176', width: '100%', role: 'img', 'aria-label': 'Five animals with two gene copies each. Copy A has picked one parent copy. Copy B can pick any of the ten; only one choice is the same.' });
+      svg.style.minWidth = '300px';
+      var cw = (W - 24) / 5, yP = 42, yC = 138, hit = 3, i;
+      function cx(k){ return 12 + cw * Math.floor(k / 2) + cw / 2 + (k % 2 ? 1 : -1) * Math.min(14, cw * 0.2); }
+      svg.appendChild(mk('text', { x: 12, y: 14, 'class': 'lab' }, 'Parents: 5 animals, 10 gene copies'));
+      for (i = 0; i < 5; i++) svg.appendChild(mk('rect', { x: 12 + cw * i + cw / 2 - Math.min(26, cw * 0.4), y: yP - 14, width: 2 * Math.min(26, cw * 0.4), height: 28, rx: 13, fill: 'none', stroke: css('--muted') }));
+      var xa = W * 0.3, xb = W * 0.7;
+      for (i = 0; i < 10; i++) if (i !== hit) svg.appendChild(mk('line', { x1: xb, y1: yC, x2: cx(i), y2: yP + 8, stroke: css('--err'), 'stroke-width': 1 }));
+      svg.appendChild(mk('line', { x1: xa, y1: yC, x2: cx(hit), y2: yP + 8, stroke: css('--accent'), 'stroke-width': 2.4 }));
+      svg.appendChild(mk('line', { x1: xb, y1: yC, x2: cx(hit), y2: yP + 8, stroke: css('--bad'), 'stroke-width': 2.4 }));
+      for (i = 0; i < 10; i++) svg.appendChild(mk('circle', { cx: cx(i), cy: yP, r: 6, fill: css(i === hit ? '--bad' : '--err') }));
+      svg.appendChild(mk('circle', { cx: xa, cy: yC, r: 7, fill: css('--accent') }));
+      svg.appendChild(mk('circle', { cx: xb, cy: yC, r: 7, fill: css('--accent') }));
+      svg.appendChild(mk('text', { x: xa, y: yC + 24, 'text-anchor': 'middle', 'class': 'lab' }, 'copy A has picked'));
+      svg.appendChild(mk('text', { x: xb, y: yC + 24, 'text-anchor': 'middle', 'class': 'lab' }, 'copy B: 1 hit in 10'));
+      host.replaceChildren(svg);
+    }
+    // Step 3: 100 pairs counted in two toy populations.
+    var count = [5, 20].map(function(N, k){
+      var s = czSpec('const', N), r = rng(4100 + k), a = [], first = 0, sum = 0;
+      for (var i = 0; i < 100; i++){ var t = czRun(s, [0, 1], r).T; a.push(t); sum += t; if (t === 1) first++; }
+      a.sort(function(x, y){ return x - y; });
+      return { N: N, a: a, first: first, mean: sum / 100 };
+    });
+    function fig3b(){
+      var host = el('s01-cz-f3b'), W = width(host), stack = W < 560, pw = stack ? W - 56 : (W - 56 - 34) / 2, ph = 130;
+      var H = stack ? 2 * (ph + 62) : ph + 62, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'One hundred pairs in each of two toy populations, sorted by the generations each pair waited. The larger population waits longer.' });
+      svg.style.minWidth = '300px';
+      var top = 120;                         // a rare very long wait is clipped and labelled
+      count.forEach(function(c, k){
+        var xo = stack ? 44 : 44 + k * (pw + 34), yo = stack ? k * (ph + 62) + 24 : 24, bw = pw / 100, d = '';
+        function y(v){ return yo + ph - Math.min(v, top) / top * ph; }
+        svg.appendChild(mk('text', { x: xo, y: yo - 10, 'class': 'lab' }, 'N = ' + c.N + ' animals, ' + 2 * c.N + ' copies'));
+        svg.appendChild(mk('line', { x1: xo, x2: xo + pw, y1: yo + ph, y2: yo + ph, 'class': 'ax' }));
+        [0, Math.round(top / 2), top].forEach(function(v){ svg.appendChild(mk('text', { x: xo - 6, y: y(v) + 4, 'text-anchor': 'end' }, String(v))); });
+        c.a.forEach(function(v, i){ d += 'M' + (xo + i * bw).toFixed(1) + ' ' + (yo + ph).toFixed(1) + 'V' + y(v).toFixed(1); });
+        svg.appendChild(mk('path', { d: d, stroke: css('--accent'), 'stroke-width': Math.max(1, bw * 0.75), fill: 'none', opacity: '0.8' }));
+        svg.appendChild(mk('line', { x1: xo, x2: xo + pw, y1: y(c.mean), y2: y(c.mean), stroke: css('--bad'), 'stroke-width': 1.6 }));
+        svg.appendChild(mk('text', { x: xo + 4, y: y(c.mean) - 5, 'class': 'lab' }, 'average ' + c.mean.toFixed(1)));
+        svg.appendChild(mk('text', { x: xo + pw / 2, y: yo + ph + 16, 'text-anchor': 'middle' }, '100 pairs, shortest wait to longest'));
+        if (c.a[99] > top) svg.appendChild(mk('text', { x: xo + 4, y: yo + 10 }, 'longest wait ' + c.a[99] + ' (bar cut)'));
+      });
+      host.replaceChildren(svg);
+      say('s01-cz-f3n', 'Each thin bar is one pair of copies, its height the generations that pair waited (axis: generations). With 10 copies, ' + count[0].first + ' of 100 pairs met in the very first generation, close to the 1 in 10 expected, and the 100 waits average ' + count[0].mean.toFixed(1) + ' generations. With 40 copies, ' + count[1].first + ' of 100 met at once and the average is ' + count[1].mean.toFixed(1) + '. The averages sit near 10 and 40; a hundred pairs is a small count, so they are not exact.');
+    }
+    function fig4(){
+      var host = el('s01-cz-f4'), W = width(host), n = 6, lab = W < 470 ? 118 : 188, x0 = 14, x1 = W - lab - 12, H = 372, yB = 340, yT = 16, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'An average tree of six copies. Meetings come quickly near the present; the last two lines take most of the height.' });
+      svg.style.minWidth = '300px';
+      var waits = [], tot = 0, k;
+      for (k = n; k >= 2; k--){ waits.push({ k: k, w: 2 / (k * (k - 1)) }); tot += 2 / (k * (k - 1)); }
+      var sc = (yB - yT) / tot, h = 0, tips = [], lines = [];
+      for (k = 0; k < n; k++){ tips.push(x0 + 10 + k * (x1 - x0 - 20) / (n - 1)); lines.push({ x: tips[k], y: yB }); }
+      var order = [[1, 2], [3, 4], [0, 1], [1, 2], [0, 1]], d = '';
+      waits.forEach(function(q, i){
+        var y1 = yB - (h + q.w) * sc, y0 = yB - h * sc;
+        if (i % 2 === 0) svg.appendChild(mk('rect', { x: 0, y: y1, width: W, height: y0 - y1, fill: css('--code-bg') }));
+        var pairs = q.k * (q.k - 1) / 2;
+        svg.appendChild(mk('text', { x: W - 6, y: (y0 + y1) / 2 + 4, 'text-anchor': 'end', 'class': 'lab' }, lab > 150 ? q.k + ' lines, ' + pairs + ' pair' + (pairs > 1 ? 's' : '') + ': 2N' + (pairs > 1 ? '/' + pairs : '') : q.k + ' lines: 2N' + (pairs > 1 ? '/' + pairs : '')));
+        var a = order[i][0], b = order[i][1], la = lines[a], lb = lines[b], xm = (la.x + lb.x) / 2;
+        d += 'M' + la.x + ' ' + la.y + 'V' + y1 + 'M' + lb.x + ' ' + lb.y + 'V' + y1 + 'M' + la.x + ' ' + y1 + 'H' + lb.x;
+        lines.splice(a, 2, { x: xm, y: y1 });
+        h += q.w;
+      });
+      svg.appendChild(mk('path', { d: d, fill: 'none', stroke: css('--accent'), 'stroke-width': 2.4 }));
+      tips.forEach(function(x){ svg.appendChild(mk('circle', { cx: x, cy: yB, r: 5, fill: css('--accent') })); });
+      svg.appendChild(mk('text', { x: x0, y: yB + 22 }, 'today: 6 sampled copies'));
+      host.replaceChildren(svg);
+    }
+    function fig5(){
+      var host = el('s01-cz-f5'), W = width(host), H = 300, yB = 262, yT = 14, sc = (yB - yT) / 5, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'A tree of four copies with mutations marked as crosses on the branches. A and B share a recent ancestor and differ by few mutations; A and C are joined only at the root and differ by many.' });
+      svg.style.minWidth = '300px';
+      var x = [0.14, 0.36, 0.62, 0.86].map(function(f){ return f * W; }), tAB = 1.2, tCD = 2.4, tR = 5;
+      var xAB = (x[0] + x[1]) / 2, xCD = (x[2] + x[3]) / 2, xR = (xAB + xCD) / 2;
+      function y(t){ return yB - t * sc; }
+      // branch: x, from time, to time, how many mutations fell on it, colour
+      var br = [[x[0], 0, tAB, 1, '--bad'], [x[1], 0, tAB, 1, '--accent'], [x[2], 0, tCD, 2, '--bad'], [x[3], 0, tCD, 3, '--err'], [xAB, tAB, tR, 4, '--bad'], [xCD, tCD, tR, 2, '--bad']];
+      var d = 'M' + x[0] + ' ' + y(tAB) + 'H' + x[1] + 'M' + x[2] + ' ' + y(tCD) + 'H' + x[3] + 'M' + xAB + ' ' + y(tR) + 'H' + xCD;
+      svg.appendChild(mk('path', { d: d, fill: 'none', stroke: css('--muted'), 'stroke-width': 2 }));
+      br.forEach(function(b){
+        svg.appendChild(mk('line', { x1: b[0], x2: b[0], y1: y(b[1]), y2: y(b[2]), stroke: css(b[4] === '--err' ? '--muted' : b[4]), 'stroke-width': 2.6 }));
+        for (var i = 1; i <= b[3]; i++){
+          var yy = y(b[1] + (b[2] - b[1]) * i / (b[3] + 1));
+          svg.appendChild(mk('path', { d: 'M' + (b[0] - 6) + ' ' + (yy - 5) + 'l12 10m0 -10l-12 10', stroke: css('--fg'), 'stroke-width': 2, fill: 'none' }));
+        }
+      });
+      ['A', 'B', 'C', 'D'].forEach(function(t, i){ svg.appendChild(mk('text', { x: x[i], y: yB + 20, 'text-anchor': 'middle', 'class': 'lab' }, t)); });
+      svg.appendChild(mk('text', { x: x[0] - 8, y: yB + 36 }, 'today'));
+      host.replaceChildren(svg);
+    }
+
+    // ---- the grid
+    var st = { kind: 'const', N: 10, n: 4, seed: 11, timer: 0, playing: false, cur: 0, res: null };
+    var SAY = {
+      'const': 'Constant size: every row has the same width. This is the plain model of steps 1 to 4.',
+      'bott': 'Bottleneck: for a stretch of generations the rows are narrow (grey band). Lines that reach the narrow rows have few parents to choose from, so most pairs meet there.',
+      'exp': 'Recent expansion: wide rows near today, narrow rows further back (grey band). Lines rarely meet in the wide recent rows, then meet quickly once they reach the narrow old ones.',
+      'decl': 'Recent decline: narrow rows near today (grey band), wide rows further back. Many pairs meet soon; a pair that escapes the narrow rows then waits a long time.',
+      'demes': 'Two demes (a deme is a local group that mates within itself): each row is two blocks of N copies. A copy\'s parent is in the other block with a chance of 5 % per generation; those migrant links are orange. Sampled copies alternate between the blocks. A pair sitting in different blocks cannot meet until one line has crossed.'
+    };
+    var BANDNAME = { bott: 'inside the bottleneck', exp: 'in the narrow old rows', decl: 'in the narrow recent rows' };
+    function spec(){ return czSpec(st.kind, st.N); }
+    function stop(){ st.playing = false; clearTimeout(st.timer); el('s01-cz-play').textContent = 'play'; }
+    function buildGrid(){
+      var host = el('s01-cz-grid'), s = st.pop.spec, G = Math.max(st.tr.T + 2, 12);
+      var tick = G <= 32 ? 5 : G <= 90 ? 10 : G <= 220 ? 25 : 50;
+      st.b = wfBase(host, st.pop, { W: width(host), G: G, x0: 58, maxH: 620,
+        title: s.demes === 2 ? 'deme 1 and deme 2, orange = migrant link' : 'gene copies in each generation',
+        shade: s.band, label: function(g){ return g === 0 ? 'today' : g % tick === 0 ? String(g) : ''; },
+        aria: 'Grid of gene copies, one row per generation, today at the bottom. Faint lines join each copy to its parent. The sampled lines are highlighted going back until they meet.' });
+      paint();
+    }
+    function resample(){
+      stop();
+      var s = st.pop.spec;
+      st.sample = czSample(s, st.n, rng(st.seed * 7 + st.n));
+      st.tr = wfTrace(st.pop, st.sample);
+      st.cur = 0;
+      buildGrid();
+    }
+    function newPop(){ st.seed += 1; st.pop = wfPop(spec(), rng(st.seed)); resample(); }
+    function paint(){
+      var tr = st.tr, done = st.cur >= tr.T, k = tr.rows[Math.min(st.cur, tr.T)].length;
+      wfOver(st.b, tr, st.cur, { endLabel: 'common ancestor' });
+      var out = el('s01-cz-read'), s = st.pop.spec, nn = st.sample.length; out.replaceChildren();
+      out.appendChild(cell('Looking back', st.cur + (st.cur === 1 ? ' generation' : ' generations'), 'How many rows the highlighted lines have been followed up from today.'));
+      out.appendChild(cell('Lines still separate', k + ' of ' + nn, 'A line is one sampled copy traced back. Each meeting leaves one line fewer.'));
+      out.appendChild(cell('Generations to the common ancestor', done ? String(tr.T) : 'not reached yet', 'The row where the last two lines meet: the height of this one tree.'));
+      var ex = '';
+      if (s.kind === 'const') ex = (4 * st.N * (1 - 1 / nn)).toFixed(1) + ' for ' + nn + ' copies';
+      else if (nn === 2) ex = czExact(s).mean.toFixed(1) + ' for this pair';
+      else ex = 'use repeat below';
+      out.appendChild(cell('Average height to expect', ex, 'Constant size: 4N(1 − 1/n). For two copies in the other settings the page calculates the average exactly, generation by generation. One tree can be far from the average.'));
+      el('s01-cz-step').disabled = done;
+    }
+    function tick(){
+      if (!st.playing) return;
+      if (st.cur >= st.tr.T){ stop(); paint(); return; }
+      st.cur++; paint();
+      st.timer = setTimeout(tick, Math.max(40, Math.min(320, 7000 / st.tr.T)));
+    }
+    function clearHist(){
+      st.res = null;
+      var host = el('s01-cz-hist'); host.replaceChildren();
+      var p = document.createElement('p'); p.className = 'tool-note'; p.textContent = 'Press "repeat 1,000 times" to fill this histogram for the current setting.'; host.appendChild(p);
+      el('s01-cz-rout').replaceChildren();
+    }
+    function repeat(){
+      var s = spec(), r = rng(st.seed * 31 + (st.reps = (st.reps || 0) + 1)), R = 1000, T = [], sum = 0, sq = 0, hs = 0, hq = 0, l2 = 0, inB = 0, noMig = 0, same = 0, n = Math.min(st.n, s.size(0));
+      for (var i = 0; i < R; i++){
+        var q = czRun(s, czPairStart(s), r);
+        T.push(q.T); sum += q.T; sq += q.T * q.T;
+        if (s.band && q.T >= s.band[0] && q.T < s.band[1]) inB++;
+        if (s.demes === 2){ if (q.moved === 0) noMig++; same += czRun(s, czPairStart(s, true), r).T; }
+        var t = czRun(s, czSample(s, n, r), r);
+        hs += t.T; hq += t.T * t.T; l2 += t.last2;
+      }
+      var mean = sum / R, se = Math.sqrt((sq / R - mean * mean) / R), hm = hs / R, hse = Math.sqrt((hq / R - hm * hm) / R);
+      st.res = { T: T, mean: mean, se: se, hm: hm, hse: hse, l2: l2 / R, inB: inB / R, noMig: noMig, same: same / R, n: n, R: R };
+      drawHist2(s);
+    }
+    function drawHist2(s){
+      var res = st.res, host = el('s01-cz-hist'), W = width(host), ex = czExact(s), x0 = 46, x1 = W - 12, yT = 26, yB = 170, H = 214;
+      var cum = 0, top = 1;
+      for (var g = 1; g < ex.pmf.length; g++){ cum += ex.pmf[g]; top = g; if (cum > 0.985) break; }
+      var bw = Math.max(1, Math.ceil(top / 26)), nb = Math.ceil(top / bw) + 1, obs = new Float64Array(nb), exb = new Float64Array(nb);
+      res.T.forEach(function(t){ obs[Math.min(nb - 1, Math.floor((t - 1) / bw))]++; });
+      for (g = 1; g < ex.pmf.length; g++) exb[Math.min(nb - 1, Math.floor((g - 1) / bw))] += ex.pmf[g] * res.R;
+      var mx = 1; for (var i = 0; i < nb; i++) mx = Math.max(mx, obs[i], exb[i]);
+      var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Histogram of the generations 1,000 pairs of copies waited to meet, with the calculated expectation as a dashed line.' });
+      svg.style.minWidth = '300px';
+      function X(t){ return x0 + t / (nb * bw) * (x1 - x0); }
+      function Y(v){ return yB - v / mx * (yB - yT); }
+      if (s.band){ var a = Math.max(0, s.band[0] - 1), b = Math.min(nb * bw, s.band[1] - 1); if (b > a) svg.appendChild(mk('rect', { x: X(a), y: yT, width: X(b) - X(a), height: yB - yT, fill: css('--code-bg') })); }
+      svg.appendChild(mk('text', { x: 4, y: 14, 'class': 'lab' }, (s.demes === 2 ? 'Pairs from different demes' : '1,000 pairs') + ': generations to meet'));
+      var d = '';
+      for (i = 0; i < nb; i++){ var xa = X(i * bw) + 0.6, xw = (x1 - x0) / nb - 1.2, y = Y(obs[i]); if (obs[i] > 0) d += 'M' + xa.toFixed(1) + ' ' + yB + 'V' + y.toFixed(1) + 'h' + xw.toFixed(1) + 'V' + yB + 'z'; }
+      svg.appendChild(mk('path', { d: d, fill: css('--accent'), opacity: '0.8' }));
+      var de = '';
+      for (i = 0; i < nb; i++) de += (i ? 'L' : 'M') + X((i + 0.5) * bw).toFixed(1) + ' ' + Y(exb[i]).toFixed(1);
+      svg.appendChild(mk('path', { d: de, fill: 'none', stroke: css('--fg'), 'stroke-width': 1.6, 'stroke-dasharray': '5 3' }));
+      svg.appendChild(mk('line', { x1: x0, x2: x1, y1: yB, y2: yB, 'class': 'ax' }));
+      [0, mx].forEach(function(v){ svg.appendChild(mk('text', { x: x0 - 6, y: Y(v) + 4, 'text-anchor': 'end' }, String(Math.round(v)))); });
+      var step = Math.max(1, Math.ceil(nb * bw / 6 / 5) * 5);
+      for (var t = 0; t <= nb * bw; t += step){ svg.appendChild(mk('line', { x1: X(t), x2: X(t), y1: yB, y2: yB + 4, 'class': 'ax' })); svg.appendChild(mk('text', { x: X(t), y: yB + 17, 'text-anchor': 'middle' }, String(t))); }
+      svg.appendChild(mk('line', { x1: X(ex.mean), x2: X(ex.mean), y1: yT, y2: yB, stroke: css('--bad'), 'stroke-width': 1.6 }));
+      svg.appendChild(mk('text', { x: (x0 + x1) / 2, y: H - 4, 'text-anchor': 'middle' }, 'generations (last bar: this or longer)'));
+      host.replaceChildren(svg);
+      var out = el('s01-cz-rout'); out.replaceChildren();
+      var isC = s.kind === 'const', C2 = 2 * st.N;
+      out.appendChild(cell('Average wait of a pair', res.mean.toFixed(1) + ' ± ' + res.se.toFixed(1), 'Mean of the 1,000 waits, with its standard error: the size of the wobble you expect in such a mean from chance alone. Pressing repeat again gives a new value within about two of these.'));
+      out.appendChild(cell(isC ? 'Expected: 2N' : 'Expected, calculated', ex.mean.toFixed(1), isC ? 'Two times the number of animals, the red line.' : 'Worked out exactly from the chance of meeting in each generation of this setting, the red line. It is not 2N, because the rows are not all 2N wide.'));
+      if (s.band) out.appendChild(cell('Pairs that met ' + BANDNAME[s.kind], Math.round(res.inB * 100) + ' % (calculated ' + Math.round(ex.inBand * 100) + ' %)', 'Share of the 1,000 pairs whose meeting row lies in the grey band, against the exact calculation.'));
+      if (s.demes === 2){
+        out.appendChild(cell('Pairs from different demes that met with no migration', res.noMig + ' of ' + res.R, 'It must be zero: two lines in different blocks have no shared parent to pick.'));
+        var es = czExact(s, true).mean;
+        out.appendChild(cell('Pair from the same deme', (res.same).toFixed(1) + ' (calculated ' + es.toFixed(1) + ')', 'Average wait of 1,000 pairs that start in one block.'));
+      }
+      out.appendChild(cell('Height of a tree of ' + res.n + ' copies', res.hm.toFixed(1) + ' ± ' + res.hse.toFixed(1) + (isC ? ' (4N(1 − 1/n) = ' + (4 * st.N * (1 - 1 / res.n)).toFixed(1) + ')' : ''), 'Average generations until all sampled lines have met. The formula assumes at most two lines meet in a generation; in a very small toy population several can, which brings the tree height down a little.'));
+      out.appendChild(cell('Time with the last two lines', res.l2.toFixed(1) + (isC ? ' (2N = ' + C2 + ')' : ''), 'Average generations with exactly two lines left. If the last three lines meet in one generation, this time is zero for that tree.'));
+    }
+
+    function kindSet(v){
+      st.kind = v;
+      el('s01-cz-kind').querySelectorAll('button').forEach(function(b){ b.setAttribute('aria-pressed', b.getAttribute('data-v') === v ? 'true' : 'false'); });
+      say('s01-cz-say', SAY[v]);
+      clearHist(); newPop();
+    }
+    function sliders(){
+      st.N = +el('s01-cz-N').value; st.n = +el('s01-cz-n').value;
+      var c = spec().size(0);
+      el('s01-cz-N-o').textContent = st.N + ' animals = ' + 2 * st.N + ' copies';
+      el('s01-cz-n-o').textContent = st.n > c ? c + ' (all copies alive today)' : String(st.n);
+    }
+    el('s01-cz-kind').querySelectorAll('button').forEach(function(b){ b.addEventListener('click', function(){ st.kind = b.getAttribute('data-v'); sliders(); kindSet(st.kind); }); });
+    el('s01-cz-N').addEventListener('input', function(){ sliders(); clearHist(); newPop(); });
+    el('s01-cz-n').addEventListener('input', function(){ sliders(); clearHist(); resample(); });
+    el('s01-cz-new').addEventListener('click', function(){ newPop(); });
+    el('s01-cz-play').addEventListener('click', function(){
+      if (st.playing){ stop(); return; }
+      if (st.cur >= st.tr.T) st.cur = 0;
+      st.playing = true; el('s01-cz-play').textContent = 'pause'; tick();
+    });
+    el('s01-cz-step').addEventListener('click', function(){ stop(); if (st.cur < st.tr.T){ st.cur++; paint(); } });
+    el('s01-cz-back').addEventListener('click', function(){ stop(); st.cur = 0; paint(); });
+    el('s01-cz-rep').addEventListener('click', repeat);
+
+    function drawAll(){ fig1(); fig2(); fig3a(); fig3b(); fig4(); fig5(); if (st.pop) buildGrid(); if (st.res) drawHist2(st.pop.spec); }
+    sliders(); say('s01-cz-say', SAY[st.kind]); clearHist(); newPop(); drawAll();
+    var rz = 0, lastW = window.innerWidth;
+    window.addEventListener('resize', function(){
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(drawAll, 150);
+    });
+  }
+  coalZero();
 })();
 /* ==== 02-input ==== */
 (function(){
@@ -2362,6 +3020,557 @@ grep '^MM' sample.psmc | head -3</pre></div>
   });
   el('s03-new').addEventListener('click', function(){ seed = (seed * 1103515245 + 12345) & 0x7fffffff; update(); });
   legend(); labels(); update();
+
+  // CORE-BEGIN: Wright-Fisher display. The same block is copied in 01-coalescent.js, 03-psmc.js and 05-beyond-psmc.js
+  // (sections are separate scripts with no shared globals). It needs mk() and css() of its section.
+  // spec = { size: g -> gene copies in generation g (0 = today, larger = older), demes: 1 or 2,
+  // m: chance per generation that a copy's parent sits in the other deme }.
+  function wfDeme(i, c){ return i < (c >> 1) ? 0 : 1; }
+  function wfPick(spec, g, i, r){
+    var c1 = spec.size(g + 1);
+    if (spec.demes !== 2) return Math.floor(r() * c1);
+    var d = wfDeme(i, spec.size(g)), h = c1 >> 1;
+    if (r() < spec.m) d = 1 - d;
+    return d === 0 ? Math.floor(r() * h) : h + Math.floor(r() * (c1 - h));
+  }
+  function wfPop(spec, r){                 // a population, grown backward on demand
+    var par = [];
+    return { spec: spec, par: par, grow: function(G){
+      while (par.length < G){
+        var g = par.length, c = spec.size(g), a = new Int32Array(c);
+        for (var i = 0; i < c; i++) a[i] = wfPick(spec, g, i, r);
+        par.push(a);
+      }
+    } };
+  }
+  function wfTrace(pop, sample){           // follow the sampled copies back until one line is left
+    var cur = sample.slice(), rows = [cur.slice()], meets = [], g = 0;
+    while (cur.length > 1 && g < 200000){
+      pop.grow(g + 1);
+      var seen = {}, next = [];
+      cur.forEach(function(c){ var p = pop.par[g][c]; if (seen[p]) seen[p]++; else { seen[p] = 1; next.push(p); } });
+      g++;
+      next.forEach(function(p){ if (seen[p] > 1) meets.push({ g: g, i: p, k: seen[p] }); });
+      cur = next; rows.push(cur.slice());
+    }
+    return { T: g, rows: rows, meets: meets };
+  }
+  function wfMax(spec, G){ var m = 2; for (var g = 0; g <= G; g++) m = Math.max(m, spec.size(g)); return m; }
+  // x position (0..1) of every copy. Each row is sorted by the position of the parents, so links do
+  // not cross; the place of a copy in its row therefore means nothing. Row width follows row size.
+  function wfLayout(pop, G){
+    var spec = pop.spec, two = spec.demes === 2, cmax = wfMax(spec, G), g, i, X = [];
+    var step = (two ? 0.46 : 1) / ((two ? cmax / 2 : cmax) - 1 || 1);
+    function place(c, order, out){
+      for (var d = 0; d < (two ? 2 : 1); d++){
+        var mine = two ? order.filter(function(k){ return wfDeme(k, c) === d; }) : order;
+        var mid = two ? (d === 0 ? 0.23 : 0.77) : 0.5;
+        mine.forEach(function(k, rank){ out[k] = mid + (rank - (mine.length - 1) / 2) * step; });
+      }
+    }
+    pop.grow(G);
+    var c0 = spec.size(G), top = new Float64Array(c0), ord = [];
+    for (i = 0; i < c0; i++) ord.push(i);
+    place(c0, ord, top); X[G] = top;
+    for (g = G - 1; g >= 0; g--){
+      (function(g){
+        var c = spec.size(g), row = new Float64Array(c), o = [], up = X[g + 1], pr = pop.par[g];
+        for (var k = 0; k < c; k++) o.push(k);
+        o.sort(function(a, b){ return up[pr[a]] - up[pr[b]] || a - b; });
+        place(c, o, row); X[g] = row;
+      })(g);
+    }
+    return X;
+  }
+  // Static part of the picture: every copy as a faint dot, every parent link as a faint line.
+  // o = { W, G, x0 (left margin), pitch, maxH, label(g) -> axis text or '', title, shade: [from, to], aria }
+  function wfBase(host, pop, o){
+    var G = o.G, W = o.W, x0 = o.x0 || 46, x1 = W - 12, y0 = o.title ? 34 : 14;
+    var pitch = Math.max(3, Math.min(o.pitch || 16, (o.maxH || 620) / G)), H = y0 + G * pitch + 22;
+    var X = wfLayout(pop, G), spec = pop.spec;
+    function px(g, i){ return x0 + X[g][i] * (x1 - x0); }
+    function py(g){ return y0 + (G - g) * pitch; }
+    var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': o.aria || 'Rows of gene copies, one row per generation, with the link from each copy to its parent' });
+    svg.style.minWidth = '300px';
+    if (o.shade){
+      var a = Math.min(o.shade[1], G + 1), b = Math.max(o.shade[0], 0);
+      if (a > b) svg.appendChild(mk('rect', { x: x0 - 6, y: py(a - 1) - pitch / 2, width: x1 - x0 + 12, height: (a - b) * pitch, fill: css('--code-bg') }));
+    }
+    if (o.title) svg.appendChild(mk('text', { x: x0 - 6, y: 14, 'class': 'lab' }, o.title));
+    var dl = '', dm = '', dd = '', g, i, c;
+    for (g = 0; g < G; g++){
+      c = spec.size(g);
+      for (i = 0; i < c; i++){
+        var p = pop.par[g][i], seg = 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'L' + px(g + 1, p).toFixed(1) + ' ' + py(g + 1).toFixed(1);
+        if (spec.demes === 2 && wfDeme(i, c) !== wfDeme(p, spec.size(g + 1))) dm += seg; else dl += seg;
+      }
+    }
+    var r = Math.max(1.2, Math.min(3.2, pitch * 0.3, (x1 - x0) / Math.max(1, wfMax(spec, G)) * 0.34));
+    for (g = 0; g <= G; g++){ c = spec.size(g); for (i = 0; i < c; i++) dd += 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'h0'; }
+    svg.appendChild(mk('path', { d: dl, fill: 'none', stroke: css('--err'), 'stroke-width': 0.8, opacity: '0.55' }));
+    if (dm) svg.appendChild(mk('path', { d: dm, fill: 'none', stroke: css('--het'), 'stroke-width': 1.2, opacity: '0.8' }));
+    if (pitch >= 5) svg.appendChild(mk('path', { d: dd, fill: 'none', stroke: css('--err'), 'stroke-width': 2 * r, 'stroke-linecap': 'round' }));
+    for (g = 0; g <= G; g++){
+      var t = o.label ? o.label(g) : '';
+      if (t !== '') svg.appendChild(mk('text', { x: x0 - 12, y: py(g) + 4, 'text-anchor': 'end' }, t));
+    }
+    var over = mk('g', {}); svg.appendChild(over);
+    host.replaceChildren(svg);
+    return { pop: pop, px: px, py: py, over: over, pitch: pitch, r: r, x0: x0, x1: x1, G: G, svg: svg };
+  }
+  // Moving part: the sampled lines from today back to generation cur, and where they met.
+  function wfOver(b, tr, cur, o){
+    o = o || {};
+    var over = b.over, pop = b.pop, col = css(o.colour || '--accent'); over.replaceChildren();
+    var last = Math.min(cur, tr.T, b.G), d = '', dots = '', g;
+    if (cur > 0 && !o.noBand) over.appendChild(mk('rect', { x: b.x0 - 6, y: b.py(last) - b.pitch / 2, width: b.x1 - b.x0 + 12, height: b.pitch, fill: css('--accent'), opacity: '0.14' }));
+    function link(c){
+      var p = pop.par[g][c];
+      d += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'L' + b.px(g + 1, p).toFixed(1) + ' ' + b.py(g + 1).toFixed(1);
+    }
+    function dot(c){ dots += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'h0'; }
+    for (g = 0; g < last; g++) tr.rows[g].forEach(link);
+    for (g = 0; g <= last; g++) if (g === 0 || g === last || b.pitch >= 7) tr.rows[g].forEach(dot);
+    if (d) over.appendChild(mk('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+    over.appendChild(mk('path', { d: dots, fill: 'none', stroke: col, 'stroke-width': 2 * b.r + 1.6, 'stroke-linecap': 'round' }));
+    tr.meets.forEach(function(m){
+      if (m.g > last) return;
+      var end = m.g === tr.T;
+      over.appendChild(mk('circle', { cx: b.px(m.g, m.i), cy: b.py(m.g), r: end ? 7 : 5.5, fill: 'none', stroke: css(end ? '--bad' : '--het'), 'stroke-width': 2 }));
+      if (end && o.endLabel){
+        var x = b.px(m.g, m.i), right = x < (b.x0 + b.x1) / 2;
+        over.appendChild(mk('text', { x: x + (right ? 12 : -12), y: b.py(m.g) - 9, 'text-anchor': right ? 'start' : 'end', 'class': 'lab', stroke: css('--bg'), 'stroke-width': 3, 'paint-order': 'stroke' }, o.endLabel));
+      }
+    });
+  }
+  // CORE-END
+  // SIM-BEGIN: a chromosome pair under the model PSMC assumes, and a small reader for it.
+  // History h = { b: period starts in generations, N: size per period }.
+  function psH(h, t){                      // coalescent time passed by generation t: sum of generations / 2N
+    var s = 0;
+    for (var i = 0; i < h.N.length; i++){
+      var a = h.b[i], e = i + 1 < h.N.length ? h.b[i + 1] : Infinity;
+      if (t <= a) break;
+      s += (Math.min(t, e) - a) / (2 * h.N[i]);
+    }
+    return s;
+  }
+  function psHinv(h, x){                   // the generation at which that much coalescent time has passed
+    var s = 0;
+    for (var i = 0; i < h.N.length; i++){
+      var a = h.b[i], e = i + 1 < h.N.length ? h.b[i + 1] : Infinity, d = (e - a) / (2 * h.N[i]);
+      if (s + d >= x) return a + (x - s) * 2 * h.N[i];
+      s += d;
+    }
+    return Infinity;
+  }
+  function psPois(r, m){
+    if (m <= 0) return 0;
+    if (m < 30){ var Lm = Math.exp(-m), k = 0, p = 1; do { k++; p *= r(); } while (p > Lm); return k - 1; }
+    var z = Math.sqrt(-2 * Math.log(r() || 1e-12)) * Math.cos(2 * Math.PI * r());
+    return Math.max(0, Math.round(m + Math.sqrt(m) * z));
+  }
+  // Walk along the pair. A stretch of time T ends at a recombination (rate 2 r T per base). The break
+  // falls at a height u uniform on 0..T; the cut line floats up from u and meets again at a rate
+  // 1/(2N) per generation. This is the transition q(t|s) of Li & Durbin 2011.
+  function psChrom(h, rec, mu, len, r){
+    var seg = [], het = [], pos = 0, T = psHinv(h, -Math.log(1 - r()));
+    while (pos < len){
+      var L = rec > 0 ? -Math.log(1 - r()) / (2 * rec * T) : len;
+      if (pos + L > len) L = len - pos;
+      var k = psPois(r, 2 * mu * T * L), n0 = het.length;
+      for (var j = 0; j < k; j++) het.push(pos + r() * L);
+      seg.push({ a: pos, L: L, T: T, k: k, h0: n0 });
+      pos += L;
+      var u = r() * T;
+      T = psHinv(h, psH(h, u) - Math.log(1 - r()));
+    }
+    het.sort(function(a, b){ return a - b; });
+    return { seg: seg, het: het, len: len };
+  }
+  // PSMC's own interval boundaries (core.c): t_k = 0.1 (exp(beta k) - 1) in units of 2 N0, last open.
+  function psIntervals(n, tmax, N0){
+    var beta = Math.log(1 + tmax / 0.1) / n, t = [];
+    for (var k = 0; k <= n; k++) t.push(0.1 * (Math.exp(beta * k) - 1) * 2 * N0);
+    return t;                              // n + 1 states: state k runs from t[k] to t[k + 1], the last to infinity
+  }
+  function psBins(c, size){
+    var nb = Math.floor(c.len / size), o = new Uint8Array(nb);
+    c.het.forEach(function(x){ var b = Math.floor(x / size); if (b < nb) o[b] = 1; });
+    return o;
+  }
+  // What the model expects when the size in state k is Nk[k]: share of the genome per state,
+  // mean time per state, chance of a het bin, and the transition matrix between neighbouring bins.
+  function psModel(t, Nk, rec, mu, size){
+    var K = t.length, hh = { b: t, N: Nk }, sig = new Float64Array(K), tb = new Float64Array(K), e1 = new Float64Array(K), S = 1, k, l;
+    for (k = 0; k < K; k++){
+      var hz = 1 / (2 * Nk[k]);
+      if (k === K - 1){ sig[k] = S; tb[k] = t[k] + 1 / hz; break; }
+      var tau = t[k + 1] - t[k], ex = Math.exp(-hz * tau);
+      sig[k] = S * (1 - ex); S *= ex;
+      tb[k] = t[k] + 1 / hz - tau * ex / (1 - ex);
+    }
+    var A = new Float64Array(K * K), Ht = t.map(function(x){ return psH(hh, x); });
+    for (k = 0; k < K; k++){
+      e1[k] = 1 - Math.exp(-2 * mu * size * tb[k]);
+      var pr = 1 - Math.exp(-2 * rec * size * tb[k]), NU = 24;
+      for (var q = 0; q < NU; q++){
+        var u = (q + 0.5) / NU * tb[k], Hu = psH(hh, u);
+        for (l = 0; l < K; l++){
+          var hi = l + 1 < K ? Ht[l + 1] : Infinity;
+          if (hi <= Hu) continue;
+          A[k * K + l] += pr / NU * (Math.exp(-(Math.max(Ht[l], Hu) - Hu)) - (hi === Infinity ? 0 : Math.exp(-(hi - Hu))));
+        }
+      }
+      A[k * K + k] += 1 - pr;
+    }
+    return { K: K, sig: sig, tb: tb, e1: e1, A: A };
+  }
+  // Forward-backward over the bins: for each bin, how probable is each time interval?
+  function psPosterior(m, bins, keep){
+    var K = m.K, n = bins.length, F = new Float64Array(n * K), sc = new Float64Array(n), A = m.A, e1 = m.e1;
+    var post = new Float64Array(K), meanT = keep ? new Float32Array(n) : null, b = new Float64Array(K), b2 = new Float64Array(K), i, k, l, s;
+    for (i = 0; i < n; i++){
+      var o = bins[i], base = i * K, pb = base - K; s = 0;
+      for (l = 0; l < K; l++){
+        var v = 0;
+        if (i === 0) v = m.sig[l];
+        else for (k = 0; k < K; k++) v += F[pb + k] * A[k * K + l];
+        v *= o ? e1[l] : 1 - e1[l];
+        F[base + l] = v; s += v;
+      }
+      sc[i] = s; s = 1 / s;
+      for (l = 0; l < K; l++) F[base + l] *= s;
+    }
+    for (k = 0; k < K; k++) b[k] = 1;
+    for (i = n - 1; i >= 0; i--){
+      var tot = 0, w = 0;
+      for (k = 0; k < K; k++) tot += F[i * K + k] * b[k];
+      for (k = 0; k < K; k++){ var g = F[i * K + k] * b[k] / tot; post[k] += g; w += g * Math.log(m.tb[k]); }
+      if (keep) meanT[i] = Math.exp(w);
+      if (i === 0) break;
+      var ob = bins[i];
+      for (l = 0; l < K; l++) b2[l] = b[l] * (ob ? e1[l] : 1 - e1[l]);
+      for (k = 0; k < K; k++){
+        var v2 = 0;
+        for (l = 0; l < K; l++) v2 += A[k * K + l] * b2[l];
+        b[k] = v2 / sc[i];
+      }
+    }
+    for (k = 0; k < K; k++) post[k] /= n;
+    return { share: post, meanT: meanT };
+  }
+  // The link between counts and size: of the share still separate on entering an interval, the part
+  // that meets inside it gives the rate; size = 1 / (2 x rate). A share of 0 gives no size.
+  function psRate(t, share){
+    var K = t.length, S = 1, N = new Float64Array(K), left = new Float64Array(K);
+    for (var k = 0; k < K; k++){
+      left[k] = S;
+      if (k === K - 1 || S <= 0){ N[k] = NaN; continue; }
+      var f = Math.min(share[k] / S, 1 - 1e-9), tau = t[k + 1] - t[k];
+      N[k] = f > 0 ? tau / (2 * -Math.log(1 - f)) : Infinity;
+      S -= share[k];
+    }
+    return { N: N, left: left };
+  }
+  // Rounds of reading: start from one size that matches the het density, as PSMC does, then alternate
+  // "how probable is each interval in each bin" and "which sizes give those shares".
+  function psRead(c, t, rec, mu, size, rounds){
+    var bins = psBins(c, size), K = t.length, nh = 0, i, k, r0;
+    for (i = 0; i < bins.length; i++) nh += bins[i];
+    var th = -Math.log(1 - Math.min(nh / bins.length, 0.99)) / size, N0 = Math.max(100, th / (4 * mu));
+    var Nk = []; for (k = 0; k < K; k++) Nk.push(N0);
+    var res;
+    for (r0 = 0; r0 < rounds; r0++){
+      var m = psModel(t, Nk, rec, mu, size);
+      res = psPosterior(m, bins, r0 === rounds - 1);
+      res.tb = m.tb;
+      var rt = psRate(t, res.share), nn = [];
+      for (k = 0; k < K; k++){
+        var v = rt.N[k];
+        if (!isFinite(v) || rt.left[k] < 0.02) v = k > 0 ? nn[k - 1] : N0;
+        nn.push(Math.min(1e6, Math.max(100, v)));
+      }
+      Nk = nn; res.left = rt.left;
+    }
+    res.N = Nk; res.N0 = N0;
+    return res;
+  }
+  // Share of the chromosome whose true time lies in each interval (each stretch counted by its length).
+  function psShares(c, t){
+    var K = t.length, o = new Float64Array(K);
+    c.seg.forEach(function(s){ var k = psState(t, s.T); o[k] += s.L / c.len; });
+    return o;
+  }
+  function psState(t, T){ var k = t.length - 1; while (k > 0 && t[k] > T) k--; return k; }
+  // SIM-END
+  // --- The principle of PSMC: walk along a chromosome pair, click a stretch, read the sizes back
+  function psmcPrinciple(){
+    if (!document.getElementById('s03-pr-curve')) return;
+    var MU = 2.5e-8, BIN = 100, LEN = 1e7, N0 = 10000, ROUNDS = 5, ZLEN = 100000, TOPT = 1e6, LOWT = 300;
+    var B = [0, 2000, 10000, 50000];
+    var NV = [1000, 2000, 3000, 5000, 7000, 10000, 15000, 20000, 30000, 50000, 70000, 100000];
+    var RV = [0, 1e-10, 1e-9, 3e-9, 1e-8, 3e-8, 1e-7];
+    var RT = ['0 (no recombination)', '1 × 10⁻¹⁰', '1 × 10⁻⁹', '3 × 10⁻⁹', '1 × 10⁻⁸', '3 × 10⁻⁸', '1 × 10⁻⁷'];
+    var t = psIntervals(11, 15, N0), K = t.length;
+    var sl = [0, 1, 2, 3].map(function(i){ return el('s03-pr-n' + i); });
+    var st = { seed: 2011, c: null, sel: 0, read: null, job: 0, rounds: 0 };
+    function width(h){ return Math.max(300, Math.min(900, h.clientWidth || 640)); }
+    function n0(v){ return Math.round(v).toLocaleString('en-US'); }
+    function gen(v){ return v >= 1e6 ? (v / 1e6).toFixed(1) + 'M' : v >= 1000 ? Math.round(v / 1000) + 'k' : String(Math.round(v)); }
+    function hist(){ return { b: B, N: sl.map(function(s){ return NV[+s.value]; }) }; }
+    function rec(){ return RV[+el('s03-pr-r').value]; }
+    function box(label, val, tip){
+      var d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('b');
+      s.textContent = label; if (tip){ s.className = 'tip'; s.title = tip; }
+      b.textContent = val; d.appendChild(s); d.appendChild(b); return d;
+    }
+    // share of the genome expected in interval k for the true history
+    function expected(h){
+      return t.map(function(x, k){ return Math.exp(-psH(h, x)) - (k + 1 < K ? Math.exp(-psH(h, t[k + 1])) : 0); });
+    }
+
+    // ---- curve: size through time (top) and share of the chromosome per interval (bottom), one time axis
+    function drawCurve(){
+      var host = el('s03-pr-curve'), W = width(host), x0 = 58, x1 = W - 14, h = hist(), c = st.c;
+      var yA = 24, hA = 130, yB = 196, hB = 110, H = yB + hB + 42;
+      var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Top: population size through time, true and estimated. Bottom: share of the chromosome whose two copies met in each time interval.' });
+      svg.style.minWidth = '300px';
+      function X(v){ return x0 + (Math.log10(Math.min(TOPT, Math.max(v, LOWT))) - Math.log10(LOWT)) / (Math.log10(TOPT) - Math.log10(LOWT)) * (x1 - x0); }
+      function Y(n){ return yA + hA - (Math.log10(Math.min(1e6, Math.max(n, 300))) - Math.log10(300)) / (6 - Math.log10(300)) * hA; }
+      svg.appendChild(mk('text', { x: x0, y: 12, 'class': 'lab' }, 'Population size through time'));
+      [1e3, 1e4, 1e5, 1e6].forEach(function(n){
+        svg.appendChild(mk('line', { x1: x0, x2: x1, y1: Y(n), y2: Y(n), 'class': 'grid' }));
+        svg.appendChild(mk('text', { x: x0 - 6, y: Y(n) + 4, 'text-anchor': 'end' }, gen(n)));
+      });
+      var d = '';
+      h.N.forEach(function(n, i){ d += (i ? 'L' : 'M') + X(h.b[i]).toFixed(1) + ' ' + Y(n).toFixed(1) + 'L' + X(i + 1 < 4 ? h.b[i + 1] : TOPT).toFixed(1) + ' ' + Y(n).toFixed(1); });
+      svg.appendChild(mk('path', { d: d, fill: 'none', stroke: css('--fg'), 'stroke-width': 1.8, 'stroke-dasharray': '6 3' }));
+      var many = c.seg.length >= 3;
+      function steps(Ns, left, col, w){
+        var p = '', on = false;
+        for (var k = 0; k + 1 < K; k++){
+          if (!(left[k] >= 0.02) || !isFinite(Ns[k])){ on = false; continue; }
+          p += (on ? 'L' : 'M') + X(t[k]).toFixed(1) + ' ' + Y(Ns[k]).toFixed(1) + 'L' + X(t[k + 1]).toFixed(1) + ' ' + Y(Ns[k]).toFixed(1); on = true;
+        }
+        if (p) svg.appendChild(mk('path', { d: p, fill: 'none', stroke: css(col), 'stroke-width': w }));
+      }
+      var sh = psShares(c, t), cnt = psRate(t, sh);
+      if (many) steps(cnt.N, cnt.left, '--accent', 2);
+      if (many && st.read) steps(st.read.N, st.read.left, '--het', 2.4);
+      if (!many) svg.appendChild(mk('text', { x: (x0 + x1) / 2, y: yA + hA / 2 + 4, 'text-anchor': 'middle', 'class': 'lab' }, 'one date only: no curve can be drawn'));
+      // shares
+      var ex = expected(h), mx = 0.1, k;
+      for (k = 0; k < K; k++) mx = Math.max(mx, sh[k], ex[k], st.read ? st.read.share[k] : 0);
+      mx = Math.ceil(mx * 10) / 10;
+      function V(v){ return yB + hB - v / mx * hB; }
+      svg.appendChild(mk('text', { x: x0, y: yB - 12, 'class': 'lab' }, 'Share of chromosome met per interval'));
+      svg.appendChild(mk('line', { x1: x0, x2: x1, y1: yB + hB, y2: yB + hB, 'class': 'ax' }));
+      [mx / 2, mx].forEach(function(v){ svg.appendChild(mk('line', { x1: x0, x2: x1, y1: V(v), y2: V(v), 'class': 'grid' })); svg.appendChild(mk('text', { x: x0 - 6, y: V(v) + 4, 'text-anchor': 'end' }, Math.round(v * 100) + ' %')); });
+      var selK = psState(t, c.seg[st.sel].T), de = '', dr = '';
+      for (k = 0; k < K; k++){
+        var xa = X(t[k]), xb = X(k + 1 < K ? t[k + 1] : TOPT);
+        svg.appendChild(mk('rect', { x: xa + 1, y: V(sh[k]), width: Math.max(1, xb - xa - 2), height: yB + hB - V(sh[k]), fill: css('--accent'), opacity: '0.75' }));
+        if (k === selK) svg.appendChild(mk('rect', { x: xa + 0.5, y: yB, width: Math.max(1, xb - xa - 1), height: hB, fill: 'none', stroke: css('--bad'), 'stroke-width': 1.6 }));
+        de += 'M' + xa.toFixed(1) + ' ' + V(ex[k]).toFixed(1) + 'H' + xb.toFixed(1);
+        if (st.read) dr += 'M' + xa.toFixed(1) + ' ' + V(st.read.share[k]).toFixed(1) + 'H' + xb.toFixed(1);
+      }
+      svg.appendChild(mk('path', { d: de, fill: 'none', stroke: css('--fg'), 'stroke-width': 1.6, 'stroke-dasharray': '4 3' }));
+      if (dr) svg.appendChild(mk('path', { d: dr, fill: 'none', stroke: css('--het'), 'stroke-width': 3 }));
+      var ticks = W < 470 ? [1e3, 1e4, 1e5, 1e6] : [300, 1e3, 3e3, 1e4, 3e4, 1e5, 3e5, 1e6];
+      ticks.forEach(function(v){
+        svg.appendChild(mk('line', { x1: X(v), x2: X(v), y1: yB + hB, y2: yB + hB + 4, 'class': 'ax' }));
+        svg.appendChild(mk('text', { x: X(v), y: yB + hB + 17, 'text-anchor': v === TOPT ? 'end' : 'middle' }, gen(v)));
+      });
+      svg.appendChild(mk('text', { x: (x0 + x1) / 2, y: H - 6, 'text-anchor': 'middle' }, 'generations before today (log scale)'));
+      host.replaceChildren(svg);
+    }
+
+    // ---- chromosome: whole length with the window, then the window with its stretches
+    function zoomStart(){ return +el('s03-pr-z').value * 1e6; }
+    function drawChrom(){
+      var host = el('s03-pr-chrom'), W = width(host), x0 = 58, x1 = W - 14, PW = x1 - x0, c = st.c, zs = zoomStart(), ze = zs + ZLEN;
+      var yO = 22, hO = 44, yZ = 112, hZ = 120, yH = yZ + hZ + 10, H = yH + 48;
+      var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', 'aria-label': 'Top: the time of each stretch along the whole chromosome. Below: a 100-kb window; each stretch can be clicked.' });
+      svg.style.minWidth = '300px';
+      function ly(T, y, h){ var l = (Math.log10(Math.min(TOPT, Math.max(T, LOWT))) - Math.log10(LOWT)) / (Math.log10(TOPT) - Math.log10(LOWT)); return y + h - l * h; }
+      // whole chromosome: mean log time per pixel column
+      svg.appendChild(mk('text', { x: x0, y: 12, 'class': 'lab' }, 'Whole chromosome, 10 Mb: time of the stretches'));
+      var cols = Math.floor(PW), acc = new Float64Array(cols), wt = new Float64Array(cols), per = LEN / cols, i;
+      c.seg.forEach(function(s){
+        var a = Math.floor(s.a / per), b = Math.min(cols - 1, Math.floor((s.a + s.L) / per));
+        for (var q = a; q <= b; q++){ var ov = Math.min(s.a + s.L, (q + 1) * per) - Math.max(s.a, q * per); acc[q] += ov * Math.log10(s.T); wt[q] += ov; }
+      });
+      var d = '';
+      for (i = 0; i < cols; i++) if (wt[i] > 0) d += 'M' + (x0 + i + 0.5) + ' ' + (yO + hO) + 'V' + ly(Math.pow(10, acc[i] / wt[i]), yO, hO).toFixed(1);
+      svg.appendChild(mk('path', { d: d, stroke: css('--accent'), 'stroke-width': 1, fill: 'none', opacity: '0.75', 'shape-rendering': 'crispEdges' }));
+      svg.appendChild(mk('rect', { x: x0 + zs / LEN * PW, y: yO - 2, width: Math.max(3, ZLEN / LEN * PW), height: hO + 4, fill: 'none', stroke: css('--bad'), 'stroke-width': 1.5 }));
+      var over = mk('rect', { x: x0, y: yO - 2, width: PW, height: hO + 4, fill: 'transparent' }); over.style.cursor = 'pointer';
+      over.addEventListener('click', function(ev){
+        var bb = svg.getBoundingClientRect(), f = (ev.clientX - bb.left) / bb.width * W;
+        var v = Math.max(0, Math.min(9.9, (f - x0) / PW * 10 - 0.05));
+        el('s03-pr-z').value = v.toFixed(2); fromWindow();
+      });
+      svg.appendChild(over);
+      svg.appendChild(mk('text', { x: x0, y: yO + hO + 15 }, '0'));
+      svg.appendChild(mk('text', { x: x1, y: yO + hO + 15, 'text-anchor': 'end' }, '10 Mb'));
+      // window
+      function zx(p){ return x0 + (p - zs) / ZLEN * PW; }
+      svg.appendChild(mk('text', { x: x0, y: yZ - 12, 'class': 'lab' }, 'Window of 100 kb: click a stretch'));
+      [1e3, 1e4, 1e5, 1e6].forEach(function(T){
+        svg.appendChild(mk('line', { x1: x0, x2: x1, y1: ly(T, yZ, hZ), y2: ly(T, yZ, hZ), 'class': 'grid' }));
+        svg.appendChild(mk('text', { x: x0 - 6, y: ly(T, yZ, hZ) + 4, 'text-anchor': 'end' }, gen(T)));
+      });
+      var lo = stretchAt(zs), dl = '', first = true, s;
+      for (i = lo; i < c.seg.length && c.seg[i].a < ze; i++){
+        s = c.seg[i];
+        var a = Math.max(zs, s.a), b = Math.min(ze, s.a + s.L), yy = ly(s.T, yZ, hZ);
+        if (i === st.sel) svg.appendChild(mk('rect', { x: zx(a), y: yZ, width: Math.max(1.5, zx(b) - zx(a)), height: hZ + 28, fill: css('--bad'), opacity: '0.14' }));
+        dl += (first ? 'M' : 'L') + zx(a).toFixed(1) + ' ' + yy.toFixed(1) + 'L' + zx(b).toFixed(1) + ' ' + yy.toFixed(1); first = false;
+      }
+      svg.appendChild(mk('path', { d: dl, fill: 'none', stroke: css('--accent'), 'stroke-width': 2 }));
+      if (st.read && st.read.meanT){
+        var dr = '', b0 = Math.floor(zs / BIN), b1 = Math.min(st.read.meanT.length, Math.floor(ze / BIN));
+        for (var q = b0; q < b1; q++) dr += (q === b0 ? 'M' : 'L') + zx((q + 0.5) * BIN).toFixed(1) + ' ' + ly(st.read.meanT[q], yZ, hZ).toFixed(1);
+        if (dr) svg.appendChild(mk('path', { d: dr, fill: 'none', stroke: css('--het'), 'stroke-width': 1.6 }));
+      }
+      svg.appendChild(mk('rect', { x: x0, y: yH, width: PW, height: 16, fill: 'none', stroke: css('--line') }));
+      var dt = '', nz = 0;
+      c.het.forEach(function(p){ if (p >= zs && p < ze){ dt += 'M' + zx(p).toFixed(1) + ' ' + yH + 'v16'; nz++; } });
+      if (dt) svg.appendChild(mk('path', { d: dt, stroke: css('--fg'), 'stroke-width': 1 }));
+      svg.appendChild(mk('text', { x: x0 - 6, y: yH + 12, 'text-anchor': 'end' }, 'hets'));
+      svg.appendChild(mk('text', { x: x0, y: yH + 32 }, (zs / 1e6).toFixed(2) + ' Mb'));
+      svg.appendChild(mk('text', { x: x1, y: yH + 32, 'text-anchor': 'end' }, ((zs + ZLEN) / 1e6).toFixed(2) + ' Mb'));
+      // click targets last, on top of everything; thin stretches get a little extra width
+      for (i = lo; i < c.seg.length && c.seg[i].a < ze; i++){
+        s = c.seg[i];
+        var ha = zx(Math.max(zs, s.a)), hb = zx(Math.min(ze, s.a + s.L));
+        var tgt = mk('rect', { x: ha, y: yZ, width: Math.max(2, hb - ha), height: hZ + 28, fill: 'transparent', 'data-i': i });
+        tgt.style.cursor = 'pointer';
+        tgt.appendChild(mk('title', {}, 'Stretch of ' + n0(s.L) + ' bases, met ' + n0(s.T) + ' generations ago, ' + s.k + ' hets'));
+        svg.appendChild(tgt);
+      }
+      svg.addEventListener('click', function(ev){
+        var v = ev.target.getAttribute && ev.target.getAttribute('data-i');
+        if (v !== null && v !== undefined){ st.sel = +v; drawChrom(); drawTree(); drawCurve(); }
+      });
+      host.replaceChildren(svg);
+      el('s03-pr-z-o').textContent = (zs / 1e6).toFixed(2) + ' Mb';
+    }
+    function stretchAt(p){
+      var seg = st.c.seg, lo = 0, hi = seg.length - 1;
+      while (lo < hi){ var m = (lo + hi + 1) >> 1; if (seg[m].a <= p) lo = m; else hi = m - 1; }
+      return lo;
+    }
+    function fromWindow(){ st.sel = stretchAt(zoomStart() + ZLEN / 2); drawChrom(); drawTree(); drawCurve(); }
+    function moveSel(by){
+      var seg = st.c.seg, i = Math.max(0, Math.min(seg.length - 1, st.sel + by)), s = seg[i];
+      st.sel = i;
+      var zs = zoomStart();
+      if (s.a + s.L / 2 < zs || s.a + s.L / 2 > zs + ZLEN) el('s03-pr-z').value = Math.max(0, Math.min(9.9, (s.a + s.L / 2 - ZLEN / 2) / 1e6)).toFixed(2);
+      drawChrom(); drawTree(); drawCurve();
+    }
+
+    // ---- the coalescent display for the selected stretch. Rows stand for many generations on a log
+    // time scale, and row width grows with the log of N: the paths are illustrative, the meeting row is not.
+    var ROWS = 24;
+    function rowT(g){ return g <= 0 ? 0 : LOWT * Math.pow(TOPT / LOWT, (g - 0.5) / ROWS); }
+    function drawTree(){
+      var host = el('s03-pr-tree'), W = width(host), s = st.c.seg[st.sel], h = hist();
+      function sizeAtT(T){ var i = 3; while (i > 0 && h.b[i] > T) i--; return h.N[i]; }
+      var spec = { demes: 1, size: function(g){ return 2 * Math.round(2 + 3.5 * (Math.log10(sizeAtT(rowT(g))) - 3) * 1.6); } };
+      var r = rng(st.seed + st.sel * 13 + 1), pop = wfPop(spec, r);
+      var M = 1; while (M < ROWS && rowT(M + 1) <= s.T) M++;
+      pop.grow(ROWS + 1);
+      var a = 0, b = 1, g;
+      for (g = 0; g < M; g++){                 // steer the two lines so that they first meet in row M
+        var pa = pop.par[g][a], pb = pop.par[g][b];
+        if (g === M - 1) pb = pa;
+        else while (pb === pa) pb = Math.floor(r() * spec.size(g + 1));
+        pop.par[g][b] = pb; a = pa; b = pb;
+      }
+      var tr = wfTrace(pop, [0, 1]);
+      var bse = wfBase(host, pop, { W: W, G: ROWS, x0: 58, pitch: 13, title: 'Coalescent picture of the selected stretch',
+        label: function(g){ if (g === 0) return 'today'; var v = rowT(g); return g % 6 === 0 ? gen(v) : ''; },
+        aria: 'Rows of gene copies through time, wider where the population was larger. The two copies of the selected stretch meet at the row of its time.' });
+      wfOver(bse, tr, tr.T, { noBand: true, colour: '--accent', endLabel: 'met ' + n0(s.T) + ' generations ago' });
+      var out = el('s03-pr-sel'); out.replaceChildren();
+      out.appendChild(box('This stretch', n0(s.L) + ' bases, ' + s.k + (s.k === 1 ? ' het' : ' hets'), 'Bases between its two breakpoints, and the heterozygous sites on it.'));
+      out.appendChild(box('True meeting time', n0(s.T) + ' generations', 'Known here only because the page simulated it.'));
+      out.appendChild(box('Time from its own hets alone', s.k > 0 ? n0(s.k / (2 * MU * s.L)) + ' generations' : 'cannot say: no hets', 'Hets ÷ (2 μ × length). A rough estimate that ignores the neighbours: with a few hets it can be far off.'));
+      var rd = st.c.seg.length < 3 ? 'nothing to read' : '…';
+      if (st.read && st.read.meanT){
+        var q0 = Math.floor(s.a / BIN), q1 = Math.max(q0 + 1, Math.min(st.read.meanT.length, Math.ceil((s.a + s.L) / BIN))), sum = 0, step = Math.max(1, Math.floor((q1 - q0) / 2000)), n = 0;
+        for (var q = q0; q < q1; q += step){ sum += Math.log(st.read.meanT[q]); n++; }
+        rd = n0(Math.exp(sum / n)) + ' generations';
+      }
+      out.appendChild(box('Time the model read here', rd, 'Average over the bins of this stretch of what the hidden Markov model believes, using all the bins of the chromosome. It sees no breakpoints, only hets.'));
+    }
+
+    function readouts(){
+      var c = st.c, out = el('s03-pr-out'), h = hist(), r = rec(), z = 0; out.replaceChildren();
+      c.seg.forEach(function(s){ if (s.k === 0) z++; });
+      var left = Math.exp(-psH(h, 50000)), sh = [0, 0, 0, 0], i;
+      c.seg.forEach(function(s){ var p = 3; while (B[p] > s.T) p--; sh[p] += s.L / c.len; });
+      out.appendChild(box('Stretches on this chromosome', n0(c.seg.length), 'Number of pieces with their own meeting time: the number of samples of the coalescent in this 10-Mb pair.'));
+      out.appendChild(box('Hets per stretch', (c.het.length / c.seg.length).toFixed(2) + (r > 0 ? ' (μ/r = ' + (MU / r).toFixed(2) + ')' : ''), 'Average number of heterozygous sites on a stretch. It is about μ/r whatever the age of the stretch.'));
+      out.appendChild(box('Stretches with no het at all', Math.round(z / c.seg.length * 100) + ' %', 'These hold no direct evidence of their own time.'));
+      var names = ['0–2k', '2k–10k', '10k–50k', 'older'];
+      out.appendChild(box('Met in each period', names.map(function(n, k){ return n + ': ' + Math.round(sh[k] * 100) + ' %'; }).join(' · '), 'Share of this chromosome whose two copies met in each period of generations. A small population in a period raises its share and leaves less for older periods.'));
+      out.appendChild(box('Still separate 50,000 generations back', (left * 100).toFixed(left < 0.1 ? 1 : 0) + ' %', 'Expected share of the genome that has not met by then. Only this share carries any information on older times.'));
+    }
+
+    // Reading is the slow part, so it runs one round at a time and can be overtaken by a newer job.
+    function startRead(){
+      var job = ++st.job, c = st.c, r = rec(), status = el('s03-pr-status');
+      st.read = null;
+      if (c.seg.length < 3){ status.textContent = 'With ' + (c.seg.length === 1 ? 'one stretch there is one date' : 'so few stretches there are too few dates') + ': a single sample of the history, so there is nothing to read a curve from.'; return; }
+      var bins = psBins(c, BIN), nh = 0, i, k;
+      for (i = 0; i < bins.length; i++) nh += bins[i];
+      var th = -Math.log(1 - Math.min(nh / bins.length, 0.99)) / BIN, Ns = Math.max(100, th / (4 * MU)), Nk = [];
+      for (k = 0; k < K; k++) Nk.push(Ns);
+      var round = 0;
+      function step(){
+        if (job !== st.job) return;
+        var m = psModel(t, Nk, r, MU, BIN), res = psPosterior(m, bins, true), rt = psRate(t, res.share), nn = [];
+        for (k = 0; k < K; k++){
+          var v = rt.N[k];
+          if (!isFinite(v) || rt.left[k] < 0.02) v = k > 0 ? nn[k - 1] : Ns;
+          nn.push(Math.min(1e6, Math.max(100, v)));
+        }
+        Nk = nn; round++;
+        st.read = { share: res.share, meanT: res.meanT, N: rt.N, left: rt.left };
+        drawCurve(); drawChrom(); drawTree();
+        status.textContent = round < ROUNDS ? 'Reading the het bins: round ' + round + ' of ' + ROUNDS + ' …' : 'Read in ' + ROUNDS + ' rounds, from one flat starting size matched to the het density.';
+        if (round < ROUNDS) setTimeout(step, 0);
+      }
+      status.textContent = 'Reading the het bins …';
+      setTimeout(step, 30);
+    }
+    function regenerate(){
+      sl.forEach(function(s, i){ el('s03-pr-n' + i + '-o').textContent = n0(NV[+s.value]); });
+      el('s03-pr-r-o').textContent = RT[+el('s03-pr-r').value];
+      st.c = psChrom(hist(), rec(), MU, LEN, rng(st.seed));
+      st.read = null; st.job++;
+      st.sel = stretchAt(zoomStart() + ZLEN / 2);
+      readouts(); drawCurve(); drawChrom(); drawTree();
+      clearTimeout(st.deb);
+      st.deb = setTimeout(startRead, 160);
+    }
+    sl.concat([el('s03-pr-r')]).forEach(function(s){ s.addEventListener('input', regenerate); });
+    el('s03-pr-new').addEventListener('click', function(){ st.seed += 1; regenerate(); });
+    el('s03-pr-z').addEventListener('input', fromWindow);
+    el('s03-pr-prev').addEventListener('click', function(){ moveSel(-1); });
+    el('s03-pr-next').addEventListener('click', function(){ moveSel(1); });
+    regenerate();
+    var rz = 0, lastW = window.innerWidth;
+    window.addEventListener('resize', function(){
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth; clearTimeout(rz);
+      rz = setTimeout(function(){ drawCurve(); drawChrom(); drawTree(); }, 150);
+    });
+  }
+  psmcPrinciple();
 })();
 /* ==== 04-scaling ==== */
 (function(){
@@ -2824,6 +4033,233 @@ grep '^MM' sample.psmc | head -3</pre></div>
     segGroup('s05-dq', function(v){ ds.q = v; decide(); });
     try { decide(); } catch (err){ dout.textContent = 'Helper could not run: ' + err.message; }
   }
+})();
+
+(function(){
+  var host = document.getElementById('s05-wf');
+  if (!host) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var el = function(id){ return document.getElementById(id); };
+  function css(v){ return 'var(' + v + ')'; }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // CORE-BEGIN: Wright-Fisher display. The same block is copied in 01-coalescent.js, 03-psmc.js and 05-beyond-psmc.js
+  // (sections are separate scripts with no shared globals). It needs mk() and css() of its section.
+  // spec = { size: g -> gene copies in generation g (0 = today, larger = older), demes: 1 or 2,
+  // m: chance per generation that a copy's parent sits in the other deme }.
+  function wfDeme(i, c){ return i < (c >> 1) ? 0 : 1; }
+  function wfPick(spec, g, i, r){
+    var c1 = spec.size(g + 1);
+    if (spec.demes !== 2) return Math.floor(r() * c1);
+    var d = wfDeme(i, spec.size(g)), h = c1 >> 1;
+    if (r() < spec.m) d = 1 - d;
+    return d === 0 ? Math.floor(r() * h) : h + Math.floor(r() * (c1 - h));
+  }
+  function wfPop(spec, r){                 // a population, grown backward on demand
+    var par = [];
+    return { spec: spec, par: par, grow: function(G){
+      while (par.length < G){
+        var g = par.length, c = spec.size(g), a = new Int32Array(c);
+        for (var i = 0; i < c; i++) a[i] = wfPick(spec, g, i, r);
+        par.push(a);
+      }
+    } };
+  }
+  function wfTrace(pop, sample){           // follow the sampled copies back until one line is left
+    var cur = sample.slice(), rows = [cur.slice()], meets = [], g = 0;
+    while (cur.length > 1 && g < 200000){
+      pop.grow(g + 1);
+      var seen = {}, next = [];
+      cur.forEach(function(c){ var p = pop.par[g][c]; if (seen[p]) seen[p]++; else { seen[p] = 1; next.push(p); } });
+      g++;
+      next.forEach(function(p){ if (seen[p] > 1) meets.push({ g: g, i: p, k: seen[p] }); });
+      cur = next; rows.push(cur.slice());
+    }
+    return { T: g, rows: rows, meets: meets };
+  }
+  function wfMax(spec, G){ var m = 2; for (var g = 0; g <= G; g++) m = Math.max(m, spec.size(g)); return m; }
+  // x position (0..1) of every copy. Each row is sorted by the position of the parents, so links do
+  // not cross; the place of a copy in its row therefore means nothing. Row width follows row size.
+  function wfLayout(pop, G){
+    var spec = pop.spec, two = spec.demes === 2, cmax = wfMax(spec, G), g, i, X = [];
+    var step = (two ? 0.46 : 1) / ((two ? cmax / 2 : cmax) - 1 || 1);
+    function place(c, order, out){
+      for (var d = 0; d < (two ? 2 : 1); d++){
+        var mine = two ? order.filter(function(k){ return wfDeme(k, c) === d; }) : order;
+        var mid = two ? (d === 0 ? 0.23 : 0.77) : 0.5;
+        mine.forEach(function(k, rank){ out[k] = mid + (rank - (mine.length - 1) / 2) * step; });
+      }
+    }
+    pop.grow(G);
+    var c0 = spec.size(G), top = new Float64Array(c0), ord = [];
+    for (i = 0; i < c0; i++) ord.push(i);
+    place(c0, ord, top); X[G] = top;
+    for (g = G - 1; g >= 0; g--){
+      (function(g){
+        var c = spec.size(g), row = new Float64Array(c), o = [], up = X[g + 1], pr = pop.par[g];
+        for (var k = 0; k < c; k++) o.push(k);
+        o.sort(function(a, b){ return up[pr[a]] - up[pr[b]] || a - b; });
+        place(c, o, row); X[g] = row;
+      })(g);
+    }
+    return X;
+  }
+  // Static part of the picture: every copy as a faint dot, every parent link as a faint line.
+  // o = { W, G, x0 (left margin), pitch, maxH, label(g) -> axis text or '', title, shade: [from, to], aria }
+  function wfBase(host, pop, o){
+    var G = o.G, W = o.W, x0 = o.x0 || 46, x1 = W - 12, y0 = o.title ? 34 : 14;
+    var pitch = Math.max(3, Math.min(o.pitch || 16, (o.maxH || 620) / G)), H = y0 + G * pitch + 22;
+    var X = wfLayout(pop, G), spec = pop.spec;
+    function px(g, i){ return x0 + X[g][i] * (x1 - x0); }
+    function py(g){ return y0 + (G - g) * pitch; }
+    var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': o.aria || 'Rows of gene copies, one row per generation, with the link from each copy to its parent' });
+    svg.style.minWidth = '300px';
+    if (o.shade){
+      var a = Math.min(o.shade[1], G + 1), b = Math.max(o.shade[0], 0);
+      if (a > b) svg.appendChild(mk('rect', { x: x0 - 6, y: py(a - 1) - pitch / 2, width: x1 - x0 + 12, height: (a - b) * pitch, fill: css('--code-bg') }));
+    }
+    if (o.title) svg.appendChild(mk('text', { x: x0 - 6, y: 14, 'class': 'lab' }, o.title));
+    var dl = '', dm = '', dd = '', g, i, c;
+    for (g = 0; g < G; g++){
+      c = spec.size(g);
+      for (i = 0; i < c; i++){
+        var p = pop.par[g][i], seg = 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'L' + px(g + 1, p).toFixed(1) + ' ' + py(g + 1).toFixed(1);
+        if (spec.demes === 2 && wfDeme(i, c) !== wfDeme(p, spec.size(g + 1))) dm += seg; else dl += seg;
+      }
+    }
+    var r = Math.max(1.2, Math.min(3.2, pitch * 0.3, (x1 - x0) / Math.max(1, wfMax(spec, G)) * 0.34));
+    for (g = 0; g <= G; g++){ c = spec.size(g); for (i = 0; i < c; i++) dd += 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'h0'; }
+    svg.appendChild(mk('path', { d: dl, fill: 'none', stroke: css('--err'), 'stroke-width': 0.8, opacity: '0.55' }));
+    if (dm) svg.appendChild(mk('path', { d: dm, fill: 'none', stroke: css('--het'), 'stroke-width': 1.2, opacity: '0.8' }));
+    if (pitch >= 5) svg.appendChild(mk('path', { d: dd, fill: 'none', stroke: css('--err'), 'stroke-width': 2 * r, 'stroke-linecap': 'round' }));
+    for (g = 0; g <= G; g++){
+      var t = o.label ? o.label(g) : '';
+      if (t !== '') svg.appendChild(mk('text', { x: x0 - 12, y: py(g) + 4, 'text-anchor': 'end' }, t));
+    }
+    var over = mk('g', {}); svg.appendChild(over);
+    host.replaceChildren(svg);
+    return { pop: pop, px: px, py: py, over: over, pitch: pitch, r: r, x0: x0, x1: x1, G: G, svg: svg };
+  }
+  // Moving part: the sampled lines from today back to generation cur, and where they met.
+  function wfOver(b, tr, cur, o){
+    o = o || {};
+    var over = b.over, pop = b.pop, col = css(o.colour || '--accent'); over.replaceChildren();
+    var last = Math.min(cur, tr.T, b.G), d = '', dots = '', g;
+    if (cur > 0 && !o.noBand) over.appendChild(mk('rect', { x: b.x0 - 6, y: b.py(last) - b.pitch / 2, width: b.x1 - b.x0 + 12, height: b.pitch, fill: css('--accent'), opacity: '0.14' }));
+    function link(c){
+      var p = pop.par[g][c];
+      d += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'L' + b.px(g + 1, p).toFixed(1) + ' ' + b.py(g + 1).toFixed(1);
+    }
+    function dot(c){ dots += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'h0'; }
+    for (g = 0; g < last; g++) tr.rows[g].forEach(link);
+    for (g = 0; g <= last; g++) if (g === 0 || g === last || b.pitch >= 7) tr.rows[g].forEach(dot);
+    if (d) over.appendChild(mk('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+    over.appendChild(mk('path', { d: dots, fill: 'none', stroke: col, 'stroke-width': 2 * b.r + 1.6, 'stroke-linecap': 'round' }));
+    tr.meets.forEach(function(m){
+      if (m.g > last) return;
+      var end = m.g === tr.T;
+      over.appendChild(mk('circle', { cx: b.px(m.g, m.i), cy: b.py(m.g), r: end ? 7 : 5.5, fill: 'none', stroke: css(end ? '--bad' : '--het'), 'stroke-width': 2 }));
+      if (end && o.endLabel){
+        var x = b.px(m.g, m.i), right = x < (b.x0 + b.x1) / 2;
+        over.appendChild(mk('text', { x: x + (right ? 12 : -12), y: b.py(m.g) - 9, 'text-anchor': right ? 'start' : 'end', 'class': 'lab', stroke: css('--bg'), 'stroke-width': 3, 'paint-order': 'stroke' }, o.endLabel));
+      }
+    });
+  }
+  // CORE-END
+  // Four readers of one Wright-Fisher population. Same seed = same ancestors and same sampled copies.
+  var C = 30, ROWS = 40, MAXN = 8, st = { reader: 'psmc', n: 8, seed: 11 };
+  var spec = { size: function(){ return C; }, demes: 1 };
+  var NAME = { psmc: 'PSMC', msmc: 'MSMC (2014)', msmc2: 'MSMC2', smcpp: 'SMC++' };
+  function cell(label, val){
+    var d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('b');
+    s.textContent = label; b.textContent = val; d.appendChild(s); d.appendChild(b); return d;
+  }
+  function seen(g){ return g > ROWS ? g + ' (above the picture)' : String(g); }
+  function draw(){
+    var W = Math.max(320, Math.min(host.clientWidth || 760, 820));
+    var r = rng(st.seed), pop = wfPop(spec, r); pop.grow(ROWS);
+    var all = [], i;
+    for (i = 0; i < C; i++) all.push(i);
+    for (i = 0; i < MAXN; i++){ var j = i + Math.floor(r() * (C - i)), t = all[i]; all[i] = all[j]; all[j] = t; }
+    var pair = all.slice(0, 2), use = all.slice(0, st.n);
+    var b = wfBase(host, pop, { W: W, G: ROWS, x0: 58, pitch: 10, maxH: 430,
+      title: NAME[st.reader] + ' (generations back at left)',
+      label: function(g){ return g % 10 === 0 ? String(g) : ''; },
+      aria: 'Thirty gene copies over forty generations, with the lines followed by ' + NAME[st.reader] + ' in colour' });
+    var out = el('s05-wf-out'), say = el('s05-wf-say'), cells = [], text;
+    var trP = wfTrace(pop, pair), trS = wfTrace(pop, use);
+    if (st.reader === 'psmc'){
+      wfOver(b, trP, trP.T, { noBand: true, colour: '--accent', endLabel: 'met ' + trP.T + ' generations ago' });
+      cells = [cell('Lines followed', '2'), cell('They met, generations ago', seen(trP.T))];
+      text = 'PSMC follows the two copies of one animal back to their meeting. The number of copies sampled does not matter here: it always reads one pair.';
+    } else if (st.reader === 'msmc'){
+      var f = trS.meets[0].g;
+      wfOver(b, trS, f, { colour: '--accent' });
+      cells = [cell('Lines followed', String(st.n)), cell('Pairs among them', String(st.n * (st.n - 1) / 2)), cell('First meeting, generations ago', seen(f))];
+      text = 'MSMC follows all the sampled copies, but only up to the first meeting between any two of them. It also keeps which two met. Everything further back in this stretch is not read.';
+    } else if (st.reader === 'msmc2'){
+      var ts = [];
+      for (i = 0; i < st.n; i++) for (var k = i + 1; k < st.n; k++) ts.push(wfTrace(pop, [use[i], use[k]]).T);
+      ts.sort(function(a, c){ return a - c; });
+      wfOver(b, trS, trS.T, { noBand: true, colour: '--accent' });
+      cells = [cell('Pairs read one by one', String(ts.length)), cell('Earliest pair met', seen(ts[0])), cell('Latest pair met', seen(ts[ts.length - 1]))];
+      text = 'MSMC2 does not stop at the first meeting. It reads each selected pair separately, as PSMC would, and combines them. The pairs share ancestors, so they are not independent: ' + ts.length + ' pairs here do not hold ' + ts.length + ' separate histories.';
+    } else {
+      wfOver(b, trP, trP.T, { noBand: true, colour: '--accent', endLabel: 'pair met ' + trP.T + ' generations ago' });
+      use.slice(2).forEach(function(c){
+        b.over.appendChild(mk('circle', { cx: b.px(0, c), cy: b.py(0), r: 6, fill: 'none', stroke: css('--het'), 'stroke-width': 2 }));
+      });
+      cells = [cell('Distinguished pair met', seen(trP.T)), cell('Other copies, allele counts only', String(st.n - 2))];
+      text = 'SMC++ follows one distinguished pair, as PSMC does. The other copies (ringed in the bottom row) are not followed as lines. At each site they give only a count: how many of them carry the allele. That count helps to date the pair, because it is linked to the pair\'s meeting time, and phasing is not needed.';
+    }
+    out.replaceChildren.apply(out, cells);
+    say.textContent = text;
+  }
+  // Mean wait until any two of n lines share a parent, with the parent rule of the display.
+  function firstMeet(n, reps, r){
+    var sum = 0, a = new Int32Array(C);
+    for (var t = 0; t < reps; t++){
+      var g = 0, hit = false;
+      while (!hit){
+        g++; a.fill(0);
+        for (var i = 0; i < n; i++){ var p = Math.floor(r() * C); if (a[p]) hit = true; a[p] = 1; }
+      }
+      sum += g;
+    }
+    return sum / reps;
+  }
+  function exact(n, c){ var q = 1; for (var i = 1; i < n; i++) q *= 1 - i / c; return 1 / (1 - q); }
+  function repeat(){
+    var r = rng(st.seed * 7 + 3), rows = [2, 4, 8].map(function(n){
+      return '<tr><td>' + n + '</td><td>' + n * (n - 1) / 2 + '</td><td>' + firstMeet(n, 10000, r).toFixed(2) + '</td><td>' + exact(n, C).toFixed(2) +
+        '</td><td>' + Math.round(exact(n, 3000)).toLocaleString('en-US') + '</td></tr>';
+    }).join('');
+    el('s05-wf-tab').innerHTML = '<div class="tbl"><table style="min-width:440px"><thead><tr><th>Copies followed</th><th>Pairs</th><th>Mean wait, 10,000 runs (30 copies)</th><th>Exact (30 copies)</th><th>Exact (3,000 copies)</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function seg(id, fn){
+    var g = el(id);
+    g.addEventListener('click', function(e){
+      var t = e.target.closest('button'); if (!t) return;
+      Array.prototype.forEach.call(g.querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === t ? 'true' : 'false'); });
+      fn(t.getAttribute('data-v')); draw();
+    });
+  }
+  seg('s05-wf-reader', function(v){ st.reader = v; });
+  seg('s05-wf-n', function(v){ st.n = +v; });
+  el('s05-wf-new').addEventListener('click', function(){ st.seed += 1; draw(); });
+  el('s05-wf-rep').addEventListener('click', repeat);
+  try { draw(); } catch (err){ host.textContent = 'Display could not run: ' + err.message; }
+  var rz = 0, lastW = window.innerWidth;
+  window.addEventListener('resize', function(){
+    if (window.innerWidth === lastW) return;
+    lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(draw, 150);
+  });
 })();
 /* ==== 06-pitfalls ==== */
 (function(){

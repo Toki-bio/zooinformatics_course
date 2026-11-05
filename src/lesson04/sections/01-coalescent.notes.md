@@ -56,3 +56,42 @@
 
 ## Cross-links
 - ../03-annotation/#s09 (ROH, heterozygosity), #s03 (PSMC), #s04 (scaling), #s05 (other methods), #s06 (pitfalls/IICR), #s07 (two species).
+
+## Coalescent theory from zero block (added 2026-11-05)
+Placed after the opening paragraph, before "Two copies, one ancestor". Existing text kept. Trimmed or changed: the first two sentences of "How fast two copies find their ancestor" now point to step 3; the TMRCA definition says "From here on ... unless a section says otherwise" (the block uses trees of many copies); "Heterozygosity is a clock" got the id s01-clock.
+
+Sources, with the exact supporting sentences:
+- Nordborg M 2007. Coalescent theory. Chapter 25 of Handbook of Statistical Genetics, 3rd ed., Balding, Bishop, Cannings (eds), Wiley. doi 10.1002/9780470061619.ch25 (title, author and year checked at Crossref). Full chapter read as a PDF hosted by ICTS, https://www.icts.res.in/sites/default/files/PGE2018-Magnus-Nordborg-Reading-1.pdf
+  - Backward: "The coalescent approach is based on the realization that the genealogy is usually easier to model backward in time, and that selectively neutral mutations can then be superimposed".
+  - Wright-Fisher: "generations are discrete, and each new generation is formed by randomly sampling N parents with replacement from the current generation".
+  - Pair: "the probability that the two lineages pick the same parent and coalesce is 1/N" and "The expected coalescence time is N generations." Here N counts haploid individuals. Diploid: "a diploid population of size N can be thought of as a haploid population of size 2N".
+  - k lines: T(k) "is in the limit exponentially distributed with mean 2/[(k(k - 1))]", in units of N generations.
+  - Tree: "the trees tend to be dominated by the deep branches, when there are few ancestors left", expected height 2(1 - 1/n), "while E[T(2)] = 1, so the expected time during which there are only two branches is greater than half the expected total tree height."
+  - Neutrality: "since selectively neutral variants by definition do not affect reproductive success, it is possible to separate the neutral mutation process from the genealogical process."; "The coalescent depends crucially on the assumption of selective neutrality".
+  - Changing size: "lineages are more likely to coalesce in generations when the population is small than in generations when the population is large."
+  - Who found it: "The coalescent was described by Kingman (1982a; 1982b; 1982c), but it was also discovered independently by Hudson (1983) and by Tajima (1983)."
+- Kingman JFC 1982. The coalescent. Stoch Proc Appl 13:235-248, doi 10.1016/0304-4149(82)90011-4. NOT read: publisher page refused the fetch, and Crossref has no abstract. Cited on the page only for the history, through Nordborg 2007.
+- Rosenberg & Nordborg 2002 (Nat Rev Genet 3:380, doi 10.1038/nrg795): could not be opened this time either; not cited on the page.
+- Hudson 1990 (Oxford Surveys in Evolutionary Biology 7:1-44): could not find a copy to read; not cited on the page.
+- Wakeley, Coalescent Theory: not read. It stays only in the older "textbook" line of the page sources.
+- The owner's brief said the last two lines take "about half"; Nordborg says more than half. The page says more than half: 2N / 4N(1 - 1/n) = 60 % for 6 copies, 51 % for 50 copies. This is true of the means.
+
+Derived on the page (my own):
+- Mean wait with k lines 2N / [k(k - 1)/2] and height 4N(1 - 1/n): Nordborg's scaled values times 2N generations for diploids.
+- The share and mean values in the settings: exact sums over generations in czExact, not formulas from a paper. The two-deme mean uses a two-state chain (same deme, different demes), with m = 0.05 per copy per generation.
+- A pair from one deme averages exactly 2N in the chain (10.00, 20.00, 60.00) and a pair from different demes 8.53 generations more. Not stated as a theorem on the page; Strobeck 1987 is cited by Nordborg in this area but was not read.
+
+Toy settings, all scaled to the slider N (2N copies per row, small = max(4, round(2N/5)) copies): bottleneck rows N/2 to N/2 + max(3, 0.6 N); expansion narrow from generation N back; decline narrow from today to max(3, 0.4 N). Rows are sorted by parent position so links do not cross. All are toy values, not taken from any species.
+
+Controls (Node, on the same functions as the page; simulation against expectation):
+- Mean pair time, constant size: N 5: 9.96 +- 0.03 (2N 10); N 10: 20.07 +- 0.06 (20); N 30: 60.06 +- 0.19 (60); N 100: 200.4 +- 0.6 (200); N 1,000: 1,985 +- 14 (2,000). 100,000 pairs each, 20,000 for N 1,000.
+- Tree height against 4N(1 - 1/n): N 10, n 4: 29.82 +- 0.09 (30.00); N 30, n 4: 90.02 +- 0.28 (90.00); N 30, n 10: 107.23 +- 0.28 (108.00); N 200, n 10: 722.8 +- 4.3 (720.0); N 1,000, n 10: 3,542 +- 38 (3,600). In the smallest toys the simulation is truly lower, because several lines can meet in one generation: N 5, n 10: 17.46 +- 0.05 (18.00, -3.0 %); N 10, n 10: 35.54 +- 0.09 (36.00, -1.3 %). The coalescent formula is the large-population limit; the tooltip on the page says so.
+- Time with the last two lines against 2N: N 10, n 4: 19.68 +- 0.09 (20); N 30, n 10: 59.36 +- 0.26 (60); N 200, n 10: 402.9 +- 4.0 (400); N 1,000, n 10: 1,941 +- 35 (2,000). A little below 2N in small toys, since three lines sometimes meet at once and skip the two-line stage.
+- Bottleneck, share of pair meetings inside it, simulation against calculation: N 10: 0.6676 and 0.6695; N 30: 0.6270 and 0.6253. Means 9.28 (9.29) and 29.73 +- 0.12 (29.99, z = -2.2, the only |z| above 2 among about 30 comparisons of this run, which is about what chance gives).
+- Expansion, decline: means and band shares within sampling error of the calculation at N 5, 10, 30.
+- Two demes: pairs from different demes that met with no migration: 0 of 100,000 at each of N 5, 10, 30. Means 18.53, 28.44, 68.34 (exact 18.53, 28.53, 68.53).
+- Browser: every control clicked at 1100 and 420 px in all five settings, no script errors, no page widening. "Repeat" readouts agree with the above.
+
+Open doubts:
+- Readers may take the toy bottleneck timing as general; the windows are scaled to N only to fit a small grid.
+- The grid uses gene copies as one pool (no separate sexes, selfing possible), the usual simplification; Nordborg 2007 section 25.5 shows it only rescales time.

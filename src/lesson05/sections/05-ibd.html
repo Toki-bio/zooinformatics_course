@@ -1,0 +1,115 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Recent history from IBD segments</h2>
+
+  <p class="lede">Lesson 4 read deep history from one genome. For the last few dozen generations that signal is too faint, but with <b>many genomes</b> there is a sharper one: stretches of chromosome that two animals share because both inherited them, unbroken, from a recent common ancestor. Such a stretch is an <dfn><span class="tip" title="Identity by descent. A piece of chromosome that two haplotypes both copied, without a recombination break, from one common ancestor.">IBD segment</span></dfn>. Every generation back to the ancestor gives recombination one more chance to cut the stretch, so <b>long segments mean a recent ancestor and short ones an old ancestor</b>. Counting the segments of each length in a whole sample therefore records the population size over roughly the last 100 generations (the method is IBDNe, part 3 below).</p>
+  <p>Words used here. A <span class="tip" title="One of the two copies of a chromosome in a diploid animal, i.e. what one parent passed on. 'Phased' data say which alleles sit together on the same copy.">haplotype</span> is one chromosome copy. <span class="tip" title="Centimorgan: a genetic-map distance. 1 cM is the length over which, on average, one crossover happens per 100 meioses. It measures how likely recombination is to cut a stretch, not its length in bases.">cM</span> (centimorgan) is the map length that counts here, not megabases. A <span class="tip" title="One round of making gametes (egg or sperm). Each parent-to-child step on the path between two relatives is one meiosis.">meiosis</span> is one parent-to-child step. <b>Ne</b> is the <span class="tip" title="Effective population size: the size of an idealised random-mating population that would lose diversity at the same speed as the real one.">effective population size</span> of <a href="../04-demography/#s01">lesson 4</a>.</p>
+
+  <h3>1. Segment length tells the age of the ancestor</h3>
+  <p>If two haplotypes share a common ancestor <i>g</i> generations back, there are <i>g</i> meioses on the path down each side, so 2<i>g</i> chances to break the stretch. Browning and Browning (2015) assume crossovers at each meiosis with rate 1/100 per cM (Haldane's model). The lengths of segments listed from an analysis are then exponentially distributed with rate 2<i>g</i>/100 per cM:</p>
+  <div class="formula">expected IBD length = 100 / (2g) cM = 50 / g cM</div>
+  <p>This is the same rule as the ROH age table in <a href="../03-annotation/#s09">lesson 3, section 9</a>, where it dates runs inside one animal. Here the two copies belong to two animals, but the path is the same: 2<i>g</i> meioses. Two warnings, both shown by the toy below. First, one segment varies as much as the mean (for an exponential the standard deviation equals the mean), so you cannot date one segment, only a whole distribution. Second, <b>which segments you look at matters</b>. The paper states that segments picked from a list have the mean above, but segments picked because they cover one chosen position are longer on average, because long segments are more likely to cover it. For that case the paper gives the length as Erlang (an exponential on each side of the position, rate <i>g</i>/50 each), whose mean is 100/<i>g</i> cM, twice as long.</p>
+
+  <section class="tool explain" aria-labelledby="s05-a-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-a-h">Break one shared chromosome over <i>g</i> generations</h3></div>
+    <p class="tool-note">Two haplotypes, one common ancestor. The toy drops crossovers at random, 1 per 100 cM per meiosis, on 2<i>g</i> meioses of a 100-cM chromosome, and merges the break points. Each coloured block is an IBD segment. Press <b>again</b> for a new random draw.</p>
+    <div class="controls" role="group" aria-label="Ancestor age">
+      <label for="s05-g">Generations to the common ancestor <output id="s05-g-o">10</output><input type="range" id="s05-g" min="2" max="100" step="1" value="10"></label>
+      <button type="button" class="btn" id="s05-again" style="align-self:center">again</button>
+    </div>
+    <div class="svgbox" id="s05-strip"></div>
+    <div class="readout" id="s05-a-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> Doubling <i>g</i> halves the typical segment. The mean over many simulated segments sits on the formula, but single blocks range from tiny to several times the mean. The mean length of the segment covering a random position is about twice the list mean.</p>
+    <p class="tool-note" id="s05-ctl-a"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why a recent ancestor leaves long pieces</summary><div class="in">
+    <p>Think of the chromosome as a long ribbon copied from parent to child. At every hand-over a few random cuts are made and pieces from the two parental ribbons are re-glued. Two cousins may both hold a long piece of the same great-grandparent ribbon if only a few hand-overs happened. After thirty hand-overs on each side the ribbon has been cut so often that only short scraps are still identical.</p>
+    <p>Rule of thumb from the formula: 5 generations back gives pieces of about 10 cM; 50 generations back gives pieces of about 1 cM. IBD tools ask for a genetic map in cM because the cM-to-megabase ratio differs between species and along chromosomes.</p>
+  </div></details>
+
+  <h3>2. A population of size Ne gives a whole mixture of ages</h3>
+  <p>Two haplotypes drawn from a population do not have one ancestor age. In a population of constant size, the chance that they find their common ancestor in any one generation back is about 1/(2Ne), so a recent ancestor is likely only when Ne is small. The IBDNe paper writes the chance of a common ancestor exactly <i>g</i> generations back as P(<i>g</i>) = 1/(2N[<i>g</i>]) × the product of (1 &minus; 1/(2N[<i>g'</i>])) over the earlier generations <i>g'</i>. Each generation may have its own N, and this is what lets the method follow a changing size. The expected number of segments of a given length is the sum over generations of those exponentials. Small Ne gives many long segments; large Ne gives few, almost all short.</p>
+
+  <section class="tool explain" aria-labelledby="s05-b-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-b-h">Expected IBD segment lengths for a chosen Ne</h3></div>
+    <p class="tool-note">Constant Ne. Bars show how many segments of each length one pair of haplotypes is expected to share over a toy 3,000-cM genome (a human-sized value, only for scale). Only segments above the detection threshold are shown, because short ones cannot be found reliably (part 3). Chromosome ends are ignored.</p>
+    <div class="controls" role="group" aria-label="Population size and threshold">
+      <label for="s05-ne">Ne <output id="s05-ne-o">1,000</output><input type="range" id="s05-ne" min="1" max="4" step="0.05" value="3"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Minimum length
+        <div class="seg" role="group" aria-label="Minimum segment length" id="s05-thr"><button type="button" data-v="2" aria-pressed="true">2 cM</button><button type="button" data-v="4" aria-pressed="false">4 cM</button><button type="button" data-v="6" aria-pressed="false">6 cM</button></div></div>
+    </div>
+    <div class="svgbox" id="s05-hist"></div>
+    <div class="readout" id="s05-b-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> A small Ne puts the bars high and far to the right; a large Ne lowers them to almost nothing. The y axis is logarithmic, so a nearly straight falling line is the signature of one steady population size. Part 6 uses that straightness as a check.</p>
+    <p class="tool-note" id="s05-ctl-b"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: reading the histogram</summary><div class="in">
+    <p>Each bar says how many segments of that length two random haplotypes share. Tall bars at the left (short segments) come from many old shared ancestors. Tall bars far to the right come from recent shared ancestors, the sign of a small or recently bottlenecked population. A steady population gives a smooth straight fall on a log axis. A kink or a hump hints at a change in size, or at something wrong with the data.</p>
+  </div></details>
+
+  <h3>3. The tools: hap-ibd finds segments, IBDNe turns them into Ne over time</h3>
+  <p><b>hap-ibd</b> (Zhou, Browning and Browning 2020) finds IBD segments in <b>phased</b> genotypes. Its README lists three required inputs: a VCF with phased genotypes and no missing alleles (<code>gt=</code>), a PLINK-format genetic map in cM (<code>map=</code>) and an output prefix (<code>out=</code>). Defaults from the README (last updated 14 June 2023):</p>
+  <div class="tbl"><table style="min-width:560px">
+    <thead><tr><th>Option</th><th>Default</th><th>Meaning (README)</th></tr></thead>
+    <tbody>
+      <tr><td><code>min-seed</code></td><td>2.0 cM</td><td>shortest identical stretch that may be extended</td></tr>
+      <tr><td><code>min-extend</code></td><td>min(1.0, min-seed) cM</td><td>shortest stretch that may extend a seed</td></tr>
+      <tr><td><code>max-gap</code></td><td>1000 bp</td><td>longest mismatch region that may be bridged inside a segment (genotype error, mutation, gene conversion)</td></tr>
+      <tr><td><code>min-output</code></td><td>2.0 cM</td><td>shortest segment written</td></tr>
+      <tr><td><code>min-markers</code></td><td>100</td><td>fewest markers in a seed; raising it can reduce inflated segment counts where markers are sparse</td></tr>
+      <tr><td><code>min-mac</code></td><td>2</td><td>markers with fewer minor-allele copies are dropped</td></tr>
+    </tbody>
+  </table></div>
+  <p>Output: a log file, a gzipped IBD file (between animals) and an HBD file (within one animal). Each line is one segment: the two samples, their haplotype numbers, chromosome, start, end and length in cM.</p>
+  <div class="code"><button type="button">copy</button><pre>java -Xmx16g -jar hap-ibd.jar gt=phased.vcf.gz map=genetic_map.plink.map out=hapibd_run nthreads=8
+<span class="c"># gives hapibd_run.log, hapibd_run.ibd.gz, hapibd_run.hbd.gz</span></pre></div>
+  <p><b>IBDNe</b> (Browning and Browning 2015; the program page lists version 23 April 2020) reads the IBD files and a cM map and estimates Ne for each recent generation, with 95 % bootstrap intervals. The command pattern from its page:</p>
+  <div class="code"><button type="button">copy</button><pre>cat *.ibd | java -jar ibdne.jar map=genetic_map.plink.map out=ne nthreads=8
+<span class="c"># gives ne.log, ne.pair.excl, ne.region.excl, ne.ne (Ne per generation + 95 % CI), ne.boot</span></pre></div>
+  <p>Defaults from the program page: <code>mincm=2</code> (the paper used 2 cM for sequence data and 4 cM for SNP-array data); <code>gmin=2</code> and <code>gmax=600/mincm</code>, so with 2 cM the last generation estimated is 300; <code>nboots=80</code>; <code>trimcm=0.2</code>, which trims chromosome ends because segments cut by the end are censored; <code>filtersamples=true</code>, which drops IBD from avuncular and closer relatives. Regions with an extreme number of IBD segments are excluded automatically; the paper suggests extended linkage disequilibrium as a cause. The page names a utility, <i>merge-ibd-gaps</i>, for removing breaks and gaps in segments. With defaults expect several hours; more threads, or fewer iterations or bootstraps, make it faster with some loss of accuracy.</p>
+  <p class="tool-note">Both programs are documented for human data. The IBDNe paper says the method is also applicable to random samples from non-human diploid populations. Whether the settings above suit a wild species with a different recombination rate is an open question that neither source tests.</p>
+
+  <h3>4. The assumptions, in plain words</h3>
+  <ul>
+    <li><b>One randomly mating population.</b> The estimated N stands for an idealised random-mating population (the paper's definition of effective size). A sample from several groups, or an admixed or structured one, breaks the model: pairs from different groups share ancestors much further back than pairs inside one group. The paper does not recommend its IBD detector IBDseq for samples with several continental ancestries, including admixed populations, and says haplotype-based detectors such as Refined IBD are robust to admixture (&ldquo;data not shown&rdquo;). That concerns <i>finding</i> segments; it does not make a single Ne(t) curve valid for a mixed sample.</li>
+    <li><b>A random sample</b> of the population. The paper says the method appears robust to small deviations; close relatives are removed by default (<code>filtersamples</code>).</li>
+    <li><b>Accurate phase and a map in cM.</b> The hap-ibd paper notes that haplotype-based methods can break one long segment into shorter ones when phasing errors fall inside it, which removes long segments and shifts the curve.</li>
+    <li><b>Recent time only.</b> With the default length cut IBDNe reaches about 300 generations back. Older history belongs to the methods of <a href="../04-demography/">lesson 4</a>; they are not repeated here.</li>
+  </ul>
+
+  <h3>5. Why imputed haplotypes can inflate IBD</h3>
+  <p>When genotypes are <span class="tip" title="Filling in alleles at positions you did not measure by copying from a panel of fully sequenced reference haplotypes, using the alleles you did measure to choose which reference haplotype fits.">imputed</span> from a reference panel, each animal's haplotype is built as a patchwork of stretches copied from panel haplotypes. Two animals imputed from the same panel can receive the same panel stretch, not because they share a recent ancestor but because both were filled in from it. Such stretches are identical by construction and look like IBD. This is our inference from how imputation works: we did not find a published source that states it for IBD counts (see notes), so test it on your data instead of assuming it.</p>
+  <p>The test is simple. Compare the average number of segments per pair of haplotypes with what a model like the toy in part 2 predicts for a population of that size. If the observed count is many times higher, the data contain segments the population does not.</p>
+  <div class="note"><b>In our projects.</b> On array data from an Asian human cohort, an IBD run on the imputed genotypes gave many times more segments per pair than the size of the population allowed, and we discarded it. The same analysis on only the SNPs that were actually typed gave a plausible count, though the later Ne(t) fit still failed (part 6). Numbers are left out of this page on purpose.</div>
+
+  <h3>6. How to read the fit checks</h3>
+  <p>IBDNe gives you the <code>.ne</code> file with 95 % bootstrap intervals (bootstrapped over chromosomes, 80 times by default), the <code>.boot</code> file with every bootstrap curve, and the exclusion files. We found no single pass-or-fail fit number in the program page or the paper. The checks below are the ones the paper's text and figures support, plus one of our own:</p>
+  <ol>
+    <li><b>Do the bootstrap curves agree?</b> Wide or crossing bands mean the data do not pin the curve down.</li>
+    <li><b>Is the curve smooth?</b> The paper notes that the estimate can oscillate around the true value, and that inferring changes in growth rate could be dangerous because they may reflect artefactual oscillation. Do not read single wiggles.</li>
+    <li><b>Is it biologically possible?</b> A fall of several orders of magnitude in ten generations is not a demographic history. This is our judgement, not a rule from the papers.</li>
+    <li><b>Segments per pair and the log-histogram of lengths</b> (our check, not an IBDNe output): compare observed counts with those expected from the estimated N. They should agree across the length range with no systematic bend.</li>
+  </ol>
+  <p>The toy below runs check 4 under controlled conditions. It makes an &ldquo;observed&rdquo; histogram from a true history of your choice, fits the best constant-size model, and shows whether the fit looks acceptable. It is a teaching tool, not IBDNe's own statistic.</p>
+
+  <section class="tool explain" aria-labelledby="s05-c-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-c-h">Fit a steady-size model to a history that was not steady</h3></div>
+    <p class="tool-note">Sampling noise is added to the bar counts (20,000 haplotype pairs, segments of at least 2 cM). The model line is the constant-Ne model that fits best (<span class="tip" title="Weighted least squares: the Ne whose predicted bars are closest to the observed bars, with each bar weighted by how precisely it is known.">weighted least squares</span> on the bars). <span class="tip" title="Pearson chi-square per bar: the average squared gap between observed and expected bar heights, divided by the expected noise. Near 1 means the gaps are no larger than noise.">Pearson &chi;&sup2; per bar</span> near 1 means an acceptable fit; much above 1 means the model is wrong. &ldquo;Two groups mixed&rdquo; makes half of the pairs come from different groups that had no shared ancestor in the last 50 generations.</p>
+    <div class="controls" role="group" aria-label="True history">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">True history
+        <div class="seg" role="group" aria-label="True history" id="s05-sc"><button type="button" data-v="const" aria-pressed="true">steady</button><button type="button" data-v="grow" aria-pressed="false">recent growth</button><button type="button" data-v="bott" aria-pressed="false">bottleneck</button><button type="button" data-v="mix" aria-pressed="false">two groups mixed</button></div></div>
+      <label for="s05-c-ne">True Ne (older generations) <output id="s05-c-ne-o">1,000</output><input type="range" id="s05-c-ne" min="2" max="4" step="0.05" value="3"></label>
+      <button type="button" class="btn" id="s05-c-new" style="align-self:center">new noise</button>
+    </div>
+    <div class="svgbox" id="s05-fit"></div>
+    <div class="readout" id="s05-c-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> &ldquo;Steady&rdquo; recovers its own Ne with &chi;&sup2; per bar near 1. For growth, bottleneck and mixed groups the best constant size is a compromise that matches no real period, and the misfit shows as a bend in the observed bars against the straight model line. An artefact such as reference-mosaic inflation (part 5) can bend the histogram too, so a bad fit alone does not say which problem you have.</p>
+    <p class="tool-note" id="s05-ctl-c"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: a bad fit is an answer</summary><div class="in">
+    <p>If the model's picture and the data's picture disagree, the number the model gives describes neither. Ask for the average height of a group that is half children and half adults: you get a number that fits nobody. One Ne for a sample drawn from two regions is that kind of number. The right reaction to a failed fit check is to say that the sample does not meet the model, for instance because it mixes populations, and not to report the curve.</p>
+    <div class="note"><b>In our projects.</b> One IBDNe run on typed SNPs of an Asian human cohort gave a curve that fell by orders of magnitude within ten generations and failed our fit check. We did not report it as population history. The cohort is a mixture and clinical in origin, which the model cannot handle, so the question waits for whole-genome data.</div>
+  </div></details>
+</section>

@@ -1,0 +1,24 @@
+{
+ "number": 8,
+ "slug": "08-search",
+ "title": "Searching Sequences",
+ "eyebrow": "Lesson 8 · from grep to minimap2",
+ "intro": [
+  "Almost every step of the earlier lessons was a search: a primer in an amplicon, the copies of a SINE in a genome, the place a read came from, the reads of another species in a library. The question looks the same each time, but the right tool depends on three things: whether the match must be exact or may differ, how many queries there are, and whether the same target will be searched again. This lesson builds the tools in that order. It starts with <code>grep</code> and the traps a sequence file sets for it, opens the exact-search algorithms and hash tables behind the fast tools, and follows one of the lab's own programs to the point where reading the data, not matching, became the limit. It then turns to approximate search: alignment scores and E-values, the seed-and-extend gamble of FASTA and BLAST, and the genome indexes and read mappers built on it. It ends with k-mer sketches for comparing whole data sets, and a helper for picking the smallest tool that answers the question.",
+  "Every section has a toy to try, and the figures are drawn from simple models so that you learn to read real output, not to replace it. Commands and defaults were read from each tool's own manual and source code at the versions named in each section. The worked example in section 05 uses a public Illumina library and names the lab tool, which is not yet public; other examples come from the lab's desman and SINE work. Hover over a dotted term to see what it means."
+ ],
+ "steps": [
+  {"title": "The search problem", "what": "Query, target and hit; exact or approximate; one query or millions; scan or index, with a toy calculator for the break-even.", "tools": "a toy model"},
+  {"title": "Line tools: grep to agrep", "what": "The grep family and the five ways a line tool gives a wrong answer on FASTA: wrapped lines, the other strand, gzip, pattern files, counting.", "tools": "grep · ripgrep · seqkit grep · agrep"},
+  {"title": "How exact search works", "what": "Naive scan, Knuth-Morris-Pratt, Boyer-Moore skipping, Aho-Corasick for many patterns, bitap with errors, and what grep and agrep really run.", "tools": "GNU grep · gnulib kwset · agrep · TRE"},
+  {"title": "Hashing: k-mers in constant time", "what": "Hash functions and tables, 2-bit canonical k-mers, load factor and probing, rolling hashes, a blocked Bloom filter in front of the table.", "tools": "ntHash · Jellyfish · Bloom filters"},
+  {"title": "Worked example: scfish2", "what": "A lab tool that pulls read pairs holding exact anchor words from a whole library, and the measurements that moved the limit from matching to reading.", "tools": "scfish2 · grep -F · rapidgzip · igzip"},
+  {"title": "Alignment as scoring", "what": "Dot plots, Needleman-Wunsch, Smith-Waterman, affine gaps, log-odds scores, E-values and bit scores, with ssearch36 as the exhaustive reference.", "tools": "ssearch36 · ggsearch36 · EMBOSS dotmatcher"},
+  {"title": "Seed and extend: FASTA and BLAST", "what": "ktup and diagonals, BLAST words and X-drop, the blastn tasks and their defaults, spaced seeds, and which copies a heuristic loses.", "tools": "fasta36 · blastn · megablast · dc-megablast"},
+  {"title": "Indexing a genome", "what": "Suffix array, Burrows-Wheeler transform and backward search, the FM-index of bwa and bowtie2, minimizers and chaining in minimap2, and what each index costs.", "tools": "bwa index · bowtie2-build · minimap2 -d"},
+  {"title": "Mappers in practice", "what": "bwa mem, bwa-mem2, bowtie2 and minimap2 presets; SAM, BAM and PAF; mapping quality and its formula; secondary and supplementary alignments; what repeats do.", "tools": "bwa mem · bwa-mem2 · bowtie2 · minimap2 · samtools"},
+  {"title": "Comparing whole data sets", "what": "k-mer databases, BBDuk screening, Kraken2 classification, Mash sketches and the Mash distance, sourmash.", "tools": "Meryl · KMC · BBDuk · Kraken2 · Mash · sourmash"},
+  {"title": "Choosing the tool", "what": "Three questions before running anything, a decision helper by question, target size and frequency, and the common mistakes.", "tools": "decision helper · samtools view · blastn-short"}
+ ],
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+}

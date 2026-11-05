@@ -1,0 +1,63 @@
+<section aria-labelledby="s01" id="s01-wrap">
+  <h2 id="s01"><span class="n">01</span>From one genome to many</h2>
+  <p class="lede">In <a href="../04-demography/">lesson 4</a> one diploid genome gave one curve of population size through time. With many genomes you can ask more: who is related to whom, in which stretch of the chromosome, how recently, and whether a gene variant spread faster than chance allows. There are four families of methods for that. This section is a map: what each family reads, what data it needs, and a helper that lists which named tools can take the data you have. The details of each family come in the later sections.</p>
+
+  <h3>New words for this section</h3>
+  <dl class="defs">
+    <dt>Genealogy (tree)</dt><dd>The family tree of a set of chromosome copies at one place in the genome. Tracing two copies backwards, they meet in a <dfn>common ancestor</dfn>; the time of that meeting is the <dfn>coalescence time</dfn> (<a href="../04-demography/#s01">lesson 4, s01</a>).</dd>
+    <dt>Recombination</dt><dd>The shuffling of the two parental copies when eggs and sperm are made. After a recombination the next stretch of the chromosome can have a slightly different tree, so the genealogy changes along the genome.</dd>
+    <dt>Ancestral recombination graph (ARG)</dt><dd>The trees of all stretches of the genome joined into one object. <a href="#s02">Section 02</a> explains it properly.</dd>
+    <dt>Phased data</dt><dd>Data in which every heterozygous site is assigned to one of the two copies of the chromosome (<a href="../04-demography/#s05">lesson 4, s05</a>). Unphased data only say "this animal carries A and G here".</dd>
+    <dt>Linkage disequilibrium (LD)</dt><dd>The non-random association of alleles at two nearby sites on the same chromosome. It fades with distance, because recombination breaks the association.</dd>
+    <dt>Identity by descent (IBD)</dt><dd>A stretch of chromosome that two animals both inherited, unbroken by recombination, from one common ancestor, so the two copies are identical apart from new mutations (<a href="#s05">section 05</a>).</dd>
+    <dt>Ancestral allele, polarisation</dt><dd>At a variable site, which of the two alleles is the old one and which is the new mutation. It is usually decided by comparing with a related species (an outgroup). Some tools need it, others do not.</dd>
+    <dt>SNP array</dt><dd>A chip that reads one fixed list of variable sites, not the whole genome. A whole-genome sequence reads all sites. What that difference does to the result is <a href="#s04">section 04</a>.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why a second genome changes the question</summary><div class="in">
+    <p>One animal carries two copies of each chromosome, so there is one pair of copies to compare and one "time of common ancestor" per stretch of genome. Four animals carry eight copies, so there are 28 pairs, and the tree for each stretch can be drawn. Three new kinds of question become possible.</p>
+    <div class="toy"><span class="h">pairs</span>   2 copies: 1    8 copies: 28    100 copies: 4,950      (n copies give n(n-1)/2 pairs)
+<span class="a">tree</span>    at each stretch of the genome, how all the copies connect
+<span class="a">shared</span>  a long stretch identical in two animals = a recent common ancestor
+<span class="a">decay</span>   how fast association between two nearby sites fades = a record of population size</div>
+    <p>Each family below reads one of these. They use the same genomes but look at different features, so they answer different questions and break in different ways. When two families agree, that is more convincing than when two tools of one family agree.</p>
+  </div></details>
+
+  <h3>Four families</h3>
+  <figure>
+    <div class="svgbox"><svg id="s01-map" viewBox="0 0 980 250" width="100%" style="min-width:760px" role="img" aria-label="Four families of methods and what each reads: heterozygous sites of pairs of copies, trees along the genome, decay of linkage disequilibrium, and shared identical segments."></svg></div>
+    <figcaption>Each panel is a cartoon of what the family reads. After you use the helper below, the panels that contain at least one usable tool for your data are outlined.</figcaption>
+  </figure>
+  <div class="tbl"><table style="min-width:760px">
+    <thead><tr><th>Family</th><th>Reads</th><th>Typical answer</th><th>Named tools</th><th>Where</th></tr></thead>
+    <tbody>
+      <tr><td><b>Pairwise coalescent</b></td><td>Where heterozygous sites lie along the genome, for pairs of copies. The tools do not build the tree.</td><td>Size history; with two populations, a split time</td><td>PSMC, MSMC2, SMC++, cobraa</td><td><a href="../04-demography/#s03">lesson 4, s03</a> and <a href="../04-demography/#s05">s05</a>; not repeated here</td></tr>
+      <tr><td><b>Full ARG</b></td><td>The sequence data of all copies; the tools rebuild the trees along the genome.</td><td>Any question about the genealogy: size history, split times, selection, relatedness</td><td>Relate, tsinfer+tsdate, ARG-Needle, SINGER, ARGweaver</td><td><a href="#s02">s02</a>, <a href="#s03">s03</a>, <a href="#s06">s06</a></td></tr>
+      <tr><td><b>LD</b></td><td>How association between pairs of nearby sites falls with distance.</td><td>Recent size history (GONE: the last 100 generations)</td><td>GONE</td><td>this section; array limits in <a href="#s04">s04</a></td></tr>
+      <tr><td><b>IBD</b></td><td>Long stretches shared by two animals.</td><td>Recent size history, relatedness</td><td>hap-ibd, IBDNe; ASMC (pairwise coalescence times)</td><td><a href="#s05">s05</a></td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">The family split is ours. The ARG review of Nielsen, Vaughn and Deng (2025) covers the full-ARG family, and its Table 1 is the source for the array and scale entries below; the other families come from each tool's own documentation and paper (list in the notes file). ASMC infers pairwise coalescence times and ARG-Needle builds on it, so it sits between the families.</p>
+
+  <h3>Helper: which tools can take my data?</h3>
+  <div class="tool" id="s01-tool">
+    <div class="tool-head"><span class="tool-tag">tool</span><b>Methods that accept your data, with the reason</b></div>
+    <div class="calc">
+      <label>Data type
+        <div class="seg" role="group" aria-label="Data type" id="s01-dt"><button type="button" data-v="seq" aria-pressed="true">whole-genome sequence</button><button type="button" data-v="arr" aria-pressed="false">SNP array</button></div></label>
+      <label for="s01-n">Animals (diploid individuals)
+        <input type="number" id="s01-n" min="1" max="1000000" step="1" value="40"></label>
+      <label>Phased?
+        <div class="seg" role="group" aria-label="Phased" id="s01-ph"><button type="button" data-v="yes" aria-pressed="true">yes</button><button type="button" data-v="no" aria-pressed="false">no</button></div></label>
+    </div>
+    <div id="s01-sum" class="tool-note" aria-live="polite"></div>
+    <div class="tbl"><table id="s01-tab" style="min-width:680px">
+      <thead><tr><th>Method</th><th>Family</th><th>For your data</th><th>Reason (source)</th></tr></thead>
+      <tbody id="s01-body"></tbody>
+    </table></div>
+    <p class="tool-note"><b>usable</b> = the documentation or paper says this input is accepted. <b>after fixing</b> = usable once you change the input (phase it, subsample). <b>not for this data</b> = the source says the input is not supported, or (marked "our inference") the documentation describes only another input. "Sequences" in the reported scales are counted as copies of the chromosome, so animals x 2; that reading of the review's wording is ours.</p>
+    <div class="tool-note" id="s01-src"></div>
+  </div>
+
+  <div class="note warn"><b>What the helper cannot tell you.</b> It only checks the input format and the reported size range. It does not know how many sites your data have, how good the phasing is, how diverged your animals are, or whether the animals are one random-mating population. GONE's own README warns that recent migrants from another population bias its estimate and produce an artefactual very recent drop; assumptions of this kind sit behind the other families too and return in <a href="#s08">section 08</a>.</div>
+</section>

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-11-06
+- New lesson 05 "Population History from Many Genomes" (8 sections) and lesson 08 "Searching Sequences" (11 sections).
+- Lessons renumbered: methylation is now lesson 06 (`lessons/06-methylation/`), SINEs and satellites lesson 07
+  (`lessons/07-sines-satellites/`). Old addresses of these two lessons no longer work.
+- Lesson 04: coalescent theory from zero with an interactive Wright-Fisher display (s01); the principle of PSMC,
+  population size versus timing and the role of recombination (s03); methods table extended, what becomes possible
+  as data grows, and one display comparing how PSMC, MSMC, MSMC2 and SMC++ read the same ancestors (s05).
+
 ## 2026-11-01
 - Lesson 04 "Population History from One Genome" (8 sections), lesson 05 "DNA Methylation from Long Reads" (7 sections)
   and lesson 06 "SINEs and Satellite DNA" (8 sections) published.

@@ -1,0 +1,147 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Seed and extend: FASTA and BLAST</h2>
+  <p class="lede">Smith-Waterman (<a href="#s06">s06</a>) compares a query with every position of the data. That is safe, and slow. FASTA and BLAST save the time with a gamble: they align only where a cheap test says something is there. This section shows what the gamble wins, and which sequences it loses.</p>
+
+  <ol class="steps">
+    <li><div><b>Seed</b><div class="d">Find short stretches that are identical in query and subject. Such a stretch is a <dfn>seed</dfn>, also called a <dfn>word</dfn> or a k-mer (<a href="../01-pre-assembly/#km">lesson 1</a>). A <span class="tip" title="A table that gives, for each possible word, the positions where it occurs. One step per look-up, as in s04.">lookup table</span> makes this fast.</div></div></li>
+    <li><div><b>Extend</b><div class="d">Grow an alignment outward from each seed, scoring as in <a href="#s06">s06</a>, and stop when it stops paying.</div></div></li>
+    <li><div><b>Score</b><div class="d">Keep what passes the reporting threshold (an E-value, <a href="#s06">s06</a>).</div></div></li>
+  </ol>
+  <p>Everything hangs on step 1. <b>A region with no seed is never looked at.</b> No later step can bring it back. Long seeds mean few places to check, so the search is fast but misses more. Short seeds mean many places to check, so it finds more but runs slowly.</p>
+
+  <h3>FASTA: ktup and diagonals</h3>
+  <p>FASTA came first (Lipman and Pearson, <a href="https://doi.org/10.1126/science.2983426">1985</a>; Pearson and Lipman, <a href="https://doi.org/10.1073/pnas.85.8.2444">1988</a>). Its word size is called <dfn>ktup</dfn>. The current <code>fasta36</code> uses ktup 6 for DNA by default; its <a href="https://github.com/wrpearson/fasta36">guide</a> says ktup 3 or 4 gives higher sensitivity.</p>
+  <p>The key idea is the <dfn>diagonal</dfn>: subject position minus query position. On a dot plot (<a href="#s06">s06</a>) an ungapped alignment is a diagonal line, so all its seeds share one number.</p>
+  <div class="toy">query             GATTACAGGCTA
+subject      TTCCGGATTACAGGCTTAGC
+word <span class="a">GATTAC</span>: query 1, subject 6   diagonal 6 − 1 = <span class="a">5</span>
+word <span class="a">ACAGGC</span>: query 5, subject 10  diagonal 10 − 5 = <span class="a">5</span>   same diagonal, same alignment</div>
+  <p>A chance word lands on a random diagonal. A real similarity piles up words on one. FASTA uses this in stages, which also explain the three scores in its output:</p>
+  <ul>
+    <li>It finds all ktup words and keeps the best-scoring diagonal regions. The source keeps up to 10 per library sequence.</li>
+    <li><code>init1</code>: the best region, rescored without gaps.</li>
+    <li><code>initn</code>: regions joined into one chain, allowing gaps between them.</li>
+    <li><code>opt</code>: a Smith-Waterman run only in a narrow band around the best diagonal. This is the score FASTA ranks by; the guide says the others can be ignored.</li>
+  </ul>
+
+  <h3>BLAST: words, X-drop, two hits</h3>
+  <p>BLAST (Altschul et al., <a href="https://doi.org/10.1016/S0022-2836(05)80360-2">1990</a>) applied the same plan with a statistical base. For DNA its word list is simply every word of the query (the 1990 paper: "all contiguous w-mers in the query sequence, often with w = 12"). The list goes into a lookup table and the database is scanned past it. Protein BLAST also accepts similar words, not only identical ones; here we stay with DNA.</p>
+  <p>From each hit BLAST extends without gaps. The stopping rule is <dfn>X-drop</dfn>: walk outward and stop when the running score has "dropped more than X below the maximum score yet attained" (Altschul et al., <a href="https://doi.org/10.1093/nar/25.17.3389">1997</a>). The alignment then ends at the best point reached.</p>
+  <div class="toy">match +2, mismatch −3, X = 8
+columns   + + + + + <span class="x">x x x</span> + +
+running   2 4 6 8 <span class="a">10</span> 7 4 1
+                       drop from 10 is now 9, more than 8: stop
+result    alignment ends at the best point (score 10). The last two matches are never seen.</div>
+  <p>A piece that scores well enough without gaps then gets a gapped extension (s06's dynamic programming, also limited by an X-drop). The defaults in the BLAST+ source are in <span class="tip" title="Bit score: a raw score converted so that it no longer depends on the scoring scheme. See s06.">bits</span>: 20 for the ungapped step, 30 for the gapped step (25 in megablast), 100 for the final alignment, and an ungapped piece needs about 27 bits to trigger gapping.</p>
+  <p>The <dfn>two-hit</dfn> method was added for proteins (Altschul et al., 1997): extend "only when two non-overlapping hits are found within distance A of one another on the same diagonal". One word is not enough, which saves many extensions and loses a little sensitivity. In BLAST+ for DNA it is off (<code>-window_size 0</code>) for <code>blastn</code> and <code>megablast</code>, and on with a window of 40 for <code>dc-megablast</code>.</p>
+
+  <h3>The BLAST tasks and their defaults</h3>
+  <p>The program <code>blastn</code> has several presets, chosen with <code>-task</code>. <b>Without <code>-task</code> it runs megablast</b>, which is the least sensitive one. The word sizes below are the defaults in the BLAST+ 2.17.0 source, and they agree with the NCBI option tables.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Task</th><th>Seed</th><th>Hits needed</th><th>Match / mismatch</th><th>Gap cost</th><th>Break-even identity</th><th>Default E</th><th>Low-complexity filter</th><th>Made for</th></tr></thead>
+    <tbody>
+      <tr><td><b>megablast</b> (default)</td><td>28 in a row</td><td>1</td><td>+1 / −2</td><td>linear, greedy extension</td><td>67 %</td><td>10</td><td>on</td><td>"very similar sequences"</td></tr>
+      <tr><td><b>dc-megablast</b></td><td>11 of 18 (spaced)</td><td>2 within 40</td><td>+2 / −3</td><td>open 5, extend 2</td><td>60 %</td><td>10</td><td>on</td><td>"inter-species comparisons"</td></tr>
+      <tr><td><b>blastn</b></td><td>11 in a row</td><td>1</td><td>+2 / −3</td><td>open 5, extend 2</td><td>60 %</td><td>10</td><td>on</td><td>"inter-species comparisons"</td></tr>
+      <tr><td><b>blastn-short</b></td><td>7 in a row</td><td>1</td><td>+1 / −3</td><td>open 5, extend 2</td><td>75 %</td><td>1000</td><td>off</td><td>"sequences shorter than 50 bases" (the task's own description in the BLAST+ source; the 2009 option tables said 30)</td></tr>
+      <tr><td><b>fasta36</b> (for comparison)</td><td>6 in a row</td><td>see above</td><td>+5 / −4</td><td>12 + 4 per base</td><td>44 %</td><td>2</td><td>none by default</td><td>general search</td></tr>
+    </tbody>
+  </table></div>
+  <p><dfn>Break-even identity</dfn> is our own arithmetic, not a program output. It is the identity at which matches and mismatches cancel: penalty / (reward + penalty). Below it, a longer ungapped alignment scores lower on average, so nothing grows, however good the seed was. This is why <code>blastn-short</code> is <b>not</b> the task for short old repeats. It suits short and nearly identical sequences such as primers.</p>
+  <p><dfn>Greedy extension</dfn> in megablast comes from Zhang et al. (<a href="https://doi.org/10.1089/10665270050081478">2000</a>), written for sequences "that differ only by sequencing errors", where it ran over 10 times faster than dynamic programming. That fits its 28-base word: megablast is built to find a sequence again, not its old relatives.</p>
+
+  <h3>Spaced seeds</h3>
+  <p>A contiguous word has a hidden waste. Slide it one base and it shares 10 of its 11 positions with itself, so hits come in clumps: one long run gives many hits, and a region either has a clump or has nothing. PatternHunter (Ma, Tromp and Li, <a href="https://doi.org/10.1093/bioinformatics/18.3.440">2002</a>) requires matches only at chosen positions and ignores the others:</p>
+  <div class="toy">contiguous, weight 11   <span class="a">11111111111</span>
+PatternHunter, 11 of 18 <span class="a">111</span>0<span class="a">1</span>00<span class="a">1</span>0<span class="a">1</span>00<span class="a">11</span>0<span class="a">111</span>     1 = must match, 0 = ignored</div>
+  <p>The <dfn>weight</dfn> (the number of 1s) is still 11, so chance hits are as rare as before. Slid by one base, this pattern shares only 5 of its 11 positions with itself (our count), so hits are more independent of each other. For a 64-column region at 70 % identity, the inventors' patent gives 1.07 expected hits and a 0.30 chance of at least one for the contiguous word, against 0.93 expected hits and 0.466 for the spaced seed. Fewer hits on average, yet more regions found. Our exact calculation gives <span id="s07-ph1">0.300</span> and <span id="s07-ph2">0.467</span>. In BLAST+ the idea is <code>dc-megablast</code>. Its default template is the "coding" one, <code>101101100101101101</code>, which ignores every third position in most of its length; an "optimal" template and lengths 16 and 21 can be chosen. Remember that its default also needs two hits.</p>
+
+  <div class="tool" id="s07-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-tool-h">Word size against divergence</h3></div>
+    <p class="tool-note">The program invents a query, changes the chosen share of its positions, and hides the copy between random flanks. Then it runs the three steps: seeds, X-drop extension, score threshold. Choosing a task sets its scoring and word size; you can then move the word size alone.</p>
+    <div class="controls">
+      <label>query length <output id="s07-Lo">250 bp</output><input id="s07-L" type="range" min="30" max="400" step="10" value="250"></label>
+      <label>divergence <output id="s07-do">20 %</output><input id="s07-d" type="range" min="0" max="45" step="1" value="20"></label>
+      <label>word size <output id="s07-wo">11 bases</output><input id="s07-w" type="range" min="4" max="28" step="1" value="11"></label>
+    </div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Task">
+        <button type="button" id="s07-sc-megablast" aria-pressed="false">megablast</button>
+        <button type="button" id="s07-sc-blastn" aria-pressed="true">blastn</button>
+        <button type="button" id="s07-sc-short" aria-pressed="false">blastn-short</button>
+      </div>
+      <div class="seg" role="group" aria-label="Seed type">
+        <button type="button" id="s07-sd-contig" aria-pressed="true">contiguous</button>
+        <button type="button" id="s07-sd-spaced" aria-pressed="false">spaced 11 of 18</button>
+      </div>
+      <button type="button" class="btn" id="s07-new">new pair</button>
+      <button type="button" class="btn" id="s07-run">run 1000 pairs</button>
+    </div>
+    <figure>
+      <div class="svgbox" id="s07-strip"></div>
+      <p id="s07-verdict" style="font-weight:600"></p>
+      <p id="s07-sim" class="tool-note" aria-live="polite"></p>
+      <div class="readout">
+        <div><b id="s07-r-seeds">0</b>seeds on the true diagonal, in this pair</div>
+        <div><b id="s07-r-p">0</b>chance of at least one seed there</div>
+        <div><b id="s07-r-chance">0</b>chance seeds on other diagonals</div>
+        <div><b id="s07-r-need">0</b>score needed to report</div>
+        <div><b id="s07-r-g">0</b>chance seeds to extend in a 1-Gb genome, one strand</div>
+        <div><b id="s07-r-check">0</b>seed count check: lookup table = brute force</div>
+      </div>
+      <div class="formula" id="s07-f1" style="white-space:normal"></div>
+      <div class="formula" id="s07-f2" style="white-space:normal"></div>
+      <div class="formula" id="s07-f3" style="white-space:normal"></div>
+      <div class="svgbox" id="s07-chart"></div>
+      <div class="legend">
+        <span><i style="background:var(--muted)"></i>28 in a row</span>
+        <span><i style="background:var(--accent)"></i>11 in a row</span>
+        <span><i style="background:var(--good)"></i>7 in a row</span>
+        <span><i style="background:var(--rep)"></i>spaced 11 of 18 (dashed)</span>
+        <span><i style="background:var(--het)"></i>your setting</span>
+      </div>
+      <figcaption><b>Chance of at least one seed at the chosen query length.</b> Divergence here means substitutions only, each position independent, so the formulas are exact for this toy. Real copies also have insertions and deletions, which cut runs and shift diagonals, so real chances are lower. The seed count check compares a lookup table with an all-against-all comparison, base by base, and runs at every change. The score needed uses a 1-Gb search and the ungapped statistics of each scoring scheme (λ and K from the BLAST+ tables). The toy has no gaps, no two-hit rule and no low-complexity filter.</figcaption>
+    </figure>
+  </div>
+
+  <details class="simple">
+    <summary>Simple explanation with examples: why word size decides nearly everything</summary>
+    <div class="in">
+      <p>Take a coin that lands heads 80 % of the time and toss it 250 times. Heads are bases that stayed the same in a 250-bp copy at 20 % divergence. A seed is a run of heads without a break.</p>
+      <p>A run of 11 heads turns up in <span id="s07-c11">99.5 %</span> of such series. A run of 28 heads turns up in only <span id="s07-c28">8.5 %</span>. Each extra toss in the run multiplies its chance by 0.8, and 17 extra tosses multiply it by about 0.02.</p>
+      <p>Why not then use very short runs? Because in a genome, short words occur everywhere by chance. Move the word size to 6 in the tool and read the line about the 1-Gb genome: each of those chance seeds is an extension the program must try.</p>
+    </div>
+  </details>
+
+  <h3>What a heuristic misses: short, diverged, high-copy queries</h3>
+  <p>The chance of a seed for a 250-bp query, from the same exact calculation as the tool (substitutions only):</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Divergence</th><th>28 in a row</th><th>11 in a row</th><th>7 in a row</th><th>spaced 11 of 18</th></tr></thead>
+    <tbody id="s07-tb"></tbody>
+  </table></div>
+  <p>At the seed step alone, the default task already loses about a quarter of such copies at 10 % divergence and nearly all at 20 %. And a seed is only the first of several ways to lose a copy:</p>
+  <ul>
+    <li><b>No seed.</b> Shorter copies have fewer places for a run; set the query length to 60 in the tool. Indels make it worse.</li>
+    <li><b>Too little score.</b> The threshold grows with the size of the search, while a short query has a small maximum score. In the tool, with +2 / −3 and 1 Gb, a 250-bp query needs a score of 41 and a 30-bp query still needs 37, while a perfect 30-bp match scores only 60. A 30-bp fragment at 80 % identity scores about 30 and fails.</li>
+    <li><b>The scoring scheme.</b> Near or below the break-even identity, extension gets nowhere, as the table above shows.</li>
+    <li><b>X-drop.</b> A damaged stretch or a long indel inside a copy can stop the extension, and the copy comes back in pieces or too short to report.</li>
+    <li><b>The filter.</b> With the default masking, words in low-complexity query regions give no seeds (the <span class="tip" title="DUST: the program BLAST runs on a nucleotide query to mark low-complexity stretches, such as runs of one or two letters, so that they give no seeds.">DUST</span> filter; extension can still pass through them). The poly(A) tail of a SINE (<a href="../07-sines-satellites/#s01">lesson 7</a>) is such a region.</li>
+  </ul>
+  <p>High copy number does not by itself hide copies from BLAST, but it costs a lot. <code>blastn</code> has no rule that drops words frequent in the database (the <code>-limit_lookup</code> option belongs to the read mapper magicblast), so every copy produces seeds and every seed is extended. Output limits also matter: <code>-max_target_seqs</code>, default 100, counts subject sequences, not alignments. Other tools do drop frequent words, which is worse for repeats (<a href="#s08">s08</a>, <a href="#s09">s09</a>).</p>
+  <p>The misses are also not random. The chance of a hit falls with age and with shortness, so the copies you do get are biased towards young, long ones. Counts of copies, age plots and subfamily proportions then all carry that bias. This follows from the formulas above; we have not measured it in a BLAST run here.</p>
+
+  <div class="note">In our projects: this is why the lab's <a href="https://github.com/Toki-bio/sear2k">sear2k</a> does not use seeds at all when it collects copies of a SINE. It runs ssearch36 over a genome cut into windows, as described in <a href="../07-sines-satellites/#s02">lesson 7, s02</a>.</div>
+
+  <h3>Commands</h3>
+  <p>For finding relatives, set the task yourself. These commands search a query against a FASTA file with no database step; <code>-outfmt 6</code> gives one line per alignment. <code>fasta36</code> takes ktup as an optional last argument.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># default task is megablast: finds near-identical sequence</span>
+blastn -query query.fa -subject target.fa -outfmt 6
+<span class="c"># relatives: word 11, or spaced seeds with two hits</span>
+blastn -task blastn -query query.fa -subject target.fa -outfmt 6
+blastn -task dc-megablast -query query.fa -subject target.fa -outfmt 6
+<span class="c"># a smaller word, keeping the blastn scoring; DUST off</span>
+blastn -task blastn -word_size 7 -dust no -query query.fa -subject target.fa -outfmt 6
+<span class="c"># FASTA on DNA (-n) with ktup 4</span>
+fasta36 -n query.fa target.fa 4</pre></div>
+  <p>The rule for this section: a seed-based search gives you what it finds, and its empty places prove nothing. If an absent hit matters, use a method with no seed step (<a href="#s06">s06</a>). <a href="#s11">Section 11</a> weighs that choice.</p>
+</section>

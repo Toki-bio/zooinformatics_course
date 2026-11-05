@@ -1,0 +1,160 @@
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">09</span>Mappers in practice</h2>
+  <p class="lede">A mapper takes millions of short or long reads and puts each one at a place on a reference genome. It is the machinery of <a href="#s07">seed and extend</a> and of the <a href="#s08">genome index</a> packaged into one command. This section shows the four mappers you will meet most often, the commands that run them, what they write, and the one number that tells you how much to trust each placement. The last part shows what repeats do to that number.</p>
+
+  <h3>Mapping is searching, many times</h3>
+  <p>In the earlier sections one query was searched in one genome. A mapper does the same for every read of a sequencing run, so speed matters, and the genome index is built once and reused. For each read it answers three questions: where does it go, how well does it fit, and <b>is there another place where it fits almost as well</b>. The third question is what makes repeats hard (below). The mapped reads are what the later lessons use: coverage and heterozygosity in <a href="../04-demography/">lesson 4</a>, methylation calls in <a href="../06-methylation/">lesson 6</a>, and copies of a SINE or satellite in <a href="../07-sines-satellites/#s02">lesson 7, section 02</a>.</p>
+
+  <h3>The four mappers</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool (version read)</th><th>Made for</th><th>Index and seeds</th><th>Writes</th></tr></thead>
+    <tbody>
+      <tr><td><b>bwa mem</b><br><span class="tag">0.7.19</span></td>
+        <td>Query sequences of 70 bp to 1 Mbp. The manual recommends it for high-quality queries, and says it also beats the older BWA algorithm for 70-100 bp Illumina reads.</td>
+        <td>An <span class="tip" title="FM-index: a compressed index of the whole genome that finds every place where a given piece of sequence occurs. Section 08.">FM-index</span> of the genome. Seeds are <span class="tip" title="Maximal exact match (MEM): an exact match between read and genome that cannot be made longer on either side.">maximal exact matches</span>, then extended with affine-gap Smith-Waterman (section 06).</td>
+        <td>SAM</td></tr>
+      <tr><td><b>bwa-mem2</b><br><span class="tag">2.2.1</span></td>
+        <td>The same jobs as bwa mem. Its README says it "produces alignment identical to bwa and is ~1.3-3.1x faster depending on the use-case, dataset and the running machine".</td>
+        <td>The same algorithm, rewritten for modern processors. It needs its own index: an index made by bwa cannot be reused.</td>
+        <td>SAM</td></tr>
+      <tr><td><b>bowtie2</b><br><span class="tag">2.5.5</span></td>
+        <td>Reads of about 50 up to hundreds of characters, to long (for example mammalian) genomes. Gapped, local and paired-end modes.</td>
+        <td>An FM-index of the genome; Bowtie 2 searches for alignments and stops when it already knows what it needs to report.</td>
+        <td>SAM</td></tr>
+      <tr><td><b>minimap2</b><br><span class="tag">2.31</span></td>
+        <td>Long noisy reads, accurate long reads, assemblies, spliced RNA reads, and Illumina reads (with <code>-x sr</code>). Chosen by a <i>preset</i> (below).</td>
+        <td>Minimizer seeds (section 08), chained, then extended between seeds.</td>
+        <td>PAF by default; SAM with <code>-a</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>The versions are those of the source we read (see the notes file for this section). The minimap2 README lists mapping PacBio or Nanopore reads, assembly-to-assembly alignment and Illumina reads among its typical uses.</p>
+
+  <h3>Commands that work as written</h3>
+  <p>Each tool first builds an index of the reference, then maps. The lines below are the usage examples of each tool's own manual or README, with file names made generic. Replace <code>8</code> by the number of cores you have.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># bwa mem: paired-end Illumina reads</span>
+bwa index ref.fa
+bwa mem -t 8 ref.fa reads_1.fq reads_2.fq &gt; aln.sam
+
+<span class="c"># bwa-mem2: same usage, its own index</span>
+bwa-mem2 index ref.fa
+bwa-mem2 mem -t 8 ref.fa reads_1.fq reads_2.fq &gt; aln.sam
+
+<span class="c"># bowtie2: index name first, then -x; -S names the SAM file</span>
+bowtie2-build ref.fa ref_idx
+bowtie2 -p 8 -x ref_idx -1 reads_1.fq -2 reads_2.fq -S aln.sam
+
+<span class="c"># minimap2: the preset (-x) is applied first; -a asks for SAM</span>
+minimap2 -ax map-ont  ref.fa ont.fq.gz     &gt; aln.sam   <span class="c"># Nanopore reads</span>
+minimap2 -ax map-hifi ref.fa hifi.fq.gz    &gt; aln.sam   <span class="c"># PacBio HiFi reads</span>
+minimap2 -ax sr       ref.fa r1.fq r2.fq   &gt; aln.sam   <span class="c"># Illumina pairs</span>
+minimap2 -cx asm5     asm1.fa asm2.fa      &gt; aln.paf   <span class="c"># assembly to assembly; -c adds CIGAR</span>
+minimap2 -ax splice   ref.fa rna_reads.fa  &gt; aln.sam   <span class="c"># spliced RNA reads</span></pre></div>
+  <p>minimap2 can also save its index: <code>minimap2 -x map-ont -d ref.mmi ref.fa</code>, then <code>minimap2 -a ref.mmi reads.fq &gt; aln.sam</code>. Seed length and window (<code>-k</code>, <code>-w</code>) are indexing options in the manual, so build the index with the same <code>-x</code> you will map with (our inference from the manual).</p>
+
+  <h3>minimap2 presets</h3>
+  <p>A <dfn>preset</dfn> is one option, <code>-x</code>, that sets many settings at once. They differ in seed length (<code>-k</code>), in how dense the minimizers are (<code>-w</code>; smaller means more seeds) and in the scoring. The manual lists the exact expansion of each; the table gives the parts that explain the choice.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Preset</th><th>Use it for</th><th>Settings the manual lists</th></tr></thead>
+    <tbody>
+      <tr><td><code>map-ont</code></td><td>Noisy long reads (about 10 % error) to a genome. The default mode.</td><td>Index defaults: <code>-k15</code>, <code>-w10</code></td></tr>
+      <tr><td><code>map-hifi</code></td><td>PacBio HiFi reads.</td><td><code>-k19 -w19 -U50,500 -g10k -A1 -B4 -O6,26 -E2,1 -s200</code></td></tr>
+      <tr><td><code>sr</code></td><td>Short genomic reads, no splicing.</td><td><code>-k21 -w11 --frag=yes -A2 -B8 -O12,32 -E2,1 -r100 -p.5 -N20 -f1000,5000 -n2 -m25 -s40 -g100 --secondary=no</code> (and larger batch settings)</td></tr>
+      <tr><td><code>asm5</code></td><td>One assembly against another, when the divergence is not much above 0.1 %. The manual: "the alignment will not extend to regions with 5% or higher sequence divergence".</td><td><code>-k19 -w19 --rmq -r1k,100k -g10k -A1 -B19 -O39,81 -E3,1 -s200 -z200 -N50</code></td></tr>
+      <tr><td><code>splice</code></td><td>Long reads from RNA: a long deletion in the read is written as an intron.</td><td><code>-k15 -w5 --splice -g2k -G200k -A1 -B2 -O2,32 -E1,0 -C9 -z200 -ub</code> and more</td></tr>
+    </tbody>
+  </table></div>
+  <p>Notice the pattern in the scoring. The more similar the two sequences are expected to be, the larger the mismatch penalty (<code>-B</code>): 19 in <code>asm5</code>, 4 in <code>map-hifi</code>. A high penalty makes the aligner give up where the sequences stop agreeing, which is what you want when comparing two genomes of one species. The manual also lists <code>asm10</code> and <code>asm20</code> for about 1 % and several percent divergence, and <code>lr:hq</code> for accurate Nanopore reads. The README says <code>splice:sr</code> is for short RNA-seq reads.</p>
+
+  <h3>What the output files hold</h3>
+  <p>The workhorse is <dfn>SAM</dfn>, a text table with one line per alignment. <dfn>BAM</dfn> is the same table compressed into a binary file, which is what you keep: the bowtie2 manual converts with <code>samtools view -bS aln.sam &gt; aln.bam</code> and then <code>samtools sort aln.bam -o aln.sorted.bam</code>. minimap2 can write <dfn>PAF</dfn> instead, a lighter table with one line per mapping and no read sequence.</p>
+  <p>A SAM line has 11 fixed columns, then optional tags. The ones to read first:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Column</th><th>Name</th><th>What it holds</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>QNAME</td><td>read name</td></tr>
+      <tr><td>2</td><td>FLAG</td><td>a number whose bits mean: <code>0x4</code> read unmapped, <code>0x10</code> read mapped to the reverse strand, <code>0x100</code> secondary alignment, <code>0x800</code> supplementary alignment (SAM specification)</td></tr>
+      <tr><td>3, 4</td><td>RNAME, POS</td><td>sequence (chromosome or contig) and 1-based start</td></tr>
+      <tr><td>5</td><td>MAPQ</td><td>mapping quality, next section</td></tr>
+      <tr><td>6</td><td>CIGAR</td><td>the alignment as a string such as <code>50M2I48M</code>: matches or mismatches, insertions, deletions, and clipped ends</td></tr>
+    </tbody>
+  </table></div>
+  <p>The first 12 columns of a PAF line are: query name, query length, query start, query end, strand (<code>+</code> or <code>-</code>), target name, target length, target start, target end, number of matching bases, number of bases including gaps, and mapping quality (0-255, with 255 for missing). Dividing column 10 by column 11 gives the BLAST-like identity when an alignment was computed (minimap2 manual).</p>
+
+  <h3>Mapping quality: how sure is the placement</h3>
+  <p><dfn>MAPQ</dfn> is a whole number per alignment. The SAM specification defines it as &minus;10 log<sub>10</sub> of the probability that the mapping position is wrong, rounded to the nearest integer, and says that 255 means "not available". The Bowtie 2 manual gives the reading rule: a MAPQ of 10 or less means at least a 1 in 10 chance that the read truly came from elsewhere. The same manual explains where it comes from: the bigger the gap between the best alignment's score and the second-best alignment's score, the more unique the best alignment, and the higher its MAPQ should be.</p>
+  <p>Two points keep you out of trouble.</p>
+  <ul>
+    <li><b>Each program computes its own MAPQ.</b> bwa mem uses a formula of the score gap, the read length and the identity. minimap2 uses chaining and alignment scores and also the length of the read covered by repeated seeds. Bowtie 2 looks the number up from a ladder of thresholds on the gap, so its values come in a few steps rather than a smooth range. A MAPQ of 30 from one tool is not a MAPQ of 30 from another.</li>
+    <li><b>It is an estimate made from what the program found.</b> It cannot know about a copy that the search never reached, and a wrong place that fits better than the right one gets a confident wrong MAPQ (try it below).</li>
+  </ul>
+  <p>The bwa formula is short enough to read. In bwa 0.7.19 (function <code>mem_approx_mapq_se</code>) with the default settings, for a read of length <i>l</i> with alignment score <i>S</i> and best other score <i>S2</i> (at least 19 when none was found, the minimum seed length):</p>
+  <div class="formula">identity = 1 &minus; (l&times;A &minus; S) / (A+B) / l<br>f = identity&sup2; &times; (l &lt; 50 ? 1 : ln 50 / ln l)<br>MAPQ = (int)( 6.02 &times; (S &minus; S2) / A &times; f&sup2; + 0.499 ), kept between 0 and 60</div>
+  <p>with <i>A</i> = 1 (match score) and <i>B</i> = 4 (mismatch penalty); <code>(int)</code> drops the fraction, so adding 0.499 rounds to the nearest whole number. The real program then lowers it further for extra suboptimal hits and for the fraction of the read covered by repeated seeds; the toy below leaves both out and says so.</p>
+
+  <h3>Secondary and supplementary alignments</h3>
+  <p>One read can produce several SAM lines. SAM says exactly one line per read is the <dfn>primary</dfn> one (flag <code>0x100</code> and <code>0x800</code> both unset). Other lines come in two kinds that mean different things.</p>
+  <ul>
+    <li><b>Secondary</b> (<code>0x100</code>): an alternative place for the same read, as happens in repeats. Flag it to be sure not to count the read twice.</li>
+    <li><b>Supplementary</b> (<code>0x800</code>): another piece of a <i>split</i> read, a <span class="tip" title="Chimeric alignment: an alignment of one read that is made of two or more pieces that map to different places or strands, for example across a structural variant or a junction.">chimeric alignment</span>. A 10 kb long read crossing an inversion maps in two pieces, and each piece is a line.</li>
+  </ul>
+  <p>Each tool has its own switches, from its manual:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Alternatives (secondary)</th><th>Split pieces (supplementary)</th></tr></thead>
+    <tbody>
+      <tr><td>bwa mem</td><td>Hits scoring above 80 % of the best are listed in the <code>XA</code> tag of the primary line when there are not more than 5 of them (<code>-h</code>); <code>-a</code> outputs all alignments as secondary lines.</td><td>Listed in the <code>SA</code> tag. <span class="tip" title="Clipping: the part of a read that is left out of its alignment. With soft clipping the clipped bases stay in the SAM line; with hard clipping they are dropped from it.">Hard clipping</span> is the default for them; <code>-Y</code> gives soft clipping. <code>-M</code> flags shorter split hits as secondary, because some tools cannot read split alignments.</td></tr>
+      <tr><td>bowtie2</td><td>By default one alignment is reported. With <code>-k N</code> up to N are reported, best first, and each one after the first has flag 256; <code>-a</code> reports all. The manual warns that both can be very slow on long, repetitive genomes. The <code>XS:i</code> tag gives the score of the best alignment other than the one reported.</td><td>Our reading of the manual: each read is aligned in one piece, end-to-end or local (local mode soft-clips the ends).</td></tr>
+      <tr><td>minimap2</td><td>Up to <code>-N 5</code> secondary alignments, only if their score is at least <code>-p 0.8</code> of the primary's. The <code>sr</code> preset sets <code>--secondary=no</code>.</td><td>Listed in the <code>SA</code> tag; <code>-Y</code> uses soft clipping in SAM.</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>What repeats do</h3>
+  <p>A read from inside a repeat fits several places. Repeats are a large part of many genomes (<a href="../03-annotation/#s02">lesson 3, section 02</a>), and the young members of a repeat family are the most similar to each other. When two copies differ only at a few sites, a read has to <i>cross one of those sites</i> to tell the copies apart. A read that does not cross any has equal scores for both copies, a gap of zero, and so a MAPQ near zero. Longer reads, and reads that reach into the unique flanking DNA, escape the problem, which is one reason long reads place repeats better.</p>
+  <p>The tools also cut their effort on very repetitive seeds. bwa mem drops a maximal exact match that occurs more than 500 times (<code>-c 500</code>). minimap2 ignores the most frequent minimizers (<code>-f 0.0002</code>: the top 0.02 %). Bowtie 2 stops after 15 consecutive failed seed extensions (<code>-D 15</code>) and re-seeds at most twice (<code>-R 2</code>) in its default mode. Raising these limits costs time and helps reads that fit many places.</p>
+  <p>In practice, a MAPQ filter removes the reads of recent repeat copies. The Bowtie 2 manual gives the example of a variant caller that ignores alignments with MAPQ below, say, 10. That is sensible for variant calling, where a wrong placement can make a false variant. It is wrong for counting repeat copies, because it hides exactly the copies you wanted to count. Finding the copies is the job of the genome search in <a href="../07-sines-satellites/#s02">lesson 7, section 02</a>, not of read mapping with a quality filter.</p>
+
+  <figure id="s09-fig1">
+    <div class="tool-head"><span class="tool-tag">Toy</span><b>A read, and two near-identical copies of a repeat</b></div>
+    <p class="tool-note">The genome has two loci. Each has an 80-bp repeat unit (shaded) with 40 bp of unique DNA on each side. The two units differ at <b>three sites</b> (marked <code>^</code>). The read really comes from <b>locus 1</b>. The toy scores it against both loci by the simplest rule: <b>+1</b> per matching base, <b>&minus;4</b> per mismatch (the default match and mismatch scores of bwa mem), no gaps, keeping the best stretch (a local alignment). Click a base of the read to give it a sequencing error. At a diagnostic site the error turns the base into the other copy's letter, which is the worst case.</p>
+    <div class="controls">
+      <label>Read start (position in the locus)<input id="s09-start" type="range" min="0" max="120" step="1" value="60"><output id="s09-start-o">60</output></label>
+      <label>Read length<input id="s09-len" type="range" min="20" max="100" step="1" value="40"><output id="s09-len-o">40</output></label>
+      <div class="seg" role="group" aria-label="Example reads">
+        <button type="button" id="s09-p1">Misses all 3 sites</button>
+        <button type="button" id="s09-p2">Crosses 1 site</button>
+        <button type="button" id="s09-p3">Reaches the flank</button>
+        <button type="button" id="s09-p4">Errors on 2 sites</button>
+      </div>
+      <button type="button" class="btn" id="s09-clear">Clear errors</button>
+    </div>
+    <div class="toy" id="s09-view" role="img" aria-label="Locus 1, the read and locus 2 drawn one under the other; the three sites where the two repeat copies differ are marked."></div>
+    <div class="readout" id="s09-out" aria-live="polite"></div>
+    <figcaption>The &ldquo;toy confidence&rdquo; is the simplified score of the next figure, with two candidate places. A wrong place with a big gap is possible once errors fall on diagnostic sites: the toy then reports a <b>confident wrong</b> placement.</figcaption>
+  </figure>
+
+  <figure id="s09-fig2">
+    <div class="tool-head"><span class="tool-tag">Toy and formula</span><b>MAPQ against the gap between best and second-best</b></div>
+    <p class="tool-note"><b>Simplified toy, not what any program computes:</b> every point of score gap makes the best place twice as likely as one competitor, so the chance that the best place is wrong is <i>p</i> = m&middot;2<sup>&minus;gap</sup> / (1 + m&middot;2<sup>&minus;gap</sup>) with <i>m</i> competitors, and toy MAPQ = &minus;10 log<sub>10</sub> <i>p</i>, capped at 60. Beside it, the <b>real bwa mem formula</b> from the box above (verified in its source) with the repeat corrections left out. Set the second-best score to 0 to mean &ldquo;no second place found&rdquo;.</p>
+    <div class="controls">
+      <label>Read length<input id="s09-rl" type="range" min="30" max="250" step="1" value="100"><output id="s09-rl-o">100</output></label>
+      <label>Best score<input id="s09-bs" type="range" min="19" max="100" step="1" value="100"><output id="s09-bs-o">100</output></label>
+      <label>Second-best score<input id="s09-ss" type="range" min="0" max="100" step="1" value="92"><output id="s09-ss-o">92</output></label>
+      <label>Competing places (m)<input id="s09-m" type="range" min="1" max="20" step="1" value="1"><output id="s09-m-o">1</output></label>
+    </div>
+    <div class="readout" id="s09-out2" aria-live="polite"></div>
+    <div class="svgbox"><svg id="s09-svg" viewBox="0 0 640 250" width="100%" style="min-width:520px" role="img" aria-label="Mapping quality against score gap for the toy and for the bwa mem formula"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>toy (m competitors)</span><span><i style="background:var(--het)"></i>bwa mem formula (this read length, this best score)</span></div>
+    <figcaption>Scores are in match units: with A = 1 a perfect 100-bp read scores 100 and each mismatch costs 5 (the lost +1 and the &minus;4). Compare where each curve reaches 60, and watch the toy fall when you add competing places. The bwa curve has no term for the number of competitors; the real program lowers MAPQ for extra suboptimal hits, a term left out here.</figcaption>
+  </figure>
+
+  <details class="simple">
+    <summary>Simple explanation with examples: why a read in a repeat gets MAPQ 0</summary>
+    <div class="in">
+      <p>Imagine two shops that sell almost the same sweets. You find a receipt (the read) with only the list of sweets and no shop name. If the list uses only sweets both shops sell, the receipt fits both shops equally well and you cannot say where it came from. If one sweet appears in only one shop's range, the receipt fits that shop better.</p>
+      <div class="toy">locus 1 ...ACGTTGCA<span class="h">T</span>GGCA...
+locus 2 ...ACGTTGCA<span class="x">C</span>GGCA...
+read A  ..GTTGCA          fits both: gap 0, MAPQ near 0
+read B  ..GTTGCA<span class="h">T</span>GG        fits locus 1 only: gap &gt; 0, MAPQ rises</div>
+      <p>The mapper does what you did: it compares the best fit with the second-best fit. A big gap means &ldquo;I am sure&rdquo;, no gap means &ldquo;it is a coin toss&rdquo;. MAPQ is that confidence written as one number, where every 10 points mean ten times less chance of being wrong. A sequencing error can move a read from one shop to the other, which is why even a high MAPQ is only an estimate.</p>
+    </div>
+  </details>
+</section>

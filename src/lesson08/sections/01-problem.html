@@ -1,0 +1,81 @@
+<section aria-labelledby="s01" id="s01-wrap">
+  <h2 id="s01"><span class="n">01</span>The search problem</h2>
+  <p class="lede">Almost every step in the earlier lessons was a search. Where is this primer? Where are the copies of this SINE? Which place in the genome did this read come from? Is any of this library from another species? The question looks the same each time, but the right tool changes with three things: how exact the match must be, how many questions you ask, and how often you will search the same data. This lesson builds the tools in order, from <code>grep</code> to read mappers. This section sets out the problem and gives you a toy calculator for the biggest choice: scan the data every time, or build an index once.</p>
+
+  <h3>The words</h3>
+  <dl class="defs">
+    <dt>Query</dt>
+    <dd>The sequence you are looking for: a primer, a SINE consensus, one read.</dd>
+    <dt>Target</dt>
+    <dd>The sequence you look in: a genome, a set of contigs, a whole sequencing library. Some tools call it the <span class="tip" title="Database, bank or subject: other names for the target. BLAST says 'database' and 'subject'; our own tools say 'bank'.">database, bank or subject</span>.</dd>
+    <dt>Hit</dt>
+    <dd>A place where the query matches the target well enough to be reported. "Well enough" is a rule you set, and the rest of the lesson is about how different tools set it.</dd>
+    <dt>Exact match</dt>
+    <dd>Every letter of the query is identical to the target, in the same order.</dd>
+    <dt>Approximate match</dt>
+    <dd>The query matches after allowing some differences: <span class="tip" title="Mismatch: the same position holds a different letter in query and target, for example A against G.">mismatches</span> (one letter replaced) and <span class="tip" title="Indel (insertion or deletion), also called a gap: one sequence has extra letters that the other lacks. Alignment programs write it as a run of dashes.">gaps</span> (letters inserted or missing).</dd>
+  </dl>
+
+  <h3>Exact or approximate? It depends on what the match means</h3>
+  <p>Four searches from our own kind of work, and what each one needs. The right-hand column is the question to ask before choosing a tool.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Search</th><th>Query</th><th>Target</th><th>Why an exact match may not be enough</th></tr></thead>
+    <tbody>
+      <tr><td><b>Find a primer</b></td><td>a short <span class="tip" title="Oligonucleotide (oligo): a short synthetic piece of DNA, usually 18 to 30 bases, such as a primer or a probe.">oligonucleotide</span> you ordered</td><td>a sequence you amplified, or a genome</td><td>A primer may still bind to a site that differs from it by a letter or two, so a search that asks for identity can miss binding sites. For a quick check that your own sequence contains the primer, exact is fine.</td></tr>
+      <tr><td><b>Find a SINE</b></td><td>the consensus of a family (<a href="../07-sines-satellites/#s02">lesson 7, section 02</a>)</td><td>a whole genome</td><td>Copies are old and have collected mutations, and the consensus is an average, not the sequence of any one copy. Most copies differ from it at many positions, and some have gaps.</td></tr>
+      <tr><td><b>Place a read</b></td><td>one read, one of millions (<a href="../04-demography/#s02">lesson 4</a> and <a href="../06-methylation/#s03">lesson 6</a> both start from reads placed on a genome)</td><td>the reference genome</td><td>The read has sequencing errors, and the animal differs from the reference at its own variable sites. Requiring identity would lose exactly the reads that carry the variants you are after.</td></tr>
+      <tr><td><b>Find a contaminant</b></td><td>a library of reads, or the contigs of an assembly (<a href="../02-assembly/#s09">lesson 2, FCS-GX</a>)</td><td>sequences of other species</td><td>Often exact words are enough: a short word shared with another species is already a signal. But the answer is a count over many reads, so the whole library has to be read.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The same biological question can move along this scale. Placing a read exactly is simple and fast; placing it despite errors and variants is harder; placing a read from a diverged relative is harder still. Every step towards "approximate" costs time, or memory, or both, and makes the tool's answer depend on its settings.</p>
+
+  <h3>One query or millions, scan or index</h3>
+  <p>The second axis is how many queries you have. One primer against one amplicon is a task for the search box of a text editor. A sequencing library is millions of reads, each a separate query against the same genome. A method that takes a minute for one query is no problem once and a disaster a million times.</p>
+  <p>The third axis is how often the target is reused. If you search one genome with many queries, work you do once on the target can be shared. This is the choice between two designs:</p>
+  <dl class="defs">
+    <dt>Scan</dt>
+    <dd>Read the whole target from start to end for every query (or for every batch of queries). Nothing to prepare; the cost of each query is proportional to the size of the data.</dd>
+    <dt>Index</dt>
+    <dd>Read the target once and build a lookup structure, like the index at the back of a book. Each later query goes straight to the right place. You pay the build time up front, and you must store the index, which can be larger than the sequence itself.</dd>
+  </dl>
+
+  <section class="tool" aria-labelledby="s01-calc-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s01-calc-h">When does an index pay for itself? A toy model</h3></div>
+    <p class="tool-note"><b>This is a toy model, not a benchmark.</b> It assumes that one scan of the data takes a fixed time, that building the index costs a fixed number of scans, and that each query after that costs a small fixed share of one scan. Real tools do not follow it exactly: build times, memory use and lookup times depend on the tool, the data and how approximate the search is. Use it to see the shape of the trade, then measure your own case. The numbers in the preset buttons are round illustrations, not measurements.</p>
+    <div class="controls">
+      <span class="seg" id="s01-pre" role="group" aria-label="Example presets">
+        <button type="button" data-p="primer" aria-pressed="false">one primer, one genome</button>
+        <button type="button" data-p="sine" aria-pressed="false">a few SINE queries</button>
+        <button type="button" data-p="reads" aria-pressed="true">reads vs genome</button>
+        <button type="button" data-p="big" aria-pressed="false">100 queries, big data</button>
+      </span>
+    </div>
+    <div class="controls">
+      <label for="s01-d">Data size<input type="range" id="s01-d" min="-3" max="3" step="0.05" value="0.5"><output id="s01-do"></output></label>
+      <label for="s01-v"><span class="tip" title="How fast your program reads and compares the data in one pass. It depends on the tool, the disk and the number of threads. Slow when each comparison is an alignment, faster for exact matching.">Scan speed</span><input type="range" id="s01-v" min="0" max="4" step="0.05" value="2"><output id="s01-vo"></output></label>
+      <label for="s01-q">Number of queries<input type="range" id="s01-q" min="0" max="8" step="0.05" value="7"><output id="s01-qo"></output></label>
+      <label for="s01-b"><span class="tip" title="Building the index costs this many full scans of the data. In this toy it is a plain number you choose.">Index build cost</span><input type="range" id="s01-b" min="0" max="2" step="0.05" value="1.3"><output id="s01-bo"></output></label>
+      <label for="s01-l"><span class="tip" title="Time for one query using the index, as a share of one full scan. A tiny share for exact lookup of a short word. Larger for approximate search, which must try many variants of the query.">Index query cost</span><input type="range" id="s01-l" min="-5" max="1" step="0.05" value="-3"><output id="s01-lo"></output></label>
+    </div>
+    <div class="svgbox"><svg id="s01-svg" viewBox="0 0 760 300" width="100%" style="min-width:560px" role="img" aria-label="Total time against number of queries for scanning every time and for building an index once, on log axes"></svg></div>
+    <div class="legend"><span><i style="background:var(--het)"></i>scan for every query</span><span><i style="background:var(--accent)"></i>build index once, then look up</span></div>
+    <div class="readout" id="s01-out" aria-live="polite"></div>
+    <p class="tool-note" id="s01-verdict" aria-live="polite"></p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: a library and its index</summary><div class="in">
+    <p>You want to know where, in a large library, the books mention a rare plant. Without an index you open every book and read every page; you can start at once, but you will do it all again for the next plant. With an index you first spend a long time compiling a list of every word and its pages. Then each plant takes seconds.</p>
+    <p>If you have one plant to look up, compiling the index is a waste: you read the books once either way, and reading is cheaper than reading plus compiling. If you have a million plants, reading the library a million times is hopeless, and the index wins within the first few questions. The calculator puts numbers on this. The turning point is about <i>build cost ÷ (1 − lookup cost)</i> queries, with both costs measured in scans, so it depends mostly on how expensive the build is compared with one scan.</p>
+    <p>Two things the toy leaves out. First, an index only helps if the question can be answered from the list: an index of exact words does not find a word spelled with a typo, unless the tool also tries the typos. Second, the index takes space, and on a laptop it may not fit. Both come back in sections <a href="#s08">08</a> and <a href="#s09">09</a> of this lesson.</p>
+  </div></details>
+
+  <h3>What "sensitive" and "fast" cost</h3>
+  <p>A search can fail in two ways. It can <b>miss</b> a real hit, which is low <span class="tip" title="Sensitivity: the share of the real matches that the search finds. A search that finds 8 of the 10 real copies has a sensitivity of 80 %.">sensitivity</span>. Or it can report a place where the match is only by chance, which is low <span class="tip" title="Specificity: the share of reported hits that are real. A tool that reports 20 places and 15 are real copies has a specificity of 75 %.">specificity</span>. Making a tool more sensitive means letting weaker matches through. That lets in more chance matches, and it is slower, because weak matches are more numerous and each must be checked.</p>
+  <p>Speed usually comes from not looking at most of the data. A fast tool decides that most places in the target cannot contain the query, using a cheap test, and only examines the places that pass. If the cheap test wrongly rejects a real hit, the hit is lost, and the tool does not tell you. That is the price of speed. The rest of the lesson shows the cheap tests one by one: exact words (<a href="#s03">03</a>, <a href="#s04">04</a>), short seeds that must match exactly before the match is extended (<a href="#s07">07</a>), and indexes of the target (<a href="#s08">08</a>). Section <a href="#s06">06</a> first shows the slow, exhaustive reference: comparing the query with every place in the target by <span class="tip" title="Dynamic programming: filling a table of best partial scores cell by cell, so that the best alignment is found without trying every possibility. Section 06 shows it.">dynamic programming</span>.</p>
+  <div class="note"><b>In our projects.</b> The lab's own tools sit at different points on this scale. Our public SINE-copy scanner <a href="https://github.com/Toki-bio/sear2k">sear2k</a> (<a href="../07-sines-satellites/#s02">lesson 7, section 02</a>) accepts the cost of an exhaustive alignment so as not to lose diverged copies. At the other end, a lab tool that is not yet public looks for exact short words (<span class="tip" title="k-mer: a word of k letters taken from a sequence.">k-mers</span>, <a href="../01-pre-assembly/#km">lesson 1</a>) from a list of target sequences directly in sequencing files, and is a custom program because for that job reading the data was the cost that mattered. Section <a href="#s05">05</a> shows its design and what it measured.</div>
+
+  <details class="simple"><summary>Simple explanation with examples: four questions before you choose a tool</summary><div class="in">
+    <p>Ask these four questions, in this order. (1) Must the match be exact, or may it differ? (2) How many queries? (3) Will I search this same target again? (4) What do I lose if the search misses a hit, and what do I lose if it reports a false one?</p>
+    <p>Examples. "Does my <span class="tip" title="Amplicon: the piece of DNA that a PCR produced.">amplicon</span> contain this primer": exact, one query, no reuse: a text search. "Which reads in this library contain this adapter": exact, one query, millions of reads: a scan with a fast tool. "Where in the genome does each of these ten million reads belong": approximate, millions of queries, the same genome: an index. "Where are the old copies of this SINE": approximate, few queries, one genome: a sensitive search, even if slow. Section <a href="#s11">11</a> turns these questions into a helper.</p>
+  </div></details>
+</section>

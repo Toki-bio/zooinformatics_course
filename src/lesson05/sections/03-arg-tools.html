@@ -1,0 +1,182 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>ARG tools: Relate, tsinfer, ARG-Needle, SINGER, ARGweaver</h2>
+  <p class="lede">An <span class="tip" title="Ancestral recombination graph: the family tree of a sample of genomes for every stretch of the chromosome, with the recombinations that change one tree into the next. See s02.">ARG</span> (<a href="#s02">s02</a>) cannot be observed. It has to be inferred, and five programs do this in very different ways. This section says what each one reads, whether it needs phased haplotypes and known ancestral alleles, how many genomes it can take, and what comes out. The largest difference is at the end: some tools return one best answer, and others return a set of answers whose spread shows what the data cannot decide.</p>
+
+  <h3>New words for this section</h3>
+  <dl class="defs">
+    <dt>Phased</dt><dd>Each of an animal's two chromosome copies is known along its length (<code>0|1</code> in a VCF, not <code>0/1</code>; see <a href="../04-demography/#s05">lesson 4</a>). All five programs work on single chromosome copies, called <dfn>haplotypes</dfn>. Only ARGweaver can work without phase, by averaging over the possibilities.</dd>
+    <dt>Ancestral allele</dt><dd>The base the common ancestor carried at a variable site. The other allele is <dfn>derived</dfn>. Deciding which is which is called <dfn>polarising</dfn> a site. It usually needs an estimated ancestral genome or one or more outgroup species.</dd>
+    <dt>Genetic map</dt><dd>A table of how recombination rate varies along a chromosome, usually in centimorgans (cM). 1 cM is a 1 % chance of a crossover per generation.</dd>
+    <dt>Tree sequence</dt><dd>A compact file of all local trees in which shared nodes and branches are stored once. It is the <code>.trees</code> format of the <span class="tip" title="tskit: a Python library for reading and analysing tree sequences, used by tsinfer, tsdate and SINGER output.">tskit</span> library.</dd>
+    <dt>Threading</dt><dd>Adding one more haplotype to a partly built ARG by deciding, along the genome, where its lineage joins the existing trees. ARG-Needle, SINGER and ARGweaver all build ARGs this way.</dd>
+    <dt>Point estimate</dt><dd>One answer: one tree, one age. Its opposite here is a <dfn>posterior sample</dfn>: many answers drawn with a probability that reflects how well each fits the data and the model. Drawing them step by step is called <dfn>MCMC</dfn> (Markov chain Monte Carlo).</dd>
+  </dl>
+
+  <h3>The five tools side by side</h3>
+  <div class="tbl"><table style="min-width:880px">
+    <thead><tr><th>Tool</th><th>Input</th><th>Phased?</th><th>Ancestral allele?</th><th>Sample scale</th><th>Output</th><th>Uncertainty</th></tr></thead>
+    <tbody>
+      <tr><td><b>Relate</b><br>v1.2.4</td><td>Sequence data as <code>.haps</code> + <code>.sample</code> (converter from VCF) and a genetic map</td><td>required</td><td>required: 0 = ancestral, 1 = derived</td><td>Over 10,000 sequences; time grows with the square of the sample size. Paper: 4,956 haplotypes</td><td><code>.anc</code> (trees) and <code>.mut</code> (each SNP), then modules: size history, selection</td><td>one topology; branch lengths can be sampled</td></tr>
+      <tr><td><b>tsinfer</b> 0.5.1<br>+ <b>tsdate</b></td><td>Phased VCF converted to <code>.vcz</code></td><td>required</td><td>required per site; a site without it is left out of inference</td><td>Hundreds of thousands of sequences. Paper: about 500,000 UK Biobank individuals</td><td><code>.trees</code>; tsinfer gives no real dates, tsdate adds them</td><td>one topology, with polytomies; a mean and variance per node time</td></tr>
+      <tr><td><b>ARG-Needle</b><br>1.1.0</td><td><code>.hap[s][.gz]</code> + <code>.sample</code> and a genetic map; array (default) or sequence mode</td><td>yes (the format is phased haplotypes)</td><td>not asked for: ASMC folds the frequency spectrum by default</td><td>At least 300 haploid samples. Paper: 337,464 individuals, array data</td><td><code>.argn</code>, convertible to <code>.trees</code></td><td>one ARG</td></tr>
+      <tr><td><b>SINGER</b><br>beta, 0.1.9</td><td>VCF of whole genomes</td><td>required</td><td>optional: <code>-polar</code> states how far to trust it</td><td>"At least hundreds" of genomes. Paper: 200 genomes</td><td>Text files per sampled ARG, converted to <code>.trees</code></td><td>samples topologies and times (<code>-n</code> default 100)</td></tr>
+      <tr><td><b>ARGweaver</b><br>(ARGweaver-D)</td><td><code>.sites</code>, FASTA or, by the program's help, gzipped VCF</td><td><code>.sites</code> and FASTA: assumed, unless <code>--unphased</code>. VCF: treated as unphased</td><td>not asked for in the manual</td><td>"Dozens of diploid individuals". Paper: 54 genomes, in blocks of about 2 Mb</td><td><code>.smc.gz</code> per sampled ARG; extraction tools</td><td>samples topologies and times</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Sources: each tool's documentation and paper, listed in the notes file. The uncertainty column follows Table 1 of Nielsen, Vaughn &amp; Deng (2025). The review describes scale in the same order: tsinfer and ARG-Needle handle "hundreds of thousands of sequences", Relate "a few thousand", SINGER "a few hundred", ARGweaver "dozens". Scale figures are from human studies. How far they carry over to your animal depends on its diversity and genome size, and we have not tested this.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: two ways to build an ARG</summary><div class="in">
+    <p><b>Copying.</b> Relate and tsinfer ask, for each haplotype: "which others does this one look like here?" They use the Li and Stephens model, which describes a haplotype as a mosaic copied from other haplotypes, and a change of source as a recombination. Relate turns the copying into a tree at each position. tsinfer first builds likely ancestral haplotypes, then lets each one copy from older ones. Neither step dates anything: times are estimated afterwards from the mutations on each branch.</p>
+    <p><b>Threading.</b> ARG-Needle, SINGER and ARGweaver start from a small ARG and add haplotypes one at a time, like adding a new specimen to a pedigree you have already drawn:</p>
+    <div class="toy">haplotype e, walking along the chromosome:
+  positions 1-40 kb    joins the branch above b, about 3,000 generations ago
+  positions 40-55 kb   joins the branch above d, about 9,000 generations ago   &lt;- a recombination at 40 kb
+  positions 55-90 kb   joins the branch above b again</div>
+    <p>ARG-Needle takes one good choice at each place and moves on. SINGER and ARGweaver <i>draw</i> the choice at random according to its probability, then remove pieces of the ARG and thread them again many times. That repetition is the MCMC, and it is why they are slower.</p>
+  </div></details>
+
+  <h3>Relate</h3>
+  <p>Relate (Speidel et al. 2019) first builds a tree at each position from the copying probabilities, then maps mutations onto the branches and estimates branch lengths with MCMC. Its add-on script alternates between estimating population size and re-estimating branch lengths, so size history comes out of the same run. Averaging coalescence rates within and between groups gives each population's size and cross-coalescence rate (the same idea as in <a href="../04-demography/#s05">lesson 4</a>), and a further module tests for selection (<a href="#s06">s06</a>). The authors expect it to "work equally well in other recombining species". Ancestral alleles must be set before the run, but a wrong one is not fatal: if a SNP fits the tree only with its alleles swapped, Relate flips it and records this in the <code>is_flipped</code> column of <code>.mut</code>.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Relate v1.2.4. Filenames are given without extensions where the docs say so.</span>
+PATH_TO_RELATE/bin/RelateFileFormats --mode ConvertFromVcf \
+    --haps data.haps --sample data.sample -i data_phased
+
+<span class="c"># keep biallelic SNPs, flip so that 0 = ancestral, apply a mask of reliable bases</span>
+PATH_TO_RELATE/scripts/PrepareInputFiles/PrepareInputFiles.sh \
+    --haps data.haps --sample data.sample \
+    --ancestor ancestor.fa --mask mask.fa -o input
+
+<span class="c"># -N is the size in HAPLOTYPES: twice the number of individuals</span>
+PATH_TO_RELATE/bin/Relate --mode All -m 1.25e-8 -N 30000 \
+    --haps input.haps --sample input.sample --map genetic_map.txt \
+    --dist input.dist --seed 1 -o run            <span class="c"># run.anc, run.mut</span>
+
+<span class="c"># size history: re-estimates branch lengths too. Set --years_per_gen: the default is 28, a human value</span>
+PATH_TO_RELATE/scripts/EstimatePopulationSize/EstimatePopulationSize.sh \
+    -i run -m 1.25e-8 --poplabels data.poplabels --years_per_gen 1 --seed 1 -o popsize
+
+<span class="c"># sampled branch lengths for one region; the topology stays fixed</span>
+PATH_TO_RELATE/scripts/SampleBranchLengths/SampleBranchLengths.sh \
+    -i popsize -o region -m 1.25e-8 --coal popsize.coal --format a \
+    --num_samples 100 --first_bp 100000 --last_bp 200000 --seed 1</pre></div>
+  <p class="tool-note">The mutation rate here is the human value from the docs' example; use your species' rate per base per generation (<a href="../04-demography/#s04">lesson 4</a>). In <code>.mut</code>, <code>is_not_mapping = 1</code> means the SNP "could not be mapped to a unique branch". In the 1000 Genomes run, 86 % of SNPs mapped uniquely. <code>RelateFileFormats --mode ConvertToTreeSequence</code> writes a tskit file, but the docs warn that this gives no compression and loses how long branches persist.</p>
+
+  <h3>tsinfer and tsdate</h3>
+  <p>tsinfer (Kelleher et al. 2019) infers ancestral haplotypes from shared mutations, ordering them by allele frequency, and then finds a copying path for each ancestor and each sample. Its docs are clear about what comes out: "Internal node times are allele frequencies, not years or generations", and branch-length statistics raise an error until you date the result. tsdate (Wohns et al. 2022) does this from the mutations on each branch and works on any valid tree sequence. Its default method needs a mutation rate but no population size.</p>
+  <p>Where the data cannot settle a node, tsinfer leaves a <dfn>polytomy</dfn>: a node with more than two children. Its authors describe polytomies as a way of showing uncertainty, and the toy below shows why an honest "cannot say" can be worth more than a forced choice. tsinfer needs a known ancestral state for each site it infers from. Sites without one, as well as singletons and multiallelic sites, stay in the output with mutations placed by parsimony. Performance is "degraded" by genotyping error and "in particular" by phasing error.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># tsinfer 0.5.1, tsdate 0.2 (Python). Shell first: VCF to VCF Zarr. AA in the VCF becomes variant_AA.</span>
+<span class="c">#   vcf2zarr convert data.vcf.gz data.vcz</span>
+import tsinfer, tsdate
+
+vdata = tsinfer.VariantData("data.vcz", ancestral_state="variant_AA")
+ts = tsinfer.infer(vdata, num_threads=4)      <span class="c"># topology only</span>
+
+ts = tsdate.preprocess_ts(ts)                 <span class="c"># advised for real data</span>
+dated = tsdate.date(ts, mutation_rate=1e-8)   <span class="c"># per base per generation</span>
+dated.dump("data.dated.trees")</pre></div>
+  <p class="tool-note">This is the interface of the released version. The development version (0.5.2) moves to a <code>tsinfer run config.toml</code> command, so check which version you installed. The tsinfer docs ran 5,000 simulated diploids in about 18 minutes and about 600 MiB. A "tsinfer-sparse" variant for array data appears in the ARG-Needle paper and is named, with ARG-Needle, as array-capable in the published review of Nielsen, Vaughn &amp; Deng; its earlier author manuscript names only ARG-Needle. We could not find the variant in the tsinfer documentation (<a href="#s04">s04</a>).</p>
+
+  <h3>ARG-Needle, and what ASMC does in it</h3>
+  <p>ARG-Needle (Zhang et al. 2023) was built for very large samples, including array data. Each new haplotype goes through three steps:</p>
+  <ol class="qlist">
+    <li><b>Hashing.</b> For each stretch of genome, find a short list of candidate close relatives by hashing genotypes. This avoids comparing it with everyone.</li>
+    <li><b>ASMC.</b> Estimate the age of the common ancestor (<span class="tip" title="Time to the most recent common ancestor of two haplotypes at one position.">TMRCA</span>) between the new haplotype and each candidate, along the genome.</li>
+    <li><b>Threading.</b> Attach the new haplotype to the closest candidate at each position, at the age ASMC gave.</li>
+  </ol>
+  <p>ASMC (Palamara et al. 2018) is a hidden Markov model related to PSMC (<a href="../04-demography/#s03">lesson 4</a>), but its input is a <b>pair of haplotypes</b> and it reports the TMRCA along the genome rather than a size history. It was designed so that the sparse, non-random SNPs of an array can be used: it models how those SNPs were chosen, which is the "A" (ascertained) in its name. So in ARG-Needle, ASMC supplies all the time information and the hashing only decides whom to compare. Three consequences follow from this.</p>
+  <ul>
+    <li><b>The 300 floor.</b> ASMC's model "requires at least 300 haploid samples", or 150 diploids. With fewer you get <code>the CSFS requires 300</code>, where CSFS is the conditional site frequency spectrum.</li>
+    <li><b>A built-in demography.</b> ASMC needs a precomputed <code>.decodingQuantities.gz</code> file holding the demographic model, mutation rate and allele frequencies, and the final ARG normalization (which adjusts node times to match a stated size history) uses a demography too. The default for both is a European human model. For another species you must supply your own, computed with the PrepareDecoding tool from a size history you already have, for example from PSMC. Population sizes in these files are haploid.</li>
+    <li><b>ASMC-clust.</b> The same package can run ASMC on all pairs and cluster the pairwise ages into a tree at each site (<code>--asmc_clust 1</code>). This scales with the square of the sample size, so ARG-Needle itself is the one for big samples.</li>
+  </ul>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># arg-needle 1.1.0 (pip install arg-needle). Requires 300 or more haplotypes.</span>
+arg_needle --hap_gz data.haps.gz --map data.map --mode sequence \
+    --asmc_decoding_file my.decodingQuantities.gz \
+    --normalize_demography my.demo \
+    --out data                                   <span class="c"># data.argn</span>
+
+arg2tskit --arg_path data.argn --ts_path data.trees</pre></div>
+  <p class="tool-note">The map has four columns (chromosome, SNP name, genetic position in cM, physical position in bp), and both positions must increase strictly. The manual warns that the parameters were "optimized for use with SNP data, so it may be slow when applied to sequencing data". ASMC's paper adds that pairs across individuals need "haplotypes phased with extremely high accuracy". The SINGER paper notes that ARG-Needle "does not map mutations to branches"; <code>arg-needle-lib</code> has its own functions for mutations on an ARG. Array data get their own section (<a href="#s04">s04</a>).</p>
+
+  <h3>SINGER</h3>
+  <p>SINGER (Deng, Nielsen &amp; Song 2025) threads haplotypes in two cheaper steps, first which branch and then what time, and explores the space of ARGs with MCMC that changes both topology and times. Its HMMs assume a constant size, but a rescaling step then stretches and shrinks time so that mutation counts match branch lengths. In the authors' simulations this made it robust to size changes, and it needs no size history from you. The limits come from the paper and README: phased, contemporary, whole-genome data; polymorphic sites with missing data are excluded; and the model assumes infinite sites, "which may not be applicable to cross-species data". The authors say directly that good phasing is "often challenging, especially for ancient DNA and non-model organisms".</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># SINGER beta. -vcf and -output take PREFIXES: -vcf chr1 reads chr1.vcf (the most common bug, says the README).</span>
+<span class="c"># Choose m first, then Ne from pi = 4 * Ne * m. Here -Ne is DIPLOID. Use -polar 0.99 for polarised data.</span>
+singer_master -m 1.25e-8 -Ne 10000 -ratio 1 -polar 0.99 \
+    -vcf chr1 -output chr1_w0 -start 0 -end 5e6 -n 100 -thin 20
+
+<span class="c"># long chromosomes: run windows of about 5 Mb, then join with merge_ARG.py</span>
+python merge_ARG.py --file_table sub_file_table --output merged_ARG
+
+<span class="c"># each sampled ARG is 4 text files (nodes, branches, muts, recombs): make .trees files</span>
+convert_to_tskit -input chr1_w0 -output chr1_w0 -start 0 -end 100 -step 1
+
+<span class="c"># check convergence before trusting anything</span>
+python compute_traces.py -prefix chr1_w0 -m 1.25e-8 \
+    -start_index 0 -end_index 100 -output_filename chr1_w0.traces</pre></div>
+  <p class="tool-note">Defaults from the README: <code>-n</code> 100 samples, <code>-thin</code> 20 iterations between them, <code>-ratio</code> (recombination over mutation rate) 1, <code>-polar</code> 0.5 for unpolarised data. The README advises: "only using one single sample is NOT ideal". Regions with little data, such as centromeres, cause the second most common failure. Skip them: windows need not be adjacent. Branch lengths are in generations. The software still calls itself a beta version.</p>
+
+  <h3>ARGweaver and ARGweaver-D</h3>
+  <p>ARGweaver (Rasmussen et al. 2014) showed that sampling ARGs at genome scale is possible. It works in fixed, discrete time steps, and its sites model allows the same site to mutate more than once (Jukes-Cantor). The manual asks for no ancestral allele. It accepts unphased data through <code>--unphased</code>, which "will integrate over phasings"; the SINGER README agrees that ARGweaver "has better support" for missing and unphased data. ARGweaver-D (Hubisz et al. 2020) adds a user-defined demographic model with population splits and migration, and can give the probability that a region was introgressed. Its manual was last updated in 2013, and the last commit is from 2023.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># ARGweaver (README example values, human-like). -c 10 compresses the alignment into 10-bp blocks.</span>
+<span class="c"># -N is diploid. -n is iterations (default 1000); a sample is written every 10 (--sample-step).</span>
+arg-sample -s data.sites -N 10000 -r 1.6e-8 -m 1.8e-8 \
+    --ntimes 20 --maxtime 200e3 -c 10 -n 100 -o run/out
+
+<span class="c"># TMRCA along the region, across the sampled ARGs</span>
+arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
+  <p class="tool-note">Time spent before the chain settles must be discarded (<dfn>burn-in</dfn>). The ARGweaver paper used 500 burn-in iterations in simulations, then 1,000 sampling iterations keeping every tenth, and for its 54 human genomes 2,000 iterations per block of about 2 Mb. Those figures are one study's settings, not defaults.</p>
+
+  <h3>One best tree or a set of trees</h3>
+  <p>Why would a best tree not be enough? Nielsen and colleagues give the reason: in humans the mutation and recombination rates are "fairly similar, meaning that, on average, every time a new mutation occurs that might provide information about the tree structure, a new recombination event will also occur". So any one local tree is supported by very few SNPs. A method that returns one tree still draws it just as cleanly. Treating that tree as true, the review warns, induces "false certainty in the results of any analysis".</p>
+  <p>The tools fall into three groups (Table 1 of the review):</p>
+  <ul>
+    <li><b>One ARG:</b> tsinfer and ARG-Needle. tsdate does add a variance to each node time, but on a fixed topology.</li>
+    <li><b>One topology, sampled times:</b> Relate, through <code>SampleBranchLengths</code>.</li>
+    <li><b>Sampled topologies and times:</b> SINGER and ARGweaver.</li>
+  </ul>
+  <p>The difference shows in a measurable way. If a 90 % interval is honest, it should contain the truth 90 % of the time. On simulations in the SINGER paper, it did so 85 % of the time for SINGER, 54 % for ARGweaver and 44 % for Relate, for pairwise coalescence times. The authors attribute Relate's low figure to sampling times under a fixed topology. That is the authors' own benchmark, and the review, which shares authors with it, also places SINGER first on accuracy. Sampling is not free either: the sampled tools are limited to hundreds of genomes at most.</p>
+
+  <section class="tool explain" aria-labelledby="s03-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-toy-h">What one best tree hides</h3></div>
+    <p class="tool-note">Four haplotypes, a to d, share one local tree on a stretch of genome. The toy simulates a true tree and its mutations (<i>N</i> = 10,000, μ = 1.25 × 10<sup>−8</sup>, constant size, no recombination inside the stretch), then computes the probability of every tree and set of times given those SNPs. The SNP table has one column per SNP, and 1 is the derived allele. Real tools have to approximate this calculation; with four haplotypes a fine grid is close to exact. <b>One best tree</b> is the most probable topology with its mean times. The right panel draws 100 trees from the same answer, with haplotypes kept in the order a b c d, so trees that disagree cross each other.</p>
+    <div class="controls" role="group" aria-label="Toy settings">
+      <label for="s03-L"><span>Stretch of genome under this tree</span> <output id="s03-L-o">3.0 kb</output><input type="range" id="s03-L" min="2.7" max="4.477" step="0.01" value="3.477"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Right panel samples
+        <div class="seg" role="group" aria-label="What is sampled" id="s03-mode"><button type="button" data-v="full" aria-pressed="true">trees and times</button><button type="button" data-v="fixed" aria-pressed="false">times only</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Age of the common ancestor of
+        <div class="seg" role="group" aria-label="Pair of haplotypes" id="s03-pair"><button type="button" data-v="3" aria-pressed="false">a, b</button><button type="button" data-v="6" aria-pressed="false">b, c</button><button type="button" data-v="10" aria-pressed="true">b, d</button></div></div>
+      <button type="button" class="btn" id="s03-new">New data set</button>
+    </div>
+    <div class="toy" id="s03-snps" aria-label="SNP table, one column per SNP, 1 is the derived allele"></div>
+    <div class="svgbox" id="s03-fig"></div>
+    <div class="legend" id="s03-legend"></div>
+    <div class="readout" id="s03-out"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) At 3 kb this data set has four SNPs, and three trees tie with a third of the probability each. The middle panel still shows one, picked by the order of a tie. Here it is wrong, and its age for b and d is several times too old. (2) Switch to "times only", as Relate does. The cloud tidies up and the other trees vanish from view. The interval's lower end jumps up to about the true age, because in this fixed tree b and d cannot be closest relatives. (3) Move the slider to the right. Extra length adds SNPs from the same true tree, the three trees collapse into one and the best tree becomes right. Even then the age interval spans more than a factor of ten. At human-like rates, recombination usually changes a tree long before it collects that many SNPs. (4) Press "New data set" and watch "share of the probability": a best tree looks the same at 33 % as at 100 %.</p>
+    <p class="tool-note" id="s03-ctl"><b>Control.</b> The same code was tested outside the page. With no SNPs it matches the closed-form answer, and with SNPs it matches an independent simulation. On 1,500 simulated data sets at each of 1, 3 and 10 kb, the 90 % interval for a and b held the truth in 91 %, 89 % and 91 % of cases when trees and times were sampled, but in 72 %, 78 % and 88 % when the best tree was fixed. The best tree was the true one in 29 %, 48 % and 70 % of cases, close to its stated probability. These toy figures show the direction of the effect; they are not the published ones.</p>
+  </section>
+
+  <h3>Traps shared by all five</h3>
+  <div class="tbl"><table style="min-width:640px">
+    <thead><tr><th>Setting</th><th>Relate</th><th>tsdate</th><th>ARG-Needle</th><th>SINGER</th><th>ARGweaver</th></tr></thead>
+    <tbody>
+      <tr><td>Population size means</td><td><code>-N</code>: haplotypes (2 × individuals)</td><td>not needed by default</td><td>demography file: haploid</td><td><code>-Ne</code>: diploid</td><td><code>-N</code>: diploid</td></tr>
+      <tr><td>Mutation rate</td><td colspan="5">per base per generation in all of them. A rate per year gives wrong times, with no error message.</td></tr>
+      <tr><td>Time in the output</td><td>generations, plotted with <code>--years_per_gen</code> (default 28)</td><td>generations</td><td>generations</td><td>generations</td><td>generations</td></tr>
+      <tr><td>Human defaults to replace</td><td>years per generation</td><td>none</td><td>demography, decoding file</td><td><code>-ratio</code> 1 (<code>-m</code> is required)</td><td><code>-N</code> 10,000, <code>-m</code> 2.5 × 10<sup>−8</sup>, <code>-r</code> 1.5 × 10<sup>−8</sup></td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Time units for tsdate come from <code>mutation_rate</code> being per generation, and for ARG-Needle from its generation-based demography; that reading is ours, not a sentence in their docs.</p>
+  <p>All five need good haplotypes, and this hits zoologists hardest. Relate's authors warn that computational phasing can inflate recent population size, tsinfer degrades with phasing error, and pairs in ASMC need very accurate phase. Many wild species also have no genetic map, which Relate and ARG-Needle require. A flat map at an assumed rate will run, but that is our suggestion, not a documented recipe, and recombination hotspots will then be missed. For polarising, Relate and tsinfer depend on a good ancestral genome, and SINGER's authors note that polarising is difficult where polymorphism is shared across species.</p>
+
+  <h3>Which one to try</h3>
+  <p class="tool-note">Our reading of the documents above, not a rule from any of them.</p>
+  <ul>
+    <li><b>Tens of phased genomes and a question about one region:</b> SINGER, because you need the intervals.</li>
+    <li><b>Few genomes without reliable phase, or a known demographic model and a question about introgression:</b> ARGweaver or ARGweaver-D, on short regions.</li>
+    <li><b>Hundreds to a few thousand phased genomes and a question about size, splits or selection:</b> Relate. Add <code>SampleBranchLengths</code> for loci you plan to interpret.</li>
+    <li><b>Very large samples, or one compact file for many analyses:</b> tsinfer + tsdate.</li>
+    <li><b>Array data or biobank scale, with at least 300 haplotypes:</b> ARG-Needle, after reading <a href="#s04">s04</a>.</li>
+  </ul>
+  <p>One or two genomes per species belong with the methods of <a href="../04-demography/">lesson 4</a>. What these tools then give you is the subject of the next sections: <a href="#s05">s05</a> for recent shared segments, <a href="#s06">s06</a> for selection, and <a href="#s08">s08</a> for what happened when a real cohort was run through this kind of pipeline.</p>
+</section>

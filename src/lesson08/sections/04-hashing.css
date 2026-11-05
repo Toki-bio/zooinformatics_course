@@ -1,0 +1,5 @@
+#s04-wrap .s04-read{white-space:pre-wrap;word-break:break-all;line-height:1.5}
+#s04-wrap .controls .btn{align-self:center}
+#s04-wrap .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+#s04-wrap #s04-step{min-height:9.6em}
+#s04-wrap #s04-tt-fig svg,#s04-wrap #s04-tt-plot svg{max-width:760px;display:block}

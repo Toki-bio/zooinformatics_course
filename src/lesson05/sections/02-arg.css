@@ -1,0 +1,10 @@
+#s02-wrap .s02-tb table{min-width:0;font-family:var(--f-mono);font-size:12px}
+#s02-wrap .s02-tb td,#s02-wrap .s02-tb th{padding:3px 8px}
+#s02-wrap .s02-scroll{max-height:250px;overflow-y:auto;border:1px solid var(--line);border-radius:4px;margin-top:4px}
+#s02-wrap .s02-scroll thead th{position:sticky;top:0}
+#s02-wrap tr.s02-on td{background:var(--code-bg);color:var(--fg);font-weight:600}
+#s02-wrap tr.s02-on td:first-child{box-shadow:inset 3px 0 0 var(--bad)}
+#s02-wrap tbody tr:not(.s02-on) td{color:var(--muted)}
+#s02-wrap .btn:disabled{opacity:.45;cursor:default}
+#s02-wrap .readout span{color:var(--muted)}
+#s02-wrap .slider-row input[type=range]{width:min(100%,380px)}

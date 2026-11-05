@@ -15,8 +15,10 @@ projects (small mammals, including desmans) as worked examples.
 | 02 | [Genome Assembly](lessons/02-assembly/) | Pre-flight check, computing needs, short-read and long-read assemblers, Hi-C scaffolding with YaHS, polishing, purging, gap closing, haplotypes and phasing, quality metrics, FCS-GX, BUSCO, mitogenomes and NUMTs, sex chromosomes, data deposition |
 | 03 | [Repeats, Genes and ROH](lessons/03-annotation/) | Repeat classes, de novo repeat libraries, masking and landscapes, tandem repeats, gene evidence, BRAKER/GALBA/Helixer/EGAPx, projection with TOGA2, functional annotation and quality, heterozygosity and runs of homozygosity |
 | 04 | [Population History from One Genome](lessons/04-demography/) | The coalescent, preparing a diploid genome, PSMC and its scaling, MSMC2/SMC++/cobraa/SFS methods, pitfalls, two-species divergence and gene flow (hPSMC, BPP, gIMble), reporting |
-| 05 | [DNA Methylation from Long Reads](lessons/05-methylation/) | CpG methylation biology, nanopore and PacBio detection, modkit pileup, haplotype-resolved methylation, genes and repeats, differential methylation, QC and IGV |
-| 06 | [SINEs and Satellite DNA](lessons/06-sines-satellites/) | SINE biology, finding and discovering SINEs, tRNA heads, families and subfamilies, orthologous loci, satellite monomers and HORs, repeats in assemblies, a complete SINE study |
+| 05 | [Population History from Many Genomes](lessons/05-many-genomes/) | Ancestral recombination graphs, Relate/tsinfer/ARG-Needle/SINGER/ARGweaver, SNP arrays, IBD segments and IBDNe, selection from genealogies, Y chromosome and mitochondrial DNA, what failed in a real cohort |
+| 06 | [DNA Methylation from Long Reads](lessons/06-methylation/) | CpG methylation biology, nanopore and PacBio detection, modkit pileup, haplotype-resolved methylation, genes and repeats, differential methylation, QC and IGV |
+| 07 | [SINEs and Satellite DNA](lessons/07-sines-satellites/) | SINE biology, finding and discovering SINEs, tRNA heads, families and subfamilies, orthologous loci, satellite monomers and HORs, repeats in assemblies, a complete SINE study |
+| 08 | [Searching Sequences](lessons/08-search/) | grep to minimap2: exact and approximate search, hashing, alignment scoring, seed and extend, genome indexes, mappers, sketches, choosing the tool |
 
 
 ## How the lessons are made

@@ -1,0 +1,137 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Worked example: scfish2</h2>
+  <p class="lede">The last section gave the parts: 2-bit k-mers, a hash set, a Bloom filter. Here they work together in one real program. <code>scfish2</code> is a lab tool, not yet public, about 300 lines of C. Its story has a twist: once matching became fast, matching stopped being the problem.</p>
+
+  <h3>The job</h3>
+  <p>When we <a href="../02-assembly/#s06">close gaps in an assembly</a> from short reads, we first need the reads that lie next to each gap. We pick <dfn>anchors</dfn>: 20-base words that occur only once in the genome and sit close to a gap, several on each side. A read pair that holds an anchor probably comes from that spot. So the question is plain: <b>which read pairs of a whole library contain any of these exact words, on either strand?</b></p>
+  <p>The size is what makes it hard. The test library is public: <a href="https://www.ebi.ac.uk/ena/browser/view/SRR13862646">SRR13862646</a>, <i>Galemys pyrenaicus</i>, 84,051,642 read pairs of 151 bases, 14.2 GB as gzip files and about 57 GB unpacked. A 151-base read holds 132 words of 20 bases, so one pass means about <b>22 billion</b> k-mers to check. Almost none of them is an anchor. The tool must therefore be very good at saying "no".</p>
+  <p>The usage line from the source file shows the whole interface:</p>
+  <div class="code"><button type="button">copy</button><pre>scfish2 [-t threads] [-b batch_pairs] anchors.txt R1.fq[.gz] R2.fq[.gz] OUTPREFIX</pre></div>
+  <p>It writes the matching pairs to two FASTQ files and their names to a list. If either read of a pair holds an anchor, both reads are kept.</p>
+
+  <h3>Step 1: letters become a number, one base at a time</h3>
+  <p>The anchors are <a href="#s04">stored as 2-bit codes</a>: A = 0, C = 1, G = 2, T = 3, so a word of up to 32 bases fits in one 64-bit number. The read is then scanned once, base by base. Nothing is cut out or copied. Two numbers are kept up to date: <code>f</code> for the word as read and <code>r</code> for its reverse complement. These are the actual lines:</p>
+  <div class="code"><button type="button">copy</button><pre>int c = code[(unsigned char)s[i]];
+if (c &lt; 0) { len = 0; f = r = 0; continue; }
+f = ((f &lt;&lt; 2) | (uint64_t)c) &amp; kmask;
+r = (r &gt;&gt; 2) | ((uint64_t)(3 - c) &lt;&lt; shift);
+if (++len &gt;= K &amp;&amp; has(f &lt; r ? f : r)) return 1;</pre></div>
+  <ul>
+    <li><b>Line 2:</b> any letter that is not A, C, G or T (usually N) restarts the count, so no word is ever built across it.</li>
+    <li><b>Line 3:</b> shift the old word two bits left, add the new base, and drop the oldest base with the mask.</li>
+    <li><b>Line 4:</b> the reverse complement grows from the other end. Complementing is just <code>3 - c</code>, because A+T and C+G both add up to 3.</li>
+    <li><b>Line 5:</b> <code>f &lt; r ? f : r</code> takes the smaller of the two, the <span class="tip" title="Canonical k-mer: of a word and its reverse complement, the one with the smaller code. Both strands of the same DNA then give the same number.">canonical</span> form. One lookup now covers both strands. The read stops at its first hit, because one anchor is enough.</li>
+  </ul>
+  <p>Each new base costs a few arithmetic operations, however long the word is.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: rolling a 4-base word along a read</summary><div class="in">
+    <p>Take k = 4 and the read <code>GATTC</code>. In binary, A = 00, C = 01, G = 10, T = 11.</p>
+    <div class="toy">GATT   f = <span class="a">10 00 11 11</span> = 143    reverse complement AATC: r = <span class="h">00 00 11 01</span> =  13    canonical 13
+ ATTC  f = <span class="a">00 11 11 01</span> =  61    reverse complement GAAT: r = <span class="h">10 00 00 11</span> = 131    canonical 61</div>
+    <p>To go from the first line to the second, nothing is recomputed. <code>f</code> moves two bits left, the leading G falls off, and the new C (01) comes in on the right. <code>r</code> moves two bits right, and the complement of C (G, 10) comes in on the left.</p>
+    <p>If the same DNA were read from the other strand, <code>GAAT</code> would give f = 131 and r = 61. The smaller number is again 61, so both strands find the same entry.</p>
+  </div></details>
+
+  <h3>Step 2: an exact set, then a filter in front of it</h3>
+  <p>The anchors go into an <a href="#s04">open-addressing hash set</a>. It is one plain array of 64-bit numbers with at least twice as many slots as anchors, so at most half of it is full. A key that lands on an occupied slot moves to the next one. The array stores the full code of each anchor, not a shortened fingerprint, so a "yes" from it is always true.</p>
+  <p>The trouble is memory. For 792,638 anchor lines the array takes 16 MB, and each lookup jumps to a random place in it. The lab notes describe this table as beyond the processor's fast <span class="tip" title="Cache: a small, very fast memory on the processor. Reading from main memory instead takes far longer, so a program that jumps around a big table spends much of its time waiting.">cache</span>. So a <a href="#s04">Bloom filter</a> stands in front. It is a <dfn>blocked</dfn> one: each anchor sets 3 bits inside a single 64-bit word, so testing a k-mer costs one memory read, not three. For the same anchors the filter takes 2 MB. The source comment says that it "mostly stays in <span class="tip" title="L2 cache: the second level of the processor's cache, larger and a little slower than the first level, but still far faster than main memory.">L2 cache</span>".</p>
+  <div class="code"><button type="button">copy</button><pre>static inline int has(uint64_t key) {
+    uint64_t h = bmix(key), b = bbits(h);
+    if ((bloom[h &amp; bmask] &amp; b) != b) return 0;
+    uint64_t i = h64(key) &amp; tmask;
+    while (tab[i] != EMPTY) { if (tab[i] == key) return 1; i = (i + 1) &amp; tmask; }
+    return 0;
+}</pre></div>
+  <p>Line 3 is the whole trick. If even one of the three bits is empty, this k-mer was never stored, and the function leaves at once. Only the rest reach the hash set in lines 4 and 5.</p>
+
+  <div class="tool" id="s05-bl-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-bl-h">How many hash lookups does the filter skip?</h3></div>
+    <p class="tool-note">This toy builds a filter by the sizing rule in the source: the number of 64-bit words is the next power of two above lines / 4 + 64. The anchor file lists both strands, so the number of different keys is half the lines. It then tests one million random k-mers that are not anchors. Hash values are simulated by a random-number generator.</p>
+    <div class="controls">
+      <label>anchor lines in the file<output id="s05-bl-nv"></output><input type="range" id="s05-bl-n" min="3" max="6.3" step="0.01" value="3.82" aria-label="Number of anchor lines, logarithmic scale"></label>
+      <span class="seg" role="group" aria-label="Anchor sets from the speed tests"><button type="button" id="s05-bl-p1" aria-pressed="true">6,624 lines</button><button type="button" id="s05-bl-p2" aria-pressed="false">792,638 lines</button></span>
+    </div>
+    <div class="svgbox"><svg id="s05-bl-bar" viewBox="0 0 900 62" width="100%" style="min-width:560px" role="img" aria-label="Share of k-mers stopped by the filter and share passed on to the hash set"></svg></div>
+    <div class="readout" id="s05-bl-read" aria-live="polite"></div>
+    <h3>Follow one k-mer</h3>
+    <div class="controls">
+      <button type="button" class="btn" id="s05-bl-next" style="align-self:center">Next k-mer</button>
+      <button type="button" class="btn" id="s05-bl-anchor" style="align-self:center">A real anchor</button>
+      <button type="button" class="btn" id="s05-bl-false" style="align-self:center">Find a false alarm</button>
+    </div>
+    <div class="svgbox"><svg id="s05-bl-word" viewBox="0 0 540 84" width="100%" style="min-width:340px;max-width:760px" role="img" aria-label="The 64 bits of the filter word this k-mer points to, with its three test bits outlined"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>bit set by some anchor</span><span><i style="background:var(--good);height:10px"></i>test bit, set</span><span><i style="background:var(--bad);height:10px"></i>test bit, empty</span></div>
+    <div class="note" id="s05-bl-out" aria-live="polite"></div>
+  </div>
+
+  <p>Skipping nearly every lookup does not always buy speed. That depends on the hardware. On a busy shared server the filter tripled the speed with 799,254 anchors (60–74 to 207–213 MB/s, one process). On a quiet cluster node with a larger cache it helped at 6,624 anchors (257–266 to 311–313 MB/s) and did nothing at 792,638 (207–223 against 201–208 MB/s). Measure on your own machine.</p>
+
+  <h3>Step 3: threads and batches</h3>
+  <p>Each read can be checked without knowing anything about the others, so the work splits easily over <span class="tip" title="Thread: one line of work inside a program. A program with 28 threads can keep 28 processor cores busy at once.">threads</span>. <code>scfish2</code> works in <dfn>batches</dfn> of 500,000 pairs. Two threads read the batch, one for R1 and one for R2. Then all threads scan it, taking 4,096 pairs at a time as they become free:</p>
+  <div class="code"><button type="button">copy</button><pre>#pragma omp parallel for schedule(dynamic, 4096)
+for (size_t i = 0; i &lt; n1; i++)
+    hit[i] = (uint8_t)(scan(b1.arena + b1.seq[i], b1.slen[i]) || scan(b2.arena + b2.seq[i], b2.slen[i]));</pre></div>
+  <p>The first line is an <span class="tip" title="OpenMP: a standard way to tell a C compiler 'run this loop on many threads'. The line starting with #pragma is that instruction.">OpenMP</span> instruction. Threads need no <span class="tip" title="Lock: a rule that makes threads take turns when they could write to the same place at the same time. Locks cost waiting time, so a design that needs none is faster.">locks</span> here: the set and the filter are only read during the scan, and each thread writes only its own places in <code>hit[]</code>. Afterwards the main thread walks through <code>hit[]</code> from the start and writes the matching pairs, so the output is in input order however the threads were scheduled.</p>
+
+  <h3>Step 4: reading FASTQ directly</h3>
+  <p>The earlier version, <code>scfish</code>, had the same matcher but ran behind a shell <dfn>fan-out</dfn>. <code>paste</code> joined each pair into one long line and a single <code>awk</code> dealt the lines out to the matcher processes. Every byte passed through that one line. <code>scfish2</code> removes it. It reads the two FASTQ streams itself, takes every 4 lines as one record, and scans only line 2, the sequence. A <code>.gz</code> file is handed to an outside decompressor:</p>
+  <div class="code"><button type="button">copy</button><pre>const char *dec = getenv("SCFISH_DEC"); if (!dec || !*dec) dec = "rapidgzip -d -c -P 4";
+char cmd[8192]; snprintf(cmd, sizeof cmd, "%s '%s'", dec, p);
+return popen(cmd, "r");</pre></div>
+  <p><code>popen</code> starts that program as a separate process and gives <code>scfish2</code> its output as if it were a file. So decompression gets its own cores, and the tool can be pointed at whichever decompressor a server has. If R1 and R2 ever differ in record count, it stops with an error.</p>
+
+  <h3>Why the results stay identical to grep</h3>
+  <p>A speed-up is worthless if the answer changes. Here it should not change, for four reasons:</p>
+  <ul>
+    <li><b>The filter never says a wrong "no".</b> Every stored anchor set its own bits, so a real anchor always passes. A false alarm only costs one extra lookup.</li>
+    <li><b>The set is exact.</b> It holds the full code, so a false alarm gets rejected there.</li>
+    <li><b>The code loses nothing.</b> Two different words of up to 32 bases never share a 2-bit code. Two words share a canonical code only if they are the same word on opposite strands.</li>
+    <li><b>All anchors have one length.</b> A fixed string of k letters is inside a read exactly when one of the read's k-mers equals it. The tool refuses a file with mixed lengths.</li>
+  </ul>
+  <p>This was also tested, not just argued: on the whole library, <code>grep</code>, <code>scfish</code> and <code>scfish2</code> all returned 13,029 pairs, with the same pair names. Two differences remain, and both matter if you repeat this:</p>
+  <ul>
+    <li><b>Strands.</b> <code>grep -F</code> matches only what is in the pattern file, while <code>scfish2</code> always matches both strands. The results agreed because the file listed both. On a test subset that held one strand of many anchors, <code>grep</code> found 304 pairs and <code>scfish</code> 570.</li>
+    <li><b>What is searched.</b> <code>grep</code> also searches read names and quality lines. <code>scfish2</code> searches only sequence. No pair was found that way in these tests, but it could happen.</li>
+  </ul>
+
+  <h3>What the clock said</h3>
+  <p>All runs: the whole library above, 6,624 anchor lines unless stated, one exclusive 28-core cluster node. The fan-outs used 16 matchers.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Method</th><th>Time</th><th>Pairs found</th></tr></thead>
+    <tbody>
+      <tr><td><code>grep -F</code>, fan-out</td><td>462 s</td><td>13,029</td></tr>
+      <tr><td><code>scfish</code>, fan-out</td><td>324 s</td><td>13,029, same names</td></tr>
+      <tr><td><code>scfish2</code> + rapidgzip, 8 threads (first run, files not yet in memory)</td><td><b>164 s</b></td><td>13,029, same names</td></tr>
+      <tr><td><code>scfish2</code> + igzip</td><td>172 s</td><td>13,029, same names</td></tr>
+      <tr><td><code>scfish2</code>, 792,638 anchor lines, rapidgzip (files already in the <span class="tip" title="Page cache: recently read files that the operating system keeps in spare memory, so a second read does not touch the disk.">page cache</span>)</td><td><b>79 s</b></td><td>1,223,178 (a different, much larger anchor set)</td></tr>
+    </tbody>
+  </table></div>
+  <p>Read the table against one more fact. Alone, one process of <code>scfish</code> with the filter matched about 8 times faster than <code>grep -F</code> at 6,624 anchors (311–313 against 38.7–39.0 MB/s). Yet over the whole library it gained only 1.4 times, 462 s to 324 s. The matcher was no longer the slowest part. A single <code>paste | awk</code> was handing out 57 GB at about 176 MB/s, and 57 GB at that speed is the 324 s.</p>
+  <p>Removing the fan-out halved the time. And the last row shows where the limit went next: with 120 times more anchors and 94 times more hits, the run took half as long, not longer. If matching were the limit, that could not happen. What had changed in its favour was that the files were already in memory. So the time goes on <b>getting the data in</b>: fetching it from storage, unpacking it, and splitting it into records. That reading is our inference from whole runs, because the stages were not timed one by one. Nor is rapidgzip against igzip in the two middle rows a clean comparison, since the first of those runs read cold files.</p>
+  <p>Unpacking really can be the wall, and tools differ a lot. Speed for one 28.5 GB file on that node, in MB/s of unpacked data:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Decompressor</th><th>MB/s</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td><code>zcat</code></td><td>290</td><td>the ordinary gzip tool</td></tr>
+      <tr><td><code>pigz -dc</code></td><td>326</td><td><a href="https://github.com/madler/pigz/blob/master/pigz.1">Its manual</a>: "Decompression can't be parallelized", so it uses one thread to unpack and helpers for reading, writing and checking</td></tr>
+      <tr><td><code>igzip -dc</code></td><td>835</td><td>gzip-like tool from Intel's <a href="https://github.com/intel/isa-l">ISA-L</a> library</td></tr>
+      <tr><td><code>rapidgzip -P 8</code> / <code>-P 28</code></td><td>1,189 / 3,931</td><td>parallel decompression that works on ordinary gzip files (<a href="https://github.com/mxmlnkn/rapidgzip">Knespel and Brunst, 2023</a>)</td></tr>
+    </tbody>
+  </table></div>
+
+  <div class="tool" id="s05-pp-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-pp-h">The slowest stage sets the speed</h3></div>
+    <p class="tool-note">Data flow through five stages, all working at once, on 57 GB of unpacked reads. All speeds are in MB/s of unpacked data, so "read" counts the file as if it were 4 times bigger, and "write" is high because only hits are written. Drag a stage, or load a case. <b>In the cases, read, write and the many-thread scan speeds are toy values</b>; the limiting stage of each case comes from the lab notes.</p>
+    <div class="seg" role="group" aria-label="Example cases" style="align-self:flex-start;flex-wrap:wrap"><button type="button" id="s05-pp-c0" aria-pressed="false">grep, huge anchor list</button><button type="button" id="s05-pp-c1" aria-pressed="true">scfish fan-out</button><button type="button" id="s05-pp-c2" aria-pressed="false">scfish2, files already in memory</button></div>
+    <div class="controls" id="s05-pp-ctl"></div>
+    <div class="svgbox"><svg id="s05-pp-svg" viewBox="0 0 900 250" width="100%" style="min-width:620px" role="img" aria-label="Five pipeline stages drawn as pipe sections; the band of data flowing through all of them is as wide as the narrowest stage"></svg></div>
+    <div class="readout" id="s05-pp-read" aria-live="polite"></div>
+    <div class="note" id="s05-pp-out" aria-live="polite"></div>
+  </div>
+
+  <p>The toy is a little kinder than the real tool. In paired mode <code>scfish2</code> reads a batch, then scans it, then writes it, so its own reading and scanning take turns. Only the decompressor runs alongside, and it pauses when the pipe between them is full. The long-read mode of the tool does better: it reads the next batch during the scan, and reads in big blocks rather than line by line. The lab notes name the line-by-line FASTQ reader as the remaining limit of paired mode, with 330–725 MB/s. Those two figures match the speed of whole runs (57 GB in 172 s and in 79 s), so they are not a separate test of the reader.</p>
+
+  <div class="note"><b>In our projects.</b> A genome-wide search in the Russian desman <i>Desmana moschata</i> shows the limit moving. The reads were 140 GB as gzip, with 396,326 anchors for 66,963 gaps, 16 matchers, on a server without igzip. <code>grep -F</code> was matching-bound while <code>pigz</code> sat mostly idle; we stopped it at 76 minutes, about 45 % through, with a projected total of about 2.8 hours. <code>scfish</code> with the filter finished in 43 minutes with 18,161,922 pairs, and now <code>pigz</code> was the limit.</div>
+
+  <p>The general habit is worth more than the tool: before you make a step faster, find out whether it is the slowest one. Next, we leave exact words behind. <a href="#s06">Alignment</a> asks how similar two sequences are, and no hash set can answer that.</p>
+</section>

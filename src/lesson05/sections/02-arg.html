@@ -1,0 +1,160 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>What an ancestral recombination graph is</h2>
+  <p class="lede">With many genomes we can ask more than how fast two lineages meet. We can ask who is related to whom, at every position of a chromosome, and when their ancestors lived. The answer is not one family tree but a long series of trees that change along the sequence. Joined together, these trees form an <dfn>ancestral recombination graph</dfn> (ARG). This section explains what that object is. The next one, <a href="#s03">ARG tools</a>, shows how programs try to estimate it from real data.</p>
+
+  <h3>One position, one tree</h3>
+  <p>A nucleotide is inherited from exactly one parent, so each position in a sample of chromosomes has a single line of descent back through time. Follow these lines from several sampled copies and they join at common ancestors. The result is a tree, as in <a href="../04-demography/#s01">lesson 4</a>, but with more than two tips. It is called the <dfn>local tree</dfn> of that position. The tips here are <span class="tip" title="Haplotype: one copy of a chromosome, as opposed to the diploid pair an animal carries. Three diploid animals give six haplotypes.">haplotypes</span>, single copies of a chromosome, so three diploid animals give six tips.</p>
+  <p>Neighbouring positions usually travelled together through the same ancestors, so they share a tree. But at a crossover, an offspring chromosome took its left part from one parental chromosome and its right part from the other. The two sides of that point, the <dfn>breakpoint</dfn>, have different ancestors from there on back.</p>
+
+  <h3>Recombination cuts one branch and moves it</h3>
+  <p>The tree on the right of a breakpoint is not a new, unrelated tree. It equals the tree on the left except for one branch, which is cut off and re-attached elsewhere. Computer scientists call this a <dfn>subtree prune and regraft</dfn>. Three things can happen:</p>
+  <ul>
+    <li><b>The shape changes.</b> The branch joins a different part of the tree, so the groups of closest relatives change.</li>
+    <li><b>Only an age changes.</b> The branch joins the same branch again, higher or lower. Shape stays, age of one junction moves.</li>
+    <li><b>Nothing changes.</b> The lineage comes back to the same ancestor. The recombination really happened, but no tree shows it. The same is true of a breakpoint in a stretch of an ancestor that passed nothing on to the sample.</li>
+  </ul>
+
+  <div class="tool" id="s02-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note"><b>Walk along a chromosome.</b> A simulated 100 kb stretch in six haplotypes. Every history here is drawn at random from the model, and its true breakpoints are known.</span></div>
+    <figure id="s02-fig">
+      <div class="controls">
+        <div><div class="tool-note">History</div>
+          <div class="seg" id="s02-model" role="group" aria-label="Population history">
+            <button type="button" data-m="large" aria-pressed="true">One large population</button><button type="button" data-m="small" aria-pressed="false">One small population</button><button type="button" data-m="two" aria-pressed="false">Two populations</button>
+          </div></div>
+        <label>Recombination rate, per base per generation
+          <input type="range" id="s02-rr" min="0.5" max="3" step="0.5" value="1" aria-label="Recombination rate">
+          <output id="s02-rr-out">1.0 × 10⁻⁸</output></label>
+        <button type="button" class="btn" id="s02-new">New history</button>
+      </div>
+      <div class="svgbox"><svg id="s02-strip" viewBox="0 0 900 150" width="100%" style="min-width:640px;cursor:pointer" role="img" aria-label="The sequence divided into stretches that each have one local tree, with the mean age of all pairs plotted along it"></svg></div>
+      <div class="legend">
+        <span><i style="background:var(--het)"></i>breakpoint: shape changed</span>
+        <span><i style="background:var(--accent)"></i>breakpoint: only an age changed</span>
+        <span><i style="background:var(--muted)"></i>recombination that left no trace</span>
+        <span><i style="background:var(--bad)"></i>where you are</span>
+      </div>
+      <div class="slider-row">
+        <label for="s02-pos">Position</label>
+        <input type="range" id="s02-pos" min="0" max="99999" step="1" value="0">
+        <output id="s02-pos-out">0.0 kb</output>
+        <button type="button" class="btn" id="s02-prev">Previous breakpoint</button>
+        <button type="button" class="btn" id="s02-next">Next breakpoint</button>
+      </div>
+      <div class="svgbox"><svg id="s02-trees" viewBox="0 0 900 292" width="100%" style="min-width:680px" role="img" aria-label="The local tree at the current position, beside the tree on the left of the last breakpoint. The branch that moved is highlighted."></svg></div>
+      <p class="tool-note" id="s02-verdict" aria-live="polite"></p>
+      <div class="readout">
+        <div><b id="s02-r-tree"></b>local tree</div>
+        <div><b id="s02-r-root"></b>age of this tree's root (its <span class="tip" title="Time to the most recent common ancestor of all six haplotypes at this position.">TMRCA</span>)</div>
+        <div><b id="s02-r-vis"></b>recombinations that changed a tree</div>
+        <div><b id="s02-r-hid"></b>recombinations that left no trace</div>
+      </div>
+      <figcaption><b>Local trees of one simulated history.</b> Thick orange branches are the ones that moved at the last breakpoint. Blue tips (h1 to h3) and purple tips (h4 to h6) matter only in the "Two populations" history. Toy values: N = 1,000 or 250 diploid individuals, sequence 100 kb. In "Two populations", two groups of N = 1,000 separated 1,500 generations ago and never exchanged migrants.</figcaption>
+    </figure>
+    <p class="tool-note"><b>What to notice.</b> (1) Step through the breakpoints: each time, one branch moves and the rest of the tree stays. (2) The closest relative of a haplotype changes along the sequence, so "h2 is closest to h5" is true only of a stretch. (3) Root age jumps up and down although the history of the population is the same everywhere. (4) Raise the recombination rate: more trees, each covering less sequence. (5) Choose the small population: trees get shallow and there are fewer of them, because the lineages meet before many recombinations can happen.</p>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: why one family tree is not enough</summary><div class="in">
+    <p>Think of your own genome. Your pedigree has one shape, but your left half of chromosome 1 may come from your grandmother and the right half from your grandfather. Ask "who is my ancestor?" and the honest answer is "for which position?". Two cousins may share a grandmother on one stretch and share nothing recent on the next stretch.</p>
+    <p>The same is true in a population of voles. Take six chromosomes and write down their closest relatives at three places:</p>
+    <div class="toy">position     12 kb    47 kb    83 kb
+h1 closest   h2       h2       h5
+h3 closest   h4       h6       h6</div>
+    <p>Each column is one local tree, seen from two tips (these rows are an illustration, not output of the simulation). Reading a table like this as "one tree for the species" would throw away most of what the genome records. Every local tree is a separate, though not independent, sample of the population's history. That is why many positions together say more than one gene tree.</p>
+    <p>Markers that do not recombine, such as mitochondrial DNA, are the exception: they have a single tree (<a href="#s07">s07</a>).</p>
+  </div></details>
+
+  <h3>From many trees to one graph</h3>
+  <p>All these local trees can be laid on top of each other. Shared branches fall on the same line, and at each recombination one line splits in two going back in time, because one chromosome had two parents. This network is the ARG: an ancestral recombination graph encodes all local trees along the genome for a given sample. Going backwards in time, lineages merge at <dfn>coalescence</dfn> events and split at <dfn>recombination</dfn> events. Hudson described this process and Griffiths and Marjoram later gave the graph its name.</p>
+
+  <figure>
+    <div class="svgbox"><svg viewBox="0 0 900 270" width="100%" style="min-width:640px" role="img" aria-label="A small graph of three haplotypes with one recombination, and the two local trees that can be read from it">
+      <text x="20" y="16" class="lab">The ARG: one object</text>
+      <text x="430" y="16" class="lab">Left of the breakpoint x</text>
+      <text x="670" y="16" class="lab">Right of the breakpoint x</text>
+      <!-- graph: a(90) c(200) b(310), recombination R above c, P joins a and R, Q joins b and R, G root -->
+      <g style="fill:none;stroke-width:2.5">
+        <path d="M90 230V120H145" style="stroke:var(--fg)"/>
+        <path d="M310 230V90H255" style="stroke:var(--fg)"/>
+        <path d="M200 230V170" style="stroke:var(--fg)"/>
+        <path d="M200 170C180 160 150 150 145 120" style="stroke:var(--accent)"/>
+        <path d="M200 170C220 150 250 130 255 90" style="stroke:var(--het)"/>
+        <path d="M145 120V40H200" style="stroke:var(--fg)"/>
+        <path d="M255 90V40H200" style="stroke:var(--fg)"/>
+      </g>
+      <circle cx="200" cy="170" r="6" style="fill:var(--bad)"/>
+      <circle cx="145" cy="120" r="4" style="fill:var(--fg)"/><circle cx="255" cy="90" r="4" style="fill:var(--fg)"/><circle cx="200" cy="40" r="4" style="fill:var(--fg)"/>
+      <text x="90" y="248" text-anchor="middle" class="lab">a</text><text x="200" y="248" text-anchor="middle" class="lab">c</text><text x="310" y="248" text-anchor="middle" class="lab">b</text>
+      <text x="212" y="182">recombination at x</text>
+      <text x="108" y="112">P</text><text x="264" y="86">Q</text><text x="208" y="34">G</text>
+      <text x="96" y="168" style="fill:var(--accent)">left of x</text><text x="256" y="140" style="fill:var(--het)">right of x</text>
+      <!-- left tree ((a,c),b) -->
+      <g style="fill:none;stroke-width:2.5;stroke:var(--fg)">
+        <path d="M460 230V120H500"/><path d="M540 230V120H500"/><path d="M500 120V40H560"/><path d="M620 230V40H560"/>
+      </g>
+      <path d="M540 230V120H500" style="fill:none;stroke:var(--accent);stroke-width:2.5"/>
+      <text x="460" y="248" text-anchor="middle" class="lab">a</text><text x="540" y="248" text-anchor="middle" class="lab">c</text><text x="620" y="248" text-anchor="middle" class="lab">b</text>
+      <text x="486" y="112">P</text><text x="568" y="34">G</text>
+      <!-- right tree (a,(c,b)) -->
+      <g style="fill:none;stroke-width:2.5;stroke:var(--fg)">
+        <path d="M700 230V40H760"/><path d="M860 230V90H820"/><path d="M820 90V40H760"/>
+      </g>
+      <path d="M780 230V90H820" style="fill:none;stroke:var(--het);stroke-width:2.5"/>
+      <text x="700" y="248" text-anchor="middle" class="lab">a</text><text x="780" y="248" text-anchor="middle" class="lab">c</text><text x="860" y="248" text-anchor="middle" class="lab">b</text>
+      <text x="828" y="84">Q</text><text x="768" y="34">G</text>
+    </svg></div>
+    <figcaption><b>One graph, two trees.</b> Three haplotypes and one recombination in the history of c. Time runs upwards. To the left of x, c descends from P and is closest to a. To the right of x, c descends from Q and is closest to b. Follow only the blue path, or only the orange one, and a plain tree falls out of the graph. In each tree the node that lost its partner (Q on the left, P on the right) is not a branching point, so it is not drawn.</figcaption>
+  </figure>
+
+  <h3>Tree sequences: the same object as two tables</h3>
+  <p>Writing every local tree separately would repeat almost everything, because neighbouring trees are nearly identical. A <dfn>tree sequence</dfn> (or succinct tree sequence) avoids this. A <b>node table</b> lists each ancestor once with its age. An <b>edge table</b> lists each parent-child branch once, with the stretch of sequence over which that branch exists. To get the tree at a position, take the rows that cover it. The format also has tables for sites and mutations, so the variants of a data set can be kept on the trees.</p>
+
+  <figure>
+    <div class="grid2 s02-tb">
+      <div><div class="tool-note"><b>Edge table</b></div><div class="s02-scroll"><table><thead><tr><th>left kb</th><th>right kb</th><th>parent</th><th>child</th></tr></thead><tbody id="s02-edges"></tbody></table></div></div>
+      <div><div class="tool-note"><b>Node table</b></div><div class="s02-scroll"><table><thead><tr><th>node</th><th>age, generations</th></tr></thead><tbody id="s02-nodes"></tbody></table></div></div>
+    </div>
+    <div class="readout">
+      <div><b id="s02-c-trees"></b>local trees in this history</div>
+      <div><b id="s02-c-sep"></b>rows if each tree were stored alone (10 branches per tree)</div>
+      <div><b id="s02-c-ts"></b>rows in the edge table</div>
+    </div>
+    <figcaption><b>The history you are walking through, as tables.</b> Highlighted rows make up the tree at the red line; move the position above and watch them change. Nothing else is stored: the drawing above is built from these rows. With six haplotypes the saving is modest. It grows with sample size, because a tree change typically affects only a few branches, however large the tree is.</figcaption>
+  </figure>
+
+  <p>The tools for this format are <code>msprime</code>, which simulates, and <code>tskit</code>, which stores and analyses. This is the same kind of toy in a few lines of Python:</p>
+  <div class="code"><button type="button">copy</button><pre>import msprime
+ts = msprime.sim_ancestry(samples=3, population_size=1000, sequence_length=100_000,
+                          recombination_rate=1e-8, random_seed=5)
+print(ts.num_trees, ts.num_nodes, ts.num_edges)   <span class="c"># one line of counts</span>
+for tree in ts.trees():                           <span class="c"># walk along the sequence</span>
+    print(tree.interval.left, tree.interval.right, tree.tmrca(0, 1))</pre></div>
+
+  <p class="note"><b>Is a tree sequence an ARG?</b> Words differ between authors. A full ARG holds the events themselves: every recombination and when it happened. A basic tree sequence holds their outcome, the local trees and which parts they share, and it does not say when a recombination happened. It can be extended to hold those events too. <a href="#s03">Relate</a> gives a series of trees without shared nodes, and whether such a series is truly an ARG is, as one review puts it, a matter of definition.</p>
+
+  <h3>One object, many questions</h3>
+  <p>Once the local trees are there, questions that used to need separate methods become questions asked of one object:</p>
+  <dl class="defs">
+    <dt>Population size through time</dt><dd>The rate of coalescence at a time is inversely proportional to <span class="tip" title="Effective population size, see lesson 4.">N<sub>e</sub></span> at that time. So the density of coalescences in the ARG, slice by slice through time, gives N<sub>e</sub>(t). A pair of haplotypes along the genome is the view PSMC has (<a href="../04-demography/#s03">lesson 4</a>); an ARG holds this for every pair at once.</dd>
+    <dt>Split times</dt><dd>Compare coalescence within groups and between groups. Two populations separated at some time, with no gene flow since, cannot have a between-group ancestor younger than that time. Relate estimates split times this way, with cross-coalescence rates.</dd>
+    <dt>Selection</dt><dd>Lineages carrying a favoured allele coalesce unusually quickly, so the tree around that allele has a dense burst of young coalescences. Balancing selection works the other way and leaves unusually old ancestors. <a href="#s06">s06</a> covers these tests.</dd>
+  </dl>
+
+  <div class="tool explain">
+    <div class="tool-head"><span class="tool-tag">Read it</span><span class="tool-note"><b>Ask the same history two questions.</b> This uses the history chosen above, with all 15 pairs of haplotypes at all positions. Change the history in the first figure and this one follows.</span></div>
+    <figure>
+      <div class="svgbox"><svg id="s02-hist" viewBox="0 0 900 210" width="100%" style="min-width:640px" role="img" aria-label="Distribution of pair ages for pairs inside a group and pairs between groups"></svg></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>pairs inside a group (h1-h3, or h4-h6)</span><span><i style="background:var(--rep)"></i>pairs between the groups</span></div>
+      <div class="readout">
+        <div><b id="s02-q-n"></b>N read from the trees: half the mean age of pairs inside a group. <span id="s02-q-ntrue"></span></div>
+        <div><b id="s02-q-y"></b>youngest ancestor of any between-group pair. <span id="s02-q-ytrue"></span></div>
+      </div>
+      <figcaption><b>Ages of pairs, weighted by how much sequence each tree covers.</b> Each colour sums to one. Half the mean pair age estimates N only in a constant-size population, where a pair's expected age is 2N generations; real tools estimate a rate in each time slice instead.</figcaption>
+    </figure>
+    <p class="tool-note"><b>What to notice.</b> (1) In "Two populations", no purple bar lies to the left of the dashed line: the youngest between-group age is always older than the true split, usually by a few hundred generations. In the other histories the two colours overlap, because the groups mean nothing. (2) Press <b>New history</b> several times: the estimate of N swings widely, because 100 kb holds few independent trees. A genome has far more. (3) The pale red band in the first figure marks the lowest stretch of mean pair age. There is one in every history, including those with no selection at all. A dip alone is not a sweep: a scan must ask how unusual it is against the rest of the genome.</p>
+  </div>
+
+  <p class="note warn"><b>Nobody observes an ARG.</b> Everything above used a known history. Real data give only the variants, and they say little about any one tree. In humans the mutation and recombination rates are similar, so on average each mutation that could inform a tree comes with a recombination that changes it. Of the recombination events that change the graph, only a small proportion can be detected from data, and even then their timing and breakpoints are approximate. A count of recombinations made from sequences is often far below the true number. An ARG in a file is therefore an estimate. Treating one inferred ARG as the truth gives false certainty, and it can be biased if the true history differs from what the method assumed. <a href="#s03">s03</a> compares the tools with this in mind.</p>
+
+  <p class="tool-note">Sources: Wong et al. 2024 (<i>Genetics</i>), Lewanski et al. 2024 (<i>PLoS Genet</i>), Nielsen et al. 2025 (<i>Nat Rev Genet</i>), Kelleher et al. 2016 (<i>PLoS Comput Biol</i>), Speidel et al. 2019 (<i>Nat Genet</i>), Brandt et al. 2024 (<i>Genome Biol Evol</i>), Hudson &amp; Kaplan 1985 (<i>Genetics</i>, abstract only), the tskit documentation. Links and quoted sentences are in the notes file. The toy simulator is checked against msprime and tskit.</p>
+</section>

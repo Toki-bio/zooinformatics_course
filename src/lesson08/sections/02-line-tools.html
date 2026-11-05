@@ -1,0 +1,106 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>Line tools: grep to agrep</h2>
+  <p class="lede">The oldest way to search a sequence file is the same tool you use on any text: <code>grep</code>. It is fast, it is already installed, and for a short exact <span class="tip" title="Motif: a short sequence pattern, such as a primer, a restriction site or a binding site.">motif</span> it is often all you need. But <code>grep</code> was built for text, and a sequence file is not text in the way it expects. This section shows the tools in the grep family, what each one adds, and the five ways they quietly give a wrong answer on FASTA.</p>
+
+  <h3>The family</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>What it adds</th><th>Errors allowed?</th><th>Strands</th></tr></thead>
+    <tbody>
+      <tr><td><code>grep</code></td><td>Prints the <b>lines</b> that contain the pattern. The pattern is a <span class="tip" title="Regular expression: a small language for patterns, for example A{2}C means two A then C, and GG[CT]TT means GG, then C or T, then TT.">regular expression</span> by default.</td><td>no</td><td>the pattern as typed</td></tr>
+      <tr><td><code>grep -F</code></td><td>Pattern is a fixed string, not a regular expression. The older command names <code>fgrep</code> and <code>egrep</code> still work but are deprecated: GNU grep 3.8 (2022) made them print warnings and they are planned for removal.</td><td>no</td><td>as typed</td></tr>
+      <tr><td><code>grep -E</code>, <code>grep -P</code></td><td><code>-E</code>: extended regular expressions. <code>-P</code>: Perl-style regular expressions (look-around, for example).</td><td>no</td><td>as typed</td></tr>
+      <tr><td><code>rg</code> (ripgrep)</td><td>A separate program with the same idea. It skips hidden files, files listed in <code>.gitignore</code> and binary files by default, and reads compressed files only when you add <code>-z</code>.</td><td>no</td><td>as typed</td></tr>
+      <tr><td><code>seqkit grep</code></td><td>Knows FASTA and FASTQ. With <code>-s</code> it searches the <b>sequence</b> of each record, however the record is wrapped, and reads gzip files directly.</td><td>mismatches only, with <code>-m</code> (no insertions or deletions)</td><td>both, unless you add <code>-P</code></td></tr>
+      <tr><td><code>agrep</code> (TRE)</td><td>Approximate grep: lines that match within <i>k</i> errors, where an error is a substitution, an insertion or a deletion.</td><td>yes, <code>-1</code> to <code>-9</code> or <code>-E NUM</code></td><td>as typed</td></tr>
+    </tbody>
+  </table></div>
+  <p>Every row except <code>seqkit grep</code> works on <b>lines</b>. The GNU manual says it directly: since newline also separates patterns, "there is no way to match newline characters in a text". Everything that goes wrong below follows from that.</p>
+
+  <div class="tool explain" id="s02-tool">
+    <div class="tool-head"><span class="tool-tag">Explain</span><h3 id="s02-h">What does a line-based search miss?</h3></div>
+    <p class="tool-note">A toy 121-bp sequence is printed in lines of the width you choose, like a FASTA file. Type a pattern (letters A, C, G, T, N). Three counts follow. <b>Line search</b> is what <code>grep -o</code> on the wrapped file finds. <b>Unwrapped, one strand</b> searches the joined sequence for the pattern as typed. <b>Both strands</b> adds the <span class="tip" title="Reverse complement: the same stretch of DNA as read from the other strand: the pattern written backwards, with A and T swapped and C and G swapped. Trap 2 below.">reverse complement</span> of the pattern. Matches in green are found by the line search; orange matches are cut by a line break; red matches are on the other strand.</p>
+    <div class="controls">
+      <label>pattern<input type="text" id="s02-pat" value="GGCTTAACCGATTAC" maxlength="30" spellcheck="false" autocomplete="off" style="font-family:var(--f-mono);width:240px"></label>
+      <label>line width (bp)<select id="s02-w"><option>10</option><option selected>17</option><option>25</option><option>60</option><option value="121">121 (one line)</option></select></label>
+      <button type="button" class="btn" id="s02-rc">use reverse complement</button>
+    </div>
+    <div class="toy" id="s02-view" aria-label="Wrapped toy sequence with matches highlighted"></div>
+    <div class="legend"><span><i style="background:var(--good);height:10px"></i>found by line search</span><span><i style="background:var(--rep);height:10px"></i>split by a line break (missed)</span><span><i style="background:var(--bad);height:10px"></i>other strand (missed)</span></div>
+    <div class="readout" id="s02-out" aria-live="polite"></div>
+    <div class="note" id="s02-msg" aria-live="polite"></div>
+  </div>
+
+  <h3>Trap 1: wrapped lines</h3>
+  <p>FASTA files are usually wrapped at 60 or 80 letters per line, so a motif that crosses a line end is split in two and no line contains all of it. A toy file, with the pattern <code>GGCTTAACCGATTAC</code> crossing the end of the first line of <code>seq1</code> (the file is shown first):</p>
+  <div class="code"><button type="button">copy</button><pre>&gt;seq1 toy
+ACGTTGCAAGGCTTAAC
+CGATTACAGGGATCCTA
+GGCATTTACGCGAATTC
+&gt;seq2 toy
+TTGAGCTCCCTGTAATC
+GAGTTCCTAGCATGCAA</pre></div>
+  <div class="code"><button type="button">copy</button><pre>$ grep -c GGCTTAACCGATTAC toy.fa
+0
+$ awk '/^&gt;/{if(s)print s;print;s="";next}{s=s $0}END{print s}' toy.fa &gt; flat.fa
+$ grep -c GGCTTAACCGATTAC flat.fa
+1</pre></div>
+  <p>The <code>awk</code> line joins the sequence lines of each record into one line. It is the cheap fix. Join <b>per record</b>, as the <code>awk</code> does: removing every newline from the whole file would glue the end of one record to the start of the next and could create matches that exist in no sequence. <code>seqkit grep -s</code> avoids the problem because it reads records, not lines.</p>
+
+  <h3>Trap 2: the other strand</h3>
+  <p>DNA is double-stranded and a copy of a motif can sit on either strand. <code>grep</code> looks for the text you typed. The reverse complement is the pattern read backwards with A and T swapped and C and G swapped; here it is <code>GTAATCGGTTAAGCC</code>, and you have to search for it separately:</p>
+  <div class="code"><button type="button">copy</button><pre>$ echo GGCTTAACCGATTAC | awk '{o="";for(i=length;i&gt;0;i--)o=o substr($0,i,1);print o}' | tr ACGT TGCA
+GTAATCGGTTAAGCC
+$ grep -c GTAATCGGTTAAGCC flat.fa     # the toy file has no copy on this strand
+0</pre></div>
+  <p><code>seqkit grep -s -p PATTERN</code> does this for you: its help says that when searching by sequence "both positive and negative strands are searched" and that <code>-P</code> restricts it to the positive strand. This was read from the <code>seqkit</code> 2.14.0 help and source. <code>seqkit</code> is not installed on the machine where we ran the other commands, so its commands on this page were <b>not run</b>.</p>
+
+  <h3>Trap 3: compressed files</h3>
+  <p>Sequencing data usually comes as <code>.fastq.gz</code>. The letters in a gzip file are not the letters of the sequence, so <code>grep</code> on it finds nothing. Decompress into a pipe:</p>
+  <div class="code"><button type="button">copy</button><pre>$ grep -c TAAC toy.fa.gz
+0
+$ gzip -dc toy.fa.gz | grep -c TAAC
+1
+$ rg -c TAAC toy.fa.gz       # no -z: nothing is printed, exit status 1
+$ rg -z -c TAAC toy.fa.gz
+1</pre></div>
+  <p>A zero without an error message is the dangerous part: it looks like "the motif is not in the data".</p>
+
+  <h3>Trap 4: one pattern or many</h3>
+  <p><code>-f FILE</code> reads one pattern per line and prints lines that match <b>any</b> of them. Add <code>-F</code> when the patterns are plain letters, so they are not read as regular expressions:</p>
+  <div class="code"><button type="button">copy</button><pre>$ printf 'TAAC\nGGGATCC\n' &gt; pats.txt
+$ grep -F -f pats.txt toy.fa
+ACGTTGCAAGGCTTAAC
+CGATTACAGGGATCCTA
+$ printf 'TAAC\n\n' &gt; p2.txt      # a blank line sneaked in
+$ grep -c -F -f p2.txt toy.fa
+7</pre></div>
+  <p>The last result is every line of the file (7), because a blank line is an empty pattern and the empty pattern matches everywhere. The GNU manual says "the empty regular expression matches the empty string"; a stray blank line in a pattern file is a common cause of "everything matched". The output also does not say <i>which</i> pattern matched a line.</p>
+
+  <h3>Trap 5: counting versus extracting, and the locale</h3>
+  <p><code>-c</code> counts <b>lines</b>, not matches; ripgrep's guide says the same ("a count of total matched lines"). <code>-o</code> prints each match on its own line, so counting those counts matches:</p>
+  <div class="code"><button type="button">copy</button><pre>$ printf 'AAAAAA\n' | grep -c AA
+1
+$ printf 'AAAAAA\n' | grep -o AA | wc -l
+3</pre></div>
+  <p><code>-o</code> finds matches that do not overlap, so <code>AAAAAA</code> holds 3 hits of <code>AA</code>, not 5.</p>
+  <p>The <b>locale</b> is the setting that tells programs which alphabet and sort order to use (<code>LANG</code>, <code>LC_ALL</code>). The GNU manual says it changes how character classes and bracket expressions are read, and that the traditional reading is obtained with <code>LC_ALL=C</code>. You will often read that <code>LC_ALL=C grep</code> is also much faster; the manual does not say this. We timed one pattern in a 122 MB text file of 2 million random 60-letter lines with <code>LC_ALL</code> set to <code>C</code>, <code>en_US.UTF-8</code> and <code>C.UTF-8</code>: all three took about 0.44 s. That machine has no <code>en_US</code> locale installed, so the test tells us nothing about a typical Linux server. <b>The speed gain from <code>LC_ALL=C</code> is not verified here.</b> One more locale effect we did see: <code>grep -P</code> refused to run under <code>LC_ALL=C</code> on that machine ("supports only unibyte and UTF-8 locales"), so we ran it with <code>C.utf8</code>.</p>
+
+  <h3>Regular expressions and multi-line search</h3>
+  <p>With <code>-E</code> or <code>-P</code> you can write <code>GG[CT]TT</code> for "GG, C or T, then TT", or <code>A{2}C</code>. Neither is an alignment: the pattern stays exact except where you spell out the choices. Ripgrep can match across line ends if you ask: <code>-U</code> ("permit matches to span multiple lines") lets you write the line break into the pattern:</p>
+  <div class="code"><button type="button">copy</button><pre>$ rg -U 'GGCTTAAC\nCGATTAC' toy.fa
+ACGTTGCAAGGCTTAAC
+CGATTACAGGGATCCTA
+$ rg -c -U 'GGCTTAAC\nCGATTAC' toy.fa
+1</pre></div>
+  <p>This only works if you know where the line break falls, which depends on the wrapping width of the file, so it is not a general fix for Trap 1.</p>
+
+  <h3>Allowing errors: agrep and seqkit</h3>
+  <p>Real copies differ from the pattern. <code>agrep</code> from the TRE library "prints lines approximately matching a pattern". Its manual gives the example <code>agrep -2 optimize foo.txt</code>, which "outputs all lines in file foo.txt that match 'optimize' within two errors". Options <code>-D</code>, <code>-I</code> and <code>-S</code> set the cost of a deletion, an insertion and a substitution, and <code>-B</code> prints only the best-matching records. Like <code>grep</code> it works on records, which by default are lines (<code>-d</code> changes the record delimiter), so the wrapped-line trap applies in full. <code>agrep</code> was <b>not run</b>: it is not installed here, and we read its manual page only.</p>
+  <p><code>seqkit grep -s -p PATTERN -m 2</code> allows up to 2 <b>mismatches</b>. Its help says "Only substitutions are allowed; insertions and deletions are not", and that a single pattern of up to 64 characters with 1 to 4 mismatches uses an optimized search. The help also warns that for large genomes "using mapping/alignment tools would be faster". That points ahead: the later sections of this lesson are about those tools.</p>
+  <p>These tools scan every letter of the file again for each search. For one short motif in a few files that is fine. For millions of patterns, a pattern with gaps, or a genome you will search many times, continue with sections <a href="#s03">03</a> and <a href="#s08">08</a>.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why "grep says zero" is not the same as "it is not there"</summary><div class="in">
+    <p>Think of a file as a long strip of paper cut into rows of equal length and stacked. <code>grep</code> reads one row at a time. If your word starts at the end of one row and finishes on the next, no single row contains it. Joining the rows into one strip fixes that. Searching only for the word as written misses the copy printed on the back of the strip, which is the other strand. And a compressed file is the strip put through a shredder: the letters you search for are not in it until you unpack it.</p>
+    <p>So after a zero from a line tool, ask three questions: is the file wrapped, did I search both strands, and was the file compressed?</p>
+  </div></details>
+</section>

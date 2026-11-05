@@ -1,52 +1,47 @@
 {
  "number": 6,
- "slug": "06-sines-satellites",
- "title": "SINEs and Satellite DNA",
- "eyebrow": "Lesson 6 · short repeats, from one copy to a whole genome",
+ "slug": "06-methylation",
+ "title": "DNA Methylation from Long Reads",
+ "eyebrow": "Lesson 6 · marks on the DNA that the letters do not show",
  "intro": [
-  "Lesson 3 masked repeats so that they would not get in the way of genes. This lesson makes two kinds of repeat the subject. SINEs are short elements that copy themselves through RNA and sit alone, between unique stretches of DNA, in hundreds of thousands of places; satellites are units repeated head to tail in long arrays. We follow a SINE through its life cycle, find every copy of a known family, discover new families, split them into subfamilies with consensus sequences, and use the presence or absence of a copy at the same place in two genomes as a character for phylogenetics. Then we turn to satellites: monomers, arrays and higher-order repeats, satellites built from pieces of SINEs, and why both young SINEs and satellite arrays are where genome assemblies break.",
-  "The examples come from our lab's own work: a rodent SINE family in species A and a close relative (search, de novo discovery and orthologous loci), the shrew-mole SINE Urop, and SINEs and satellites of bats and lizards, with unpublished results marked as such. The tools are the lab's public ones (sear, SubFam, SINEderella, SINE_orth_loc, CLsat_workflow) next to standard programs. Dating of insertions, transposable elements other than SINEs and population genetics of insertion polymorphisms are left for other lessons. Hover over a dotted term to see what it means."
+  "Many cytosines in an animal's genome carry a small methyl group. It does not change the sequence, but it helps keep transposons silent, marks which parent a gene copy came from, changes with tissue and age, and over evolutionary time wears CpG sites away. Long-read machines can see the mark directly on each native DNA molecule. This lesson starts with the biology and how it differs between animal groups, then shows how nanopore and PacBio reads detect methylation and how the calls are stored, how to turn reads into one methylation level per CpG, how to get methylation for each parental copy, how to read it against genes, transposons and satellites, how to compare samples and what epigenetic age clocks need, and how to check and view the results.",
+  "Our own long reads of one rodent species (species A) arrived as plain FASTQ without raw signal or modification tags, so no methylation can be called from them; the lesson uses that as its cautionary example of what to ask a sequencing provider to keep, and works with toy data and public human data instead. The footprint of past methylation is still visible in our data: CpG sites in young bat SINEs change about six times faster than other sites. Bisulfite and array methods are only outlined here, and SINEs and satellites themselves are treated in depth in a later lesson. Hover over a dotted term to see what it means."
  ],
  "steps": [
   {
-   "title": "What a SINE is",
-   "what": "Definition, head-body-tail anatomy, copy and paste through RNA, target site duplications, subfamilies, why insertions are good markers.",
-   "tools": "SINEBase · Rfam · tRNAscan-SE"
+   "title": "What methylation is and why zoologists care",
+   "what": "5mC at CpG, the enzymes, methylation level, 5hmC and 6mA; how lineages differ; CpG depletion and islands; imprinting, X inactivation, clocks and inheritance.",
+   "tools": "CpG observed/expected · CpG island criteria"
   },
   {
-   "title": "Finding copies of a known SINE",
-   "what": "Why seed-based tools miss old copies; Smith-Waterman in genome windows with sear; the identity and length rules; counting loci.",
-   "tools": "sear (sear2k) · ssearch36 · BLAST · minimap2"
+   "title": "How long reads see methylation",
+   "what": "Current and polymerase timing, calling modified bases, the MM/ML tags, why FASTQ loses everything, and what to ask the provider to keep.",
+   "tools": "Dorado · jasmine · MM/ML tags · pod5"
   },
   {
-   "title": "Discovering new SINEs",
-   "what": "Signals a SINE leaves, three ways to collect candidates, the minus bank, the head test against a shuffle null, ends set by unique flanks.",
-   "tools": "SINE-de-novo-genome-scan · AnnoSINE_v2 · SINE_Scan · esl-shuffle"
+   "title": "From reads to per-site methylation",
+   "what": "Aligning without losing the tags, counting reads per CpG, pass thresholds, the bedMethyl columns, and how many reads a level needs.",
+   "tools": "dorado aligner · minimap2 · modkit pileup · pbmm2 · MethBat · pb-CpG-tools"
   },
   {
-   "title": "Families, subfamilies and consensus sequences",
-   "what": "Diagnostic positions versus private decay, consensus rules, chunk consensuses, peeling, assignment by repeated votes.",
-   "tools": "SINE_consensus · SubFam · ViewAlign · SINEderella · COSEG"
+   "title": "Methylation on each parental copy",
+   "what": "Phasing and haplotagging reads, per-copy pileups, imprinting and X inactivation, and why HP1 is not the mother.",
+   "tools": "WhatsHap · LongPhase · modkit pileup --phased · MethPhaser"
   },
   {
-   "title": "Orthologous loci: presence and absence",
-   "what": "Insertions as phylogenetic characters, lineage sorting and homoplasy, matching loci by their flanks, PM/MP/SINE calls.",
-   "tools": "SINE_orth_loc · ComPair.sh · KKSC test"
+   "title": "Repeats, genes and the genome",
+   "what": "The bimodal mammalian pattern, promoters and gene bodies, methylation by transposon age, satellites, and mappability.",
+   "tools": "modkit stats · bedtools · methylartist"
   },
   {
-   "title": "Satellite DNA",
-   "what": "Monomers, arrays and higher-order repeats, the library hypothesis, satellites built from SINEs, dot plots, rotating to a common frame.",
-   "tools": "RepeatExplorer2 · TAREAN · TRF · CLsat_workflow"
+   "title": "Comparing samples",
+   "what": "Differentially methylated regions, replicates versus reads, effect size versus significance, confounders, and epigenetic clocks.",
+   "tools": "modkit dmr · DSS · dmrseq · methylKit · metilene"
   },
   {
-   "title": "Satellites and young SINEs in assemblies",
-   "what": "Why assemblies stop in young SINEs and collapse arrays; measuring arrays from depth and k-mers; checking the assembly with reads.",
-   "tools": "samtools · minimap2 · Jellyfish · HMM-Flagger · NucFreq"
-  },
-  {
-   "title": "A complete SINE study, step by step",
-   "what": "The lab's order of work from known SINEs to orthologous loci, with inputs, outputs and what a finished study delivers.",
-   "tools": "SINEderella · SubFam · sear · SINE_orth_loc · SINEdb"
+   "title": "Quality checks and viewing",
+   "what": "Checking tags and models, call probabilities, coverage and strands, controls, IGV colouring, plots, and what to keep from every run.",
+   "tools": "modkit modbam check-tags · sample-probs · summary · IGV · methylartist"
   }
  ],
  "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."

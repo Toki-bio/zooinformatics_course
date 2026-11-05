@@ -24,8 +24,10 @@ LESSONS = [
     {'number': 2, 'slug': '02-assembly', 'title': 'Genome Assembly'},
     {'number': 3, 'slug': '03-annotation', 'title': 'Repeats, Genes and ROH'},
     {'number': 4, 'slug': '04-demography', 'title': 'Population History from One Genome'},
-    {'number': 5, 'slug': '05-methylation', 'title': 'DNA Methylation from Long Reads'},
-    {'number': 6, 'slug': '06-sines-satellites', 'title': 'SINEs and Satellite DNA'},
+    {'number': 5, 'slug': '05-many-genomes', 'title': 'Population History from Many Genomes'},
+    {'number': 6, 'slug': '06-methylation', 'title': 'DNA Methylation from Long Reads'},
+    {'number': 7, 'slug': '07-sines-satellites', 'title': 'SINEs and Satellite DNA'},
+    {'number': 8, 'slug': '08-search', 'title': 'Searching Sequences'},
 ]
 
 

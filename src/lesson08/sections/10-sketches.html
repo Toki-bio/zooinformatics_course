@@ -1,0 +1,96 @@
+<section aria-labelledby="s10" id="s10-wrap">
+  <h2 id="s10"><span class="n">10</span>Comparing whole data sets</h2>
+  <p class="lede">Sections 02 to 09 asked <i>where</i> in a genome a sequence sits. A different question comes up just as often: <b>how similar are these two data sets, and what is in this one?</b> Are two read sets from the same animal? Does a read file hold bacterial or human DNA? How far apart are two assemblies? None of this needs an alignment. You cut each data set into <span class="tip" title="k-mer: a word of k letters taken from a sequence. A sequence of length L has L - k + 1 overlapping k-mers. Explained in lesson 1.">k-mers</span> (<a href="../01-pre-assembly/#km">lesson 1</a>) and compare the k-mer <em>sets</em>.</p>
+
+  <h3>1. k-mer databases: count once, compare many times</h3>
+  <p>In <a href="../01-pre-assembly/#km">lesson 1</a> you counted the k-mers of a read set to draw a histogram. The counter keeps the result on disk as a <dfn>k-mer database</dfn>: every distinct k-mer and the number of times it was seen. Two counters are in common use, <b>KMC</b> and <b>Meryl</b>. Once the databases exist, a question about two data sets becomes a question about two lists of k-mers.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>KMC</th><th>Meryl</th></tr></thead>
+    <tbody>
+      <tr><td><b>Input</b></td><td>(gzipped) FASTQ or FASTA</td><td>FASTA, FASTQ or raw bases, plain or compressed with gzip, xz or bzip2; any number of files in one count</td></tr>
+      <tr><td><b>Counts a k-mer</b></td><td>if it occurs at least twice by default (the switch <code>-ci</code> changes this)</td><td>every canonical k-mer; filtering by count is a separate action</td></tr>
+      <tr><td><b>Database on disk</b></td><td>two files, <code>.kmc_pre</code> and <code>.kmc_suf</code></td><td>a directory (<code>.meryl</code>); each k-mer carries a count (its "value") and an optional label</td></tr>
+      <tr><td><b>Comparing databases</b></td><td><code>kmc_tools</code>: set operations, transformations and a text dump</td><td>actions such as <code>union</code>, <code>union-sum</code>, <code>intersect</code>, <code>subtract</code>, <code>difference</code> and count filters; <code>meryl-lookup</code> reports which k-mers of a FASTA file are in a database</td></tr>
+      <tr><td><b>Longest k</b></td><td>256 in the current version</td><td>64</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note"><b>Canonical k-mers.</b> A read can come from either strand, so a k-mer and its reverse complement are the same word. Meryl stores only one of the two, the one that sorts first alphabetically, and calls it the <dfn>canonical</dfn> k-mer. The sketch toy below does the same.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># count 21-mers in two read sets, then keep the k-mers present in both</span>
+meryl -k 21 count a_R1.fq.gz a_R2.fq.gz output=a.meryl
+meryl -k 21 count b_R1.fq.gz b_R2.fq.gz output=b.meryl
+meryl intersect output=shared.meryl a.meryl b.meryl</pre></div>
+  <p>A database is exact: no k-mer is lost and the counts are real. That is its strength and its cost, because every comparison reads the whole database again. The rest of this section shows two ways to shrink the problem: screen against a short reference, or keep only a small, fixed sample of each data set.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what "shared k-mers" means</summary><div class="in">
+    <p>Take two short sequences that differ by one letter at the end, and cut them into 3-mers (k = 3 only to keep the example small; real work uses 21 or more, and this toy skips the reverse-complement step):</p>
+    <div class="toy">A: ATGCGTAC  &rarr;  ATG TGC GCG CGT GTA <span class="a">TAC</span>      (6 different 3-mers)
+B: ATGCGTAA  &rarr;  ATG TGC GCG CGT GTA <span class="x">TAA</span>      (6 different 3-mers)
+shared: ATG TGC GCG CGT GTA = 5     all different k-mers: 5 + TAC + TAA = 7</div>
+    <p>The <dfn>Jaccard index</dfn> is the shared k-mers divided by all different k-mers: 5 / 7 = 0.71. It is 1 for identical sets and 0 for sets with nothing in common. In a real 21-mer comparison one substitution destroys up to 21 k-mers in each sequence, the 21 that cover that position, so the Jaccard index drops much faster than the divergence rises. The Mash distance below undoes this effect.</p>
+  </div></details>
+
+  <h3>2. BBDuk: is any of this reference in my reads?</h3>
+  <p><b>BBDuk</b> (from the BBTools package) compares every read with the k-mers of a short reference, such as adapters, <span class="tip" title="PhiX: the small genome of a bacterial virus that Illumina adds to sequencing runs as a control; its reads must be removed.">PhiX</span> or a mitochondrial genome, and splits the reads into two outputs. In its default mode, a read with a matching k-mer goes to <code>outm</code> and the other reads go to <code>out</code>. The k-mer length is <code>k=27</code> by default, and a reference shorter than k cannot be found. Two settings from the tool's own help decide what "match" means: <code>minkmerhits</code> (default 1, so one shared k-mer is enough) and <code>maskmiddle</code> (on by default: the middle base of each k-mer is a wildcard, so a read with a single sequencing error is still found).</p>
+  <div class="code"><button type="button">copy</button><pre>bbduk.sh in=reads.fq.gz ref=mito.fa k=27 \
+         outm=mito_reads.fq.gz out=nuclear_reads.fq.gz stats=stats.txt</pre></div>
+  <p>BBDuk answers "does this read share a k-mer with that reference", and nothing more: there is no alignment and no position.</p>
+
+  <h3>3. Kraken2: whose DNA is this?</h3>
+  <p>When the reference is not one sequence but thousands of genomes, you want to know <em>which</em> genome a read belongs to. <b>Kraken2</b> (Wood, Lu and Langmead, 2019; <a href="../01-pre-assembly/#ct">lesson 1</a> uses it to screen reads) solves this with a lookup table built once. For every k-mer in the reference genomes the table stores the <span class="tip" title="Lowest common ancestor (LCA): the most specific group in the taxonomic tree that contains all the genomes in which the k-mer was seen. A k-mer found in one species only gets that species; one found in two mouse species gets 'mice'; one found in a mouse and a rat gets 'rodents'.">lowest common ancestor</span> of all genomes that contain it. To classify a read, Kraken2 looks up the read's k-mers and picks the branch of the taxonomy tree they point to. To save memory it stores and queries only a sample of the k-mers, their <span class="tip" title="Minimizer: of a run of neighbouring k-mers, the one (or its shorter core) that comes first in a fixed pseudo-random order. Neighbouring k-mers share the same minimizer, so storing minimizers is storing a small, evenly spread sample. See section 08.">minimizers</span> (section 08), in a compact hash table. The manual says this table can occasionally return a wrong answer (false positives in under 1 % of queries) and that confidence thresholds compensate. In the build step the default k-mer length is 35 and the minimizer length 31.</p>
+  <p>The <code>--confidence</code> option decides how many reads stay "unclassified", so it is worth understanding. The manual's own example: a read has 21 k-mers that could be looked up. Sixteen point to taxon 562 (13 and, later, 3 more), four point to its parent 561, and one is not in the database. The label 562 scores 16/21 = 0.76. The label 561 counts every k-mer in its clade, 16 + 4 = 20, so it scores 20/21 = 0.95. With <code>--confidence 0.8</code> the read is moved up from 562 to 561, because 0.76 is below the threshold. Above 20/21 it would be unclassified. A higher threshold gives fewer, safer calls.</p>
+  <div class="code"><button type="button">copy</button><pre>kraken2 --db $DBNAME --threads 8 --confidence 0.1 \
+        --report k2_report.txt --output k2_reads.txt reads.fq</pre></div>
+  <p class="note warn"><b>Check the database before you trust the answer.</b> A read can only be assigned to a group that is in the database. The manual says the default database was 29 GB in January 2018 and needs slightly more than that in memory. Lesson 1 gives the rule that matters for zoologists: the Standard database has no fungi, and a vertebrate read set gives some hits to human or to relatives that are expected, not contamination.</p>
+
+  <h3>4. Sketches: keep only the smallest hashes</h3>
+  <p>Databases and Kraken2 still touch every k-mer. <b>Mash</b> (Ondov et al., 2016, <i>Genome Biology</i> 17:132) goes further: it replaces each data set by a <dfn>sketch</dfn>, a list of (by default) 1000 numbers, and compares data sets by comparing the lists. The idea in four steps:</p>
+  <ol class="steps">
+    <li><div><b>Hash every k-mer.</b><div class="d">A <span class="tip" title="Hash function: a fixed recipe that turns any input into a number that looks random but is always the same for the same input. Section 04 uses one to find k-mers fast.">hash function</span> turns each canonical k-mer into a number. The same k-mer always gives the same number, in whichever data set it occurs, and the numbers of different k-mers look random.</div></div></li>
+    <li><div><b>Keep the <i>s</i> smallest.</b><div class="d">The sketch of a data set is its <i>s</i> smallest hash values (Mash defaults: <i>s</i> = 1000, k = 21). Because the numbers are random, these are a random sample of the data set's k-mers. This way of sampling is called <dfn>MinHash</dfn> ("minimum hash"), and Mash takes its name from it.</div></div></li>
+    <li><div><b>Merge the two sketches.</b><div class="d">Merge the two sorted lists and stop after <i>s</i> different hashes have been seen. This gives the <i>s</i> smallest hashes of the <em>union</em> of both data sets, a random sample of it. Count how many of them are in both sketches. That fraction estimates the Jaccard index <i>j</i> (the Mash documentation writes <code>j = |A<sub>s</sub> &cap; B<sub>s</sub>| / s</code>).</div></div></li>
+    <li><div><b>Convert Jaccard to a distance.</b><div class="d">With the Mash distance formula below.</div></div></li>
+  </ol>
+  <p>Mash derives the distance from a simple model: every position mutates independently with probability <i>d</i>. A k-mer then survives untouched with probability e<sup>&minus;<i>kd</i></sup>, so the share of k-mers kept by both sequences is about e<sup>&minus;<i>kd</i></sup>. The Jaccard index <i>j</i> of two sets of similar size relates to that share by 2<i>j</i>/(1 + <i>j</i>). Solving for <i>d</i>:</p>
+  <div class="formula">D = &minus;(1 / k) &middot; ln( 2j / (1 + j) )          D = 1 when j = 0</div>
+  <p>Two examples at k = 21: <i>j</i> = 0.5 gives <i>D</i> = &minus;ln(2/3)/21 = 0.019, about 1.9 % substitutions; <i>j</i> = 0.9 gives <i>D</i> = 0.0026. The authors present <i>D</i> as an estimate of the mutation rate. On 500 <i>Escherichia</i> genomes, with s = 1000 and k = 21, it matched 1 &minus; ANI (<span class="tip" title="Average nucleotide identity: the identity of the aligned parts of two genomes, found by alignment. The usual measure for deciding whether two bacterial genomes belong to one species.">average nucleotide identity</span>) with a root-mean-square error (a typical error size) of 0.00274, for ANI between 90 and 100 %. They also state that the match degrades for more divergent genomes, because the variance of the estimate grows with distance, and that the formula "carries many assumptions": it does not model insertions, deletions or genes present in only one genome.</p>
+
+  <figure>
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Two toy sequences of 20,000 letters; the second is a copy of the first with random substitutions. Choose the divergence and the sketch size and compare the estimate with the truth.</span></div>
+    <div class="controls">
+      <label>Divergence (substitutions per letter)<input type="range" id="s10-div" min="0" max="200" step="1" value="30" aria-describedby="s10-out"><output id="s10-divv">3.0 %</output></label>
+      <label>Sketch size s (hashes kept)<input type="range" id="s10-sz" min="0" max="8" step="1" value="6" aria-describedby="s10-out"><output id="s10-szv">1000</output></label>
+      <button type="button" class="btn" id="s10-new">New random sequences</button>
+    </div>
+    <div class="svgbox"><svg id="s10-svg" viewBox="0 0 900 170" width="100%" style="min-width:640px" role="img" aria-label="The smallest hash values of sequence A and sequence B drawn as ticks on a line; hashes found in both sketches are coloured differently."></svg></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>hash only in A's sketch</span><span><i style="background:var(--het)"></i>hash only in B's sketch</span><span><i style="background:var(--rep)"></i>hash in both</span></div>
+    <div class="readout" id="s10-out" aria-live="polite"></div>
+    <p id="s10-verdict" class="tool-note"></p>
+    <figcaption><b>How to read it.</b> k = 21 and canonical k-mers, as in Mash. The true Jaccard index is computed from the complete k-mer sets of both sequences. The estimate uses only the two sketches, merged as the Mash documentation describes (stop after <i>s</i> different hashes; shared hashes divided by <i>s</i>). The ticks are drawn only as far as that merge reached. The toy uses its own simple hash function, not Mash's. At small <i>s</i> the estimate jumps around when you press <em>New random sequences</em>; at large <i>s</i> it settles on the true value.</figcaption>
+  </figure>
+  <p id="s10-try">Three things to try. (1) Set the divergence to 8 % and the sketch size to 10, then press the new-sequences button many times: the estimated distance wanders far from the true one, and now and then no shared hash is found at all (<i>j</i> = 0, so <i>D</i> = 1). (2) At size 1000 the estimate stays close to the true value. The Mash documentation gives the error bound of an estimate for sketch size <i>s</i> as &radic;(1/<i>s</i>), about 0.03 at <i>s</i> = 1000. (3) Raise the divergence towards 20 %: almost no 21-mer is left in common, the sketches share few or no hashes, and the estimate becomes unreliable. This is why Mash is used for genomes of one species or genus, not for distant ones.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why the smallest hashes are a fair sample</summary><div class="in">
+    <p>Imagine every different k-mer of the two data sets written on a card, and a stranger who gives each card a random number by a fixed rule, so the same k-mer always gets the same number. Lay all the cards in order of number and keep the first thousand. Those cards are a random sample of all k-mers, not the ones that "start with A" or follow any pattern, because the numbers are random.</p>
+    <p>Now do this separately for data set A and for data set B, with the same rule. A k-mer that is in both gets the same number in both, so it is either among the smallest in both lists or in neither. Merging the two lists and keeping the first thousand different numbers gives the thousand smallest of the union. The fraction of them that appear in both lists is the fraction of the union's k-mers that are in both: the Jaccard index, estimated from a sample of a thousand. A genome of billions of k-mers has become a thousand numbers.</p>
+  </div></details>
+
+  <p><b>Sketching reads.</b> Reads carry sequencing errors, and each error makes new k-mers seen once. The Mash documentation says removing unique or low-copy k-mers usually improves results for read sets (<code>-m 2</code> keeps k-mers seen at least twice) and that <code>-r</code> should be given so that genome size is estimated from the k-mers, not from the file length.</p>
+  <div class="code"><button type="button">copy</button><pre>mash sketch -r -m 2 -k 21 -s 1000 -o reads_a reads_a.fq.gz
+mash sketch -r -m 2 -k 21 -s 1000 -o reads_b reads_b.fq.gz
+mash dist reads_a.msh reads_b.msh      <span class="c"># name, name, distance, p-value, shared hashes</span></pre></div>
+
+  <h3>5. sourmash, briefly</h3>
+  <p><b>sourmash</b> is a Python package whose name plays on Mash. Its README names two features. <b>FracMinHash</b> sketching keeps a fixed <em>fraction</em> of all k-mers instead of a fixed number, which the README says allows accurate comparisons (including ANI) between data sets of different sizes. <b>sourmash gather</b> is a combinatorial k-mer approach for <span class="tip" title="Metagenome: all the DNA in a mixed sample, such as gut contents or soil. Profiling means listing which genomes are in it, and in what amounts.">metagenomic</span> profiling. The README's usage lines are <code>sourmash sketch dna *.fq.gz</code>, then <code>sourmash compare *.sig -o distances.cmp -k 31</code>. We did not run sourmash for this lesson.</p>
+
+  <h3>Which one for which question?</h3>
+  <div class="tbl"><table>
+    <thead><tr><th>Question</th><th>Tool</th><th>What it costs</th><th>What it cannot tell you</th></tr></thead>
+    <tbody>
+      <tr><td>Are these two read sets the same sample, and how many k-mers do they share?</td><td>Meryl or KMC databases, then intersect</td><td>reads all the data once per set; exact</td><td>where the k-mers sit in a genome</td></tr>
+      <tr><td>Which reads contain adapters, PhiX or mitochondrial DNA?</td><td>BBDuk with a short reference</td><td>one pass over the reads</td><td>anything outside the reference</td></tr>
+      <tr><td>Which species or group is each read from?</td><td>Kraken2, with a database that contains the candidates</td><td>a database that must fit in memory</td><td>groups missing from the database</td></tr>
+      <tr><td>How far apart are many genomes or read sets?</td><td>Mash or sourmash sketches</td><td>one small sketch per data set; two sketches are compared by a merge of two sorted lists</td><td>large divergences, insertions and deletions, and where the differences are</td></tr>
+    </tbody>
+  </table></div>
+  <p>When the question is "<i>where</i>", go back to sections 07 and 09. When it is "how similar overall" or "what is in here", count or sketch.</p>
+</section>

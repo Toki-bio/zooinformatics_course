@@ -1,0 +1,9 @@
+.s08-field{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted)}
+.s08-field input{font:14px var(--f-mono);color:var(--fg);background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:5px 8px;text-transform:uppercase;width:210px;max-width:100%;box-sizing:border-box}
+.s08-field input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.s08-btns{display:flex;flex-wrap:wrap;gap:8px}
+.s08-btns .btn{align-self:auto}
+.s08-btns .btn[disabled]{opacity:.45;cursor:default;filter:none}
+.s08-btn2{font:600 13px var(--f-body);background:transparent;color:var(--accent);border:1px solid var(--accent);border-radius:4px;padding:6px 12px;cursor:pointer}
+.s08-btn2:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.s08-small{font-size:13px;color:var(--muted)}

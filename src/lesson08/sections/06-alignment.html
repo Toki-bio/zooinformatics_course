@@ -1,0 +1,144 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Alignment as scoring</h2>
+  <p class="lede">Everything so far looked for letters that agree exactly. Real <span class="tip" title="Homologous: descended from the same ancestral sequence.">homologous</span> sequences do not agree exactly: bases have changed, and pieces have been lost or gained. To compare such sequences we stop asking "is this string here?" and ask "how good is the best way of lining these two up?". That question has a number as its answer: a score. This section shows how the score is defined, how a program finds the best one without trying every possibility, and how to tell a good score from a lucky one.</p>
+
+  <h3>What an alignment and a score are</h3>
+  <p>An <dfn>alignment</dfn> writes two sequences one above the other, with dashes where one has no letter opposite the other. Each column is a claim: these two letters descend from the same ancestral position, or (at a dash) a piece was inserted in one sequence or deleted from the other. A <dfn>score</dfn> adds up the columns: points for a match, a loss for a mismatch, a larger loss for a gap. The alignment with the highest score is called <dfn>optimal</dfn>. It is optimal only for those scores. It is a hypothesis about history, not an observation.</p>
+  <div class="toy">A  G C C A U U G
+   | | |   | . |
+B  G C C - U C G      5 matches, 1 mismatch, 1 gap of length 1</div>
+
+  <h3>Before scoring: the dot plot</h3>
+  <p>The oldest way to compare two sequences needs no scores at all. Put one sequence along the top and the other down the side, and mark every position where they agree. This is a <dfn>dot plot</dfn>: EMBOSS, a standard free package, calls it "an intuitive graphical representation of the regions of similarity between two sequences". Single letters agree by chance one time in four, so the plain plot on the left below is mostly noise. Asking for a run of agreeing letters removes the noise. EMBOSS <code>dotmatcher</code> does this with a window (default 10 positions) and a score threshold; the plot on the right simply requires 8 letters in a row.</p>
+  <div class="grid2">
+    <figure>
+      <div class="svgbox" id="s06-dot1"></div>
+      <figcaption><b>One letter at a time.</b> Every agreeing pair of bases gets a dot. The true relationship is hidden.</figcaption>
+    </figure>
+    <figure>
+      <div class="svgbox" id="s06-dot8"></div>
+      <figcaption><b>Words of 8 letters.</b> Blue: same strand. Orange: reverse complement.</figcaption>
+    </figure>
+  </div>
+  <p>Both plots show the same two invented sequences. B was made from A, and each change draws its own shape; the numbers on the right-hand plot match the list below. These are the shapes that Maizel and Lenk (1981) list as the use of the method: direct repeats, palindromes, transpositions, regions of divergence.</p>
+  <ol class="qlist">
+    <li><b>A diagonal</b> is a shared stretch. It has small breaks where a base was substituted.</li>
+    <li><b>A diagonal that jumps sideways</b> is an insertion or a deletion. Here 12 bases of A are missing from B, so the line moves down by 12.</li>
+    <li><b>Two parallel lines</b> covering the same rows of A are a duplication: 14 bases of A occur twice in B.</li>
+    <li><b>A line running the other way</b> is an inversion. It appears only if the program also compares the reverse complement, as here in orange.</li>
+  </ol>
+  <p>A dot plot shows structure at a glance and is still the quickest check of two sequences. What it does not give is a number, or the single best path through the picture. The rest of this section finds that path.</p>
+
+  <h3>Global alignment: Needleman-Wunsch</h3>
+  <p>In 1970 Needleman and Wunsch set out the two-dimensional array and a way to find the best pathway through it. Their "maximum match" was the largest number of amino acids of one protein that can be matched with those of another "allowing for all possible deletions", and they already allowed a penalty, "a number subtracted for every gap made". Smith and Waterman later described it as the work that "first introduced an iterative matrix method of calculation".</p>
+  <p>The idea, in the form it has today, is <dfn>dynamic programming</dfn>: fill a table in which each cell holds the best score of aligning the two sequences up to that point. The number of possible alignments is astronomical, but no cell needs to know about them. The last column of any alignment can only be one of three things, so each cell looks at its neighbours and takes the best of three:</p>
+  <div class="formula">H(i,j) = the largest of:<br>&nbsp;&nbsp;H(i&minus;1,j&minus;1) + s(a<sub>i</sub>,b<sub>j</sub>)&nbsp;&nbsp;(two letters in one column)<br>&nbsp;&nbsp;H(i&minus;1,j) &minus; gap&nbsp;&nbsp;(a letter of A opposite a dash)<br>&nbsp;&nbsp;H(i,j&minus;1) &minus; gap&nbsp;&nbsp;(a letter of B opposite a dash)</div>
+  <p>Here <i>H(i,j)</i> is the cell for the first <i>i</i> letters of A and the first <i>j</i> letters of B, and <i>s</i> is the score of putting those two letters in one column. <dfn>Global</dfn> alignment means both sequences are aligned from first letter to last, so the answer sits in the bottom right corner. To read the alignment itself, walk back from there, each time to the cell the value came from. This walk is the <dfn>traceback</dfn>. The time needed is proportional to the product of the two lengths (Pearson 2013): double both lengths and the work grows four-fold.</p>
+  <p>Global alignment suits sequences related along their whole length, such as two alleles of a gene. It suits a search badly. A 300-bp SINE copy inside a 100-kb contig is not related to the rest of the contig, and forcing the two ends together only buries the real signal under gap costs.</p>
+
+  <h3>Local alignment: Smith-Waterman</h3>
+  <p>Smith and Waterman (1981) asked for something else: "a pair of segments, one from each of two long sequences, such that there is no other pair of segments with greater similarity". Their whole paper is three pages, and the change to the method is small. A fourth option joins the other three: zero.</p>
+  <div class="formula">H(i,j) = the largest of:<br>&nbsp;&nbsp;H(i&minus;1,j&minus;1) + s(a<sub>i</sub>,b<sub>j</sub>)<br>&nbsp;&nbsp;best gap from above<br>&nbsp;&nbsp;best gap from the left<br>&nbsp;&nbsp;0</div>
+  <p>Zero means: whatever came before was not worth keeping, start a new alignment here. The first row and column are all zeros, so an alignment may start anywhere for free. The traceback starts from the largest value anywhere in the table, not from the corner, and stops at the first zero. Everything outside that path is simply left out.</p>
+
+  <figure>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Example">
+        <button type="button" id="s06-pre-paper" aria-pressed="true">Smith &amp; Waterman 1981</button>
+        <button type="button" id="s06-pre-dna" aria-pressed="false">ssearch36 DNA scores</button>
+      </div>
+    </div>
+    <div class="calc">
+      <label class="wide">Sequence A (down the side; A C G T U, up to 18 letters)<input class="wide" id="s06-a" type="text" maxlength="18" spellcheck="false" autocomplete="off"></label>
+      <label class="wide">Sequence B (along the top)<input class="wide" id="s06-b" type="text" maxlength="18" spellcheck="false" autocomplete="off"></label>
+    </div>
+    <div class="controls">
+      <label>Match <output id="s06-match-o"></output><input id="s06-match" type="range" min="1" max="10" step="1"></label>
+      <label>Mismatch <output id="s06-mis-o"></output><input id="s06-mis" type="range" min="-10" max="0" step="1"></label>
+      <label>Gap open <output id="s06-open-o"></output><input id="s06-open" type="range" min="0" max="40" step="1"></label>
+      <label>Gap extend, per letter <output id="s06-ext-o"></output><input id="s06-ext" type="range" min="0" max="10" step="1"></label>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s06-clear">Clear table</button>
+      <button type="button" class="btn" id="s06-next">Next cell</button>
+      <button type="button" class="btn" id="s06-all">Fill all</button>
+      <button type="button" class="btn" id="s06-trace">Traceback</button>
+      <span class="tool-note" id="s06-pos" aria-live="polite"></span>
+    </div>
+    <div class="svgbox" id="s06-mat"></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px;opacity:.5"></i>higher score</span><span><i style="background:var(--het);height:10px;opacity:.7"></i>highest cell, and traceback path</span><span><i style="background:var(--bad)"></i>selected cell; dashed: the cells it looked at</span></div>
+    <div class="toy" id="s06-cell" aria-live="polite"></div>
+    <div class="readout">
+      <div>Best local score<b id="s06-r-best"></b></div>
+      <div>Local alignment<b id="s06-r-id" style="font-size:14px"></b></div>
+      <div><span class="tip" title="If all four bases are equally common, a random pair of bases matches 1 time in 4 and mismatches 3 times in 4. This is (match + 3 x mismatch) / 4.">Expected score of a random pair</span><b id="s06-r-ex"></b></div>
+      <div><span class="tip" title="The identity level for which these two scores are best suited, for equal base frequencies and no gaps. Calculated by this page from match and mismatch; see Substitution scores below.">Scores suit sequences of</span><b id="s06-r-tgt"></b></div>
+    </div>
+    <p class="warn-text" id="s06-r-warn"></p>
+    <div class="toy" id="s06-aln"></div>
+    <div class="tool-note">Same sequences and scores, global alignment (Needleman-Wunsch rule, end gaps charged), score <b id="s06-glob-s"></b>:</div>
+    <div class="toy" id="s06-glob"></div>
+    <figcaption><b>Fill a Smith-Waterman table.</b> Press <i>Clear table</i>, then <i>Next cell</i> a few times. Click any filled cell to see its four options. The first example is Figure 1 of Smith and Waterman (1981). <span id="s06-scale">Their scores were +1, &minus;1/3 and a gap of 1 + k/3; the page needs whole numbers, so every value here is three times the printed one (10 here is their 3.3). </span>We checked this table against the paper: all 182 cells agree, and so do the maximum and the alignment. Then choose the second example and raise <i>Gap open</i> from 12 towards 40: at some point the gap costs more than the second block earns, and the alignment shrinks to one block.</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: why a table finds the best of millions of alignments</summary><div class="in">
+    <p>Think of a walk through a mountain range, from any valley to the highest point you can reach, where each step adds or takes away height. You want the best route. You do not need to list all the routes. For each crossing you only write down the best height anyone can have on arrival, because a route that arrives lower can never overtake a route that arrives higher on the same crossing. Everything after the crossing is the same for both.</p>
+    <p>Each table cell is such a crossing. In the first example, the cell at row G, column G (the 10th row, the 8th column) looks back and sees that the cell on its diagonal holds 7. G matches G, so 7 + 3 = 10. Nothing else offers more, so the cell keeps 10. Nothing in the table is higher, so this is where the best alignment ends.</p>
+    <p>The zero is the right to give up: if your height falls below sea level, forget the walk and start again from the next valley. This is why local alignment finds a good stretch inside two otherwise unrelated sequences.</p>
+  </div></details>
+
+  <h3>Gap costs: why opening costs more than extending</h3>
+  <p>One deletion can remove many bases at once, so a 10-base gap is not ten times less likely than a 1-base gap. Smith and Waterman allowed any gap weight <i>W<sub>k</sub></i> for a gap of length <i>k</i>, and their example already used 1 + k/3. A cost of this form, a fixed charge for opening plus a smaller charge per letter, is called an <dfn>affine gap cost</dfn>. Altschul's tutorial at NCBI says such costs "have generally proved among the most effective", and also that there is no theory behind the particular numbers: gap scores "have been selected over the years by trial and error". Pearson (2013) agrees: "we do not have an analytical model for gap penalties".</p>
+  <p>Trying every gap length at every cell, as their equation is written, makes the table much slower to fill. With affine costs it is not necessary. Each cell also remembers the best score that ends in a gap from above and the best that ends in a gap from the left, and extending that gap by one letter is a single subtraction. The page's table works this way, and so does the inner loop of ssearch36 (its source keeps these as <code>E</code> and <code>F</code> next to <code>H</code>). Both ways gave identical cell values in our test of 2,000 random pairs.</p>
+  <p>Conventions differ, so read the manual before you copy numbers between tools. In FASTA36 the options are <code>-f</code> (opening) and <code>-g</code> (each residue), and the DNA defaults of &minus;12 and &minus;4 charge a gap of <i>k</i> bases 12 + 4<i>k</i>. A single-base gap therefore costs 16, more than three matches earn.</p>
+
+  <h3>Substitution scores: what the numbers mean</h3>
+  <p>Match and mismatch scores look arbitrary, but they are not. Altschul showed that the scores of any matrix with a negative expected score can be read as a <dfn>log-odds</dfn> ratio: the logarithm of how often a pair of letters occurs in true alignments, divided by how often it would occur by chance. A positive score means "more likely in related sequences than by chance". Pearson (2013) gives this protein example: in <span class="tip" title="BLOSUM62: a standard table of scores for every pair of amino acids, counted from conserved blocks of related proteins.">BLOSUM62</span>, whose unit is half a <span class="tip" title="Bit: one doubling of the odds. 3 bits means 2 x 2 x 2 = 8 times more likely.">bit</span>, aspartate opposite aspartate scores +6, so this pair is 2<sup>3</sup> = 8 times more likely because of homology than by chance. Aspartate opposite leucine scores &minus;4, so that pair is 4 times more likely by chance. The two common protein matrices are BLOSUM62 (default of BLASTP) and BLOSUM50 (default of FASTA and SSEARCH for proteins).</p>
+  <p>Two consequences matter in practice. First, the expected score of a random pair has to be negative. If it is positive, says Pearson, "the alignment will extend to the ends of the sequences, and be global, rather than local". Try it: set mismatch to &minus;1 and match to 5 above, and watch the warning. (The 1981 example sits exactly at zero by design: its authors chose scores whose average for random sequences is zero.) Second, every pair of scores silently states how similar it expects the sequences to be:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Match / mismatch</th><th>Where it is used</th><th>Target identity, Pearson 2013</th><th>Our calculation</th></tr></thead>
+    <tbody>
+      <tr><td><code>+5 / &minus;4</code></td><td>FASTA36 and ssearch36 DNA default</td><td>about 70 %</td><td>65 %</td></tr>
+      <tr><td><code>+2 / &minus;3</code></td><td><code>blastn -task blastn</code> (section <a href="#s07">07</a>)</td><td>90 %</td><td>89 %</td></tr>
+      <tr><td><code>+1 / &minus;3</code></td><td>a stringent setting for nearly identical sequences</td><td>99 %</td><td>99 %</td></tr>
+    </tbody>
+  </table></div>
+  <p>Our column solves the log-odds equation for equal base frequencies and no gaps; the figure above shows the same value live. A stringent pair of scores stops alignments quickly, so a diverged copy breaks into short pieces or disappears. A deep pair follows diverged sequences further, but can run past the true end of the homology, which Pearson calls overextension.</p>
+  <p>For sequences that code for protein, compare proteins if you can. Pearson (2013) puts DNA:DNA look-back at 5 to 10 times shorter than protein:protein, and rarely more than 200 to 400 million years. Altschul's tutorial gives the same warning. Non-coding DNA such as a SINE has no such option, which is why the choice of DNA scores matters there.</p>
+
+  <h3>Is the score good? E-values</h3>
+  <p>A score of 300 means nothing alone: it depends on the scoring system and on how much sequence was searched. Altschul compares a raw score without its scoring system to "citing a distance without specifying feet, meters, or light years". We need to know what chance would produce.</p>
+  <p>A local alignment score is a maximum over a huge number of possible alignments, and maxima of many random values do not follow the normal bell curve. They follow an <dfn>extreme value distribution</dfn>, with a long tail on the high side. Karlin and Altschul (1990) gave the formulas for local alignments without gaps. The <dfn>E-value</dfn> of a score <i>S</i>, for sequences of lengths <i>m</i> and <i>n</i>, is the number of alignments at least this good expected by chance alone:</p>
+  <div class="formula">E = K &middot; m &middot; n &middot; e<sup>&minus;&lambda;S</sup></div>
+  <p>Altschul explains why this has to be the shape. Double the length of either sequence and you double the places where a chance alignment can occur, so <i>E</i> doubles. To reach score 2<i>x</i> an alignment must reach <i>x</i> twice in a row, so <i>E</i> falls exponentially as the score grows. <span class="tip" title="Lambda: the scale of the scoring system. It converts raw score units into natural units. Multiply all scores by 2 and lambda halves.">&lambda;</span> and <span class="tip" title="K: a scale for the size of the search space. It is a constant of the scoring system and the base frequencies.">K</span> are just the natural scales of the scoring system and of the search space. Removing them gives the <dfn>bit score</dfn>, which can be compared between scoring systems:</p>
+  <div class="formula">S&prime; = (&lambda;S &minus; ln K) / ln 2 &nbsp;&nbsp;&nbsp; E = m &middot; n &middot; 2<sup>&minus;S&prime;</sup></div>
+  <p>So every 10 extra bits make a hit about 1,000 times less likely to be chance (Pearson 2013). The chance of at least one such hit, the <dfn>P-value</dfn>, is 1 &minus; e<sup>&minus;E</sup>, which is nearly equal to <i>E</i> when <i>E</i> is small. Here is what that means for a 300-bp query against both strands of a 3-Gb genome, so <i>m</i>&middot;<i>n</i> = 300 &times; 6&times;10<sup>9</sup>:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>E-value</th><th>Bits needed</th><th>Perfect match of</th><th>At 80 % identity, no gaps</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>41</td><td>about 30 bp</td><td>about 46 bp</td></tr>
+      <tr><td>10<sup>&minus;6</sup></td><td>61</td><td>about 44 bp</td><td>about 69 bp</td></tr>
+      <tr><td>10<sup>&minus;10</sup></td><td>74</td><td>about 54 bp</td><td>about 84 bp</td></tr>
+    </tbody>
+  </table></div>
+  <p>This table is our own rough guide. It uses +5/&minus;4 with &lambda; = 0.19, which makes a match worth about 1.4 bits and a mismatch about &minus;1.1, and it ignores K and edge effects. The lesson it teaches is reliable: a short, old fragment cannot reach a safe E-value, however real it is.</p>
+  <div class="note warn"><b>How to read an E-value without fooling yourself.</b>
+    <ul>
+      <li>It depends on the search. The same score found in a database 100 times larger is 100 times less significant, although the two sequences have not changed (Pearson 2013).</li>
+      <li>DNA is harder. Pearson writes that protein hits with E &lt; 0.001 can be trusted, while "DNA:DNA expecation [sic] values &lt; 10<sup>&minus;6</sup> often occur by chance, and 10<sup>&minus;10</sup> is a more widely accepted threshold".</li>
+      <li>It works one way only. A significant score implies common ancestry. A non-significant score does not imply unrelated sequences.</li>
+      <li>The theory is proved only for alignments without gaps. Computer experiments strongly suggest that it holds with gaps too, but then &lambda; and K must be estimated rather than calculated (Altschul's tutorial).</li>
+      <li>Regions of biased composition break the random model and can score high with no homology. Altschul's tutorial describes this for proteins. In DNA we expect the same from poly(A) tails and simple repeats (<a href="../03-annotation/#s04">lesson 3, section 04</a>).</li>
+    </ul>
+  </div>
+
+  <h3>ssearch36: the exhaustive reference</h3>
+  <p>The program ssearch36 in W. R. Pearson's FASTA package (version 36.3.8) compares a query with every sequence of a library by "the Smith-Waterman algorithm". Nothing is skipped: no word has to match first, so a diverged copy with no exact word in common is still scored. That is the difference from the tools in the next section, and it is why ssearch36 is the reference against which you can measure what a faster tool misses.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># DNA query against a FASTA file; one line per hit, E-value and bit score included</span>
+ssearch36 -n -E 0.001 -m 8C query.fa library.fa</pre></div>
+  <p>The cost is the table: every cell of query length times library length is filled, so a 300-bp query against both strands of a 3-Gb genome means about 2&times;10<sup>12</sup> cells. Two things make this practical. Processor instructions that work on many cells at once speed the calculation up 10 to 20 times (manual page), and the FASTA guide puts ssearch36 at "only 2 - 5X slower" than the <span class="tip" title="Heuristic: a method that takes a shortcut. It is fast, but it does not guarantee the best answer.">heuristic</span> <code>fasta36</code>. Threads do the rest (<code>-T</code>).</p>
+  <p>Its statistics differ from BLAST's too. BLAST relies on &lambda; and K estimated in advance for each scoring system. ssearch36 scores every library sequence, so it can fit the chance distribution from the scores of the search itself. That works only if most of the library is unrelated to the query: the guide says the routines "assume that the library contains a large sample of unrelated sequences". Where this fails, <code>-z 11</code> fits the statistics to shuffled copies of the library instead.</p>
+  <p>Global relatives exist as well: <code>ggsearch36</code> does a Needleman-Wunsch search in the same package.</p>
+  <div class="note"><b>In our projects.</b> A SINE family breaks the assumption above: a genome is full of real copies of the query. Our public tool sear2k therefore runs ssearch36 with <code>-z 11</code> on a genome cut into short windows. <a href="../07-sines-satellites/#s02">Lesson 7, section 02</a> explains the command option by option and shows why standard word-based tools miss old copies.</div>
+  <p>Exhaustive search answers "what is the best alignment?" with certainty, at a cost that grows with every base searched. For a whole library of reads, or a genome searched many times, that cost is too high. The next section keeps the scoring and the statistics, and looks at how to fill only the small part of the table that matters.</p>
+</section>

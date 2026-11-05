@@ -1,0 +1,7 @@
+.s03-lab{font:600 12.5px var(--f-mono);color:var(--muted);margin-bottom:-6px}
+.s03-check{display:flex;flex-direction:column;gap:10px;font-size:14px}
+#s03-wrap .calc input.s03-mid{width:min(100%,260px)}
+#s03-wrap .toy{white-space:pre}
+#s03-wrap .seg{align-self:flex-start}
+#s03-wrap .calc label.wide{min-width:0;max-width:100%}
+#s03-wrap .calc input.wide{width:100%;max-width:560px;box-sizing:border-box}

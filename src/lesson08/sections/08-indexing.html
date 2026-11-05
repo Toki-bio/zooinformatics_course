@@ -1,0 +1,131 @@
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">08</span>Indexing a genome</h2>
+  <p class="lede">A scan reads the whole genome for every search. But a genome stays the same while you ask it millions of questions, one for each read. So arrange it once, the way a book has an index, and let each query go straight to the places that match. This section explains the two designs that real mappers use: the FM-index of bwa and bowtie2, and the minimizer hash table of minimap2.</p>
+
+  <h3>The suffix array: every ending, in sorted order</h3>
+  <p>A <dfn>suffix</dfn> is the piece of a sequence from one position to the end. A genome of n bases has n suffixes. Sort them alphabetically and keep only their start positions. That list of numbers is the <dfn>suffix array</dfn>. Every place where a word occurs is a suffix that begins with that word, so all those places sit next to each other in the sorted list. They form one <dfn>interval</dfn> of rows (Li and Durbin, 2009). Searching for a word now means finding its interval, and the numbers inside the interval are the answer.</p>
+  <p>The price is memory. Each position needs a whole number big enough to count to n: Li and Durbin give n⌈log<sub>2</sub> n⌉ bits, or about 12 GB for the human genome. The bases themselves, at two bits each (<a href="#s04">section 04</a>), need less than 1 GB. Most of what follows is a way of avoiding that 12 GB.</p>
+  <details class="simple"><summary>Simple explanation with examples: a suffix array is a dictionary of endings</summary><div class="in">
+    <p>Take the sequence <code>ACAACG</code> and add <code>$</code>, a mark for "end of sequence" that sorts before every letter. Count positions from 0. Here are its seven suffixes, sorted:</p>
+    <div class="code"><button type="button">copy</button><pre>row  start  suffix
+ 0     6    $
+ 1     2    AACG$
+ 2     0    ACAACG$
+ 3     3    ACG$
+ 4     1    CAACG$
+ 5     4    CG$
+ 6     5    G$</pre></div>
+    <p>Look for the word <code>AC</code>. Rows 2 and 3 begin with it, and no other row does, because sorting puts them together. Their start numbers, 0 and 3, are the two places where <code>AC</code> occurs. In a dictionary you do not read every page to find a word. You open the book in the middle and go left or right. The same works here, however long the list is.</p>
+  </div></details>
+
+  <h3>The Burrows-Wheeler transform: the same letters, in a searchable order</h3>
+  <p>Write the sequence, with its <code>$</code>, as a ring. Cut the ring at every position to get all its <dfn>rotations</dfn>, and sort them. The rows come out in the same order as the suffix array. The <dfn>Burrows-Wheeler transform</dfn> (BWT) is the last column of this table: for each suffix, the single letter that stands just before it in the genome. Li and Durbin's example: the BWT of <code>googol$</code> is <code>lo$oogg</code>.</p>
+  <p>The BWT contains exactly the letters of the sequence, only in a different order, so it needs no more space than the sequence. It was first made for data compression (Langmead et al., 2009). Three facts make it useful for search:</p>
+  <ul class="qlist">
+    <li><b>It can be undone.</b> The original sequence can be rebuilt from the last column alone.</li>
+    <li><b>The first column costs almost nothing.</b> It is just all the letters in sorted order, so a table of a few counts describes it. Call this table <code>C</code>: <code>C(a)</code> is the number of letters, counting the <code>$</code>, that sort before <code>a</code>.</li>
+    <li><b>Equal letters keep their order.</b> This is the <dfn>last-first rule</dfn>: "The <i>i</i>th occurrence of character X in the last column corresponds to the same text character as the <i>i</i>th occurrence of X in the first column" (Langmead et al., 2009). The third A in the last column is the third A in the first column.</li>
+  </ul>
+
+  <h3>Backward search: read the word from its last letter</h3>
+  <p>The last-first rule gives a search that needs neither the suffixes nor the sorted table. Start with the last letter of the word: its interval is the block of rows that begin with that letter. Then add the letter before it. Among the rows of the interval, the ones with that letter in the last column are the places where the longer word occurs, and the last-first rule says where they land. Only two things must be known: <code>C(a)</code>, and <code>Occ(a, i)</code>, the number of times <code>a</code> occurs in the first <code>i</code> rows of the last column.</p>
+  <div class="formula">new start = C(a) + Occ(a, start)<br>new end&nbsp;&nbsp; = C(a) + Occ(a, end)</div>
+  <p>Here the interval means the rows from <code>start</code> up to, but not including, <code>end</code>. (Li and Durbin write the same result with both ends included.) If <code>start</code> equals <code>end</code>, the word does not occur. Each letter costs two lookups, whether the genome has a thousand bases or three billion, so the time depends on the length of the word and not on the size of the genome. This is <dfn>backward search</dfn>. Li and Durbin credit the proof to Ferragina and Manzini (2000).</p>
+
+  <div class="tool" id="s08-bwt-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-bwt-h">BWT and backward search, one letter at a time</h3></div>
+    <p class="tool-note">Type a short sequence (A, C, G, T only, up to 20 letters) and a word to look for, then press <b>Next letter</b>. On the left is the sorted table, with the number that the suffix array stores for each row. The last column <b>L</b> is the BWT. On the right is the first column again, so that lines can show where the letters of the current step land under the last-first rule. The page uses only <code>C</code> and <code>Occ</code> to move the interval.</p>
+    <div class="controls">
+      <label class="s08-field" for="s08-text">sequence<input id="s08-text" type="text" value="GATACAGATTACA" maxlength="20" autocomplete="off" spellcheck="false"></label>
+      <label class="s08-field" for="s08-pat">word to find<input id="s08-pat" type="text" value="ACA" maxlength="10" autocomplete="off" spellcheck="false"></label>
+      <div class="s08-btns">
+        <button type="button" class="btn" id="s08-prev">Back</button>
+        <button type="button" class="btn" id="s08-next">Next letter</button>
+        <button type="button" class="s08-btn2" id="s08-reset">Start again</button>
+      </div>
+    </div>
+    <div class="svgbox"><svg id="s08-bwt-svg" viewBox="0 0 640 400" width="100%" style="min-width:560px" role="img" aria-label="Sorted rotations of the sequence with the suffix array and the last column; the rows of the current interval are highlighted, and lines lead from matching letters in the last column to their rows in the first column"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>interval: rows that begin with the part of the word read so far</span><span><i style="background:var(--het);height:10px"></i>letters of this step in the last column</span><span><i style="background:var(--good);height:10px"></i>occurrences in the sequence</span></div>
+    <div class="readout" id="s08-bwt-read" aria-live="polite"></div>
+    <div class="note" id="s08-bwt-out" aria-live="polite"></div>
+    <p class="s08-small" id="s08-bwt-inv"></p>
+    <div class="s08-btns"><button type="button" class="s08-btn2" id="s08-ctl">Check the code on random sequences</button></div>
+    <p class="s08-small" id="s08-ctl-out" aria-live="polite">Runs in your browser: it rebuilds random sequences from their BWT and compares backward search with a plain letter-by-letter scan.</p>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: why start from the end of the word?</summary><div class="in">
+    <p>To find <code>ACA</code>, begin with the rows that start with <code>A</code>. That is one block. Now you want the rows that start with <code>CA</code>. Each row in your block tells you, in its last column, which letter stands just before it in the sequence. So the rows with a <code>C</code> there are the places where <code>CA</code> occurs. They jump to the <code>C</code> part of the table, and because equal letters keep their order they stay together as one block. To find where that block starts, you only count how many <code>C</code>s lie above your block. Repeat with <code>A</code>. Each step makes the word one letter longer on the left, and the block can only stay the same size or shrink.</p>
+    <p>In the tool above, try the word <code>GAT</code>, and then <code>GATC</code>. The second word does not occur, and the search stops after two letters, because no <code>T</code> stands just before a <code>C</code>. A scan would have read the whole sequence to learn the same thing.</p>
+  </div></details>
+
+  <h3>From the toy to bwa and bowtie2</h3>
+  <p>The tool above keeps the whole table. A real <dfn>FM-index</dfn> keeps the BWT plus thinned-out helpers, and computes the rest when needed.</p>
+  <ul class="qlist">
+    <li><b>Counts.</b> Storing <code>Occ</code> for every row would be huge. bwa stores it at every 128th row and counts the rest directly in the BWT (Li and Durbin, 2009; <code>OCC_INTERVAL</code> in the bwa source).</li>
+    <li><b>Positions.</b> An interval tells you how many hits there are, but not where. bwa stores only every 32nd suffix array value. For any other row it walks with the last-first rule until it reaches a stored row, and adds the number of steps taken. bowtie2 has the same design: <code>--offrate</code> defaults to 5, which marks every 2<sup>5</sup> = 32nd row, about 340 MB for the human genome according to its manual.</li>
+    <li><b>Both strands.</b> bwa builds its BWT from the genome and its <span class="tip" title="Reverse complement: the opposite DNA strand, read in its own 5' to 3' direction.">reverse complement</span> together (source code, <code>bntseq.c</code>). bowtie2 searches the read and its reverse complement instead. It also keeps a second index of the genome written backwards, the <code>.rev</code> files. Bowtie 1 introduced this <dfn>mirror index</dfn> to limit wasted effort when it tries substitutions in a read (Langmead et al., 2009).</li>
+  </ul>
+  <p>Backward search finds exact matches only, and reads have errors. So neither program searches for a whole read. They use the seed-and-extend plan of <a href="#s07">section 07</a>, with the FM-index as the seed finder. <code>bwa mem</code> starts from <span class="tip" title="SMEM, super-maximal exact match: at a given position of the read, the longest stretch that matches the genome exactly somewhere.">SMEMs</span>; its author says the method "essentially finds at each query position the longest exact match covering the position" (Li, 2013). So its seeds have no fixed length. bowtie2 cuts seeds from the read and aligns them with the FM-index. Its manual is open about the cost: this step gives speed "at the expense of missing some valid alignments". How these programs turn seeds into results is the topic of <a href="#s09">section 09</a>.</p>
+
+  <h3>A hash index: look the word up directly</h3>
+  <p>The other design uses the hash table of <a href="#s04">section 04</a>. The key is a <a href="../01-pre-assembly/#km">k-mer</a>, and the value is the list of places where that k-mer occurs. One lookup returns all the places at once, whatever the genome size. But a table of every position of a genome is large, because each position must be written down. One old fix is to store only every w-th position of the target and to look up every k-mer of the query; BLAT does this (scheme as described by Li, 2016). The index shrinks, but the query saves nothing: it must try all its k-mers, because it cannot know which ones were stored.</p>
+  <p>A better fix is a rule for keeping k-mers that depends only on the sequence itself, and not on where you start reading. Then a read and the genome keep the same k-mers wherever they share a stretch, and both sides become small.</p>
+
+  <h3>Minimizers: keep the smallest word of each window</h3>
+  <p>That rule is the <dfn>minimizer</dfn> (Roberts et al., 2004); <dfn>winnowing</dfn>, from document copy detection, is the same idea (Schleimer et al., 2003). In the words of the minimap2 manual, "A minimizer is the smallest k-mer in a window of w consecutive k-mers." This is how minimap2 applies the rule:</p>
+  <ol class="steps">
+    <li><div><b>Take one form for both strands.</b><div class="d">Each k-mer is compared with its reverse complement and the smaller of the two is used (the canonical k-mer of <a href="#s04">section 04</a>), so both strands give the same word. A k-mer equal to its own reverse complement is skipped, because its strand cannot be told.</div></div></li>
+    <li><div><b>Scramble the order.</b><div class="d">"Smallest" does not mean first in the alphabet. If it did, runs of A would always win, and they are common and tell you little (Li, 2016). A hash function turns each k-mer into a number, so "smallest" becomes an arbitrary but repeatable choice.</div></div></li>
+    <li><div><b>Slide the window.</b><div class="d">In every w consecutive k-mers, keep the one with the smallest hash. Neighbouring windows usually pick the same k-mer, so far fewer k-mers are kept than there are windows. If two k-mers tie, both are kept.</div></div></li>
+  </ol>
+  <p>Two numbers tell you what this buys. The <dfn>density</dfn> is the share of k-mers that are kept: for random data it approaches <b>2/(w+1)</b> (Schleimer et al., 2003). With minimap2's defaults, k = 15 and w = 10, that is about 18 %. The <dfn>guarantee</dfn> is that an exact match of at least w + k − 1 bases always shares a kept k-mer, because both copies contain the same whole window. For the defaults that is 24 bases. Shorter matches may or may not be seen. Noisy reads have few long exact stretches, so some parts of a read give no seed at all, and the next step must cope with such gaps.</p>
+
+  <div class="tool" id="s08-min-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-min-h">Minimizer picker</h3></div>
+    <p class="tool-note">An invented random sequence of 120 bases, with the k-mer handling and the hash function of minimap2's source code. Change <b>k</b> and <b>w</b> and watch how many k-mers survive. Move the <b>window</b> to see one decision: each bar is the hash of one k-mer in that window, and the shortest bar wins. The same calculation also runs on 40,000 random bases, so that you can compare the measured density with 2/(w+1). For k of 15 or less it comes out slightly high (about 18.7 % against 18.2 % at the defaults in our runs). The same test with a stronger hash function gave 18.2 %, so this small excess comes from minimap2's hash and not from the rule.</p>
+    <div class="controls">
+      <label>k (word length)<output id="s08-kv">15</output><input type="range" id="s08-k" min="5" max="21" step="1" value="15"></label>
+      <label>w (k-mers per window)<output id="s08-wv">10</output><input type="range" id="s08-w" min="1" max="30" step="1" value="10"></label>
+      <label>window<output id="s08-pv">1</output><input type="range" id="s08-p" min="0" max="96" step="1" value="0"></label>
+      <button type="button" class="s08-btn2" id="s08-new">New sequence</button>
+    </div>
+    <div class="svgbox"><svg id="s08-min-svg" viewBox="0 0 900 200" width="100%" style="min-width:760px" role="img" aria-label="A 120-base sequence with its current window, the hash value of each k-mer in the window as bars, and a row of marks at every kept minimizer"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>current window (w k-mers cover w + k − 1 bases)</span><span><i style="background:var(--het);height:10px"></i>the window's minimizer</span><span><i style="background:var(--rep);height:10px"></i>every kept minimizer</span></div>
+    <div class="readout" id="s08-min-read" aria-live="polite"></div>
+    <div class="note" id="s08-min-out" aria-live="polite"></div>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: why two observers mark the same animal</summary><div class="in">
+    <p>Animals stand in a very long line. The rule: in every group of 10 neighbours, mark the lightest. Two observers each see only a part of the line. Where their views overlap by at least 10 animals, they share a whole group, so they mark the same animal there, without ever talking to each other. Each one has written down only a small part of the line, and yet they can line up their notes on the shared marks.</p>
+    <p>Marking every 10th animal instead would fail: if the second observer starts one animal later, their marks never meet. That is the problem with storing every w-th position. Minimizers are the "lightest animal" rule, with a hash value as the weight.</p>
+  </div></details>
+
+  <h3>Chaining: from scattered matches to one place</h3>
+  <p>minimap2 "indexes them in a hash table, with the key being the hash of a minimizer and the value being a list of locations of the minimizer copies" (Li, 2018). For each read it computes the read's own minimizers and looks them up. Each hit is an <dfn>anchor</dfn>: this stretch of the read matches that stretch of the reference. (The word is used differently in <a href="#s05">section 05</a>, where an anchor is a chosen unique word next to a gap.) Most anchors of a real read lie along one diagonal, with small sideways steps at insertions and deletions. Chance matches and repeats land elsewhere.</p>
+  <figure>
+    <div class="svgbox"><svg id="s08-chain-svg" viewBox="0 0 620 280" width="100%" style="min-width:520px" role="img" aria-label="Anchors plotted by reference position and read position; a chain of anchors runs along a diagonal with one step at a deletion, and a few stray anchors lie away from it"></svg></div>
+    <figcaption><b>An invented example of chaining.</b> Each short line is one anchor. The chain keeps anchors that go forward on both the read and the reference, and it pays a small cost for the sideways step. The stray anchors could join it only across a large gap.</figcaption>
+  </figure>
+  <p>A <dfn>chain</dfn> is a set of anchors in the same order on both sequences. minimap2 finds the best ones by dynamic programming, the method of <a href="#s06">section 06</a>, but it works on a few anchors and not on every base. For each anchor it looks at earlier anchors and takes the one that gives the best score: matching bases gained, minus a cost that grows with the size of the gap (Li, 2018). A read can be placed from its chain alone. By default minimap2 reports only that, so its coordinates are approximate. Only with <code>-c</code> or <code>-a</code> does it add a base-level alignment (README).</p>
+  <p>Very common minimizers are thrown away first: by default the top 0.0002 fraction of the most frequent ones (<code>-f</code>). For mapping this is a gain, because a read has many other seeds: "we can afford to skip highly repetitive seeds without affecting the final accuracy" (Li, 2018). For a search for repeat copies it is the opposite, because all minimizers of a repeat are common. The README of the lab tool sear reports a test with a 6-kb <span class="tip" title="L1: LINE-1, a long interspersed repeat that copies itself through RNA; there are many copies in mammal genomes.">L1</span> on human chromosome 21: indexing the genome found 4 of the 73 full-length copies, and indexing the query and streaming the genome past it found 65 (<a href="https://github.com/Toki-bio/sear2k">sear2k</a>; see also <a href="../07-sines-satellites/#s02">lesson 7, s02</a>).</p>
+
+  <h3>Which index, and what it costs</h3>
+  <p>The minimap2 paper sets out the trade-off. A full-text index such as the FM-index allows "exact seeds of arbitrary lengths", which helps seeds to be unique. Fixed-length k-mers in a hash table "are inferior to variable-length seeds in theory, but can be computed much more efficiently in practice", and at low identity long seeds are rare anyway (Li, 2018). The table gives what the documents state for the human genome, about 3 billion bases. These numbers come from different years, versions and computers, and we have not measured them.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Index</th><th>Memory when mapping</th><th>Building the index</th><th>Fixed when built</th></tr></thead>
+    <tbody>
+      <tr><td><b>bwa</b></td><td>FM-index of both strands</td><td>about 5.4 GB (manual, for <code>sampe</code>). From the source code: about 1.75 bytes per genome base, which gives the same figure</td><td>about 3 hours and 5 GB of memory with the <code>bwtsw</code> index-building method (manual)</td><td>Nothing that depends on the reads: the same index serves all data types</td></tr>
+      <tr><td><b>bowtie2</b></td><td>FM-index, forward and mirror</td><td>about 3.2 GB (manual); peaks of 3.24 to 3.39 GB in its paper (Langmead and Salzberg, 2012)</td><td>The manual gives no time. For Bowtie 1 in 2009: 4 h 36 min with 14.4 GB of memory, 21 h 30 min with 1.39 GB. The indexer trades memory for time</td><td>The row marking (<code>--offrate</code>); a higher value can be set when mapping</td></tr>
+      <tr><td><b>minimap2</b></td><td>Hash table of minimizers</td><td>6.8 GB at the peak with simulated human long reads (Li, 2018, an older version)</td><td>"a couple of minutes" (manual), "a few minutes" (README)</td><td><code>-k</code>, <code>-w</code>, <code>-H</code>, <code>-I</code>; for different data types "you will probably need to keep multiple indexes" (README)</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># bwa: writes ref.fa.amb .ann .bwt .pac .sa next to the genome</span>
+bwa index ref.fa
+<span class="c"># bowtie2: writes ref_idx.1.bt2 to ref_idx.4.bt2, ref_idx.rev.1.bt2, ref_idx.rev.2.bt2</span>
+bowtie2-build ref.fa ref_idx
+<span class="c"># minimap2: saving the index is optional; it only skips the wait at each start.</span>
+<span class="c"># The preset sets k and w: map-ont uses k=15 w=10, map-hifi uses k=19 w=19.</span>
+minimap2 -x map-ont -d ref.mmi ref.fa</pre></div>
+  <p>An index pays for itself when it is used many times. An FM-index that takes hours to build is a bargain for a read library, which is millions of queries, and it can be kept: Bowtie's authors point out that one index can be reused "across many alignment runs" (Langmead et al., 2009). minimap2 builds its index so fast that you can let it do so at each run. For one short query against one genome, building any index is more work than the search it replaces (our reasoning; see <a href="#s11">section 11</a>).</p>
+  <p class="s08-small">Papers: <a href="https://doi.org/10.1093/bioinformatics/btp324">Li and Durbin 2009</a>; <a href="https://doi.org/10.1186/gb-2009-10-3-r25">Langmead et al. 2009</a>; <a href="https://doi.org/10.1038/nmeth.1923">Langmead and Salzberg 2012</a>; <a href="https://arxiv.org/abs/1303.3997">Li 2013</a>; <a href="https://doi.org/10.1093/bioinformatics/btw152">Li 2016</a>; <a href="https://doi.org/10.1093/bioinformatics/bty191">Li 2018</a>; <a href="https://doi.org/10.1093/bioinformatics/bth408">Roberts et al. 2004</a>; <a href="https://theory.stanford.edu/~aiken/publications/papers/sigmod03.pdf">Schleimer et al. 2003</a>.</p>
+</section>

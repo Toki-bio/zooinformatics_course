@@ -20,18 +20,47 @@
   </div></details>
 
   <h3>The methods side by side</h3>
-  <div class="tbl"><table style="min-width:720px">
-    <thead><tr><th>Method</th><th>Data it needs</th><th>Phasing</th><th>What it estimates</th><th>From one diploid?</th></tr></thead>
+  <div class="tbl"><table style="min-width:980px">
+    <thead><tr><th>Method</th><th>Data it needs</th><th>Phasing</th><th>What it estimates</th><th>From one diploid?</th><th>Sample size</th><th>SNP-array data?</th></tr></thead>
     <tbody>
-      <tr><td><b>PSMC</b> (<a href="#s03">s03</a>)</td><td>One diploid: consensus sequence in 100-bp bins</td><td>no</td><td>Inverse coalescence rate of the two haplotypes over time (read as <i>N</i><sub>e</sub>)</td><td>yes, only this</td></tr>
-      <tr><td><b>MSMC2</b></td><td>1 to about 8 diploids (≤ 16 haplotypes); per-chromosome <span class="tip" title="multihetsep: MSMC's input text format. One line per segregating site: chromosome, position, number of callable sites since the previous segregating site (including this one), and the alleles of every haplotype.">multihetsep</span> files + masks</td><td>for more than one animal and for population pairs: yes</td><td>Coalescence rates within each population and across two populations; their ratio tracks separation</td><td>yes (two haplotypes: PSMC-like)</td></tr>
-      <tr><td><b>SMC++</b></td><td>1 to hundreds of diploids; VCF + mask of uncalled regions</td><td>no ("results independent of phasing")</td><td>Size history (smooth or stepped); clean split time of two populations</td><td>yes (one "distinguished" animal)</td></tr>
-      <tr><td><b>cobraa</b></td><td>One diploid (multihetsep)</td><td>no</td><td>A split into two ancestral populations, an <span class="tip" title="Admixture: two populations that were separate mix again; an admixture pulse is a single such event, after which a fraction γ of the ancestry comes from the second population.">admixture</span> pulse (fraction γ), and the size history; compared with a panmictic fit</td><td>yes, by design</td></tr>
-      <tr><td><b>Stairway Plot 2</b></td><td>SFS from a sample (its example uses 30 sequences = 15 diploids); total callable sites</td><td>no</td><td>Size history from the SFS, without a predefined model</td><td>no</td></tr>
-      <tr><td><b>fastsimcoal2</b></td><td>(Joint) SFS of one or more populations + a model you write</td><td>no</td><td>Parameters of your model (sizes, split times, migration, admixture); compares models</td><td>no</td></tr>
+      <tr><td><b>PSMC</b> (<a href="#s03">s03</a>)</td><td>One diploid: consensus sequence in 100-bp bins</td><td>no</td><td>Inverse coalescence rate of the two haplotypes over time (read as <i>N</i><sub>e</sub>)</td><td>yes, only this</td><td>1 diploid</td><td>no: needs every callable base, not chosen SNPs</td></tr>
+      <tr><td><b>MSMC2</b></td><td>1 to about 8 diploids (≤ 16 haplotypes); per-chromosome <span class="tip" title="multihetsep: MSMC's input text format. One line per segregating site: chromosome, position, number of callable sites since the previous segregating site (including this one), and the alleles of every haplotype.">multihetsep</span> files + masks</td><td>for more than one animal and for population pairs: yes</td><td>Coalescence rates within each population and across two populations; their ratio tracks separation</td><td>yes (two haplotypes: PSMC-like)</td><td>1 to about 8 diploids</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>SMC++</b></td><td>1 to hundreds of diploids; VCF + mask of uncalled regions</td><td>no ("results independent of phasing")</td><td>Size history (smooth or stepped); clean split time of two populations</td><td>yes (one "distinguished" animal)</td><td>1 to hundreds of diploids</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>cobraa</b></td><td>One diploid (multihetsep)</td><td>no</td><td>A split into two ancestral populations, an <span class="tip" title="Admixture: two populations that were separate mix again; an admixture pulse is a single such event, after which a fraction γ of the ancestry comes from the second population.">admixture</span> pulse (fraction γ), and the size history; compared with a panmictic fit</td><td>yes, by design</td><td>1 diploid</td><td>no: needs a callable-site mask, so sequencing</td></tr>
+      <tr><td><b>Stairway Plot 2</b></td><td>SFS from a sample (its example uses 30 sequences = 15 diploids); total callable sites</td><td>no</td><td>Size history from the SFS, without a predefined model</td><td>no</td><td>no rule stated; its example has 30 sequences</td><td>not designed for it: SNPs chosen in advance bias the spectrum (our inference)</td></tr>
+      <tr><td><b>fastsimcoal2</b></td><td>(Joint) SFS of one or more populations + a model you write</td><td>no</td><td>Parameters of your model (sizes, split times, migration, admixture); compares models</td><td>no</td><td>no rule stated</td><td>not designed for it: SNPs chosen in advance bias the spectrum (our inference)</td></tr>
     </tbody>
   </table></div>
+  <p class="tool-note">Methods that work on SNP-array data, such as GONE or some ARG methods, and the methods for many genomes, are not in this table: they come in <a href="../05-many-genomes/">lesson 5</a>. The array column here says only that the programs above are built for sequence data (our reading of their inputs; no tool documentation states "arrays are not supported").</p>
   <p class="tool-note">Sources: each tool's README or manual (versions in the notes file). PSMC, MSMC2, SMC++ and cobraa are <span class="tip" title="Sequentially Markovian coalescent: a hidden Markov model that walks along the genome; the hidden state is the age of the common ancestor of the haplotypes at this position, which changes only at recombinations.">SMC</span> methods: they use where heterozygous sites lie along the genome. Stairway Plot and fastsimcoal2 use only how many there are in each frequency class.</p>
+
+  <h3>What becomes possible as data grows</h3>
+  <ul>
+    <li><b>1 to 2 genomes.</b> PSMC, and beside it cobraa, SMC++ or MSMC2 in single-genome mode: an early look at old history and at size change versus structure. As s06 explains, they read the same genome, so they are not independent confirmations. Two species: s07.</li>
+    <li><b>Tens of animals.</b> MSMC2 with phased haplotypes (up to about 16) gives resolution in recent time and, for two populations, the cross-coalescence rate. SMC++ adds more animals without phasing. SFS methods become usable, because the spectrum now has many classes.</li>
+    <li><b>Hundreds of animals.</b> SMC++ is the method the documentation presents for this scale; SFS methods gain from the many sampled chromosomes. Methods that reconstruct the genealogy of the whole sample: <a href="../05-many-genomes/">lesson 5</a>.</li>
+    <li><b>SNP-array data.</b> The programs in this section need sequence data; what arrays allow: <a href="../05-many-genomes/">lesson 5</a>.</li>
+  </ul>
+
+  <section class="tool explain" aria-labelledby="s05-wf-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s05-wf-h">One set of ancestors, four ways of reading it</h3></div>
+    <p class="tool-note">This is the display from <a href="#s01">s01</a>: 30 gene copies in a population of constant size, today at the bottom, one row per generation going back. PSMC, MSMC, MSMC2 and SMC++ all assume this same process. They differ in <b>which lines they follow</b>. The picture stays the same when you change the reader, so you can compare them on one set of ancestors.</p>
+    <div class="controls" role="group" aria-label="Which method reads the ancestors">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Reader
+        <div class="seg" role="group" aria-label="Reader" id="s05-wf-reader" style="flex-wrap:wrap"><button type="button" data-v="psmc" aria-pressed="true">PSMC</button><button type="button" data-v="msmc" aria-pressed="false">MSMC (2014)</button><button type="button" data-v="msmc2" aria-pressed="false">MSMC2</button><button type="button" data-v="smcpp" aria-pressed="false">SMC++</button></div></div>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Copies sampled
+        <div class="seg" role="group" aria-label="Copies sampled" id="s05-wf-n"><button type="button" data-v="2" aria-pressed="false">2</button><button type="button" data-v="4" aria-pressed="false">4</button><button type="button" data-v="8" aria-pressed="true">8</button></div></div>
+      <button type="button" class="btn" id="s05-wf-new" style="align-self:center">new population</button>
+    </div>
+    <div class="svgbox" id="s05-wf"></div>
+    <div class="readout" id="s05-wf-out" aria-live="polite"></div>
+    <p class="tool-note" id="s05-wf-say"></p>
+    <div class="controls" role="group" aria-label="Repeat the first meeting">
+      <button type="button" class="btn" id="s05-wf-rep" style="align-self:center">repeat 10,000 times</button>
+    </div>
+    <div id="s05-wf-tab"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) With 2 copies, all four readers do the same thing. (2) The wait for the first meeting falls much faster than the copies grow: 2, 4 and 8 copies make 1, 6 and 28 pairs, and the mean wait scales inversely with the square of the sample size. This is why MSMC reaches more recent times than PSMC, and why it says less about the old past: its authors state that its limits are set by the distribution of first coalescence times. (3) Each reader still walks along the chromosome as in <a href="#s03">s03</a>: recombination starts a new stretch, each stretch gives one meeting time, and the times together give the size curve. The picture shows one stretch.</p>
+  </section>
 
   <h3>MSMC2: many haplotypes, and two populations</h3>
   <p>MSMC2 (Schiffels &amp; Wang 2020) is the current version of MSMC (Schiffels &amp; Durbin 2014). It estimates the coalescence rate between pairs of haplotypes and combines all pairs you select with <code>-I</code>. Three uses:</p>

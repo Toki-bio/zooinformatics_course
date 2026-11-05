@@ -1,0 +1,4 @@
+#s11-wrap .calc label{min-width:0;max-width:100%;flex:1 1 200px}
+#s11-wrap .calc select{width:100%;max-width:100%;min-width:0}
+#s11-wrap #s11-out .toy{max-width:100%}
+#s11-wrap #s11-out .readout .tool-note{display:block}

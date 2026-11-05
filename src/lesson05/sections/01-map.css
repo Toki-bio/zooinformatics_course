@@ -1,0 +1,8 @@
+#s01-wrap #s01-tab td:nth-child(3){white-space:nowrap}
+#s01-wrap .s01-ok{color:var(--good);font-weight:600}
+#s01-wrap .s01-fix{color:var(--het);font-weight:600}
+#s01-wrap .s01-no{color:var(--bad);font-weight:600}
+#s01-wrap #s01-n{width:130px}
+#s01-wrap .calc label{align-items:flex-start}
+#s01-wrap .s01-k{font-family:var(--f-mono);font-size:11.5px;color:var(--muted)}
+@media (max-width:600px){#s01-wrap .seg button{padding:5px 8px}}

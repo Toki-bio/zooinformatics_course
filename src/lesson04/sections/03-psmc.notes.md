@@ -35,3 +35,40 @@
 - Whether psmc_plot.pl with `-n 25` behaves well when RI is nan in that round (it skips nan/inf RI lines; then nothing is stored for that file). Not tested.
 - The "PNG2" six-call-set test: the plot viewed is assumed to be the test described in the QC notes (lab notes flag that their paths differ); the page describes only what the plot shows.
 - psmc `-C`, `-d`, `-D`, `-s` (decoding, ROH-like fraction in newest commits) not covered.
+
+## The principle of PSMC block (added 2026-11-05)
+Placed after the simple box and before "What PSMC does, step by step", so it comes before the existing toy. The existing text and toy are unchanged.
+
+Sources, with the exact supporting sentences:
+- Li H, Durbin R 2011, Nature 475:493-496, doi 10.1038/nature10231, PMC3154645 (full text read through the Europe PMC XML).
+  - Figure 1 legend: "The PSMC infers the local time to the most recent common ancestor (TMRCA) based on the local density of heterozygotes, using a Hidden Markov Model, where the observation is a diploid sequence, the hidden states are discretized TMRCA and the transitions represent ancestral recombination events."
+  - One locus: "the statistical resolution of inferences from any one locus is poor".
+  - Many loci: "a diploid genome sequence harbors hundreds of thousands of independent loci, each with its own TMRCA between the two alleles an individual carries."
+  - Limits: "More recently than 20kya or more anciently than 3Mya few recombination events are left in the present sequence, which reduces the power of PSMC".
+  - Rate as a parameter: "The free parameters of this model include the scaled mutation and recombination rates, and piecewise constant ancestral population sizes".
+  - Bins: "divided into non-overlapping 100bp bins with a bin scored heterozygous if there is a heterozygote in the bin or being homozygous otherwise".
+  - Start of EM: "the initial population size parameters were all set as 1, representing a constant-sized history; the scaled mutation rate was calculated to match the observed heterozygosity".
+  - Transition q(t|s): Methods formula, used in psChrom and psModel.
+- lh3/psmc master commit 82fa2ad: core.c (interval formula; hp->e[0][k] = exp(-theta (avg_t + dt)), the chance of a homozygous bin), em.c (forward-backward, hmm_expect, then Hooke-Jeeves kmin_hj over all parameters; post_sigma = posterior share per interval), psmc.tex (Theorem PSMC, pi(t) proportional to t sigma(t)).
+
+The two key points and how they were checked against the source:
+- Size sets timing: rate 1/(2N) at that time. The formula on the page (share meeting / share still separate / interval length) is my own plain form of the hazard; PSMC never computes it. The page says so under "Where the toy differs from PSMC".
+- Recombination gives many samples: quotes above.
+- Correction to the wording of the brief. The brief said stretches too short to carry het sites are why recent times are poor. The arithmetic and the simulation say otherwise. Hets per stretch = 2 mu T x 1/(2 r T) = mu/r whatever T, and recent stretches are the LONG ones. At constant N 10,000, r 1e-8, mu 2.5e-8, 200 Mb: stretches with T below 2,000 are 0.5 % of stretches but about 9 % of bases, mean length about 45 kb, and 2.5 hets per stretch; stretches with T above 80,000 average about 500 bp and also 2.5 hets per stretch, with about 29 % holding no het at every age. So the page gives two separate limits: every stretch is poorly dated (about mu/r hets), and the recent past is poor because few stretches are that young, which is what Li & Durbin say ("few recombination events are left"). Too few hets per stretch appears on the page as the limit of high r relative to mu.
+
+Toy (03-psmc.js, functions ps*; display core between CORE-BEGIN and CORE-END is identical to the block in 01-coalescent.js):
+- 10-Mb pair, mu 2.5e-8 (Li & Durbin's human value, used only as a toy value), 100-bp bins, r from 0 to 1e-7, four periods with boundaries 2,000 / 10,000 / 50,000 generations.
+- psChrom walks the SMC: length exponential with rate 2 r T; break height u uniform on 0..T; new time from u at rate 1/(2N). This is q(t|s) of Li & Durbin, so neighbouring stretches are correlated (unlike the s01 toy).
+- 12 states from the core.c formula (n = 11, T_max 15, N0 10,000). Each round: forward-backward with that model, shares per interval, sizes by the hazard formula. Five rounds from one flat size matched to the het density. r is given to the reader. Intervals with under 2 % of lines left are not drawn.
+- Coalescent picture: rows on a log time scale, width on a log scale, paths steered to meet in the row of the stretch's time. Stated on the page as a schematic.
+
+Controls (Node on the same code; the reader values on the block in the final page file):
+- Constant N 10,000, r 1e-8, 200 Mb: length-weighted mean T 20,270 (expected 2N = 20,000); 80,503 stretches (expected 2 r L 2N = 80,000); 2.522 hets per stretch (mu/r = 2.5); 1.015e-3 hets per base (4 N mu = 1.0e-3).
+- Share of the genome per period, mean of 30 runs of 200 Mb, against the exact value: constant 0.0967 / 0.2990 / 0.5225 / 0.0818 against 0.0952 / 0.2983 / 0.5244 / 0.0821; with 2,000 in the second period 0.0991 / 0.7798 / 0.1047 / 0.0164 against 0.0952 / 0.7824 / 0.1059 / 0.0166; all |z| below 2. One single run gave 0.0757 against 0.0952: explained as sampling noise, since a few very long recent stretches carry that share.
+- r = 0: 1 stretch, one date, no curve (clicked).
+- Reader at page settings, 10 animals, truth 10,000 / 3,000 / 3,000 / 3,000 / 10,000 ... by interval, geometric means. r 1e-8: 24,200 / 4,219 / 2,570 / 3,915 / 7,971 / 10,788 / 10,173 / 9,190 / 8,979, spread (sd of ln N) 1.61 in the first interval and 0.05 to 0.15 in the others. The second interval spans the true step at 2,000. r 1e-7 (0.25 hets per stretch): 6,289 / 3,207 / 4,723 / 6,239 / 7,259 / 7,590 / 7,320 / 7,074 / 6,947, spread 0.03 to 0.24: more stretches make it tight, but it stays wrong, so this is bias from too few hets, not noise. r 1e-9 (25 hets per stretch, about 250 stretches): the middle is right but noisy, spread 0.26 to 0.52, first interval useless.
+- Browser: every control clicked at 1100 and 420 px, no script errors, no page widening, clicking a stretch changes the linked picture, a full read takes about 0.5 s.
+
+Open doubts:
+- The reader is a teaching toy and uses shares only. It is not PSMC, and it is not a true EM for the transition part; the page says the numbers are not PSMC output.
+- Li & Durbin's 20 kya to 3 Mya window is for humans; the toy's recent end has its own values.

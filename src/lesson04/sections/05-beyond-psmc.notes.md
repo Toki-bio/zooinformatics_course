@@ -96,3 +96,26 @@
 - Minimum sample size for SFS methods: no rule stated; only the Stairway example (nseq 30) and the class-count arithmetic.
 - cobraa numerical edge cases: the page only says to check that log-likelihoods are finite.
 - SMC++ split with one individual per population: not tested; stated as our inference.
+
+## Added 2026-11-05: Sample size / SNP-array columns and "what becomes possible as data grows"
+- Sample size cells: MSMC2 README/guide (up to 16 haplotypes = 8 diploids, "not feasible to go beyond 16"); SMC++ README and
+  Terhorst et al. 2017 abstract (scales to hundreds of genomes per the README); PSMC and cobraa: one diploid by design (their READMEs);
+  Stairway Plot 2: example blueprint nseq 30, no minimum stated; fastsimcoal2 manual: no sample rule stated.
+- SNP-array column: NO tool documentation states array support or non-support. Cells say "needs callable-site mask / every callable base"
+  (MSMC2/SMC++/cobraa multihetsep and mask inputs; PSMC consensus input) and "ascertainment bias" for SFS methods: both labelled "our reading/inference" on the page.
+- Nielsen, Vaughn & Deng 2025, Nat Rev Genet 26:47-58: could not be opened (publisher login redirect), so NO cell relies on it. Array-capable
+  methods (GONE, ASMC, ARG methods) are only pointed to "the next lesson" with no claims.
+- Timeline statements: derived from the same MSMC2/SMC++ documentation lines already cited above; "SMC++ ... scale" = README/abstract.
+- Open: verify array support of other methods against their own docs when the next lesson is written.
+
+## Display "One set of ancestors, four ways of reading it" (added 2026-11-05)
+- Reuses the Wright-Fisher core of s01 (CORE block). 30 copies, constant size.
+- MSMC: Schiffels & Durbin 2014, Nat Genet 46:919, doi:10.1038/ng.3015, PMC4116295, opened for this point (targeted reading, not the
+  whole paper): "focusing on the first coalescence between any two individuals"; hidden state = first coalescence time plus the labels of
+  the two lineages; "the inference limits are set by the distribution of first coalescence times, the mean of which scales inversely
+  with the square of the sample size"; "individuals' histories are not independent".
+- SMC++: Terhorst et al. 2017, Nat Genet 49:303, doi:10.1038/ng.3748, PMC5470542, targeted reading: distinguished lineages; conditioned SFS
+  "conditioned on the coalescence time and allelic state of a distinguished diploid individual"; the CSFS links the coalescence time of
+  the distinguished pair and the allelic status of the rest of the sample.
+- MSMC2 by pairs: existing text and sources of this section (Schiffels & Wang 2020; MSMC2 README).
+- Control: the table compares simulated first meeting with the exact 1/(1 - prod(1 - i/c)), i = 1..n-1, c = copies.

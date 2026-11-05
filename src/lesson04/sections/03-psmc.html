@@ -19,6 +19,63 @@ copy 2  ACGTTAGCATGACCTTAGACGTTAGGA<span class="h">C</span>CCAGTTA<span class="h
     <p>Two limits follow directly. Very young segments are rare (two copies rarely share an ancestor that recent unless the population is tiny), so the recent past is poorly sampled. Very old segments are rare too, because most pairs of lineages have found their common ancestor long before, and they are short (recombination had a long time to cut them), so the far past is poorly sampled as well. And each segment carries only a few heterozygous sites, so the age of any single segment is known only roughly: the curve is a blurred image of the history.</p>
   </div></details>
 
+  <div class="s03-pr">
+  <h3 id="s03-principle">The principle of PSMC</h3>
+  <p>The coalescent display of <a href="#s01-zero">s01</a> followed one stretch of DNA in one population. PSMC does the reverse. It has one animal and wants the population. The idea is to walk along the two copies of a chromosome, stretch after stretch:</p>
+  <ol>
+    <li><b>Each stretch has its own meeting time.</b> Its two copies met in one ancestor, at one time.</li>
+    <li><b>Recombination changes the time at breakpoints.</b> Past a breakpoint, the two copies have a different ancestor and so a different time.</li>
+    <li><b>The density of heterozygous sites shows the time.</b> Dense <span class="tip" title="Het: a heterozygous site, a position where the two copies of the animal differ.">hets</span> mean an old stretch, sparse hets a recent one, because a stretch with meeting time T has about 2μT hets per base (<a href="#s01-clock">s01</a>).</li>
+    <li><b>PSMC reads the time from that density.</b> In its <span class="tip" title="Hidden Markov model: see the definition above. The hidden state is what we want to know; the observation is what we can see.">hidden Markov model</span> the hidden state is the time interval, and the observation for each 100-bp bin is "het or not" (Li &amp; Durbin 2011: "the hidden states are discretized TMRCA and the transitions represent ancestral recombination events").</li>
+    <li><b>It counts how much of the genome falls in each time interval.</b> The count per interval gives the rate of meeting in that interval, and the rate gives N<sub>e</sub>(t).</li>
+  </ol>
+
+  <h4>Key point 1. Population size sets the timing of meetings</h4>
+  <p>The size of the population at a time decides how fast lines meet at that time: the chance is 1/(2N) per generation, with the N of that moment. So <b>many meetings in a time interval mean a small population then, and few meetings mean a large one</b>. The whole PSMC curve is this one link, read interval by interval from the present backward:</p>
+  <div class="formula">rate in an interval ≈ (share meeting in it ÷ share still separate on entering it) ÷ its length<br>N<sub>e</sub> = 1 / (2 × rate)</div>
+  <p>The "still separate" part matters. A very old interval can hold few meetings just because few lines are left to meet, not because the population was large. That is why the reading goes from the present backward. Below, move one size slider and watch the bars of that period change, and the bars of older periods too: a small population in one period also leaves fewer lines for everything older.</p>
+
+  <h4>Key point 2. Recombination turns one genome into many samples</h4>
+  <p>Without recombination a chromosome pair would have one tree and one date: a single sample of the history, which is the problem with any one locus. In Li &amp; Durbin's words "the statistical resolution of inferences from any one locus is poor". Recombination cuts the pair into many stretches, each with its own date, so that a diploid genome "harbors hundreds of thousands of independent loci, each with its own TMRCA". That is why a single animal can show a whole curve: <b>one genome is many samples of the coalescent</b>. Neighbouring stretches are not fully independent, because the new time after a breakpoint depends on the old one, and the model includes this.</p>
+  <p>This has limits, and the slider below shows them:</p>
+  <ul>
+    <li><b>Each stretch tells little.</b> A stretch with meeting time T has hets at a density of 2μT and a length of about 1/(2rT) (r = recombination rate). The T cancels: on average a stretch holds about μ/r hets <b>whatever its age</b>, and some hold none. A single stretch can only be dated roughly. If r is high compared with μ, most stretches become too short to hold any het, and the times can be read only as a blur, however many stretches there are.</li>
+    <li><b>The recent past is poor for a different reason.</b> Recent stretches are not short, they are long: little time has passed for recombination to cut them. So few stretches have a recent time. Li &amp; Durbin: "More recently than 20kya or more anciently than 3Mya few recombination events are left in the present sequence". A long recent stretch is one sample only, however many bases it covers.</li>
+    <li><b>The far past is poor too.</b> Almost all lines have met by then, so few stretches are left to count, and they are short.</li>
+    <li><b>The recombination rate is a parameter of the model.</b> PSMC does not take it from a map. It estimates the scaled rate ρ together with the mutation rate θ and the sizes; the toy below hands the reader the true value.</li>
+  </ul>
+
+  <section class="tool explain" aria-labelledby="s03-pr-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-pr-h">Walk along one animal's chromosome pair</h3></div>
+    <p class="tool-note">The page simulates a 10-Mb chromosome pair under the model PSMC assumes (the sequentially Markovian coalescent, with the transition of Li &amp; Durbin 2011), then forgets the true times and reads them back from the het / no-het bins alone, with a small hidden Markov model. Toy values: μ = 2.5 × 10<sup>−8</sup> per base per generation, 100-bp bins, 12 time intervals placed with PSMC's own formula. Times are in generations.</p>
+    <div class="controls" role="group" aria-label="Population size per period">
+      <label for="s03-pr-n0">Nₑ, 0 to 2,000 generations ago <output id="s03-pr-n0-o">10,000</output><input type="range" id="s03-pr-n0" min="0" max="11" step="1" value="5"></label>
+      <label for="s03-pr-n1">Nₑ, 2,000 to 10,000 <output id="s03-pr-n1-o">3,000</output><input type="range" id="s03-pr-n1" min="0" max="11" step="1" value="2"></label>
+      <label for="s03-pr-n2">Nₑ, 10,000 to 50,000 <output id="s03-pr-n2-o">10,000</output><input type="range" id="s03-pr-n2" min="0" max="11" step="1" value="5"></label>
+      <label for="s03-pr-n3">Nₑ, before 50,000 <output id="s03-pr-n3-o">10,000</output><input type="range" id="s03-pr-n3" min="0" max="11" step="1" value="5"></label>
+    </div>
+    <div class="controls" role="group" aria-label="Recombination and animal">
+      <label for="s03-pr-r">Recombination rate r per base per generation <output id="s03-pr-r-o">1 × 10⁻⁸</output><input type="range" id="s03-pr-r" min="0" max="6" step="1" value="4"></label>
+      <button type="button" class="btn" id="s03-pr-new" style="align-self:center">new animal</button>
+    </div>
+    <div class="readout" id="s03-pr-out"></div>
+    <div class="legend"><span><i style="background:var(--fg)"></i>true N<sub>e</sub> / expected share (dashed)</span><span><i style="background:var(--accent);height:10px"></i>true times of the stretches</span><span><i style="background:var(--het);height:10px"></i>read from the het bins</span><span><i style="background:var(--bad)"></i>the stretch you selected</span></div>
+    <div class="svgbox" id="s03-pr-curve"></div>
+    <p class="tool-note" id="s03-pr-status" aria-live="polite"></p>
+    <div class="svgbox" id="s03-pr-chrom"></div>
+    <div class="controls" role="group" aria-label="Move along the chromosome">
+      <label for="s03-pr-z">Window starts at <output id="s03-pr-z-o">4.00 Mb</output><input type="range" id="s03-pr-z" min="0" max="9.9" step="0.01" value="4"></label>
+      <button type="button" class="btn" id="s03-pr-prev" style="align-self:center">previous stretch</button>
+      <button type="button" class="btn" id="s03-pr-next" style="align-self:center">next stretch</button>
+    </div>
+    <p class="tool-note"><b>Click a stretch</b> in the window above. The picture below is the coalescent display of <a href="#s01-zero">s01</a> for that stretch: row width follows N<sub>e</sub> at that time, and the two copies meet at the stretch's own time. It is a schematic: each row stands for many generations, time and width are on log scales, and the paths are drawn for illustration. Only the meeting time comes from the simulation.</p>
+    <div class="svgbox" id="s03-pr-tree"></div>
+    <div class="readout" id="s03-pr-sel"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) <b>Size and timing</b>: drag the 2,000 to 10,000 slider from 3,000 up to 30,000. The bars of that period shrink, the curve rises with them, and many more lines survive into the older periods. (2) <b>r = 0</b>: one stretch, one date, one bar. No curve is possible. (3) <b>Raise r</b> step by step: stretches multiply and the blue bars fill in the expected shape. (4) <b>r = 1 × 10⁻⁷</b>: there are more stretches than ever and the blue bars are excellent, but only the page knows them. Each stretch now holds about 0.25 hets and 4 in 5 hold none. The orange line in the window no longer follows the steps, and the orange curve flattens the dip. Stretches alone are not enough; each must also carry hets. (5) Compare the first interval with the middle ones: the recent end is noisy even at the default r, because few stretches are that young. (6) Press <b>new animal</b>: the same history gives a different recent end and a very similar middle.</p>
+    <p class="tool-note"><b>Where the toy differs from PSMC.</b> PSMC does not literally count and divide. Its EM algorithm computes the expected use of every state and transition under the current parameters, then searches numerically for the θ, ρ, T<sub>max</sub> and sizes that fit them best (<code>em.c</code>). It ties intervals together with <code>-p</code>, and it reads a whole genome. The toy uses only the shares per interval, in the formula above, for five rounds, on one 10-Mb chromosome, with r given. The principle is the same; the numbers are not PSMC output.</p>
+  </section>
+  </div>
+
   <h3>What PSMC does, step by step</h3>
   <ol class="steps">
     <li><div><b>Input: one line of bins per sequence</b><div class="d">The callable genome, cut into 100-bp bins: <code>T</code> = no heterozygous site, <code>K</code> = at least one, <code>N</code> = not enough callable bases. How to build this <code>.psmcfa</code> file is in <a href="#s02">s02</a>.</div><div class="t">fq2psmcfa · our own script</div></div></li>

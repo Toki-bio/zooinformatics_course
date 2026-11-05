@@ -294,3 +294,230 @@
     try { decide(); } catch (err){ dout.textContent = 'Helper could not run: ' + err.message; }
   }
 })();
+
+(function(){
+  var host = document.getElementById('s05-wf');
+  if (!host) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  var el = function(id){ return document.getElementById(id); };
+  function css(v){ return 'var(' + v + ')'; }
+  function mk(tag, attrs, txt){
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (txt != null) e.textContent = txt;
+    return e;
+  }
+  function rng(a){ return function(){ a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  // CORE-BEGIN: Wright-Fisher display. The same block is copied in 01-coalescent.js, 03-psmc.js and 05-beyond-psmc.js
+  // (sections are separate scripts with no shared globals). It needs mk() and css() of its section.
+  // spec = { size: g -> gene copies in generation g (0 = today, larger = older), demes: 1 or 2,
+  // m: chance per generation that a copy's parent sits in the other deme }.
+  function wfDeme(i, c){ return i < (c >> 1) ? 0 : 1; }
+  function wfPick(spec, g, i, r){
+    var c1 = spec.size(g + 1);
+    if (spec.demes !== 2) return Math.floor(r() * c1);
+    var d = wfDeme(i, spec.size(g)), h = c1 >> 1;
+    if (r() < spec.m) d = 1 - d;
+    return d === 0 ? Math.floor(r() * h) : h + Math.floor(r() * (c1 - h));
+  }
+  function wfPop(spec, r){                 // a population, grown backward on demand
+    var par = [];
+    return { spec: spec, par: par, grow: function(G){
+      while (par.length < G){
+        var g = par.length, c = spec.size(g), a = new Int32Array(c);
+        for (var i = 0; i < c; i++) a[i] = wfPick(spec, g, i, r);
+        par.push(a);
+      }
+    } };
+  }
+  function wfTrace(pop, sample){           // follow the sampled copies back until one line is left
+    var cur = sample.slice(), rows = [cur.slice()], meets = [], g = 0;
+    while (cur.length > 1 && g < 200000){
+      pop.grow(g + 1);
+      var seen = {}, next = [];
+      cur.forEach(function(c){ var p = pop.par[g][c]; if (seen[p]) seen[p]++; else { seen[p] = 1; next.push(p); } });
+      g++;
+      next.forEach(function(p){ if (seen[p] > 1) meets.push({ g: g, i: p, k: seen[p] }); });
+      cur = next; rows.push(cur.slice());
+    }
+    return { T: g, rows: rows, meets: meets };
+  }
+  function wfMax(spec, G){ var m = 2; for (var g = 0; g <= G; g++) m = Math.max(m, spec.size(g)); return m; }
+  // x position (0..1) of every copy. Each row is sorted by the position of the parents, so links do
+  // not cross; the place of a copy in its row therefore means nothing. Row width follows row size.
+  function wfLayout(pop, G){
+    var spec = pop.spec, two = spec.demes === 2, cmax = wfMax(spec, G), g, i, X = [];
+    var step = (two ? 0.46 : 1) / ((two ? cmax / 2 : cmax) - 1 || 1);
+    function place(c, order, out){
+      for (var d = 0; d < (two ? 2 : 1); d++){
+        var mine = two ? order.filter(function(k){ return wfDeme(k, c) === d; }) : order;
+        var mid = two ? (d === 0 ? 0.23 : 0.77) : 0.5;
+        mine.forEach(function(k, rank){ out[k] = mid + (rank - (mine.length - 1) / 2) * step; });
+      }
+    }
+    pop.grow(G);
+    var c0 = spec.size(G), top = new Float64Array(c0), ord = [];
+    for (i = 0; i < c0; i++) ord.push(i);
+    place(c0, ord, top); X[G] = top;
+    for (g = G - 1; g >= 0; g--){
+      (function(g){
+        var c = spec.size(g), row = new Float64Array(c), o = [], up = X[g + 1], pr = pop.par[g];
+        for (var k = 0; k < c; k++) o.push(k);
+        o.sort(function(a, b){ return up[pr[a]] - up[pr[b]] || a - b; });
+        place(c, o, row); X[g] = row;
+      })(g);
+    }
+    return X;
+  }
+  // Static part of the picture: every copy as a faint dot, every parent link as a faint line.
+  // o = { W, G, x0 (left margin), pitch, maxH, label(g) -> axis text or '', title, shade: [from, to], aria }
+  function wfBase(host, pop, o){
+    var G = o.G, W = o.W, x0 = o.x0 || 46, x1 = W - 12, y0 = o.title ? 34 : 14;
+    var pitch = Math.max(3, Math.min(o.pitch || 16, (o.maxH || 620) / G)), H = y0 + G * pitch + 22;
+    var X = wfLayout(pop, G), spec = pop.spec;
+    function px(g, i){ return x0 + X[g][i] * (x1 - x0); }
+    function py(g){ return y0 + (G - g) * pitch; }
+    var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': o.aria || 'Rows of gene copies, one row per generation, with the link from each copy to its parent' });
+    svg.style.minWidth = '300px';
+    if (o.shade){
+      var a = Math.min(o.shade[1], G + 1), b = Math.max(o.shade[0], 0);
+      if (a > b) svg.appendChild(mk('rect', { x: x0 - 6, y: py(a - 1) - pitch / 2, width: x1 - x0 + 12, height: (a - b) * pitch, fill: css('--code-bg') }));
+    }
+    if (o.title) svg.appendChild(mk('text', { x: x0 - 6, y: 14, 'class': 'lab' }, o.title));
+    var dl = '', dm = '', dd = '', g, i, c;
+    for (g = 0; g < G; g++){
+      c = spec.size(g);
+      for (i = 0; i < c; i++){
+        var p = pop.par[g][i], seg = 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'L' + px(g + 1, p).toFixed(1) + ' ' + py(g + 1).toFixed(1);
+        if (spec.demes === 2 && wfDeme(i, c) !== wfDeme(p, spec.size(g + 1))) dm += seg; else dl += seg;
+      }
+    }
+    var r = Math.max(1.2, Math.min(3.2, pitch * 0.3, (x1 - x0) / Math.max(1, wfMax(spec, G)) * 0.34));
+    for (g = 0; g <= G; g++){ c = spec.size(g); for (i = 0; i < c; i++) dd += 'M' + px(g, i).toFixed(1) + ' ' + py(g).toFixed(1) + 'h0'; }
+    svg.appendChild(mk('path', { d: dl, fill: 'none', stroke: css('--err'), 'stroke-width': 0.8, opacity: '0.55' }));
+    if (dm) svg.appendChild(mk('path', { d: dm, fill: 'none', stroke: css('--het'), 'stroke-width': 1.2, opacity: '0.8' }));
+    if (pitch >= 5) svg.appendChild(mk('path', { d: dd, fill: 'none', stroke: css('--err'), 'stroke-width': 2 * r, 'stroke-linecap': 'round' }));
+    for (g = 0; g <= G; g++){
+      var t = o.label ? o.label(g) : '';
+      if (t !== '') svg.appendChild(mk('text', { x: x0 - 12, y: py(g) + 4, 'text-anchor': 'end' }, t));
+    }
+    var over = mk('g', {}); svg.appendChild(over);
+    host.replaceChildren(svg);
+    return { pop: pop, px: px, py: py, over: over, pitch: pitch, r: r, x0: x0, x1: x1, G: G, svg: svg };
+  }
+  // Moving part: the sampled lines from today back to generation cur, and where they met.
+  function wfOver(b, tr, cur, o){
+    o = o || {};
+    var over = b.over, pop = b.pop, col = css(o.colour || '--accent'); over.replaceChildren();
+    var last = Math.min(cur, tr.T, b.G), d = '', dots = '', g;
+    if (cur > 0 && !o.noBand) over.appendChild(mk('rect', { x: b.x0 - 6, y: b.py(last) - b.pitch / 2, width: b.x1 - b.x0 + 12, height: b.pitch, fill: css('--accent'), opacity: '0.14' }));
+    function link(c){
+      var p = pop.par[g][c];
+      d += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'L' + b.px(g + 1, p).toFixed(1) + ' ' + b.py(g + 1).toFixed(1);
+    }
+    function dot(c){ dots += 'M' + b.px(g, c).toFixed(1) + ' ' + b.py(g).toFixed(1) + 'h0'; }
+    for (g = 0; g < last; g++) tr.rows[g].forEach(link);
+    for (g = 0; g <= last; g++) if (g === 0 || g === last || b.pitch >= 7) tr.rows[g].forEach(dot);
+    if (d) over.appendChild(mk('path', { d: d, fill: 'none', stroke: col, 'stroke-width': 2.2, 'stroke-linejoin': 'round' }));
+    over.appendChild(mk('path', { d: dots, fill: 'none', stroke: col, 'stroke-width': 2 * b.r + 1.6, 'stroke-linecap': 'round' }));
+    tr.meets.forEach(function(m){
+      if (m.g > last) return;
+      var end = m.g === tr.T;
+      over.appendChild(mk('circle', { cx: b.px(m.g, m.i), cy: b.py(m.g), r: end ? 7 : 5.5, fill: 'none', stroke: css(end ? '--bad' : '--het'), 'stroke-width': 2 }));
+      if (end && o.endLabel){
+        var x = b.px(m.g, m.i), right = x < (b.x0 + b.x1) / 2;
+        over.appendChild(mk('text', { x: x + (right ? 12 : -12), y: b.py(m.g) - 9, 'text-anchor': right ? 'start' : 'end', 'class': 'lab', stroke: css('--bg'), 'stroke-width': 3, 'paint-order': 'stroke' }, o.endLabel));
+      }
+    });
+  }
+  // CORE-END
+  // Four readers of one Wright-Fisher population. Same seed = same ancestors and same sampled copies.
+  var C = 30, ROWS = 40, MAXN = 8, st = { reader: 'psmc', n: 8, seed: 11 };
+  var spec = { size: function(){ return C; }, demes: 1 };
+  var NAME = { psmc: 'PSMC', msmc: 'MSMC (2014)', msmc2: 'MSMC2', smcpp: 'SMC++' };
+  function cell(label, val){
+    var d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('b');
+    s.textContent = label; b.textContent = val; d.appendChild(s); d.appendChild(b); return d;
+  }
+  function seen(g){ return g > ROWS ? g + ' (above the picture)' : String(g); }
+  function draw(){
+    var W = Math.max(320, Math.min(host.clientWidth || 760, 820));
+    var r = rng(st.seed), pop = wfPop(spec, r); pop.grow(ROWS);
+    var all = [], i;
+    for (i = 0; i < C; i++) all.push(i);
+    for (i = 0; i < MAXN; i++){ var j = i + Math.floor(r() * (C - i)), t = all[i]; all[i] = all[j]; all[j] = t; }
+    var pair = all.slice(0, 2), use = all.slice(0, st.n);
+    var b = wfBase(host, pop, { W: W, G: ROWS, x0: 58, pitch: 10, maxH: 430,
+      title: NAME[st.reader] + ' (generations back at left)',
+      label: function(g){ return g % 10 === 0 ? String(g) : ''; },
+      aria: 'Thirty gene copies over forty generations, with the lines followed by ' + NAME[st.reader] + ' in colour' });
+    var out = el('s05-wf-out'), say = el('s05-wf-say'), cells = [], text;
+    var trP = wfTrace(pop, pair), trS = wfTrace(pop, use);
+    if (st.reader === 'psmc'){
+      wfOver(b, trP, trP.T, { noBand: true, colour: '--accent', endLabel: 'met ' + trP.T + ' generations ago' });
+      cells = [cell('Lines followed', '2'), cell('They met, generations ago', seen(trP.T))];
+      text = 'PSMC follows the two copies of one animal back to their meeting. The number of copies sampled does not matter here: it always reads one pair.';
+    } else if (st.reader === 'msmc'){
+      var f = trS.meets[0].g;
+      wfOver(b, trS, f, { colour: '--accent' });
+      cells = [cell('Lines followed', String(st.n)), cell('Pairs among them', String(st.n * (st.n - 1) / 2)), cell('First meeting, generations ago', seen(f))];
+      text = 'MSMC follows all the sampled copies, but only up to the first meeting between any two of them. It also keeps which two met. Everything further back in this stretch is not read.';
+    } else if (st.reader === 'msmc2'){
+      var ts = [];
+      for (i = 0; i < st.n; i++) for (var k = i + 1; k < st.n; k++) ts.push(wfTrace(pop, [use[i], use[k]]).T);
+      ts.sort(function(a, c){ return a - c; });
+      wfOver(b, trS, trS.T, { noBand: true, colour: '--accent' });
+      cells = [cell('Pairs read one by one', String(ts.length)), cell('Earliest pair met', seen(ts[0])), cell('Latest pair met', seen(ts[ts.length - 1]))];
+      text = 'MSMC2 does not stop at the first meeting. It reads each selected pair separately, as PSMC would, and combines them. The pairs share ancestors, so they are not independent: ' + ts.length + ' pairs here do not hold ' + ts.length + ' separate histories.';
+    } else {
+      wfOver(b, trP, trP.T, { noBand: true, colour: '--accent', endLabel: 'pair met ' + trP.T + ' generations ago' });
+      use.slice(2).forEach(function(c){
+        b.over.appendChild(mk('circle', { cx: b.px(0, c), cy: b.py(0), r: 6, fill: 'none', stroke: css('--het'), 'stroke-width': 2 }));
+      });
+      cells = [cell('Distinguished pair met', seen(trP.T)), cell('Other copies, allele counts only', String(st.n - 2))];
+      text = 'SMC++ follows one distinguished pair, as PSMC does. The other copies (ringed in the bottom row) are not followed as lines. At each site they give only a count: how many of them carry the allele. That count helps to date the pair, because it is linked to the pair\'s meeting time, and phasing is not needed.';
+    }
+    out.replaceChildren.apply(out, cells);
+    say.textContent = text;
+  }
+  // Mean wait until any two of n lines share a parent, with the parent rule of the display.
+  function firstMeet(n, reps, r){
+    var sum = 0, a = new Int32Array(C);
+    for (var t = 0; t < reps; t++){
+      var g = 0, hit = false;
+      while (!hit){
+        g++; a.fill(0);
+        for (var i = 0; i < n; i++){ var p = Math.floor(r() * C); if (a[p]) hit = true; a[p] = 1; }
+      }
+      sum += g;
+    }
+    return sum / reps;
+  }
+  function exact(n, c){ var q = 1; for (var i = 1; i < n; i++) q *= 1 - i / c; return 1 / (1 - q); }
+  function repeat(){
+    var r = rng(st.seed * 7 + 3), rows = [2, 4, 8].map(function(n){
+      return '<tr><td>' + n + '</td><td>' + n * (n - 1) / 2 + '</td><td>' + firstMeet(n, 10000, r).toFixed(2) + '</td><td>' + exact(n, C).toFixed(2) +
+        '</td><td>' + Math.round(exact(n, 3000)).toLocaleString('en-US') + '</td></tr>';
+    }).join('');
+    el('s05-wf-tab').innerHTML = '<div class="tbl"><table style="min-width:440px"><thead><tr><th>Copies followed</th><th>Pairs</th><th>Mean wait, 10,000 runs (30 copies)</th><th>Exact (30 copies)</th><th>Exact (3,000 copies)</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+  }
+  function seg(id, fn){
+    var g = el(id);
+    g.addEventListener('click', function(e){
+      var t = e.target.closest('button'); if (!t) return;
+      Array.prototype.forEach.call(g.querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === t ? 'true' : 'false'); });
+      fn(t.getAttribute('data-v')); draw();
+    });
+  }
+  seg('s05-wf-reader', function(v){ st.reader = v; });
+  seg('s05-wf-n', function(v){ st.n = +v; });
+  el('s05-wf-new').addEventListener('click', function(){ st.seed += 1; draw(); });
+  el('s05-wf-rep').addEventListener('click', repeat);
+  try { draw(); } catch (err){ host.textContent = 'Display could not run: ' + err.message; }
+  var rz = 0, lastW = window.innerWidth;
+  window.addEventListener('resize', function(){
+    if (window.innerWidth === lastW) return;
+    lastW = window.innerWidth; clearTimeout(rz); rz = setTimeout(draw, 150);
+  });
+})();

@@ -1,0 +1,160 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>How exact search works</h2>
+  <p class="lede">Section <a href="#s02">02</a> used <code>grep</code> and <code>agrep</code> as black boxes. This section opens them. There are five ideas: the naive scan, Boyer-Moore skipping, Knuth-Morris-Pratt, Aho-Corasick for many patterns, and bitap for errors. Each one saves a different kind of work. At the end we say which of them the two programs really use, as read in their source code.</p>
+
+  <h3>The naive scan</h3>
+  <p>Put the pattern under the start of the text. Compare letter by letter from the left. At the first difference, move the pattern one position to the right and start again. An <dfn>alignment</dfn> here means one such placement of the pattern against the text, with no gaps.</p>
+  <p>This is correct, and on random DNA it is not terrible, because most alignments fail at the first or second letter. The trouble is repeats. Search for <code>AAAAAB</code> in a long run of <code>A</code> and every alignment costs the full pattern length. Boyer and Moore, citing Knuth, Morris and Pratt, put the worst case at a number of comparisons "on the order of i * patlen": the position reached times the pattern length. Genomes are full of such runs (<a href="../03-annotation/#s02">lesson 3, s02</a>).</p>
+
+  <h3>Knuth-Morris-Pratt: never go back in the text</h3>
+  <p>The naive scan forgets. Suppose the pattern is <code>ATATC</code> and the text reads <code>ATATA…</code>. The first four letters matched and the fifth failed. You already know the last two letters read were <code>AT</code>, and that is how the pattern begins. So slide the pattern and go on from the letter where you stopped, without reading anything twice. How far to slide depends only on the pattern, so it can be worked out once, before the search. In Boyer and Moore's summary, this algorithm "inspects each of the first i + patlen - 1 characters of string precisely once".</p>
+  <p>That guarantee removes the worst case, but every letter is still read. Remember the idea of a prepared table of "where to fall back to". It comes back in Aho-Corasick.</p>
+
+  <h3>Boyer-Moore: compare from the right, then jump</h3>
+  <p>Boyer and Moore (1977) changed one thing: compare from the <b>last</b> letter of the pattern. If the text letter there does not occur in the pattern at all, no alignment that covers this letter can work, so the pattern jumps its whole length past it. The letters jumped over are never looked at. Two prepared tables decide the jump, and the larger one wins:</p>
+  <dl class="defs">
+    <dt>Bad-letter rule</dt>
+    <dd>Look at the text letter that caused the mismatch. Slide until the nearest copy of that letter in the pattern lies under it. If the pattern does not contain the letter, slide past it. The paper calls this table delta1.</dd>
+    <dt>Good-suffix rule</dt>
+    <dd>The tail of the pattern has already matched. Slide until that same tail can line up again, preceded by a different letter. The paper calls this table delta2.</dd>
+  </dl>
+  <p>The paper's own figure: "For a random English pattern of length 5, the algorithm will typically inspect i/4 characters of string before finding a match at i". The longer the pattern, the longer the jumps. The authors call this "usually sublinear": it reads fewer letters than the text contains. The file must still be read in from disk, so the saving is in the work done per letter, not in the reading (<a href="#s05">s05</a> shows when reading becomes the limit).</p>
+
+  <div class="tool" id="s03-bm-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-bm-h">Naive scan against Boyer-Moore, one comparison at a time</h3></div>
+    <p class="tool-note">Each press of <b>Step</b> makes one letter comparison in each method. Both methods look for <b>every</b> occurrence, not only the first. Compare the two counters, then type your own text and pattern. The English example is the one in the 1977 paper. In the third example, try the pattern <code>AAAAAB</code>.</p>
+    <div class="seg" role="group" aria-label="Example">
+      <button type="button" id="s03-bm-dna" aria-pressed="true">DNA</button>
+      <button type="button" id="s03-bm-eng" aria-pressed="false">English</button>
+      <button type="button" id="s03-bm-polya" aria-pressed="false">Poly-A run</button>
+    </div>
+    <div class="calc">
+      <label class="wide">text (up to 70 letters)<input class="wide" id="s03-bm-text" maxlength="70" spellcheck="false" autocomplete="off"></label>
+      <label>pattern (up to 16)<input id="s03-bm-pat" maxlength="16" spellcheck="false" autocomplete="off"></label>
+      <button type="button" class="btn" id="s03-bm-step">Step</button>
+      <button type="button" class="btn" id="s03-bm-end">To the end</button>
+      <button type="button" class="btn" id="s03-bm-reset">Reset</button>
+    </div>
+    <div class="s03-lab">Naive scan</div>
+    <div class="svgbox" id="s03-bm-boxN"><svg id="s03-bm-svgN" width="100%" role="img" aria-label="Text with the pattern below it at the current alignment of the naive scan"></svg></div>
+    <div class="s03-lab">Boyer-Moore</div>
+    <div class="svgbox" id="s03-bm-boxB"><svg id="s03-bm-svgB" width="100%" role="img" aria-label="Text with the pattern below it at the current alignment of Boyer-Moore"></svg></div>
+    <div class="legend"><span><i style="background:var(--good);height:10px"></i>letters agree, or a whole match (bar under the text)</span><span><i style="background:var(--bad);height:10px"></i>letters differ</span><span><i style="background:var(--code-bg);height:10px;border:1px solid var(--line)"></i>text letter already looked at</span></div>
+    <div class="readout">
+      <div>Naive comparisons<b id="s03-bm-cN">0</b></div>
+      <div>Boyer-Moore comparisons<b id="s03-bm-cB">0</b></div>
+      <div>Text letters Boyer-Moore never looked at<b id="s03-bm-skip">0</b></div>
+      <div>Occurrences found<b id="s03-bm-hits">0</b></div>
+    </div>
+    <div class="note" id="s03-bm-out" aria-live="polite"></div>
+  </div>
+
+  <p>The DNA example shows the catch. With four letters, nearly every text letter occurs somewhere in the pattern, so the bad-letter jumps stay short. The check at the end of this section measures it on random text. The naive scan makes about 1.3 comparisons per text letter on DNA and 1.04 on 26 letters. Boyer-Moore looked at a quarter to a third of the DNA letters, against 6 to 15 % of the letters on the larger alphabet. The poly-A example shows the other limit. When we ask for every occurrence and they overlap, Boyer-Moore does as many comparisons as the naive scan.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why starting from the right lets you skip</summary><div class="in">
+    <p>You look for the word <code>TIGER</code> in a long line of print, and you hold a card with a five-letter window. Look only at the last letter in the window. It is <code>Q</code>. There is no <code>Q</code> in <code>TIGER</code>, so none of the next five placements of the word can cover this <code>Q</code>. Move the card five letters at once. You have checked one letter and passed five.</p>
+    <p>If the letter is <code>G</code>, it is in the word, third from the left. Move the card two letters, so that the <code>G</code> of <code>TIGER</code> lies on it, and look again.</p>
+    <p>Starting from the left gives you much less. A first letter that differs only tells you this one placement failed, so you may move by one.</p>
+  </div></details>
+
+  <h3>Aho-Corasick: many patterns in one pass</h3>
+  <p>Now you have fifty primers, or a thousand adapters. Running one search per pattern reads the text fifty times. Aho and Corasick (1975) build one machine from all the patterns and pass the text through it once. They say their approach "combines the ideas in the Knuth-Morris-Pratt algorithm" with those of <span class="tip" title="Finite state machine (automaton): a device that is always in one of a fixed number of states and moves to another state according to the next letter it reads.">finite state machines</span>. Three parts make up the machine:</p>
+  <dl class="defs">
+    <dt>Goto (the trie)</dt>
+    <dd>All patterns are stored in one tree of letters, a <dfn>trie</dfn>. Patterns that start the same share a path. Each node is a state, and a state means "the last letters read spell this path".</dd>
+    <dt>Failure links</dt>
+    <dd>When the next letter has no edge, the machine does not start over. It follows a link to the state for the longest ending of what it has read that is also the start of some pattern. This is the Knuth-Morris-Pratt fall-back, for many patterns at once.</dd>
+    <dt>Output</dt>
+    <dd>Each state lists the patterns that end there, including shorter ones hidden inside. In the DNA example, state 8 reports <code>ATCG</code> and also <code>TCG</code>.</dd>
+  </dl>
+  <p>The paper states the two costs. Building the machine "takes time proportional to the sum of the lengths of the keywords". And "the number of state transitions made by the pattern matching machine in processing the text string is independent of the number of keywords". So a thousand patterns cost about the same text pass as one, but each letter is read: Aho-Corasick does not skip.</p>
+
+  <div class="tool" id="s03-ac-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-ac-h">The Aho-Corasick machine for a few patterns</h3></div>
+    <p class="tool-note">Solid lines are the trie, with their letters. Dashed arrows are failure links; links that lead back to state 0 are not drawn, to keep the figure readable. Each <b>Step</b> reads one text letter. Watch what happens when the path runs out. The second example is the keyword set of the 1975 paper. Up to 6 patterns of up to 8 letters.</p>
+    <div class="seg" role="group" aria-label="Example">
+      <button type="button" id="s03-ac-dna" aria-pressed="true">DNA</button>
+      <button type="button" id="s03-ac-paper" aria-pressed="false">Paper's example</button>
+    </div>
+    <div class="calc">
+      <label class="wide">patterns (commas between them)<input class="wide" id="s03-ac-words" spellcheck="false" autocomplete="off"></label>
+      <label>text (up to 40)<input id="s03-ac-text" class="s03-mid" maxlength="40" spellcheck="false" autocomplete="off"></label>
+      <button type="button" class="btn" id="s03-ac-step">Step</button>
+      <button type="button" class="btn" id="s03-ac-end">To the end</button>
+      <button type="button" class="btn" id="s03-ac-reset">Reset</button>
+    </div>
+    <div class="toy" id="s03-ac-strip" aria-label="Text; the letter just read is in brackets"></div>
+    <div class="svgbox"><svg id="s03-ac-svg" width="100%" style="min-width:560px" role="img" aria-label="Trie of the patterns with failure links; the current state is filled"></svg></div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>current state</span><span><i style="background:var(--good);height:10px"></i>ring: patterns end here</span><span><i style="background:var(--het)"></i>failure link</span></div>
+    <div class="readout">
+      <div>Text letters read<b id="s03-ac-read">0</b></div>
+      <div>Moves along trie edges<b id="s03-ac-goto">0</b></div>
+      <div>Moves along failure links<b id="s03-ac-fail">0</b></div>
+      <div>Patterns found<b id="s03-ac-hit">0</b></div>
+    </div>
+    <div class="note" id="s03-ac-out" aria-live="polite"></div>
+  </div>
+
+  <h3>Bitap: all partial matches at once, and errors for little extra</h3>
+  <p>All the methods so far need exact equality. Wu and Manber (1991) needed something else: a match within <i>k</i> errors, where an error is one substitution, insertion or deletion. That count is the <span class="tip" title="Edit distance (Levenshtein distance): the smallest number of single-letter substitutions, insertions and deletions that turn one string into another.">edit distance</span>. Their method builds on the shift-or idea of Baeza-Yates and Gonnet. The routine in <code>agrep</code> is called <dfn>bitap</dfn>, and we use that name.</p>
+  <p>Keep one <span class="tip" title="Bit: a single 0 or 1. A computer handles a whole group of them, a machine word, usually 64 bits today, in one step.">bit</span> per pattern position. Bit <i>i</i> says "the first <i>i</i> letters of the pattern match the text ending just here". Prepare one mask per letter of the alphabet, with 1 wherever that letter occurs in the pattern. For each text letter the whole state changes with two machine operations: "a shift and an AND". The shift extends every partial match by one position, and the AND keeps those where the new letter fits. All partial matches advance together, so no alignment is tried on its own. Shift-or is the same thing inverted: as Wu and Manber describe it, Baeza-Yates and Gonnet "used 0 to indicate a match and an OR operation instead of an AND".</p>
+  <p>Baeza-Yates and Gonnet could count mismatches only; Wu and Manber added insertions and deletions. For errors, keep <i>k</i> + 1 such rows. Row <i>d</i> holds the partial matches with at most <i>d</i> errors. Wu and Manber fill it from four cases: a matching letter from row <i>d</i>, and a substitution, a deletion or an insertion from row <i>d</i> − 1. That is a few more machine operations per row, and the rest stays the same.</p>
+  <p>Two limits follow. The state must fit in a machine word, or the work grows: "the discussion above assumes, of course, that the pattern's size is no more than the word size". And every text letter is processed. In exchange the time is steady: it "depends only on the size of the text (assuming again that the pattern fits into a word) and not on the actual text or the alphabet". Repeats do not hurt it.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: bitap worked out for the pattern CAT</summary><div class="in">
+    <p>Pattern <code>CAT</code>, text <code>GCATCGT</code>. Each row is one beginning of the pattern, and each column is one text letter. A 1 means "this beginning of the pattern ends here". The first three rows allow no error. The last three allow one.</p>
+    <div class="toy">text           G C A T C G T
+0 errors  C    0 1 0 0 1 0 0
+          CA   0 0 1 0 0 0 0
+          CAT  0 0 0 <span class="a">1</span> 0 0 0
+1 error   C    1 1 1 1 1 1 1
+          CA   0 1 1 1 1 1 0
+          CAT  0 0 <span class="h">1 1 1</span> 0 <span class="h">1</span></div>
+    <p>Read the <code>CAT</code> rows. With no errors there is one hit: the exact word ends at the fourth letter. With one error the row shows that end and three others. The third letter gives <code>CA</code>, with the <code>T</code> deleted. The fifth gives <code>CATC</code>, with a <code>C</code> inserted. The last letter gives <code>CGT</code>, with <code>A</code> replaced by <code>G</code>. The machine does not say which error it was, only that some alignment ending here needs at most one.</p>
+    <p>We ran this recurrence against a plain edit-distance calculation on 20,000 random DNA pairs, and all 563,632 end positions agreed.</p>
+  </div></details>
+
+  <p>Bitap is not the only way to allow errors. If a pattern is cut into <i>k</i> + 1 blocks, then at most <i>k</i> errors cannot touch all blocks, so at least one block occurs exactly. A fast exact search for the blocks finds candidate places, and only those get the expensive check. Wu and Manber use this partition in <code>agrep</code>. It is the same logic as the seeds of <a href="#s07">s07</a>.</p>
+
+  <h3>What the programs really use</h3>
+  <p>You will read that grep uses Boyer-Moore. The truth depends on the options. We read the source of GNU grep (development version after release 3.12) and the <code>kwset</code> module of gnulib, which holds its fixed-string search. The comment in <code>kwsprep</code> says it in one line: "Use Boyer-Moore if just one pattern, Aho-Corasick otherwise."</p>
+  <div class="tbl"><table>
+    <thead><tr><th>You run</th><th>What GNU grep does</th><th>Where in the source</th></tr></thead>
+    <tbody>
+      <tr><td><code>grep -F</code>, one pattern</td><td>Boyer-Moore. A fast loop uses only the bad-letter table. When ten jumps have moved less than 128 bytes on a 64-bit machine, as can happen on DNA, it switches to a plain fast search for the last letter of the pattern. The good-suffix table is used after the last letter matches.</td><td><code>bmexec_trans</code>, <code>bm_delta2_search</code></td></tr>
+      <tr><td><code>grep -F</code>, two or more patterns</td><td>Aho-Corasick. Until grep 2.26 (2016) this case used the Commentz-Walter algorithm, so older texts say that.</td><td><code>acexec_trans</code>; NEWS for 2.26</td></tr>
+      <tr><td><code>grep -F -w</code>, one pattern, single-byte <span class="tip" title="Locale: the language and character-encoding settings of your session. LC_ALL=C selects plain single-byte text.">locale</span></td><td>Turned into an ordinary <code>-G</code> regular expression, because "-G is typically faster" there.</td><td><code>grep.c</code></td></tr>
+      <tr><td><code>grep -F</code> in a multi-byte locale, with broken encoding in the patterns, or with an <code>-i</code> it cannot handle</td><td>Also turned into a regular expression.</td><td><code>grep.c</code></td></tr>
+      <tr><td><code>grep</code> or <code>grep -E</code>, two or more patterns with no special characters</td><td>Switched to the <code>-F</code> matcher, so Aho-Corasick.</td><td><code>try_fgrep_pattern</code></td></tr>
+      <tr><td><code>grep</code> with a regular expression</td><td>A <span class="tip" title="DFA, deterministic finite automaton: a state machine compiled from the regular expression, with exactly one next state for each letter.">DFA</span> does the matching. A string that every match must contain is first pulled out and searched with the same fixed-string code, to throw away lines that cannot match.</td><td><code>kwsmusts</code></td></tr>
+    </tbody>
+  </table></div>
+  <p>The grep manual gives the same picture and adds a warning: this "is an implementation detail that can change from release to release". It also says that setting <code>LC_ALL=C</code> "can be particularly efficient", which suits DNA:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># one site: Boyer-Moore; a file of sites: Aho-Corasick</span>
+LC_ALL=C grep -c -F GAATTC contigs_unwrapped.txt
+LC_ALL=C grep -c -F -f sites.txt contigs_unwrapped.txt</pre></div>
+
+  <p><code>agrep</code> needs more care, because two different programs have that name. Section <a href="#s02">02</a> used the one from the TRE library, packaged in Debian as <code>tre-agrep</code>. Debian's <code>agrep</code> package name points to <code>glimpse</code>, which carries the original Wu-Manber program. We read the code of both, but ran neither.</p>
+  <p>The original (version 3.41 of a fork whose keeper calls it unmaintained) mostly does <b>not</b> run bitap. Its notes call bitap "the most general algorithm inside agrep", and its code sends simple patterns elsewhere:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Wu-Manber agrep gets</th><th>Routine</th><th>Method</th></tr></thead>
+    <tbody>
+      <tr><td>Plain pattern, no errors, up to 20 letters</td><td><code>bm</code></td><td>A variant of Boyer-Moore.</td></tr>
+      <tr><td>Plain pattern, no errors, longer</td><td><code>monkey</code></td><td>Boyer-Moore style, using "two characters for delta_1 shifting".</td></tr>
+      <tr><td>Errors, 16 letters or more, only lower-case <code>a c g t</code></td><td><code>monkey4</code></td><td>A filter that <span class="tip" title="Hash: a number computed from a piece of sequence and used as an address in a table. Section 04 explains it.">hashes</span> blocks of the DNA pattern, 3 bits per base. The test in <code>checksg.c</code> looks for lower case only, so an upper-case pattern does not reach it.</td></tr>
+      <tr><td>Errors, other plain pattern, 24 letters or more</td><td><code>a_monkey</code></td><td>Boyer-Moore style filter: mark candidate areas, then check them.</td></tr>
+      <tr><td>Errors, other plain pattern, shorter</td><td><code>agrep</code> in <code>sgrep.c</code></td><td>The partition into <i>k</i> + 1 blocks.</td></tr>
+      <tr><td>Regular expressions, unequal costs, <code>-w</code> or <code>-x</code> with errors, <code>-n</code></td><td><code>bitap</code>, <code>asearch</code>, <code>re</code></td><td>Bitap, with the pattern limited to 32 characters (30 for a regular expression).</td></tr>
+      <tr><td>A file of patterns (<code>-f</code>)</td><td><code>mgrep</code></td><td>Hashing plus Boyer-Moore style shifts.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Its error count stops at 8 ("the maximum number of errors is 8"). TRE's <code>agrep</code> takes another road. Its README says it "allows full regexps of any length, any number of errors, and non-uniform costs". Its approximate matcher, <code>tre_tnfa_run_approx</code>, walks an automaton built from the regular expression and keeps costs for each reached state. It uses no bit masks, so it is not bitap at all.</p>
+  <p>For sequences the lesson is about scale. A 200-bp SINE copy with 15 % differences has 30 errors. The Wu-Manber program refuses that. And a plain count of errors treats all differences alike, which is a poor measure of "related". Sections <a href="#s06">06</a> and <a href="#s07">07</a> replace it with a score. If the question is not "where is this string" but "which of these k-mers", the next section's hash tables do better.</p>
+
+  <div class="tool explain" id="s03-check-tool">
+    <div class="tool-head"><span class="tool-tag">Check</span><h3 id="s03-check-h">Are these toys right?</h3></div>
+    <p class="tool-note">The button runs the same code that drives the two figures on random strings, and compares every occurrence list with the one from JavaScript's built-in <code>indexOf</code>, a method written by other people. It then counts comparisons on one random text of 100,000 letters per row, in your browser. These are <b>our own measurements on random letters</b>, not results from a paper or from real DNA. Random text has no repeats, so it flatters every method.</p>
+    <div><button type="button" class="btn" id="s03-check-run">Run the check</button></div>
+    <div id="s03-check-out" class="s03-check" aria-live="polite"></div>
+  </div>
+</section>

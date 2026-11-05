@@ -1,0 +1,67 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>What SNP arrays can and cannot do</h2>
+  <p class="lede">Many large cohorts were not sequenced. They were genotyped on a <dfn>SNP array</dfn> (also called a SNP chip): a slide that reads a fixed list of a few hundred thousand to a few million positions where people are already known to differ. That is cheap and fast, and it is enough for many questions. But the list was chosen in advance, and the choice leaves a mark on every number computed from it. This section shows the mark with a toy, explains why the methods of <a href="../04-demography/">lesson 4</a> cannot be run on array data, and names the four methods that were built for it.</p>
+
+  <h3>An array reads a chosen list, not the genome</h3>
+  <dl class="defs">
+    <dt>SNP</dt><dd>A single position where individuals carry different letters, for example A in some and G in others. Each version is an <dfn>allele</dfn>.</dd>
+    <dt>Minor allele frequency (MAF)</dt><dd>The share of chromosomes that carry the rarer of the two alleles. A variant seen once among 100 chromosomes has a MAF of 1 %.</dd>
+    <dt>Ascertainment</dt><dd>The way the sites on the list were found and chosen. Typically a small group of individuals was sequenced first (the <dfn>discovery panel</dfn>), and variants seen there, often those common enough to be useful, went onto the array. Albrechtsen et al. (2010) write that SNP chip data suffer "from ascertainment biases caused by the SNP discovery process in which a small number of individuals from selected populations are used as discovery panels", and that these biases "will distort measures of human diversity" (abstract only; see notes).</dd>
+  </dl>
+  <p>A variant that is rare, or that exists only in a population the panel did not include, is unlikely to be on the list. So the array sees a sample of variation that is <b>tilted toward common variants</b>. This is our inference from the cause the papers state; the exact shape depends on the chip. Everything computed from allele frequencies then shifts: diversity, <span class="tip" title="Tajima's D: a summary of the frequency spectrum. It is near 0 in a steady neutral population, positive when rare variants are missing (as after a bottleneck, or on an array) and negative when they are in excess (as after growth).">Tajima's D</span>, the shape of the frequency spectrum.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why choosing the sites in advance changes the answer</summary><div class="in">
+    <p>Imagine counting how many bird species live in a forest, but only from a checklist written by someone who walked one path on one day. The list holds every bird that is common on that path. Your count will show many common birds, almost no rare ones, and nothing that lives only off the path. The forest is the same; the checklist decides what you can see.</p>
+    <p>A SNP array is that checklist. Most variable positions in a population are rare: in the toy below, with constant population size, about one in five variable positions has its rarer allele on only one chromosome out of a hundred, and about one in three on three or fewer. A chip made from a small panel contains few of them. The people on the chip look more similar in their rare variants than they are, and a population history read from "how many rare variants are there" will be wrong. In the toy, a chip with a MAF cut-off of 5 % keeps about six in ten of all variable sites but none of the rarest ones, and the sites it keeps tell a different story from the whole.</p>
+  </div></details>
+
+  <section class="tool explain" aria-labelledby="s04-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-toy-h">All variable sites versus the sites on an array</h3></div>
+    <p class="tool-note">Toy population of constant size, 100 sampled chromosomes, neutral variants. In such a population the expected number of variable sites whose rarer allele is on k chromosomes is proportional to 1/k + 1/(100 − k) (the coalescent result of <a href="../04-demography/#s01">lesson 4, s01</a>). This list of counts is the <span class="tip" title="Site frequency spectrum (SFS): how many variable sites have the rarer allele on 1 chromosome, 2 chromosomes, 3, and so on. 'Folded' means we do not know which allele is the ancestral one, as on an array.">site frequency spectrum</span>. Grey bars: all variable sites. Coloured bars: sites the array carries. Two controls: the array's minimum MAF, and the size of the discovery panel (a site is found only if a panel of that many chromosomes, drawn from the same population, shows both alleles; the toy uses the site's true frequency as the chance of this, an approximation). The toy genome has 1,000 variable sites. Bars show the share of all variable sites in each class.</p>
+    <div class="controls" role="group" aria-label="Array design">
+      <label for="s04-maf">Array minimum MAF <output id="s04-maf-o">5 %</output><input type="range" id="s04-maf" min="0" max="20" step="1" value="5"></label>
+      <label for="s04-panel">Discovery panel size <output id="s04-panel-o">none</output><input type="range" id="s04-panel" min="0" max="100" step="2" value="0"></label>
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Quick settings
+        <div class="seg" role="group" aria-label="Presets" id="s04-preset"><button type="button" data-m="0" data-p="0" aria-pressed="false">sequencing</button><button type="button" data-m="5" data-p="0" aria-pressed="true">MAF 5 %</button><button type="button" data-m="1" data-p="20" aria-pressed="false">small panel</button></div></div>
+    </div>
+    <div class="legend" id="s04-legend"></div>
+    <div class="svgbox" id="s04-fig"></div>
+    <div class="readout" id="s04-out"></div>
+    <div class="note" id="s04-verdict" aria-live="polite"></div>
+    <p class="tool-note" id="s04-check"></p>
+  </section>
+
+  <h3>Why the PSMC family is blocked on arrays</h3>
+  <p>The input of PSMC is described in <a href="../04-demography/#s02">lesson 4, s02</a>: for every 100-base bin of the genome, whether it contains a heterozygous site. The PSMC README puts it as "the i-th character in the output sequence indicates whether there is at least one heterozygote in the bin". The method reads history from the <b>gaps between</b> differences, so every position must have been looked at. An array looks at a short list chosen in advance, with long stretches between probes that nobody read. A bin with no heterozygous probe may mean "no difference" or "not looked at", and the list itself is biased toward common variants. Our conclusion from these facts, not a statement from the tool's manual: PSMC and the other single-genome methods of lesson 4 need sequence-level data, and an array cannot be fed to them as a cheaper version. They are blocked, not merely less accurate.</p>
+  <p>What was built for arrays is a small group of methods that model the ascertainment, or do not need the rare variants, or look at something other than variant density.</p>
+
+  <h3>What does work</h3>
+  <div class="tbl"><table style="min-width:640px">
+    <thead><tr><th>Method</th><th>What it gives</th><th>How it deals with the array</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>ASMC</td><td>Time since the common ancestor (<span class="tip" title="Coalescence time: how many generations back two chromosomes share an ancestor.">coalescence time</span>) for pairs of chromosomes at every position</td><td>Models the ascertainment: it estimates the chance that a variant is on the array from the ratio of the observed frequency spectrum to the neutral expectation</td><td>Palamara et al. 2018 (bioRxiv full text)</td></tr>
+      <tr><td>ARG-Needle</td><td>A whole genealogy of the sample (the ARG of <a href="#s02">s02</a>), built for large array cohorts</td><td>Runs ASMC over pairs of samples to build the genealogy; applied to phased array data in its paper (phased with Beagle 5.1)</td><td>Zhang et al. 2023; Nielsen, Vaughn and Deng 2025, text and Table 1</td></tr>
+      <tr><td>tsinfer, sparse mode</td><td>A genealogy from a variant table (<a href="#s03">s03</a>)</td><td>Named in the review as one of only two ARG methods that support array data. The tsinfer manual page we read does not discuss arrays; it needs the ancestral allele at every site used</td><td>Nielsen, Vaughn and Deng 2025; tsinfer manual</td></tr>
+      <tr><td>GONE</td><td>Effective population size over the last generations, from <span class="tip" title="Linkage disequilibrium (LD): the tendency of nearby variants to be inherited together. It falls with distance, and faster in an old, large population.">linkage disequilibrium</span> between pairs of sites</td><td>Takes "chip genotyping or DNA sequencing data" as genotypes; needs a genetic map or an assumed recombination rate</td><td>Santiago et al. 2020; GONE repository</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>The four, one by one</h3>
+  <dl class="defs">
+    <dt>ASMC</dt><dd>A hidden Markov model of the kind used in PSMC, but run on <i>pairs</i> of chromosomes and made fast. Its authors say it "can operate either on pairs of unphased chromosomes within a single diploid individual, or on pairs of phased chromosomes across individuals", and that the cross-individual mode "requires the availability of phased haplotypes, which may not be easy to obtain" (Palamara et al. 2018). The ascertainment correction is the part that matters here: the sites on the array are not treated as a random sample of the variable sites, and stretches between probes are treated as unobserved, not as invariant.</dd>
+    <dt>ARG-Needle</dt><dd>Builds the genealogy by threading haplotypes into it, with ASMC deciding where to attach them ("ASMC is run over pairs of samples"). In its paper it is applied to genotyping data from 337,464 UK Biobank participants, and the genealogy then tags rare variants better than imputation from a reference panel: "ARG-derived ultra-rare variants provided stronger tagging compared with imputed ultra-rare variants" (Zhang et al. 2023, <i>Nat Genet</i> 55:768). The genealogy cannot add variants that were never typed; it uses linkage to infer them. We did not find a minimum sample size in the part of the paper we read, so none is stated here (see notes).</dd>
+    <dt>tsinfer, sparse mode</dt><dd>tsinfer chooses a subset of sites for inference, "excluding by default any sites that are fixed, singletons, or where the ancestral state is unknown" (tsinfer manual), and needs the ancestral allele at every site it uses. An array does not give that for free: it has to come from an outgroup or another method. We could not verify the details of the sparse mode in the manual; the review calls it "a variation of tsinfer".</dd>
+    <dt>GONE</dt><dd>Does not build a genealogy. It models how fast linkage disequilibrium falls with the genetic distance between two sites, which depends on the effective population size in each generation back, and uses a genetic algorithm to find the history that best explains the observed LD. Santiago et al. (2020): the method works "with the highest resolution within a hundred generations before sampling" and "can be applied from large samples to samples of fewer than ten individuals". The repository changelog gives limits of 100,000 SNPs per chromosome and 1,800 individuals. Because it reads recent history from LD, not from counts of rare variants, the rare-variant loss matters less to it than to a method that counts variants. That last point is our inference: we did not find ascertainment discussed in the part of the paper we read.</dd>
+  </dl>
+
+  <div class="note warn"><b>What can go wrong with GONE.</b> It assumes a population that stayed isolated for a while. Novo et al. (2023, <i>Genet Sel Evol</i> 55:86) tested it by simulation and found that its estimates "may be substantially biased when there has been a recent mixture of populations that were previously separated for a long period of time", and also under low continued migration or frequent chromosomal inversions (abstract only). A cohort made of several regions and ancestries is the case that paper warns about. Run a population-structure analysis first and give GONE homogeneous groups.</div>
+
+  <h3>What an array cannot do, in practice</h3>
+  <ul>
+    <li><b>Heterozygosity, nucleotide diversity, Tajima's D and the frequency spectrum</b> computed straight from array genotypes describe the chip as much as the population (the toy above).</li>
+    <li><b>Rare variants.</b> They are not on the list. Only methods that infer them from linkage (ARG-Needle) bring some back.</li>
+    <li><b>Variants private to a population</b> that the discovery panel did not include.</li>
+    <li><b>Dating from branch lengths of Y chromosome or mitochondrial DNA</b> from chip probes alone; see <a href="#s07">s07</a>.</li>
+  </ul>
+  <div class="note">In one of our projects, data from an Asian human cohort came from an array, so only these methods were options at first; the questions about population size and split times wait for whole genomes (<a href="#s08">s08</a>).</div>
+</section>

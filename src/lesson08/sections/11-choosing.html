@@ -1,0 +1,77 @@
+<section aria-labelledby="s11" id="s11-wrap">
+  <h2 id="s11"><span class="n">11</span>Choosing the tool</h2>
+  <p class="lede">Every method in this lesson answers the same trade-off: scan the data each time or build an index once, accept only exact matches or tolerate differences, be sure or be fast. The last skill is to look at the question and the size of the data and pick the <b>smallest tool that can answer it</b>. A search of a few kilobases against a small bank should take a second or less. If your plan takes minutes, the plan is probably wrong, not the computer.</p>
+
+  <h3>Three questions before you run anything</h3>
+  <ol class="qlist">
+    <li><b>What exactly is asked?</b> Write it in one sentence and do only that. "Where does this 400 bp sequence occur in these 30 contigs?" is a small question. "Map all reads to the genome" is a different question.</li>
+    <li><b>How big is the data?</b> Count the bases of the query and of the target. A few kb against a few thousand short sequences is tiny; one genome is large; a whole sequencing library is larger still.</li>
+    <li><b>Does the answer already exist?</b> An indexed BAM, a PAF file, a results table from an earlier run. Reuse it before computing it again.</li>
+  </ol>
+
+  <h3>Decision helper</h3>
+  <div class="tool" id="s11-tool">
+    <div class="tool-head"><span class="tool-tag">Decision helper</span><span class="tool-note">Pick the question, the size of the <b>target</b> (the data you search in) and how often you will search it. The helper shows a first choice, why, and where this lesson explains it.</span></div>
+    <div class="calc">
+      <label>Question
+        <select id="s11-q">
+          <option value="exact">Does this exact string occur, and where?</option>
+          <option value="short">A short oligo (under 50 nt), a few mismatches allowed</option>
+          <option value="query">A longer query (gene, exon, repeat consensus); copies may be diverged</option>
+          <option value="map">Place every read on a reference (mapping)</option>
+          <option value="region">Reads of one locus, from reads already mapped</option>
+          <option value="comp">What is in my reads, or how alike are two data sets</option>
+        </select>
+      </label>
+      <label>Target size
+        <select id="s11-t">
+          <option value="small">Small: a locus or a bank, up to a few Mb</option>
+          <option value="genome">One genome</option>
+          <option value="reads">A whole read library</option>
+        </select>
+      </label>
+      <label>How often
+        <select id="s11-m">
+          <option value="once">Once</option>
+          <option value="many">Many times, same target</option>
+        </select>
+      </label>
+    </div>
+    <div id="s11-out" aria-live="polite"></div>
+  </div>
+  <p class="tool-note">"Small" is our rule of thumb, not a limit of any tool. The suggestions come from the tools' own documentation (listed in the notes file for this section) and from the reasoning in sections 1 to 10; where a line is our own reasoning, it says so. "Oligo" is short for oligonucleotide: a short synthetic sequence such as a primer or a probe.</p>
+
+  <details class="simple"><summary>Show every answer of the helper in one table</summary><div class="in">
+    <p>The same rules, listed for all combinations. Read across a row to see how "many times" changes the advice (usually: build or keep the index, or keep the mapped file).</p>
+    <div class="tbl"><table id="s11-all"><thead><tr><th>Question</th><th>Target</th><th>Once</th><th>Many times</th></tr></thead><tbody></tbody></table></div>
+  </div></details>
+
+  <h3>Common mistakes</h3>
+  <ol class="steps" id="s11-mistakes">
+    <li><div><b>Mapping a whole read set to find the reads of one locus.</b>
+      <div class="d">The reads were already mapped and indexed once. Asking for a region takes seconds with <code>samtools view</code>. In our lab, mapping the whole set again took many minutes and wrote a BAM of many gigabytes. If you do need to map, map only the extracted reads (<a href="#s09">section 09</a>). Map each allele alone too: two near-identical alleles in one reference give the reads mapping quality 0, and the reads seem to disappear (lab notes).</div></div></li>
+    <li><div><b>BLAST defaults on a short query.</b>
+      <div class="d">The default <code>blastn</code> task is <code>megablast</code>, whose word size is 28, so a 25 nt query cannot even form a seed. Use <code>-task blastn-short</code> (word size 7, reward 1, penalty -3, E-value threshold 1000, filtering off). The default also filters low-complexity sequence, which can mask a short repetitive query (<a href="#s07">section 07</a>).</div></div></li>
+    <li><div><b>An exhaustive aligner on the whole genome for a small question, or a fast heuristic where sensitivity matters.</b>
+      <div class="d">These are wrong in opposite directions. Full Smith-Waterman (<code>ssearch36</code>) is the reference for sensitivity, but you do not need to scan a genome to ask whether a 20-mer is in a 2 kb window (<a href="#s06">section 06</a>). A seed-and-extend tool or a mapper, given short, diverged, high-copy queries such as an old repeat, misses copies (<a href="../07-sines-satellites/#s02">lesson 7, section 02</a>).</div></div></li>
+    <li><div><b>Searching one strand, or searching wrapped lines.</b>
+      <div class="d"><code>grep</code> reads lines and knows nothing about the reverse complement. Search the string and its reverse complement, and join the sequence lines of a wrapped FASTA first, or a match that crosses a line break is missed (<a href="#s02">section 02</a>).</div></div></li>
+    <li><div><b>Using coordinates from a table without checking them.</b>
+      <div class="d">Before mapping reads to a slice of an assembly, map the sequence you care about back onto the slice. It takes seconds and shows a wrong region, a shift of one between 0-based and 1-based counting (the first base called 0 in one file and 1 in another), or a different assembly version straight away (lab notes).</div></div></li>
+    <li><div><b>Trusting a hit without asking what it hits.</b>
+      <div class="d">A best hit to an unrelated organism is not a classification. Look at the aligned length, the identity and the species before you name a sequence (<a href="#s10">section 10</a>). And one correct control case does not prove that every other case ran: compare the read counts with the number you expect.</div></div></li>
+    <li><div><b>Building an index for a search you run once.</b>
+      <div class="d">An index pays when the same target is searched again and again, or by very many queries (<a href="#s08">section 08</a>). For one query against a small target, a scan is faster than the build. This is our reasoning from the methods in this lesson, not a rule from a manual.</div></div></li>
+  </ol>
+
+  <div class="note"><b>In our projects</b> this rule was written down after a plan that used whole-genome mapping and the slowest aligner for a question about a few kilobases. The answer came in seconds from an indexed file and a small search. The measured comparison for exact k-mer search is in <a href="#s05">section 05</a>. Mapping is used in other lessons too: <a href="../04-demography/#s02">lesson 4, section 02</a> and <a href="../06-methylation/#s03">lesson 6, section 03</a>.</div>
+
+  <details class="simple"><summary>Simple explanation with examples: a taxi, a bus, a railway</summary><div class="in">
+    <p>You can cross a town by taxi or by building a railway. For one trip of two streets, a taxi (a small scan) is right: no waiting, no cost to set up. If thousands of people go the same way every day, the railway (an index of the genome, built once) pays off. A railway for one trip is the mistake, and so is walking a thousand trips on foot.</p>
+    <div class="toy">query 20 nt, target 2 kb         -> <span class="a">scan it</span> (grep -F or a small exact search)
+query 400 nt, target 30 contigs -> <span class="a">align it</span> (full Smith-Waterman is fast enough)
+10 million reads, one genome    -> <span class="a">index</span> the genome once, map the reads
+reads of one locus, BAM exists  -> <span class="x">do not remap</span>: ask the BAM for the region</div>
+    <p>The helper above gives this advice for six common questions. It is a first choice: when the answer surprises you, read the matching section and the tool's manual.</p>
+  </div></details>
+</section>

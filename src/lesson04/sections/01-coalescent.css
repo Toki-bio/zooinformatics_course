@@ -1,2 +1,7 @@
 #s01-wrap #s01-preset{flex-wrap:wrap;max-width:100%}
 #s01-wrap #s01-preset button{flex:0 0 auto}
+#s01-wrap .s01-cz{display:flex;flex-direction:column;gap:16px;min-width:0}
+#s01-wrap .s01-cz h4{font-family:var(--f-display);font-size:15.5px;font-weight:700;margin:10px 0 0;line-height:1.2}
+#s01-wrap #s01-cz-kind{flex-wrap:wrap;max-width:100%}
+#s01-wrap #s01-cz-kind button{flex:0 0 auto}
+#s01-wrap .btn:disabled{opacity:.45;cursor:default}

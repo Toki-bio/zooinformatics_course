@@ -2,10 +2,104 @@
   <h2 id="s01"><span class="n">01</span>What one genome remembers</h2>
   <p class="lede">One diploid animal carries two copies of every <span class="tip" title="Autosome: any chromosome that is not a sex chromosome (X, Y, Z, W). Each is present twice in a diploid animal, once from each parent.">autosome</span>. Followed back through the generations, the two copies of any stretch of DNA meet in one ancestral copy. How long ago that happened depends on how large the population was: in a small population two copies find their common ancestor quickly, in a large one it takes a long time. Recombination has cut the genome into many short stretches, each with its own ancestor and its own date. Heterozygosity records those dates. This section builds the intuition that every method in this lesson rests on, before any program is run.</p>
 
+  <div class="s01-cz">
+  <h3 id="s01-zero">Coalescent theory from zero</h3>
+  <p>Everything in this lesson rests on one idea, and it needs no mathematics beyond fractions. We will build it in five small steps, each with a picture first. Two words before we start. A <dfn>gene copy</dfn> is one copy of one stretch of DNA: a <span class="tip" title="Diploid: carrying two copies of each chromosome, one from each parent.">diploid</span> animal carries two, so a population of N animals holds 2N copies. A <dfn>generation</dfn> here is one row of a picture: all the copies alive at one time.</p>
+
+  <h4>Step 1. Forward in time: most lines die out</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f1"></div>
+    <figcaption><b>A toy population of 5 animals, so 10 gene copies per row.</b> Time runs down the page, from the oldest row to today. Each copy in a row picked its parent at random from the row above. <span id="s01-cz-f1n"></span></figcaption>
+  </figure>
+  <p>This simple rule is the <span class="tip" title="Wright-Fisher model: an idealised population. Generations do not overlap, the size stays the same, and each new copy picks its parent at random from the previous generation, every parent being equally likely.">Wright-Fisher model</span>. Some copies are picked twice or more, and some are never picked, so their line ends there. Nothing about those copies was worse. It is chance alone, and this change by chance is called <span class="tip" title="Genetic drift: random change in how common a gene copy is, caused only by which copies happen to leave offspring. It is stronger in small populations.">genetic drift</span>. Rows are drawn sorted so that the lines do not cross; the place of a copy within a row means nothing.</p>
+
+  <h4>Step 2. Turn it round: follow copies backward</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f2"></div>
+    <figcaption><b>The same population, read from the bottom up.</b> <span id="s01-cz-f2n"></span></figcaption>
+  </figure>
+  <p>Now forget everyone else. We have sampled a few copies today, and we ask only where they came from. Each copy has exactly one parent copy, so following it back gives one line, called a <dfn>lineage</dfn>. All the faint copies have no descendants in our sample, and we can ignore them. That is what saves the work: instead of simulating a whole population forward, we follow a few lines backward. When two lines reach the same parent they <dfn>coalesce</dfn> (they meet), and from there on they are one line. The model of this backward process is the <dfn>coalescent</dfn> (Kingman 1982), and Nordborg (2007) gives its starting point as "the realization that the genealogy is usually easier to model backward in time".</p>
+
+  <h4>Step 3. Two lines meet: count it</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f3a"></div>
+    <figcaption><b>One generation back.</b> Copy A has picked its parent. Copy B picks at random from the same 10 copies, so it picks the same one with a chance of 1 in 10. Nine times in ten the two lines stay apart and try again one generation further back.</figcaption>
+  </figure>
+  <figure>
+    <div class="svgbox" id="s01-cz-f3b"></div>
+    <figcaption><b>Counting 100 pairs in two toy populations.</b> <span id="s01-cz-f3n"></span></figcaption>
+  </figure>
+  <p>The counting says what the formula says. If something has a chance of 1 in 10 each time, you wait 10 tries on average; at 1 in 40 you wait 40.</p>
+  <div class="formula">meeting chance per generation = 1/(2N)<br>average wait = 2N generations</div>
+  <p>So <b>small populations meet sooner</b>. With few parents to choose from, two lines soon land on the same one. Look too at the spread in the bars: most pairs wait less than the average, and a few wait far longer.</p>
+
+  <h4>Step 4. More than two copies: short tips, long deep branches</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f4"></div>
+    <figcaption><b>An average tree of 6 copies, drawn to scale.</b> Each band is the time spent with a given number of lines. Bottom band: 6 lines make 15 possible pairs, so the first meeting comes after only 2N/15 generations on average. Top band: the last 2 lines are 1 pair, and wait 2N.</figcaption>
+  </figure>
+  <p>Every pair of lines is a separate chance to meet. With 6 lines there are 15 pairs, so a meeting comes 15 times sooner than for one pair. Each meeting removes a line and the number of pairs falls quickly: 15, 10, 6, 3, 1. Meetings therefore come fast near the present and slowly at the end.</p>
+  <div class="formula">n lines make n(n − 1)/2 pairs<br>average wait with k lines ≈ 2N ÷ [k(k − 1)/2]<br>average height of the tree ≈ 4N (1 − 1/n)</div>
+  <p>The tree has short tips and long deep branches. The last two lines alone take 2N generations on average, while the whole tree stands 4N(1 − 1/n) high: that is more than half of the height, whatever the sample (for 6 copies 60 %, for 50 copies 51 %). Nordborg (2007) puts it the same way: the time with only two branches is "greater than half the expected total tree height". Adding more copies mostly adds short twigs near the present. This is also why two copies, the ones in one animal, already reach deep into the past.</p>
+
+  <h4>Step 5. Mutations fall on the branches: differences measure time</h4>
+  <figure>
+    <div class="svgbox" id="s01-cz-f5"></div>
+    <figcaption><b>Four copies with mutations (crosses) on the branches of their tree.</b> A and B met recently: only 2 crosses lie on the short path between them (blue and red branches at the left), so they differ at 2 sites. A and C met only at the root: 9 crosses lie on the long path between them (red), so they differ at 9 sites.</figcaption>
+  </figure>
+  <p>The tree comes first and mutations are scattered on it afterwards, like rain on branches. If a mutation does not change how many offspring a copy leaves (it is <span class="tip" title="Neutral: having no effect on survival or reproduction.">neutral</span>), it cannot change the tree, so the two can be treated separately (Nordborg 2007). A longer branch collects more mutations. Two copies differ at every mutation on the path that joins them, and that path has two arms, each as long as the time back to their ancestor. So the number of differences between two copies measures the time since they met. That is the reasoning behind the formula in <a href="#s01-clock">Heterozygosity is a clock</a>, below.</p>
+
+  <section class="tool explain" aria-labelledby="s01-cz-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s01-cz-h">Watch lines meet in different populations</h3></div>
+    <p class="tool-note">A real Wright-Fisher population, generated anew each time. Today is the bottom row. All parent links are faint. Press <b>play</b> and the sampled lines (blue) climb back until they meet; orange rings mark meetings, the red ring the common ancestor. Each setting changes the width of the rows through time. These are tiny toy populations, so that you can see every copy.</p>
+    <div class="controls" role="group" aria-label="Population setting">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">Setting
+        <div class="seg" role="group" aria-label="Population setting" id="s01-cz-kind"><button type="button" data-v="const" aria-pressed="true">constant</button><button type="button" data-v="bott" aria-pressed="false">bottleneck</button><button type="button" data-v="exp" aria-pressed="false">expansion</button><button type="button" data-v="decl" aria-pressed="false">decline</button><button type="button" data-v="demes" aria-pressed="false">two demes</button></div></div>
+    </div>
+    <p class="tool-note" id="s01-cz-say"></p>
+    <div class="controls" role="group" aria-label="Population size and sample">
+      <label for="s01-cz-N">Population size N <output id="s01-cz-N-o">10</output><input type="range" id="s01-cz-N" min="5" max="30" step="1" value="10"></label>
+      <label for="s01-cz-n">Sampled copies <output id="s01-cz-n-o">4</output><input type="range" id="s01-cz-n" min="2" max="10" step="1" value="4"></label>
+    </div>
+    <div class="controls" role="group" aria-label="Run">
+      <button type="button" class="btn" id="s01-cz-new" style="align-self:center">new population</button>
+      <button type="button" class="btn" id="s01-cz-play" style="align-self:center">play</button>
+      <button type="button" class="btn" id="s01-cz-step" style="align-self:center">one generation back</button>
+      <button type="button" class="btn" id="s01-cz-back" style="align-self:center">back to today</button>
+    </div>
+    <div class="svgbox" id="s01-cz-grid"></div>
+    <div class="readout" id="s01-cz-read"></div>
+    <div class="controls" role="group" aria-label="Repeat">
+      <button type="button" class="btn" id="s01-cz-rep" style="align-self:center">repeat 1,000 times</button>
+    </div>
+    <div class="legend"><span><i style="background:var(--accent);height:10px"></i>pairs in the simulation</span><span><i style="background:var(--fg)"></i>calculated expectation (dashed)</span><span><i style="background:var(--bad)"></i>calculated average</span><span><i style="background:var(--code-bg);height:10px"></i>the narrow period</span></div>
+    <div class="svgbox" id="s01-cz-hist"></div>
+    <div class="readout" id="s01-cz-rout"></div>
+    <p class="tool-note"><b>What to notice.</b> (1) <b>Constant</b>: press repeat at N = 5 and at N = 30: the average wait follows 2N, and the histogram falls away from short waits to a long tail. Press new population a few times with 10 copies sampled: the height of a single tree jumps around, and the long top branch is the reason. (2) <b>Bottleneck</b>: the meetings pile up in the grey band. (3) <b>Expansion</b>: few meetings near today, then a burst. (4) <b>Decline</b>: the opposite, a burst near today and then a long wait. The shape of the histogram is the fingerprint of the history, and reading it backward is what the methods of this lesson do. (5) <b>Two demes</b>: the total size is the same as in constant, yet a pair from different demes waits longer, and the histogram has almost no very short waits. A history of size changes is not the only thing that shapes this histogram (<a href="#s06">s06</a>).</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: a class of pupils who each pick a parent</summary><div class="in">
+    <p>This is an analogy, not biology. Take a class of 20 pupils. Every pupil points at random at one pupil of last year's class and calls that pupil their "parent". Last year's pupils did the same with the class before, and so on.</p>
+    <p><b>Going forward:</b> some of last year's pupils are pointed at twice, some not at all. Those not chosen have no "descendants" in this year's class. It works like surnames in a village: a surname dies out when a generation happens to have no sons to carry it, and after enough time one surname can be all that is left, though it was no better than the others.</p>
+    <p><b>Going backward:</b> choose two pupils of this year's class, Ana and Ben. Ana has pointed at someone. The chance that Ben pointed at the same person is 1 in 20. If not, look one class further back and try again. On average they share a "parent" after 20 classes: sometimes after 1, sometimes after 60. In a class of 5 it takes about 5.</p>
+    <p><b>All the pupils:</b> take the whole class of 20. There are 190 possible pairs, so someone meets almost at once. As the lines join, pairs get scarce, and the last two lines left take as long as any pair does, about 20 classes.</p>
+    <p><b>Marks on the way:</b> suppose each pupil copies the family recipe and makes a small random change now and then. Ana's and Ben's recipes differ by the changes on both lines since the shared "parent". Few differences mean a recent meeting, many a distant one. Where the analogy stops: a person has two parents and a surname follows one line of them, whereas a gene copy really does have just one parent copy. That is why the model works so simply for gene copies.</p>
+  </div></details>
+
+  <h4>What this model assumes</h4>
+  <ul>
+    <li><b>Constant size.</b> The rows keep the same width. Relaxed further down in this section (<i>When the population size changes</i>), and estimating that change is the purpose of PSMC (<a href="#s03">s03</a>).</li>
+    <li><b>Random mating.</b> Every parent is equally likely. Related parents break this and leave long homozygous runs (<a href="#s06">s06</a>; <a href="../03-annotation/#s09">lesson 3, s09</a>).</li>
+    <li><b>Neutrality.</b> No copy has an advantage, so the mutations do not shape the tree. No section of this lesson relaxes this: the methods here treat the genome as neutral, and selection stays a caution when you read a result.</li>
+    <li><b>No structure.</b> One population with no groups. The <b>two demes</b> setting above breaks this; what it does to a PSMC curve is in <a href="#s03">s03</a> and <a href="#s06">s06</a>, and gene flow between species in <a href="#s07">s07</a>.</li>
+  </ul>
+  <p>The pictures above also follow one short stretch of DNA that is never cut. Recombination lifts that limit further down, in <i>Recombination cuts the genome into many histories</i>. Real populations are never this ideal; the size N that would make the ideal model fit is the effective size N<sub>e</sub>, defined next, and from here on the text writes N<sub>e</sub> instead of N.</p>
+  </div>
+
   <h3>Two copies, one ancestor</h3>
   <dl class="defs">
     <dt>Coalescence</dt><dd>Two gene copies, traced back in time, "coalesce" in the generation where they come from the same single parental copy. From there back they share one history. The mathematical model of this backward process is the <dfn>coalescent</dfn>.</dd>
-    <dt>TMRCA</dt><dd>Time to the most recent common ancestor: how many generations back the two copies coalesce. In this lesson it is always the TMRCA of the two copies inside one animal, the maternal and the paternal one.</dd>
+    <dt>TMRCA</dt><dd>Time to the most recent common ancestor: how many generations back the two copies coalesce. From here on it is the TMRCA of the two copies inside one animal, the maternal and the paternal one, unless a section says otherwise.</dd>
     <dt>Effective population size (N<sub>e</sub>)</dt><dd>The size of an idealised population (random mating, constant size, every individual equally likely to be a parent) that would give the same rate of coalescence as the real one. It is not a head count of the animals alive, and methods based on the coalescent measure exactly this: Spence et al. (2018) define the effective size these methods infer as "the inverse coalescence rate for a pair of haplotypes".</dd>
     <dt>Haplotype</dt><dd>One of the two copies of a chromosome (or of a stretch of it): the one from the mother or the one from the father.</dd>
   </dl>
@@ -21,11 +115,11 @@ large population   mother's copy  ACGT<span class="h">C</span>AGCATGACC<span cla
   </div></details>
 
   <h3>How fast two copies find their ancestor</h3>
-  <p>In the idealised population of N<sub>e</sub> diploid individuals there are 2N<sub>e</sub> copies of each autosomal stretch. Going back one generation, the chance that the two copies come from the same parental copy is one in 2N<sub>e</sub>. This is the starting point of the PSMC model (the method of <a href="#s03">s03</a>), which measures time in units of 2N<sub>0</sub> generations (N<sub>0</sub> is a reference size that the program estimates, close to the most recent size) and sets the coalescence rate at time <i>t</i> to 1/λ(<i>t</i>), where N(<i>t</i>) = N<sub>0</sub> λ(<i>t</i>) is the size at that time and λ the size relative to N<sub>0</sub> (Li &amp; Durbin 2011, model notes in the PSMC repository).</p>
+  <p>Step 3 above gave the chance of meeting: one in 2N<sub>e</sub> per generation, in a population of N<sub>e</sub> diploid individuals. This is the starting point of the PSMC model (the method of <a href="#s03">s03</a>), which measures time in units of 2N<sub>0</sub> generations (N<sub>0</sub> is a reference size that the program estimates, close to the most recent size) and sets the coalescence rate at time <i>t</i> to 1/λ(<i>t</i>), where N(<i>t</i>) = N<sub>0</sub> λ(<i>t</i>) is the size at that time and λ the size relative to N<sub>0</sub> (Li &amp; Durbin 2011, model notes in the PSMC repository).</p>
   <div class="formula">chance of coalescing per generation = 1 / (2 N<sub>e</sub>)       mean TMRCA = 2 N<sub>e</sub> generations</div>
   <p>The waiting time is very variable: with a constant size it follows an <span class="tip" title="Exponential distribution: the waiting time for an event that has the same small chance in every generation. Short waits are most common, but very long ones happen too; its spread (standard deviation) equals its mean.">exponential distribution</span>, so its spread is as large as its mean. With N<sub>e</sub> = 10,000, the mean TMRCA is 20,000 generations, but half of all stretches coalesce within about 13,900 generations (2N<sub>e</sub> × ln 2) and one in twenty takes longer than 60,000. That spread is not noise to be averaged away: it is the information. If the size changed over time, the coalescence rate changed with it, and the TMRCAs pile up in the periods when the population was small.</p>
 
-  <h3>Heterozygosity is a clock</h3>
+  <h3 id="s01-clock">Heterozygosity is a clock</h3>
   <p>While the two copies are separate, each collects mutations. If the mutation rate is <span class="tip" title="μ (mu): the number of new mutations per base per generation. Measured in pedigrees or calibrated from fossil dates; section 04 of this lesson deals with its uncertainty.">μ</span> per base per generation and the TMRCA is T generations, the two copies have been evolving independently for 2T generations in total, so they differ at about 2μT of their bases. A stretch with a recent common ancestor has almost no heterozygous sites; a stretch with an old one has many. Averaged over the genome under a constant size this gives the classic expectation for the expected heterozygosity per base, written <span class="tip" title="θ (theta): the population-scaled mutation rate. For two copies in one diploid it is the expected share of bases at which they differ, if the population size was constant.">θ</span>:</p>
   <div class="formula">heterozygosity of a stretch ≈ 2 μ T       genome average (constant size) ≈ 2 μ × 2 N<sub>e</sub> = 4 N<sub>e</sub> μ = θ</div>
   <p>Run it backwards and one number already gives a size. Take a genome with 1.5 heterozygous <span class="tip" title="SNV, single-nucleotide variant (often called SNP): a position where one base differs. Here: a position where the two copies of the animal carry different bases.">SNVs</span> per kb (0.0015 per base; a round example value). With an illustrative mutation rate of 5.4 × 10<sup>−9</sup> per base per generation, N<sub>e</sub> = 0.0015 / (4 × 5.4 × 10<sup>−9</sup>) ≈ 69,000; a genome with twice the heterozygosity gives twice that size. These are long-term averages over the whole history the genome samples, and they scale with the mutation rate you assume (<a href="#s04">s04</a>). The rest of the lesson is about getting the history instead of one average.</p>
@@ -83,5 +177,5 @@ large population   mother's copy  ACGT<span class="h">C</span>AGCATGACC<span cla
   <div class="note"><b>In our projects</b>
     <p>One male each of two closely related rodents: species A (our long-read genome) and a close relative with a public HiFi chromosome-level assembly ("the relative" in the rest of this lesson). Counted over the <span class="tip" title="Callable: positions where the reads were good enough that a heterozygous site would have been seen (s02; lesson 3, s09).">callable</span> sequence, the relative had about 1.7 times as many heterozygous SNVs per kb as species A, so by the formula above its long-term N<sub>e</sub> is about 1.7 times larger at any mutation rate the two share. The heterozygosity is far from uniform: about three times as much of the species A genome as of the relative's lies in runs of homozygosity (50-kb window method; <a href="../03-annotation/#s09">lesson 3, s09</a>). Those runs are the pieces with very recent TMRCAs; the rest of the genome holds the older history that the following sections read.</p>
   </div>
-  <p class="tool-note">Sources: Li &amp; Durbin 2011, <i>Nature</i> 475:493 (<a href="https://doi.org/10.1038/nature10231">doi</a>) and the model notes (psmc.tex) in the <a href="https://github.com/lh3/psmc">PSMC repository</a>; Spence et al. 2018, <i>Curr Opin Genet Dev</i> 53:70, a review of coalescent hidden Markov models (<a href="https://doi.org/10.1016/j.gde.2018.07.002">doi</a>); Mazet et al. 2016, <i>Heredity</i> 116:362 (<a href="https://doi.org/10.1038/hdy.2015.104">doi</a>). Textbook treatment of the coalescent: Hein, Schierup &amp; Wiuf 2005, <i>Gene Genealogies, Variation and Evolution</i>; Wakeley, <i>Coalescent Theory: An Introduction</i>.</p>
+  <p class="tool-note">Sources: Li &amp; Durbin 2011, <i>Nature</i> 475:493 (<a href="https://doi.org/10.1038/nature10231">doi</a>) and the model notes (psmc.tex) in the <a href="https://github.com/lh3/psmc">PSMC repository</a>; Spence et al. 2018, <i>Curr Opin Genet Dev</i> 53:70, a review of coalescent hidden Markov models (<a href="https://doi.org/10.1016/j.gde.2018.07.002">doi</a>); Mazet et al. 2016, <i>Heredity</i> 116:362 (<a href="https://doi.org/10.1038/hdy.2015.104">doi</a>). Coalescent from zero: Nordborg 2007, chapter 25 of the <i>Handbook of Statistical Genetics</i>, 3rd ed. (<a href="https://doi.org/10.1002/9780470061619.ch25">doi</a>); the coalescent was described by Kingman 1982, <i>Stoch Proc Appl</i> 13:235 (<a href="https://doi.org/10.1016/0304-4149(82)90011-4">doi</a>). Textbook treatment of the coalescent: Hein, Schierup &amp; Wiuf 2005, <i>Gene Genealogies, Variation and Evolution</i>; Wakeley, <i>Coalescent Theory: An Introduction</i>.</p>
 </section>

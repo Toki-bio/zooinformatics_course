@@ -1,0 +1,123 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Selection from genealogies</h2>
+  <p class="lede">A genealogy along the chromosome (<a href="#s02">s02</a>) is also a record of selection. Where a favoured variant spread quickly, the local trees of that population are unusually shallow: its copies found a common ancestor recently. This section shows how to read that shape, how one published scan turns it into a number, how a per-mutation test works, and why a peak in such a scan is a place to look and not yet a finding.</p>
+
+  <h3>What a sweep does to a local tree</h3>
+  <dl class="defs">
+    <dt>Selective sweep</dt><dd>A favoured new variant spreads until the whole population carries it. Schweinsberg &amp; Durrett (2005): "When a beneficial mutation occurs in a population, the new, favored allele may spread to the entire population. This process is known as a selective sweep."</dd>
+    <dt>Hitchhiking</dt><dd>Neutral sites near the favoured variant are carried along with it, because they sit on the same piece of chromosome. The term goes back to Maynard Smith &amp; Haigh (1974), as cited in the paper above.</dd>
+    <dt>Escape</dt><dd>A lineage at a neutral site escapes when recombination during the sweep moved it off the chromosome that carried the favoured variant. It then traces back to a different ancestor.</dd>
+    <dt>Selection coefficient (s)</dt><dd>The fitness advantage of the favoured variant: with s = 0.02, its carriers leave about 2 % more offspring.</dd>
+  </dl>
+  <p>Go backwards in time at a neutral site close to the favoured variant. Every sampled lineage that did not escape runs back into the one chromosome where the mutation arose, so they all coalesce within the short time the sweep took. The local tree has many lineages joining at nearly one date, and that date is recent. Far from the variant, lineages escape and the tree is ordinary. Hejase et al. (2022) describe what they saw in inferred trees of human loci as "a burst of recent coalescence among the derived lineages", and in southern capuchino seedeaters (genus <i>Sporophila</i>) as "a burst of coalescence events, corresponding to unusually large and young clades".</p>
+  <p>How far the effect reaches can be estimated with a simple rule. Schweinsberg &amp; Durrett treat each lineage as a coin: it is caught by the sweep with chance p, independently of the others.</p>
+  <div class="formula">p (caught by the sweep) = exp( − r × ln(2N) / s )       r = chance of recombination between the two sites, per generation</div>
+  <p>Stronger selection gives recombination less time to act, so the affected stretch is wider. With a recombination rate of 10<sup>−8</sup> per base per generation and N = 5,000, half of the lineages are caught 150 kb from the variant at s = 0.02, and 750 kb away at s = 0.1 (our arithmetic). Treat it as a guide only: the authors themselves say that this first approximation "is not very accurate for realistic values of N". We use it because it is short enough to read.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: one mutation, one shallow tree</summary><div class="in">
+    <p>Imagine a vole population and a new variant that protects against a parasite. After many generations nearly every vole carries it, and all those copies descend from the one vole in which it arose. A site right beside the variant came along with it, so at that site all voles share that one ancestor, a short time ago. A site far along the chromosome has had many chances to recombine onto other backgrounds, so its lineages go their separate ways into the deep past.</p>
+    <div class="toy">far from the variant                  beside the variant
+(ordinary tree)                       (shallow, many lineages meet at once)
+
+      ┌────┴─────┐
+   ┌──┴──┐    ┌──┴──┐
+   │   ┌─┴─┐  │   ┌─┴─┐                 ┌─┬─┬─┬─┬─┬─┐   recent
+   a   b   c  d   e   f                 a b c d e f g</div>
+    <p>A tree cannot be seen directly: it is inferred from the data (<a href="#s03">s03</a>). And "shallow" has to be judged against something, which is what the next part is about.</p>
+  </div></details>
+
+  <h3>From tree shape to a number: T<sub>pooled</sub> / T<sub>within</sub></h3>
+  <p>Deng, Nielsen &amp; Song (2025), in the SINGER paper, ran this scan on 200 genomes of the 1000 Genomes Project: five African populations (GWD, YRI, ESN, LWK, MSL) with 40 genomes each. For every 1-kb window they took two averages from the inferred genealogies:</p>
+  <dl class="defs">
+    <dt>T<sub>within</sub></dt><dd>The average pairwise coalescence time among genomes of one population. Two copies with a coalescence time T differ by about 2μT per base, so this is a diversity measure read from trees (<a href="../04-demography/#s01">lesson 4, s01</a>).</dd>
+    <dt>T<sub>pooled</sub></dt><dd>The same average over all pairs in the combined sample of all five populations.</dd>
+  </dl>
+  <div class="formula">scan value of a window for one population = T<sub>pooled</sub> / T<sub>within</sub>       high value = this population is unusually shallow here</div>
+  <p>In their words, they "computed the ratio of the ARG-based diversity estimate for the combined sample to that for each of the five populations; reductions in local diversity would show up as peaks when these ratios are plotted along the genome". The ratio goes this way round, pooled over within, so a drop in one population appears as a <b>peak</b>. It sits above 1 even in ordinary windows, because the pooled sample contains pairs from different populations, which coalesce later. Their line for a peak is "the genome-wide 99.99% <span class="tip" title="Quantile: the value that a stated share of all windows lies below. The 99.99 % quantile is exceeded by one window in 10,000, whatever the windows contain.">quantile</span>" of the ratio (Figure 5 legend). A second panel of that figure shows T<sub>within</sub> of each population around each peak, and that panel matters, as the toy will show.</p>
+  <p>Why use trees for this, and not count differences in the sequence? Because a 1-kb window holds very few variants: the authors note that "SNP-based diversity can be noisy at fine scales", and report that SINGER gave more accurate fine-scale diversity than Relate and tsinfer + tsdate. Inference errors do not vanish. SINGER samples many genealogies, and even so, in their simulations its 90 % <span class="tip" title="Credible interval: the range that holds 90 % of the sampled answers. If the method is honest, the truth lies inside it 90 % of the time.">credible interval</span> covered the true pairwise coalescence time in 85 % of cases (Relate 44 %, ARGweaver 54 %).</p>
+  <p>Among the peaks they highlight <i>MITF</i> (reduced diversity in GWD; related to skin), <i>SPCS3</i> (reduced in YRI; an immune-related protein believed to affect flavivirus production) and <i>SCN9A</i> (a sodium channel involved in pain perception). Then comes the sentence to keep:</p>
+  <div class="note warn"><b>The authors' own caution.</b> "These examples illustrate the utility of SINGER for exploratory evolutionary analysis, but additional studies are needed to investigate if, and how, selection is acting in these loci."</div>
+
+  <section class="tool explain" aria-labelledby="s06-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">Run the scan on a toy chromosome</h3></div>
+    <p class="tool-note">Three populations split 4,000 generations ago (each N = 5,000; ancestor N = 10,000), 12 sampled chromosomes each. A 2-Mb chromosome is cut into 400 windows of 5 kb, and each window gets one <span class="tip" title="Coalescent tree: a random tree drawn from the model in which lineages join at a rate set by the population size.">coalescent tree</span> drawn on the page. The sweep sits in the middle, in population 1 only, and uses the coin rule above. Simplifications: the page knows the true trees (real ones are inferred); windows are drawn independently (real neighbours are correlated, so real peaks are smoother); the sweep is instantaneous. The threshold comes from 20,000 neutral windows standing for the rest of the genome. Click a track, or move the last slider, to see the tree of that window.</p>
+    <div class="controls" role="group" aria-label="Scenario">
+      <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">What happened in the middle
+        <div class="seg" role="group" aria-label="Scenario" id="s06-sc"><button type="button" data-v="sweep" aria-pressed="true">sweep in population 1</button><button type="button" data-v="none" aria-pressed="false">nothing</button><button type="button" data-v="low" aria-pressed="false">small size in all</button></div></div>
+      <button type="button" class="btn" id="s06-new" style="align-self:center">new chromosome</button>
+    </div>
+    <div class="controls" role="group" aria-label="Sweep and threshold">
+      <label for="s06-s">Selection coefficient s <output id="s06-s-o">0.02</output><input type="range" id="s06-s" min="0" max="4" step="1" value="2"></label>
+      <label for="s06-tau">Sweep ended <output id="s06-tau-o">300 generations ago</output><input type="range" id="s06-tau" min="100" max="3500" step="100" value="300"></label>
+      <label for="s06-q">Threshold quantile <output id="s06-q-o">99.99 %</output><input type="range" id="s06-q" min="99" max="99.99" step="0.01" value="99.99"></label>
+      <label for="s06-win">Window to inspect <output id="s06-win-o">1.00 Mb</output><input type="range" id="s06-win" min="0" max="399" step="1" value="200"></label>
+    </div>
+    <figure>
+      <div class="svgbox" id="s06-tracks"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>population 1</span><span><i style="background:var(--het)"></i>population 2</span><span><i style="background:var(--rep)"></i>population 3</span><span><i style="background:var(--fg)"></i>pooled (top track)</span><span><i style="background:var(--bad)"></i>threshold, windows above it</span></div>
+      <figcaption><b>Top:</b> depth of the local trees along the chromosome. <b>Below:</b> one scan track per population, as the published figure has one plot per population.</figcaption>
+    </figure>
+    <div class="readout">
+      <div><b id="s06-r-flag"></b>windows above the line, populations 1 / 2 / 3</div>
+      <div><b id="s06-r-exp"></b>windows per population expected by chance alone</div>
+      <div><b id="s06-r-thr"></b>ratio at the threshold</div>
+      <div><b id="s06-r-mid"></b>median ratio in the middle 200 kb, populations 1 / 2 / 3</div>
+      <div><b id="s06-r-far"></b>median ratio in the rest of the chromosome</div>
+      <div><b id="s06-r-half"></b>distance at which half of the lineages are caught</div>
+      <div><b id="s06-r-win"></b>ratio at the inspected window, populations 1 / 2 / 3</div>
+      <div><b id="s06-r-t"></b>T<sub>within</sub> of population 1 / T<sub>pooled</sub> at the inspected window</div>
+    </div>
+    <p class="note" id="s06-verdict" aria-live="polite"></p>
+    <div class="grid2">
+      <figure><div class="svgbox" id="s06-tree-a"></div></figure>
+      <figure><div class="svgbox" id="s06-tree-b"></div></figure>
+    </div>
+    <p class="tool-note">Tree height is in generations on a log scale; dots are the sampled chromosomes, coloured by population. Under a recent sweep the leaves of population 1 collapse into one comb at the sweep date, while the other populations keep their usual depth. Things to try: set the sweep age to 1,500 and then 3,500 generations; set s to 0.1 and see how far the plateau reaches; choose "nothing" and pull the threshold down to 99 %; choose "small size in all" and do the same.</p>
+  </section>
+
+  <h3>What the toy shows about reading a peak</h3>
+  <p>We ran the page's own simulator 100 times per setting at the 99.99 % line (the numbers are from this toy, not from any real genome):</p>
+  <div class="tbl"><table style="min-width:520px">
+    <thead><tr><th>Toy setting</th><th>Runs with a window of population 1 above the line</th><th>Mean windows above the line per run, population 1 / 2 / 3</th></tr></thead>
+    <tbody>
+      <tr><td>Sweep, s = 0.02, ended 300 generations ago</td><td>100 of 100</td><td>11.8 / 0.02 / 0.04</td></tr>
+      <tr><td>Same, ended 1,500 generations ago</td><td>83 of 100</td><td>1.8 / 0.05 / 0.06</td></tr>
+      <tr><td>Same, ended 3,500 generations ago</td><td>7 of 100</td><td>0.07 / 0.03 / 0.04</td></tr>
+      <tr><td>No sweep, nothing in the middle</td><td>about 4 of 100 expected</td><td>0.04 / 0.04 / 0.04 expected</td></tr>
+      <tr><td>Small size in all populations, no sweep</td><td>5 of 100</td><td>0.05 / 0.04 / 0.04</td></tr>
+    </tbody>
+  </table></div>
+  <ul class="qlist">
+    <li><b>A quantile is not a test.</b> The line cuts off a fixed share of windows, whatever happened in the genome. A human genome holds about 3 million 1-kb windows, so a 99.99 % line passes about 300 of them per population even if none was selected (our arithmetic). The published list is a list of the most extreme windows.</li>
+    <li><b>Age matters.</b> The caught lineages meet at the date of the sweep, so the older the sweep, the deeper the tree. Once that date is not far from ordinary coalescence times, nothing stands out. In the toy a sweep 3,500 generations old is almost invisible at this line.</li>
+    <li><b>The top window is not the target.</b> In the toy with s = 0.1 the highest window lay a median of about 90 kb from the true site, because the whole plateau is equally shallow. A peak gives a region, and the gene names in a figure are the genes that overlap that region.</li>
+    <li><b>A ratio can rise without any sweep.</b> Where every population has a small local size, T<sub>within</sub> falls further than T<sub>pooled</sub>, because the pooled pairs still have to wait for the population split. The ratio rises in all populations at once, which is why the per-population T<sub>within</sub> panel is needed. In the toy this effect is weaker than a sweep: with the local size cut by 85 % at the centre, no excess shows at the 99.99 % line, but at the 99 % line the central 300 kb has about five times as many windows above the line as chance predicts, in all three populations alike. This is our reading of the toy, not a claim of the paper. Something of this kind can happen in real genomes: background selection, the loss of neutral variation through "selection against the steady input of deleterious mutations" (Stephan 2019), is called "pervasive" in the SINGER paper, and Stephan writes that such processes "reduce levels of genetic diversity and are hard to distinguish".</li>
+  </ul>
+
+  <h3>Testing one mutation: the Relate selection test</h3>
+  <p>The scan above asks about windows. Speidel et al. (2019) ask about a single mutation, using the tree at that site: did the lineage carrying the mutation spread faster than the lineages competing with it? Their test is "based on estimating the speed of spread of a particular lineage (carrying a particular mutation), relative to other 'competing' lineages, over some chosen time range". To test the whole lifetime of a mutation they "condition on the number of lineages present when it first arises, and use as a test statistic the number of present-day carriers". This gives a real p-value, not a quantile, with stated limits: the null distribution holds "assuming no population stratification" (no hidden substructure in the sample), and the authors report reduced power at rarer mutations. In 20 human populations of the 1000 Genomes Project they found 35 stringent signals (p &lt; 5 × 10<sup>−8</sup> in each of three or more groups), including the <i>LCT</i> region in Europeans, and they warn that "interpretation of our findings regarding natural selection requires some care".</p>
+  <p>The test ships with Relate as a module. This is the example from the manual (<code>PATH_TO_RELATE</code> is your installation; <code>-m</code> is the mutation rate):</p>
+  <div class="code"><button type="button">copy</button><pre>PATH_TO_RELATE/scripts/DetectSelection/DetectSelection.sh \
+  -i example \
+  -o example_selection \
+  -m 1.25e-8 \
+  --first_bp 1000000 \
+  --last_bp 1000000 \
+  --years_per_gen 28 \
+  --coal popsize.coal</pre></div>
+  <p>The manual recommends estimating the population size history first, so that the branch lengths reflect it. The output <code>.sele</code> "records the log10 p-value for selection evidence", one row per mutation, and p-values "can only be calculated for mutations with derived allele frequency of at least 3" (<span class="tip" title="Derived allele: the new form of a site, as opposed to the ancestral form. Here 'frequency of at least 3' means at least three sampled copies carry it.">derived</span> copies in the sample). The column <code>when_mutation_has_freq2</code> holds the value for the lifetime of the mutation. Going further, CLUES (Stern et al. 2019) estimates a selection coefficient and a frequency curve through time from local trees; the SINGER paper notes that it "performs better with a sample of local trees", which is one reason for sampling trees at all.</p>
+
+  <div class="tbl"><table style="min-width:600px">
+    <thead><tr><th></th><th>Scan: T<sub>pooled</sub> / T<sub>within</sub></th><th>Relate selection test</th></tr></thead>
+    <tbody>
+      <tr><td><b>Unit</b></td><td>Window (1 kb in the paper)</td><td>One mutation</td></tr>
+      <tr><td><b>Needs</b></td><td>Genealogies of several populations</td><td>Genealogy, with branch lengths that fit the population size history</td></tr>
+      <tr><td><b>Gives</b></td><td>A ranking of windows along the genome</td><td>A log10 p-value per mutation</td></tr>
+      <tr><td><b>Blind to</b></td><td>Why a population is shallow: selection or something else</td><td>Population stratification (assumed absent); mutations in fewer than 3 copies</td></tr>
+    </tbody>
+  </table></div>
+
+  <p>For a zoologist the hard part comes before all of this. SINGER "requires phased, contemporary genomes" and whole-genome data, and the authors add that "high-quality phasing is often challenging, especially for ancient DNA and non-model organisms" (see <a href="#s03">s03</a> and <a href="#s04">s04</a>).</p>
+
+  <div class="note"><b>In our projects.</b> A genealogy study of selection in an Asian human cohort was planned around candidate regions from a differentiation scan. The candidates did not survive a comparison with an independent call set, so nothing was left to test; <a href="#s08">s08</a> tells that story. A genealogy can only sharpen a question about a locus that is real in the first place.</div>
+</section>

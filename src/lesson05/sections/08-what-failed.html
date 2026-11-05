@@ -1,0 +1,71 @@
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">08</span>What failed in a real cohort, and why</h2>
+  <p class="lede">The earlier sections of this lesson say what each method needs. This one shows what happens when a real data set does not give it that. We worked on genotype data from an Asian human cohort (the population is not named here) and tried three things: a genealogy (an ARG, <a href="#s02">s02</a>), a recent population-size curve from shared segments (<a href="#s05">s05</a>), and a scan for selection (<a href="#s06">s06</a>). Each one produced output. None of the output was a statement about population history, and each time a specific check showed why. The checks are the useful part, so the figure below turns them into a checklist you can click through before you believe a curve of your own.</p>
+
+  <h3>Words used in this section</h3>
+  <dl class="defs">
+    <dt>Haplotype</dt><dd>One of the two copies of a chromosome stretch in a person. A diploid person gives two haplotypes, so 150 people give 300.</dd>
+    <dt>IBD segment</dt><dd>A stretch of chromosome that two people inherited from a common ancestor without recombination breaking it up. Long segments mean a recent ancestor (<a href="#s05">s05</a>).</dd>
+    <dt>Imputed data</dt><dd>Genotypes that were not measured. A program fills them in by matching a person's measured SNPs to a panel of fully sequenced reference people (<a href="#s04">s04</a>).</dd>
+    <dt>Admixed</dt><dd>A population whose ancestors came from groups that were separate for a long time, so each person's genome is a mixture.</dd>
+    <dt>Artefact</dt><dd>A signal that comes from the data or the files used, not from the animals or people studied.</dd>
+    <dt>Replicate</dt><dd>To find the same result again in an independent data set, made with a different sample, call set or method.</dd>
+  </dl>
+
+  <details class="simple"><summary>Simple explanation with examples: why a result can run and still mean nothing</summary><div class="in">
+    <p>A program that finishes without an error has only shown that your files had the right format. It has not shown that the answer is right. Think of a bathroom scale that always prints a number: put a cat on it, a bag of flour or the scale itself, and you still get a number.</p>
+    <div class="toy">input too small     program runs  →  genealogy drawn      →  tests the pipeline, not the people
+input is a mosaic   program runs  →  many long "relatives"  →  counts the reference panel, not the cohort
+input is a mixture  program runs  →  a smooth curve         →  curve for a population that never existed
+reference has holes program runs  →  strong "selection"     →  the holes, not natural selection</div>
+    <p>So after each run we asked one question: what would this output look like if the data were wrong in the way I fear? If the answer is "exactly like this", the output carries no information yet.</p>
+  </div></details>
+
+  <h3>Story 1. A genealogy that only showed the pipeline works</h3>
+  <p>The goal was an ARG for one chromosome, built with ARG-Needle, a tool made for SNP-array data (<a href="#s03">s03</a>). The pipeline ran. We still call it a demonstration and not a result, for two reasons.</p>
+  <ul>
+    <li><b>The sample was too small for the tool.</b> The ARG-Needle manual says its hidden Markov model "requires at least 300 haploid samples to build the conditional site frequency spectrum". An earlier, smaller attempt on our data stopped with an error about exactly this step. That agrees with the manual; it is one observation, not a new finding. Three hundred haplotypes is only 150 people, so the floor is easy to miss when you count people.</li>
+    <li><b>The demography was not ours.</b> The run used a population-size history supplied with the tool, made for another population. The manual lets you give your own (it only asks that sizes are haploid). A genealogy dated with another population's history carries dates that belong to the wrong population.</li>
+  </ul>
+  <p>What we could say: the software installs, reads our files and finishes. What we did not say: anything about the age of shared ancestors or about population size. The next step is the same pipeline on more samples with a demography fitted to the data, not a longer run.</p>
+
+  <h3>Story 2. IBD segments and a size curve that failed its checks</h3>
+  <p>The plan was a recent population-size curve from IBD segments: detect them with hap-IBD (Zhou et al. 2020), then fit IBDNe (Browning &amp; Browning 2015). Two attempts failed in two different ways.</p>
+  <ul>
+    <li><b>Attempt 1, imputed data.</b> The number of segments per pair of people came out many times above what we expected, an obvious red flag before any curve was fitted. Our reading, which we have not proved against a published test, is this: imputed haplotypes are assembled from stretches of the same reference panel, so two people imputed from the same reference haplotype can look identical by descent without being related. Segments counted this way describe the panel as much as the cohort. We discarded this attempt.</li>
+    <li><b>Attempt 2, typed SNPs only.</b> The segment count per pair was now sensible. IBDNe's fit to the observed segment lengths was, however, far worse than in its own bootstrap replicates, and the curve fell steeply within a few generations. A fall that steep, with a poor fit, is not a history. We think the cause is a broken assumption: IBDNe's effective size is defined against "an idealized random mating population", and the paper says "the sampled individuals are assumed to be a random sample from the population of interest". Our cohort was a clinical, admixed sample from several regions. The authors also warn that a fitted curve can show artefactual oscillation that looks like changes in growth rate. Their abstract says that array data inform size from around 4 to around 50 generations ago.</li>
+  </ul>
+  <p>What we could say: nothing about the cohort's population size or split times. What would change that: a sample from one region and one ancestry group (the IBDNe page describes ancestry-specific input), and whole-genome data, which the paper says reach over 200 generations back.</p>
+
+  <h3>Story 3. Selection candidates that came from a reference file</h3>
+  <p>A scan of population differentiation produced strong candidate regions, and a genealogy study of selection was planned around them (<a href="#s06">s06</a>). The candidates were then compared with an independent call set: a newer, high-coverage whole-genome resequencing of the same reference samples (Byrska-Bishop et al. 2022). The strong candidates came from the older reference file and did not replicate in the newer call set. We concluded they were artefacts of the older file, not signals in the people. We do not know the exact mechanism for each region, and the page does not claim one.</p>
+  <p>The lesson is a rule. A signal that appears in one data set and one call set is a hypothesis. Differentiation scores are built from allele frequencies, and allele frequencies depend on every upstream step: the reference build, the mapping, the caller and the filters (<a href="../04-demography/#s06">lesson 4</a> shows the same chain for heterozygosity). A genealogy-based test of selection inherits whatever was wrong with the list of loci you gave it.</p>
+
+  <h3>The checks, as a checklist</h3>
+  <p class="tool-note">Click a check to cycle it: not run, passed, failed. The buttons load what happened in our three stories (our own judgement, qualitative). The verdict follows one rule: a single failed check blocks any statement about history; unrun checks mean you are not done; only all passed allows a statement, and then only with the checks quoted next to it. Checks that did not apply to a story stay "not run".</p>
+  <div id="s08-fig">
+    <div class="controls" role="group" aria-label="Stories">
+      <div class="seg" role="group" aria-label="Load a story" id="s08-pre">
+        <button type="button" data-v="clear" aria-pressed="true">blank</button>
+        <button type="button" data-v="a" aria-pressed="false">1 genealogy pilot</button>
+        <button type="button" data-v="b1" aria-pressed="false">2 imputed IBD</button>
+        <button type="button" data-v="b2" aria-pressed="false">2 typed IBDNe</button>
+        <button type="button" data-v="c" aria-pressed="false">3 selection scan</button>
+      </div>
+      <button type="button" class="btn" id="s08-allok">mark every check passed</button>
+    </div>
+    <ul id="s08-list" style="list-style:none;padding:0;margin:10px 0"></ul>
+    <div class="readout" id="s08-out" aria-live="polite"></div>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: how to use the checklist on your own data</summary><div class="in">
+    <p>Run the checks in order, because the early ones are cheap and the later ones are expensive. Checks 1 to 3 are read from the tool's manual before you start. Check 4 is a one-line count. Checks 6 and 7 need a second run or a second data set. Write down for each check what you did and what you saw, not just the tick.</p>
+    <div class="toy">before any run:   1 input type   2 minimum sample size   3 demography and settings fitted?
+after detecting: 4 raw count sane?     5 sample matches the model?
+after fitting:   6 fit and bootstrap ok, curve plausible?
+for candidates:  7 replicates in an independent call set?   8 tied to a reference or mapping problem?</div>
+    <p>If a check cannot be run (no second call set, nothing to compare the count with), the honest entry is "not run", and the statement waits.</p>
+  </div></details>
+
+  <div class="note"><b>In our projects.</b> Three outputs from one array-based cohort were shown not to support any population-history claim: the pilot genealogy, the IBD size curve and the selection candidates. We made no size, split-time or selection statement from them. The question waits for whole-genome data from a better-defined sample. For single genomes the corresponding checks are in <a href="../04-demography/">lesson 4</a>; they are not repeated here.</div>
+</section>

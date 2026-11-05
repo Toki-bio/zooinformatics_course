@@ -1,48 +1,53 @@
 {
  "number": 5,
- "slug": "05-methylation",
- "title": "DNA Methylation from Long Reads",
- "eyebrow": "Lesson 5 · marks on the DNA that the letters do not show",
+ "slug": "05-many-genomes",
+ "title": "Population History from Many Genomes",
+ "eyebrow": "Lesson 5 · what changes when you have a whole sample",
  "intro": [
-  "Many cytosines in an animal's genome carry a small methyl group. It does not change the sequence, but it helps keep transposons silent, marks which parent a gene copy came from, changes with tissue and age, and over evolutionary time wears CpG sites away. Long-read machines can see the mark directly on each native DNA molecule. This lesson starts with the biology and how it differs between animal groups, then shows how nanopore and PacBio reads detect methylation and how the calls are stored, how to turn reads into one methylation level per CpG, how to get methylation for each parental copy, how to read it against genes, transposons and satellites, how to compare samples and what epigenetic age clocks need, and how to check and view the results.",
-  "Our own long reads of one rodent species (species A) arrived as plain FASTQ without raw signal or modification tags, so no methylation can be called from them; the lesson uses that as its cautionary example of what to ask a sequencing provider to keep, and works with toy data and public human data instead. The footprint of past methylation is still visible in our data: CpG sites in young bat SINEs change about six times faster than other sites. Bisulfite and array methods are only outlined here, and SINEs and satellites themselves are treated in depth in a later lesson. Hover over a dotted term to see what it means."
+  "Lesson 4 read history from one genome. This lesson asks what a sample of many genomes adds: genealogies for the whole sample, recent history from shared segments, selection, and the separate records of the Y chromosome and mitochondrial DNA. It also asks what SNP arrays can and cannot support, because many cohorts have arrays and not sequence.",
+  "Most methods here were built for human data, and the examples come from there. The last section reports what failed on a real array-based cohort from Asia: which outputs could not support a claim, how we found out, and what data would change that."
  ],
  "steps": [
   {
-   "title": "What methylation is and why zoologists care",
-   "what": "5mC at CpG, the enzymes, methylation level, 5hmC and 6mA; how lineages differ; CpG depletion and islands; imprinting, X inactivation, clocks and inheritance.",
-   "tools": "CpG observed/expected · CpG island criteria"
+   "title": "From one genome to many",
+   "what": "Which question needs which data, from one genome to whole cohorts.",
+   "tools": "methods map"
   },
   {
-   "title": "How long reads see methylation",
-   "what": "Current and polymerase timing, calling modified bases, the MM/ML tags, why FASTQ loses everything, and what to ask the provider to keep.",
-   "tools": "Dorado · jasmine · MM/ML tags · pod5"
+   "title": "What an ARG is",
+   "what": "One tree per stretch of genome, and the graph that joins them along the chromosome.",
+   "tools": "ancestral recombination graph · tree sequence"
   },
   {
-   "title": "From reads to per-site methylation",
-   "what": "Aligning without losing the tags, counting reads per CpG, pass thresholds, the bedMethyl columns, and how many reads a level needs.",
-   "tools": "dorado aligner · minimap2 · modkit pileup · pbmm2 · MethBat · pb-CpG-tools"
+   "title": "ARG tools",
+   "what": "What each program infers, what it needs and where it breaks.",
+   "tools": "Relate · tsinfer · ARG-Needle · SINGER · ARGweaver"
   },
   {
-   "title": "Methylation on each parental copy",
-   "what": "Phasing and haplotagging reads, per-copy pileups, imprinting and X inactivation, and why HP1 is not the mother.",
-   "tools": "WhatsHap · LongPhase · modkit pileup --phased · MethPhaser"
+   "title": "SNP arrays",
+   "what": "What array data can and cannot support, and what imputation changes.",
+   "tools": "GONE · imputation"
   },
   {
-   "title": "Repeats, genes and the genome",
-   "what": "The bimodal mammalian pattern, promoters and gene bodies, methylation by transposon age, satellites, and mappability.",
-   "tools": "modkit stats · bedtools · methylartist"
+   "title": "Recent history from IBD",
+   "what": "Shared segments, their lengths, and the recent population size they imply.",
+   "tools": "IBD segments · IBDNe"
   },
   {
-   "title": "Comparing samples",
-   "what": "Differentially methylated regions, replicates versus reads, effect size versus significance, confounders, and epigenetic clocks.",
-   "tools": "modkit dmr · DSS · dmrseq · methylKit · metilene"
+   "title": "Selection from genealogies",
+   "what": "Reading selection from trees, and how candidates turn out to be artefacts.",
+   "tools": "genealogy-based selection tests"
   },
   {
-   "title": "Quality checks and viewing",
-   "what": "Checking tags and models, call probabilities, coverage and strands, controls, IGV colouring, plots, and what to keep from every run.",
-   "tools": "modkit modbam check-tags · sample-probs · summary · IGV · methylartist"
+   "title": "Y chromosome and mitochondrial DNA",
+   "what": "Two single-line records of ancestry, and reading a skyline.",
+   "tools": "Bayesian skyline plots · BEAST2"
+  },
+  {
+   "title": "What failed in a real cohort",
+   "what": "Three outputs that could not support a claim, and why.",
+   "tools": "ARG-Needle · IBDNe · checks"
   }
  ],
- "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
 }

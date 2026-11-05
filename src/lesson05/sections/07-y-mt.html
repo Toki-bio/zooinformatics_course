@@ -1,0 +1,113 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>Y chromosome and mitochondrial DNA as records</h2>
+  <p class="lede">Two pieces of the genome are not shuffled between generations. The mitochondrial genome travels from mother to child, and the Y chromosome from father to son. Each therefore carries a single family tree of the whole population, and a view of the past that belongs to one sex only. Comparing the two, or either with the rest of the genome, is the classical way to ask whether females and males had different histories.</p>
+
+  <h3>One block, one tree</h3>
+  <dl class="defs">
+    <dt>mtDNA</dt>
+    <dd>The <dfn>mitogenome</dfn> is passed on through eggs. Every child of a mother carries her mtDNA, but only her daughters pass it on. It has no partner to swap pieces with (<a href="../02-assembly/#s11">lesson 2, section 11</a> describes how to assemble it and why its nuclear copies, NUMTs, are a trap).</dd>
+    <dt>Y chromosome</dt>
+    <dd>The male-specific part of the Y is passed from father to son only. In mammals it does not recombine with the X over most of its length (<a href="../02-assembly/#s12">lesson 2, section 12</a> explains how sex chromosomes look in an assembly). In birds and other species with ZW sex determination the mother-to-daughter W chromosome plays the Y's role; the Z and W are reversed relative to X and Y, but the idea is the same (Wilson Sayres 2018).</dd>
+    <dt>One tree each</dt>
+    <dd>Because nothing is shuffled, every position in the block shares one <span class="tip" title="the branching diagram of how the sampled copies trace back to shared ancestors, as in lesson 4 section 1">genealogy</span>. Mutations that arrive on a branch stay together, which is what makes <dfn>haplogroups</dfn> possible: a haplogroup is a named branch of that one tree, defined by the mutations on it.</dd>
+    <dt>A single draw</dt>
+    <dd>One tree is one random outcome of the family-tree process. The autosomes hold thousands of independent trees. A Y or mtDNA result is therefore one noisy sample of history, however many bases were read. Wilson Sayres (2018) puts it the same way: each of these regions "adds only a single linked marker to the analysis".</dd>
+  </dl>
+
+  <!-- ============ pedigree toy ============ -->
+  <section class="tool" aria-labelledby="s07-ped-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ped-h">Who carries your mtDNA or Y?</h3></div>
+    <p style="font-size:14px">Circles are females, squares are males. A pair joined by a short line are partners, with children hanging below. Choose a marker, then click anyone to make that person the first carrier. Carriers are filled. Partners marry in from outside, so they never carry the chosen lineage unless you click them.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Which marker is followed"><button type="button" id="s07-ped-mt" aria-pressed="true">mtDNA (through mothers)</button><button type="button" id="s07-ped-y" aria-pressed="false">Y chromosome (through fathers)</button></div>
+      <button type="button" class="btn" id="s07-ped-reset" style="align-self:center">reset</button>
+    </div>
+    <div class="svgbox" id="s07-ped-fig"></div>
+    <div class="readout" id="s07-ped-out" aria-live="polite"></div>
+    <p class="tool-note"><b>Toy rules.</b> Rule for mtDNA: a child carries it if its mother does. Rule for Y: a child carries it if it is a son and its father does. Nothing else: no mutation, no recombination, no paternal leakage of mtDNA. The page checks every click against an independent test (is there an unbroken all-female, or all-male, chain from the first carrier?).</p>
+    <p style="font-size:14px"><b>What to take away.</b> (1) The two markers follow opposite sides of the family: click the same woman under both markers and see who changes. (2) A line can end: a woman with only sons ends her mtDNA line, a man with only daughters ends his Y line, even though both have children. Over many generations most lines end this way, and the survivors all descend from a few people. That loss is why the effective size of each marker is small, as the next part counts.</p>
+  </section>
+
+  <details class="simple"><summary>Simple explanation with examples: why a haplogroup is a branch, not a label</summary><div class="in">
+    <p>Take a grandmother whose mtDNA has one new mutation, call it M1. All her daughters and granddaughters through daughters carry M1, and so do her sons, but her sons' children do not. Years later a great-granddaughter picks up a second mutation, M2. Now the family has two nested groups:</p>
+    <div class="toy"><span class="a">grandmother</span>  carries M1
+ ├─ daughter A  carries M1
+ │   └─ granddaughter  carries M1 + <span class="h">M2</span>
+ └─ daughter B  carries M1</div>
+    <p>"Has M1" names the larger group, "has M1 and M2" a smaller group inside it. A haplogroup name is the shorthand for such a nested group. Deeper names mean more mutations were needed to place the person, so a call that rests on one last mutation is more fragile than the broad group above it.</p>
+  </div></details>
+
+  <h3>Effective size: why each marker is small</h3>
+  <p>The <span class="tip" title="the size of an idealised population that would lose genetic diversity at the same speed as the real one; see lesson 4 section 1">effective population size</span> (N<sub>e</sub>) says how fast diversity is lost by chance. Under the textbook assumptions, the autosomes, the X, the Y and mtDNA differ only in how many copies of each exist in the population. Wilson Sayres (2018) states the assumptions: constant population size, random mating, equal contributions of the two sexes (the effective number of males equals that of females) and a Poisson distribution of offspring number. Under them, X diversity is expected to be three-quarters of autosomal diversity and Y and mtDNA one-quarter, "because there are three X chromosomes for every four autosomes" and one Y or mtDNA copy for every four (Wilson Sayres et al., on human Y diversity).</p>
+  <p>Most real populations break the equal-sex assumption. A few males may father most offspring while many females breed. When the numbers of breeding males (N<sub>m</sub>) and females (N<sub>f</sub>) differ, the autosomal effective size is, as given in a university population-genetics lecture (Carr, Memorial University):</p>
+  <div class="formula">N<sub>e</sub> = 4 N<sub>m</sub> N<sub>f</sub> / (N<sub>m</sub> + N<sub>f</sub>)</div>
+  <p>With equal numbers this gives N<sub>m</sub> + N<sub>f</sub>, the total. With one male and many females N<sub>e</sub> approaches 4, however many females there are. Here N<sub>m</sub> and N<sub>f</sub> are the numbers that actually leave offspring, not the census counts; unequal success among breeders of the same sex lowers them further. The same lecture derives the formula assuming a Poisson-like spread of offspring within each sex; it does not attribute it to Wright (1931), whose paper we did not open.</p>
+  <p>Our derivation, which is not from a source: count gene copies. An autosome has two copies per individual, so 2N<sub>e</sub> in the autosomal units above. mtDNA has one copy per breeding female (N<sub>f</sub>), and the Y one copy per breeding male (N<sub>m</sub>). Then diversity of Y or mtDNA relative to the autosomes is the ratio of these counts. For equal sexes it gives the cited one-quarter. We checked the algebra by a simulation (below).</p>
+
+  <section class="tool explain" aria-labelledby="s07-ne-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ne-h">Relative N<sub>e</sub> with unequal breeding males and females</h3></div>
+    <p style="font-size:14px">Enter the numbers of males and females that leave offspring, or pick a preset.</p>
+    <div class="controls">
+      <label for="s07-ne-m"><span>Breeding males N<sub>m</sub></span> <output id="s07-ne-mo">50</output><input type="range" id="s07-ne-m" min="1" max="500" step="1" value="50"></label>
+      <label for="s07-ne-f"><span>Breeding females N<sub>f</sub></span> <output id="s07-ne-fo">50</output><input type="range" id="s07-ne-f" min="1" max="500" step="1" value="50"></label>
+      <div class="seg" role="group" aria-label="Presets"><button type="button" id="s07-ne-p1" aria-pressed="false">1 : 1</button><button type="button" id="s07-ne-p2" aria-pressed="false">1 male : 3 females</button><button type="button" id="s07-ne-p3" aria-pressed="false">1 : 10</button><button type="button" id="s07-ne-p4" aria-pressed="false">10 : 1</button></div>
+    </div>
+    <div class="svgbox" id="s07-ne-fig"></div>
+    <div class="readout" id="s07-ne-out" aria-live="polite"></div>
+    <p class="tool-note"><b>Toy rules.</b> Autosomal N<sub>e</sub> = 4N<sub>m</sub>N<sub>f</sub>/(N<sub>m</sub>+N<sub>f</sub>) (cited above). Copies: autosome 2N<sub>e</sub>, mtDNA N<sub>f</sub>, Y N<sub>m</sub> (our derivation). Bars show copies relative to the autosomes; the dashed line is the equal-sex value of one-quarter. Assumptions: constant size, random mating, no selection, no migration, Poisson-like offspring numbers. Real sex ratios, selection and population structure all shift real data away from this.</p>
+    <p style="font-size:14px"><b>What to take away.</b> A skew in breeding numbers does not shrink both markers: it helps one and hurts the other. Few breeding males shrink the Y, while mtDNA relative to the autosomes rises above one-quarter. This is the logic behind using Y and mtDNA together: a Y-to-mtDNA diversity ratio far from one fits unequal numbers of breeding males and females, but selection on the Y can produce a similar pattern (below).</p>
+  </section>
+
+  <h3>Haplogroups: naming the branches</h3>
+  <p>To compare people you first put each into a named branch of the Y or mtDNA tree. These tools do that, each with its own tree and input. All statements are from the tools' own pages.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool</th><th>Marker</th><th>Tree</th><th>Input</th><th>How it chooses</th><th>Stated limits</th></tr></thead>
+    <tbody>
+      <tr><td><b>HaploGrep 3</b></td><td>mtDNA</td><td>PhyloTree; the default package includes PhyloTree 17 (rCRS and RSRS versions) and a Forensic Update tree</td><td>text (hsd), FASTA or VCF, format auto-detected; partial sequences such as the control region allowed</td><td>distance to each haplogroup by the Kulczynski metric; ranked list of hits (top 20 shown)</td><td>for samples from genotyping arrays it narrows the search to the positions present in the VCF</td></tr>
+      <tr><td><b>Yhaplo</b></td><td>Y</td><td>SNPs imported from the ISOGG database; no release named in the README</td><td>indexed VCF or BCF, or a sample-by-position text file; coordinates must be hg19/GRCh37</td><td>imports phylogenetically informative SNPs from ISOGG; the tree is read from a Newick text file</td><td>assumes every sample is male; expects a reasonable number of ISOGG SNPs; the README warns that very low coverage or sparse array data can violate this</td></tr>
+      <tr><td><b>SNAPPY</b></td><td>Y</td><td>reference files built from the ISOGG Y tree; no version given in the documentation page</td><td>plink binary files or VCF, already reduced to Y positions</td><td>scores each haplogroup by the fraction of informative alleles present (including ancestral groups) and assigns the deepest node with sufficient support (defaults 0.6 minimum, 0.8 for the deeper call)</td><td>a haplogroup with all informative positions missing scores zero</td></tr>
+    </tbody>
+  </table></div>
+  <p><a href="https://www.phylotree.org">PhyloTree</a> is the mtDNA tree behind HaploGrep. Its site shows Build 17 dated 18 Feb 2016, "over 5,400 nodes (haplogroups)", annotated against the revised Cambridge Reference Sequence (rCRS), a standard human mtDNA sequence used for position numbers. Both the mtDNA and Y trees are snapshots of knowledge, so a name can change when the tree is revised. All three describe human trees. Our inference: for another species no ready tree exists, and one would have to be built from your own samples.</p>
+  <p class="note"><b>In our projects.</b> In a recent project on an Asian human cohort we assigned both Y and mtDNA haplogroups from array genotypes. The major groups were the part we trusted. Dating them was not possible, for the reason in the last section below (lab project log).</p>
+
+  <h3>Reading a skyline: Bayesian skyline plots in BEAST2</h3>
+  <p>With a tree for one marker, the standard tool for past size is the <dfn>Bayesian skyline plot</dfn> (Drummond et al. 2005), a method for estimating past population dynamics from a sample of sequences "without dependence on a prespecified parametric model of demographic history". It is run in BEAST2, which "samples from the posterior distribution of trees (or networks) and parameters" (Bouckaert et al. 2019). In the BEAST2 skyline tutorial the coalescent skyline "divides the time between the present and the root of the tree" into segments, each with its own effective size, and the x-axis is in years once the clock rate scales branch lengths from substitutions per site into calendar time.</p>
+  <ul>
+    <li><b>Assumption of one mixed population.</b> The tutorial states that the skylines "assume that the population is well-mixed" and "assume that there is no significant population structure", and that results "will be biased" otherwise. Karmin et al. (2015) warn of the same trap: structure combined with unbalanced sampling can lead the skyline plot to infer false declines under constant size.</li>
+    <li><b>Needs a rate.</b> Without a mutation rate the answer is in substitutions, not years (below).</li>
+    <li><b>Sequences from all sites.</b> It uses the observed differences between sequences; an unbiased sample of sites is needed (last section).</li>
+    <li>For methods that read the same question from the autosomes of one genome (PSMC and relatives), see <a href="../04-demography/">lesson 4</a>; they are not repeated here.</li>
+  </ul>
+
+  <h3>Mutation rates: only what we opened</h3>
+  <p>A rate turns a tree into dates. The values below are from the papers' own text. They are estimates for humans with uncertainty ranges, calibrated on ancient samples of known age. They cannot be moved to another species (<a href="../04-demography/#s04">lesson 4, scaling to years</a>).</p>
+  <div class="tbl"><table style="min-width:560px">
+    <thead><tr><th>Marker</th><th>Rate</th><th>How it was obtained</th><th>Source</th></tr></thead>
+    <tbody>
+      <tr><td>Whole mtDNA</td><td>2.67 × 10<sup>−8</sup> substitutions per site per year (95% <span class="tip" title="Highest posterior density interval: the Bayesian range that holds 95 % of the probability for the rate.">HPD</span> 2.16–3.16 × 10<sup>−8</sup>); coding region 1.57 × 10<sup>−8</sup></td><td>ancient mtDNA genomes from securely dated archaeological samples as calibration points, Bayesian analysis with a <span class="tip" title="Relaxed clock: a model in which the mutation rate is allowed to differ between branches of the tree, instead of one fixed rate.">relaxed clock</span></td><td>Fu et al. 2013, <i>Curr Biol</i></td></tr>
+      <tr><td>Y, filtered regions</td><td>0.74 × 10<sup>−9</sup> per bp per year (95% CI 0.63–0.95 × 10<sup>−9</sup>)</td><td>two ancient Y sequences from a relatively recent time horizon and one haplogroup; the authors say this is a limit. Another study gave 0.76 × 10<sup>−9</sup> from an older specimen</td><td>Karmin et al. 2015, <i>Genome Res</i></td></tr>
+    </tbody>
+  </table></div>
+  <details class="simple"><summary>Simple explanation with examples: how often a lineage gets a new difference</summary><div class="in">
+    <p>Take the rates above and multiply by the length that was read. For mtDNA, 16,569 sites (the length Karmin et al. used in their simulations) × 2.67 × 10<sup>−8</sup> = 4.4 × 10<sup>−4</sup> new changes per lineage per year, about one every 2,260 years. For the Y, 8.8 Mb of filtered sequence (what Karmin et al. kept per man) × 0.74 × 10<sup>−9</sup> = 6.5 × 10<sup>−3</sup> per year, about one every 150 years.</p>
+    <div class="toy">mtDNA  16,569 sites × 2.67e-8 = 4.4e-4 per year  <span class="a">→ 1 per ~2,260 yr</span>
+Y      8.8e6  bp   × 0.74e-9 = 6.5e-3 per year  <span class="h">→ 1 per ~150 yr</span></div>
+    <p>The per-site mtDNA rate is about 36 times the per-base Y rate, but the Y sequence read is about 500 times longer, so the Y carries more dating information per lineage. This reproduces the opening sentence of Karmin et al. (2015): "Despite the higher per-base-mutation rate of mtDNA, the much greater length of the Y chromosome ... offers the highest genealogical resolution of all non-recombining loci in the human genome." Both numbers carry the uncertainty of their rates.</p>
+  </div></details>
+
+  <h3>Sex-biased demography: reading Y against mtDNA</h3>
+  <p>Karmin et al. (2015) sequenced 456 Y chromosomes (299 new) and made Bayesian skyline plots for Y and for mtDNA of a subset of 320 individuals. The two curves rose together 40 000 to 60 000 years ago, but differed: the mtDNA estimates were consistently more than twice those of the Y, and the Y plot "suggested a reduction at around 8–4 kya" when the female effective size was "up to 17-fold higher than the male". In their abstract: "In contrast to demographic reconstructions based on mtDNA, we infer a second strong bottleneck in Y-chromosome lineages dating to the last 10 ky."</p>
+  <p>Their reading: the Y bottleneck is not limited to a few haplotypes, so selection is "not a likely explanation", and they hypothesise that cultural change raised the variance in male reproductive success, since it coincides with the spread of Neolithic cultures. That is the paper's hypothesis, not a measurement. A different study that compared autosomes, X, Y and mtDNA in the same men (Wilson Sayres et al., read as the preprint) wrote that models of extreme differences in reproductive success between males and females "are insufficient as the sole explanation" for the low Y diversity, and that natural selection "appears to be acting to reduce diversity on the Y". The two papers ask different questions and do not contradict each other, but both show that Y alone cannot say which cause acted. Karmin et al. add that most methods using the recombining autosomes are underpowered to see changes within the past few thousand years, so the autosomes cannot yet confirm or refute it.</p>
+  <ul>
+    <li>A Y-to-mtDNA contrast is a hypothesis generator. It cannot by itself say whether the cause was fewer breeding males, unequal migration of the sexes, selection on the Y or population structure.</li>
+    <li>The calculator above shows only the neutral breeding-numbers part.</li>
+    <li>For animals, the same logic holds with the roles set by the sex-determination system (Wilson Sayres 2018), and the genomes are those you assemble in <a href="../02-assembly/#s11">lesson 2</a>.</li>
+  </ul>
+
+  <h3>Why array markers cannot be dated</h3>
+  <p>A genotyping array reads a fixed list of positions that were already known to vary. Albrechtsen et al. (2010) explain in their abstract that chip data "suffer from ascertainment biases caused by the SNP discovery process in which a small number of individuals from selected populations are used as discovery panels", that these biases "will distort measures of human diversity", and that correcting them is "difficult to generalize among studies". (We read the abstract only.) See <a href="#s04">section 4</a> on what arrays can and cannot do.</p>
+  <p>Our reasoning about dating, not a quotation: a molecular clock counts the new mutations on each branch. Probes were chosen from variants already seen in earlier samples, so mutations private to your own samples are mostly missing, and branch lengths carry little time information. Which branches are long or short depends on whose DNA picked the probes. The array can still tell you which named branch a person sits on (the tools above say how they handle arrays), but not when branches split. A skyline needs sequence of all sites in the region, which any whole-genome read set provides for free: its mitogenome and, for males, its Y.</p>
+
+  <p class="note warn"><b>Check before using.</b> The 1/4 ratios, the formula and the calculator are neutral-model baselines. Real data are often far from them for reasons other than breeding sex ratio (selection on the Y, population structure, one noisy tree). Treat a result as a pointer to a hypothesis.</p>
+</section>
