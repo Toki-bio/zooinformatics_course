@@ -447,7 +447,7 @@
     return info;
   }
   // ---- Comparing whole trees. KH and SH follow evaluateTrees in IQ-TREE's treetesting.cpp, AU follows performAUTest,
-  // without its search for the threshold: here the region is simply "this tree is best".
+  // with its search for the threshold, but without the final maximum likelihood refit (mlecoef).
   function normCdf(x) {                    // Abramowitz and Stegun 7.1.26
     var z = Math.abs(x) / Math.SQRT2, t = 1 / (1 + 0.3275911 * z);
     var e = 1 - (((((1.061405429 * t - 1.453152027) * t) + 1.421413741) * t - 0.284496736) * t + 0.254829592) * t * Math.exp(-z * z);
@@ -486,30 +486,59 @@
       }
       out.push({ bp: best[t] / R, kh: kh / R, sh: sh / R, delta: L[ord[0]] - L[t] });
     }
-    // AU: share of draws where each tree is best, at each size of resample, then a line through the z values.
-    var bpS = AU_SCALES.map(function (sc) {
-      var cnt = new Array(T).fill(0), m2 = Math.round(n * sc), q;
+    // AU: at each size of resample, how far each tree falls behind the leader (performAUTest in IQ-TREE).
+    var stats = [], tt2;
+    for (tt2 = 0; tt2 < T; tt2++) stats.push(AU_SCALES.map(function () { return []; }));
+    AU_SCALES.forEach(function (sc, kk) {
+      var m2 = Math.round(n * sc), q;
       for (q = 0; q < R; q++) {
-        var w2 = resampleN(n, m2, rnd), v2 = sites.map(function (s) { return dot(s, w2); }), mx2 = Math.max.apply(null, v2);
-        var top2 = []; v2.forEach(function (x, i) { if (x > mx2 - 1e-9) top2.push(i); });
-        top2.forEach(function (i) { cnt[i] += 1 / top2.length; });
+        var w2 = resampleN(n, m2, rnd), v2 = sites.map(function (s) { return dot(s, w2) / sc; }), mx2 = -Infinity, sec = -Infinity, top2 = 0;
+        v2.forEach(function (x, i) { if (x > mx2) { sec = mx2; mx2 = x; top2 = i; } else if (x > sec) sec = x; });
+        v2.forEach(function (x, i) { stats[i][kk].push(i === top2 ? sec - mx2 : mx2 - x); });
       }
-      return cnt.map(function (x) { return x / R; });
     });
-    for (t = 0; t < T; t++) out[t].au = auFit(bpS.map(function (row) { return row[t]; }), R);
+    for (t = 0; t < T; t++) {
+      stats[t].forEach(function (a) { a.sort(function (x, y) { return x - y; }); });
+      out[t].au = auTest(stats[t], R);
+    }
     return out;
   }
+  function shareBelow(v, t) {              // cntdist3: the smoothed count of values at or below t in a sorted list
+    var n = v.length, lo = 0, hi = n, m, i, p;
+    while (lo < hi) { m = (lo + hi) >> 1; if (v[m] <= t) lo = m + 1; else hi = m; }
+    i = lo - 1;
+    if (i < 0) p = v[1] > v[0] ? 0.5 + (t - v[0]) / (v[1] - v[0]) : 0;
+    else if (i < n - 1) p = v[i + 1] > v[i] ? 0.5 + i + (t - v[i]) / (v[i + 1] - v[i]) : 0.5 + i;
+    else p = v[n - 1] - v[n - 2] > 0 ? n - 0.5 + (t - v[n - 1]) / (v[n - 1] - v[n - 2]) : n;
+    return Math.min(n, Math.max(0, p)) / n;
+  }
   function auFit(bp, R) {                  // z = d sqrt(r) + c / sqrt(r), weighted least squares; p = 1 - Phi(d - c)
-    var s11 = 0, s12 = 0, s22 = 0, y1 = 0, y2 = 0, used = 0;
+    var AB = 0, BC = 0, AC = 0, A2 = 0, B2 = 0, used = 0;
     bp.forEach(function (p, k) {
       if (p <= 0 || p >= 1) return;
       var z = -normInv(p), f = Math.exp(-z * z / 2) / Math.sqrt(2 * Math.PI), w = f * f * R / (p * (1 - p));
-      var a = Math.sqrt(AU_SCALES[k]), c = 1 / a;
-      s11 += w * a * a; s12 += w * a * c; s22 += w * c * c; y1 += w * a * z; y2 += w * c * z; used++;
+      var a = Math.sqrt(AU_SCALES[k]), b = 1 / a;
+      AB += w * a * b; BC += w * b * z; AC += w * a * z; A2 += w * a * a; B2 += w * b * b; used++;
     });
-    if (used < 2) return bp[5] >= 0.5 ? 1 : 0;   // the tree is never or always best: no line to fit
-    var det = s11 * s22 - s12 * s12, d = (s22 * y1 - s12 * y2) / det, c2 = (s11 * y2 - s12 * y1) / det;
-    return 1 - normCdf(d - c2);
+    if (used < 2) return { p: bp.filter(function (x) { return x <= 0; }).length > AU_SCALES.length / 2 ? 0 : 1, se: 0, df: used - 2 };
+    var den = 1 / (AB * AB - A2 * B2), d = (BC * AB - AC * B2) * den, c = (AC * AB - BC * A2) * den;
+    var e = d - c, se = Math.exp(-e * e / 2) / Math.sqrt(2 * Math.PI) * Math.sqrt(Math.max(0, -den * (B2 + A2 + 2 * AB)));
+    return { p: 1 - normCdf(e), se: se, df: used - 2 };
+  }
+  function auTest(stat, R) {               // the search for the threshold in performAUTest
+    var xn = stat[5][R >> 1], th = 0, thp = 0, z0 = 0, ze0 = 0, idf0 = -2, res = null, step, x, f, z;
+    for (step = 0; step < 30; step++) {
+      x = xn;
+      f = auFit(stat.map(function (v) { return shareBelow(v, x); }), R);
+      z = -f.p;
+      if (f.df < 0 && idf0 < 0) break;
+      if (f.df < 0 || (idf0 >= 0 && (z - z0) * (x - thp) > 0 && Math.abs(z - z0) > 0.1 * ze0)) { th = x; xn = 0.5 * x + 0.5 * thp; continue; }
+      if (idf0 >= 0 && Math.abs(z - z0) < 0.01 * ze0) { if (Math.abs(th) < 1e-10) xn = th; else th = x; }
+      else xn = 0.5 * th + 0.5 * x;
+      res = f.p; thp = x; z0 = z; ze0 = f.se; idf0 = f.df;
+      if (Math.abs(x - th) < 1e-10) break;
+    }
+    return res === null ? f.p : res;
   }
   // ENGINE-END
   // ---- Everything below is the page: drawing and buttons. All numbers come from the engine above.
@@ -974,12 +1003,12 @@
     h = '<p>The numbers so far judge one branch. These tests judge a whole tree: is another tree significantly worse than the best one? Each draws columns again from the stored per-column ln L of all 15 trees, as with RELL.</p>';
     h += '<ul><li><b>KH</b> compares a tree with the best tree (the best tree itself with the second best). Each tree\'s resampled total is first shifted so that its mean is 0, which gives the spread expected if the two trees fitted equally well. The p-value is the share of draws in which the gap is larger than the gap seen in the real data.</li>';
     h += '<li><b>SH</b> does the same, but compares with the largest of all the trees in each draw, so that testing many trees at once is allowed for.</li>';
-    h += '<li><b>AU</b> counts how often each tree is best when the draws have 50 to 140 % as many columns as the data, and fits a line through these counts to reduce the bias of the plain count. This toy uses a simplified version: IQ-TREE also searches for the best threshold, so its p-AU can differ.</li></ul>';
+    h += '<li><b>AU</b> counts how often each tree is best when the draws have 50 to 140 % as many columns as the data, and fits a line through these counts to reduce the bias of the plain count. This toy leaves out IQ-TREE\'s final refit, so its p-AU can differ a little, and more for the best tree, which is never rejected anyway.</li></ul>';
     h += '<div class="s12-btns"><button type="button" class="btn" data-tt="1">Run the tests (' + R.toLocaleString('en-US') + ' draws for KH and SH, and for each of the 10 sizes in AU)</button></div>';
     if (st.tt) {
       res = st.tt;
       function cell(p) { return p.toFixed(3) + (p < 0.05 ? ' −' : ''); }
-      h += '<div class="s12-mx"><table class="s12-m s12-wide"><tr><th>tree</th><th>ln L behind best</th><th>best in draws</th><th>p-KH</th><th>p-SH</th><th>p-AU, simplified</th></tr>' + order.map(function (m) {
+      h += '<div class="s12-mx"><table class="s12-m s12-wide"><tr><th>tree</th><th>ln L behind best</th><th>best in draws</th><th>p-KH</th><th>p-SH</th><th>p-AU</th></tr>' + order.map(function (m) {
         var r = res[m.ti]; return '<tr><td>' + treeKey(TREES[m.ti]) + '</td><td>' + f(r.delta, 2) + '</td><td>' + f(r.bp, 3) + '</td><td>' + cell(r.kh) + '</td><td>' + cell(r.sh) + '</td><td>' + cell(r.au) + '</td></tr>';
       }).join('') + '</table></div>';
       var nk = 0, ns = 0, na = 0; res.forEach(function (r) { if (r.kh < 0.05) nk++; if (r.sh < 0.05) ns++; if (r.au < 0.05) na++; });

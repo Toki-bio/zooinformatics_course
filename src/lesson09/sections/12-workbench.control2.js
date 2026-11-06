@@ -42,7 +42,7 @@ check('SH never below KH, p within limits', okp);
 check('share of draws sums to 1', okb);
 // 4. AU fit recovers a known curve: z = d sqrt(r) + c / sqrt(r).
 const d0 = 1.2, c0 = 0.4, bp = E.AU_SCALES.map(r => 1 - E.normCdf(d0 * Math.sqrt(r) + c0 / Math.sqrt(r)));
-const au = E.auFit(bp, 10000);
+const au = E.auFit(bp, 10000).p;
 check('AU fit on an exact curve', Math.abs(au - (1 - E.normCdf(d0 - c0))) < 1e-3, `${au.toFixed(5)} against ${(1 - E.normCdf(d0 - c0)).toFixed(5)}`);
 // 5. Two trees far apart in fit: the worse tree is rejected by all three.
 const far = E.treeTests(sites(2, 200, 3, 60), 2000, E.rng(4));
