@@ -1,0 +1,63 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A read is cut into k-mers</h2>
+  <p>A <dfn>read</dfn> is the sequencer's readout of one piece of DNA. A <dfn>k-mer</dfn> is any stretch of k bases inside a read. Slide a window of k bases along the read, one base at a time, and note what is inside each time.</p>
+  <div class="tool">
+    <div class="b-trip" id="b-cut"></div>
+    <div class="controls"><button type="button" class="btn" id="b-newread">Another read</button></div>
+    <p class="tool-note">Top line: the read. Each line below: one k-mer.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>The histogram peak shows the coverage</h2>
+  <p>The <dfn>k-mer histogram</dfn> shows how many different k-mers were seen once, twice, three times and so on. <dfn>Coverage</dfn> is how many times an average base of the genome was read. Each k-mer of the genome turns up a little less often than that, because a k-mer must fit wholly inside a read, so the bars pile into a peak that moves right as coverage grows.</p>
+  <div class="tool">
+    <div class="b-trip" id="b-cov"></div>
+    <button type="button" class="btn" id="b-covnew">New random reads</button>
+    <p class="tool-note" id="b-covnote"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>Errors make a tall spike on the left</h2>
+  <p>A sequencer sometimes reads a base wrongly. A k-mer with the wrong base exists nowhere in the genome, so it is seen only once or twice. These k-mers pile up at the far left in the <dfn>error spike</dfn>, which is so tall that the plots cut it off.</p>
+  <div class="tool">
+    <div class="b-trip" id="b-err"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>all k-mers, those with errors in the spike on the left</span></div>
+    <button type="button" class="btn" id="b-errnew">New random reads</button>
+    <p class="tool-note" id="b-errnote"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Total k-mers divided by the peak: genome size</h2>
+  <p>Each position of the genome starts one k-mer, seen about as often as the peak says. So the genome size is about the total of all sightings divided by the peak position. We leave out the error spike, left of the <dfn>valley</dfn> (the low point between spike and peak).</p>
+  <div class="tool">
+    <div class="b-trip" id="b-size"></div>
+    <div class="legend"><span><i style="background:var(--err)"></i>left of the valley: not counted</span><span><i style="background:var(--accent)"></i>valley and right of it: counted</span></div>
+    <button type="button" class="btn" id="b-sizenew">New random reads</button>
+    <p class="tool-note" id="b-sizenote"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Differing chromosome copies make a second peak at half coverage</h2>
+  <p>A <dfn>diploid</dfn> animal has two copies of every chromosome (one from each parent), not identical. Where they differ, each copy has its own k-mer, seen only in reads from that copy: about half as often as a k-mer both copies share. The share of differing positions is the <dfn>heterozygosity</dfn>. The more differ, the bigger the second peak.</p>
+  <div class="tool">
+    <div class="b-trip" id="b-het"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>k-mers present on both copies</span><span><i style="background:var(--het)"></i>k-mers present on one copy only</span></div>
+    <button type="button" class="btn" id="b-hetnew">New random reads</button>
+    <p class="tool-note" id="b-hetnote"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>A repeat is seen once per copy</h2>
+  <p>A <dfn>repeat</dfn> is a sequence that occurs in several places of the genome. Its k-mers are the same in every copy, so each collects the reads of all copies: two copies, twice as often; four copies, four times. Here one piece is present once, twice and four times.</p>
+  <div class="tool">
+    <div class="b-trip" id="b-rep"></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>k-mers of the rest of the genome</span><span><i style="background:var(--rep)"></i>k-mers of the piece that is copied</span></div>
+    <button type="button" class="btn" id="b-repnew">New random reads</button>
+    <p class="tool-note" id="b-repnote"></p>
+  </div>
+</section>

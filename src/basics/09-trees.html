@@ -1,0 +1,62 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>Name order on the page means nothing</h2>
+  <p>A <dfn>phylogenetic tree</dfn> shows which species share a more recent common ancestor. The <dfn>tips</dfn> are the species and the <dfn>nodes</dfn> are the ancestors where lines split. Any node can be turned half-way round and the tree stays the same. So neighbours on the page need not be close relatives; read closeness from the nodes.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-rot"></div>
+    <div class="controls"><button type="button" class="btn" id="b-rot-reset">Back to the start</button></div>
+    <p class="tool-note">Click a circle in drawing 1 to turn that node.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>The root changes the groups</h2>
+  <p>DNA shows how similar the tips are, not which way time runs. The <dfn>root</dfn> is the oldest node, placed using an <dfn>outgroup</dfn>, a lineage known to have split off first. A <dfn>clade</dfn> is an ancestor with all its descendants, so the clades depend on the root.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-unr"></div>
+    <div class="b-grid" id="b-roots"></div>
+    <p class="tool-note" id="b-rootmsg"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>A shared change joins two species</h2>
+  <p>Four species can be joined in three ways. Each column of the aligned DNA is a <dfn>character</dfn>. If A and B share a base that C and D lack, joining A with B explains it with one change; joining A with C needs two. <dfn>Parsimony</dfn> picks the tree with the fewest changes in total.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-aln"></div>
+    <div class="b-grid" id="b-three"></div>
+    <div class="controls"><button type="button" class="btn" id="b-aln-new">Simulate another alignment</button></div>
+    <p class="tool-note" id="b-alnmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Long branches can mislead</h2>
+  <p>Two distant relatives that both changed a lot can end up with the same base by chance, since there are only four bases. Parsimony reads this as shared inheritance: <dfn>long-branch attraction</dfn>. Below, the true tree pairs A with B and C with D.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-lba"></div>
+    <div class="controls"><button type="button" class="btn" id="b-lba-new">Simulate again</button></div>
+    <p class="tool-note" id="b-lbamsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Support means repeatable, not true</h2>
+  <p>A method always returns a tree. The <dfn>bootstrap</dfn> checks how stable a branch is: it draws columns of the alignment at random, so some come twice and others not at all, builds a tree each time, and counts how often the branch appears.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-boot"></div>
+    <div class="controls"><button type="button" class="btn" id="b-draw1">Draw one resample of data set 1</button></div>
+    <div class="b-striphold" id="b-strip"></div>
+    <p class="tool-note" id="b-stripinfo" aria-live="polite"></p>
+    <p class="tool-note" id="b-bootmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>A gene tree can differ from the species tree</h2>
+  <p>A <dfn>species tree</dfn> is the order in which populations split; a <dfn>gene tree</dfn> is the history of one stretch of DNA. If two gene copies do not meet before the older split, any two of three lines can meet first. This is <dfn>incomplete lineage sorting</dfn>. Time is in <span class="tip" title="Coalescent units: one unit is 2N generations, where N is the number of animals in the population on that branch.">coalescent units</span>.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-ils"></div>
+    <div class="controls"><button type="button" class="btn" id="b-ils-new">Simulate 3000 new genes in each</button></div>
+    <p class="tool-note" id="b-ilsmsg" aria-live="polite"></p>
+  </div>
+</section>

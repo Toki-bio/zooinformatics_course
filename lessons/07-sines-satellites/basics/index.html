@@ -1,0 +1,558 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SINEs and Satellite DNA: the basics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, stages in pipeline order, each stage = what it answers + figure + commands */
+:root{
+  --bg:#F5F7F8; --panel:#FFFFFF; --fg:#13212C; --muted:#586A77; --line:#D3DCE2;
+  --accent:#0A6C96;   /* homozygous peak / primary */
+  --het:#B9770E;      /* heterozygous peak */
+  --rep:#7B4FA6;      /* repeats */
+  --err:#9AA7B0;      /* errors */
+  --bad:#B4372F; --good:#2E7D4F;
+  --code-bg:#EBF0F3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:700;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-weight:600}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+section{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p code,li code,td code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+a{color:var(--accent)}
+/* sequential steps: one column, numbered markers joined by a line */
+.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column;max-width:72ch}
+.steps>li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:14px;padding-bottom:16px;position:relative;margin:0}
+.steps>li::before{content:counter(st);width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--f-mono);color:var(--accent);background:var(--bg);position:relative;z-index:1}
+.steps>li::after{content:"";position:absolute;left:13px;top:28px;bottom:0;border-left:1.5px solid var(--line)}
+.steps>li:last-child::after{display:none}
+.steps>li.later::before{content:"+";border-style:dashed;color:var(--muted);border-color:var(--muted)}
+.steps>li>div{min-width:0;padding-top:2px}
+.steps b{font-family:var(--f-display);font-size:16px}
+.steps .d{font-size:14.5px}
+.steps .t{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.steps a{font-size:13px;margin-left:6px}
+.qlist{font-size:16px;padding-left:22px;max-width:72ch}
+.qlist li+li{margin-top:6px}
+.defs{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 20px;margin:0}
+.defs dt{font-family:var(--f-display);font-weight:700}
+.defs dd{margin:0;max-width:68ch}
+@media (max-width:600px){.defs{grid-template-columns:1fr;gap:2px}.defs dd{margin-bottom:10px}}
+dfn{font-style:normal;font-weight:600}
+/* figure */
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:13.5px;color:var(--muted)}
+figcaption b{color:var(--fg)}
+.svgbox{overflow-x:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .lab{fill:var(--fg);font-size:11.5px}
+svg .ax{stroke:var(--line);stroke-width:1;fill:none}
+svg .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3;fill:none;opacity:.7}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.controls label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted);min-width:150px}
+.controls label output{font-family:var(--f-mono);color:var(--fg);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:170px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;background:transparent;color:var(--fg);border:0;padding:5px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;font-size:13px}
+.tool{border:1.5px solid var(--accent);border-radius:6px;background:var(--bg);padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.tool.explain{border-color:var(--het)}
+.tool.explain .tool-tag{background:var(--het)}
+.tool-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-tag{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:3px}
+.tool-note{font-size:13.5px;color:var(--muted)}
+.tool-note b{color:var(--fg)}
+.tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+.btn{font:600 13px var(--f-body);background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:6px 12px;cursor:pointer;align-self:flex-end}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout div{border-top:2px solid var(--line);padding-top:6px}
+.readout b{display:block;font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.grid2 figure{padding:12px}
+/* code */
+.code{position:relative;background:var(--code-bg);border-radius:4px;min-width:0}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:12.8px;line-height:1.55;white-space:pre}
+.code .c{color:var(--muted)}
+.code button{position:absolute;top:6px;right:6px;font:12px var(--f-mono);background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:2px 8px;cursor:pointer}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td b{font-family:var(--f-display)}
+.tag{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.s{color:var(--accent);border-color:var(--accent)}
+.tag.l{color:var(--het);border-color:var(--het)}
+.note{border-left:3px solid var(--het);padding:10px 14px;background:var(--panel);font-size:14.5px;max-width:none}
+.note.warn{border-left-color:var(--bad)}
+.formula{font-family:var(--f-mono);font-size:14px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:nowrap}
+details.simple{border:1px dashed var(--line);border-radius:4px;background:var(--panel);padding-inline:14px}
+details.simple summary{cursor:pointer;padding-block:10px;font-weight:600;color:var(--accent);font-size:14.5px}
+details.simple summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.simple[open]{padding-bottom:14px}
+details.simple .in{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.toy{font-family:var(--f-mono);font-size:13px;background:var(--code-bg);padding:10px 12px;border-radius:4px;overflow-x:auto;white-space:pre;line-height:1.6}
+.toy .h{color:var(--het);font-weight:600}.toy .a{color:var(--accent);font-weight:600}.toy .x{color:var(--bad);font-weight:600}
+.calc{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end}
+.calc label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+.calc input,.calc select{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px}
+.calc input{width:110px}
+.calc input.wide{width:min(100%,560px)}
+.calc label.wide{flex:1 1 100%}
+.slider-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13.5px;color:var(--muted)}
+.slider-row input[type=range]{width:min(100%,520px)}
+.kmer-lines{font-family:var(--f-mono);font-size:13px;line-height:1.45;white-space:pre;overflow-x:auto;background:var(--code-bg);padding:10px 12px;border-radius:4px;max-height:640px;overflow-y:auto}
+.kmer-lines .rep{color:var(--het);font-weight:600}.kmer-lines .pos{color:var(--muted)}
+.spec-mini{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;font-family:var(--f-mono);font-size:12.5px;max-width:520px}
+.spec-mini i{display:block;height:10px;background:var(--accent);opacity:.7;border-radius:2px}
+.warn-text{color:var(--bad);font-size:13px}
+ul{margin:0;padding-left:20px;max-width:70ch}
+li+li{margin-top:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.b-aln,.b-tbl{font-family:var(--f-mono);font-size:13px;line-height:1.55;overflow-x:auto;white-space:pre}
+.b-aln span,.b-tbl span{display:inline-block;width:1ch;text-align:center}
+.b-aln span.b-w,.b-tbl span.b-w{width:auto}
+.b-A{color:var(--accent)}.b-C{color:var(--het)}.b-G{color:var(--rep)}.b-T{color:var(--good)}
+.b-head{border-bottom:3px solid var(--accent)}.b-body{border-bottom:3px solid var(--het)}.b-tail{border-bottom:3px solid var(--rep)}
+.b-tsd{background:var(--code-bg);font-weight:700}
+.b-two{display:flex;flex-wrap:wrap;gap:18px}.b-two>div{flex:1 1 300px;min-width:0}
+.b-lab{font-size:13.5px;margin:.7em 0 .2em}
+.b-bad{background:var(--bad);color:var(--bg)!important}
+.b-dia{background:var(--code-bg);font-weight:700}
+.b-aln table,.b-tbl table{border-collapse:collapse;font-family:var(--f-mono);font-size:13px}
+.b-tbl td,.b-tbl th{padding:2px 10px 2px 0;text-align:left;white-space:nowrap}
+
+/* ---- course frame (standalone hosting) ---- */
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* long words (file names, sequences) wrap instead of widening the page */
+.wrap{overflow-wrap:break-word}
+.crumb{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.crumb a{color:var(--accent);text-decoration:none}.crumb a:hover{text-decoration:underline}
+.lesson-nav{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px;font-size:14.5px}
+.lesson-nav a{color:var(--accent);text-decoration:none;font-weight:600}
+.lesson-nav a:hover{text-decoration:underline}
+.lesson-nav .next{margin-left:auto;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb" aria-label="Course navigation"><a href="../../../">← Zooinformatics course</a><span>/</span><a href="../">Lesson 7</a><span>/</span><span>The basics</span></nav>
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">Lesson 7 · the basics</div>
+  <h1>SINEs and Satellite DNA: the basics</h1>
+  <p class="lede">The main ideas in a few short blocks, with things to try. The <a href="../">full lesson</a> has the details, commands and sources.</p>
+</header>
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A new copy duplicates a few bases beside it</h2>
+  <p>A <dfn>SINE</dfn> (short interspersed element) is a short piece of DNA that codes for no protein of its own. The cell copies it into RNA, and a <span class="tip" title="LINE: a longer transposable element that codes for the enzymes that write RNA back into DNA.">LINE</span> writes that RNA into the DNA at a new place. A copy has a head, a body and a tail. At insertion the DNA is cut at two places a few bases apart, and the stretch between the cuts ends up on both sides of the copy: a <dfn>target site duplication</dfn>.</p>
+  <div class="tool">
+    <div id="b-tsd"></div>
+    <p class="tool-note"><span class="b-head">head</span> <span class="b-body">body</span> <span class="b-tail">tail</span> <span class="b-tsd">target site duplication</span>. Plain letters: DNA that was there before. Cuts: 4, 8 and 12 bases apart.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>The copy repeats; its two sides occur once</h2>
+  <p><dfn>Interspersed</dfn> means the copies are scattered, each between two pieces of DNA that occur nowhere else: the <dfn>flanks</dfn>. The computer searches a toy genome with six copies for a 16-base word from the SINE and for the 16 bases on each side of every copy (3 differences allowed).</p>
+  <div class="tool">
+    <div class="svgbox" id="b-ig"></div>
+    <div class="b-tbl" id="b-flk"></div>
+    <button type="button" class="btn" id="b-ignew">New random genome</button>
+    <p class="tool-note" id="b-igmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>Many copies together give back the source</h2>
+  <p>Each copy is made from a source sequence and then changes on its own, in different places. In an <dfn>alignment</dfn>, copies lie one under another with equal positions lined up. Taking the base most copies have at each position gives the <dfn>consensus</dfn>. Here 31 toy copies come from a known source, each changed at about 10 to 25 % of its positions.</p>
+  <div class="tool">
+    <div class="b-aln" id="b-cons"></div>
+    <div id="b-consn"></div>
+    <button type="button" class="btn" id="b-cnew">New random copies</button>
+    <p class="tool-note" id="b-consmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Group copies by shared changes, not by their number</h2>
+  <p>Some changes arose once, in a source copy, and every copy made from it carries them. Copies sharing such changes form a <dfn>subfamily</dfn>; the positions where it differs from the other group are its <dfn>diagnostic positions</dfn>. Other changes are private to one copy. A dot means the same base as the consensus of all 15 copies; a letter is a difference.</p>
+  <div class="tool">
+    <div class="b-two" id="b-sub"></div>
+    <button type="button" class="btn" id="b-snew">New random copies</button>
+    <div class="readout">
+      <div>Positions that repeat the same split<b id="b-s1"></b></div>
+      <div>Lineage changes down the list, by number of differences<b id="b-s2"></b></div>
+      <div>Lineage changes down the list, by shared positions<b id="b-s3"></b></div>
+    </div>
+    <p class="tool-note" id="b-submsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>The same place in two species means one ancestor</h2>
+  <p>A copy inserted once stays at its place in every descendant, and the flanks (block 2) find the place. At one place a genome either has the copy (1) or has the two flanks joined (0). Here a toy tree of species <i>A</i>, <i>B</i>, <i>C</i> has an <dfn>outgroup</dfn> <i>O</i>, a species outside the group.</p>
+  <div class="tool">
+    <div class="b-two" id="b-pa"></div>
+    <div class="controls" id="b-pactl" role="group" aria-label="Switch a locus in the right-hand panel"></div>
+    <div class="b-aln" id="b-flank"></div>
+    <p class="tool-note" id="b-pamsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>In a satellite the copies sit side by side</h2>
+  <p>A <dfn>satellite</dfn> is one short sequence, the <dfn>monomer</dfn>, repeated head to tail; a run of monomers is an <dfn>array</dfn>. A <dfn>dot plot</dfn> compares a sequence with itself: a dot at (x, y) means the 8 bases starting at x equal the 8 starting at y. Both toy sequences have a unit of 24 bases.</p>
+  <div class="tool">
+    <div class="b-two" id="b-dp"></div>
+    <button type="button" class="btn" id="b-dnew">New random sequences</button>
+    <div class="readout">
+      <div>Interspersed: copies found<b id="b-d1"></b></div>
+      <div>Interspersed: copies with a copy next to them<b id="b-d2"></b></div>
+      <div>Array: copies found<b id="b-d3"></b></div>
+      <div>Array: copies with a copy next to them<b id="b-d4"></b></div>
+    </div>
+    <p class="tool-note" id="b-dmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<nav class="lesson-nav" aria-label="Back to the lesson"><a href="../../../">← Course home</a><a class="next" href="../">Full lesson 7: SINEs and Satellite DNA →</a></nav>
+</div>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag), k;
+    for (k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function svgIn(box, w, h, label) {
+    box.textContent = '';
+    return el('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', role: 'img', 'aria-label': label, style: 'display:block' }, box);
+  }
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function randSeq(r, n) { var s = '', i; for (i = 0; i < n; i++) s += 'ACGT'[Math.floor(r() * 4)]; return s; }
+  function rep(s, n) { var o = '', i; for (i = 0; i < n; i++) o += s; return o; }
+  function mutate(s, rate, r, skip) {          // substitutions only; skip = columns left unchanged
+    var o = '', i, c;
+    for (i = 0; i < s.length; i++) {
+      c = s[i];
+      if (!(skip && skip.indexOf(i) >= 0) && r() < rate) { do { c = 'ACGT'[Math.floor(r() * 4)]; } while (c === s[i]); }
+      o += c;
+    }
+    return o;
+  }
+  function mism(a, b) { var n = 0, i; for (i = 0; i < a.length; i++) if (a[i] !== b[i]) n++; return n; }
+  function approx(g, w, mx) { var o = [], p; for (p = 0; p + w.length <= g.length; p++) if (mism(w, g.substr(p, w.length)) <= mx) o.push(p); return o; }
+  function col(c) { return '<span class="b-' + c + '">' + c + '</span>'; }
+  function cls(ch, c) { return '<span' + (c ? ' class="' + c + '"' : '') + '>' + ch + '</span>'; }
+  function div(html, cl) { var d = document.createElement('div'); if (cl) d.className = cl; d.innerHTML = html; return d; }
+
+  var HEAD = 'GCCTGGTGGCTCAAGT', BODY = 'CGAATTCAGGCATCGTAC', TAIL = 'AAAAAAAA', SINE = HEAD + BODY + TAIL;
+
+  // 1. Insertion and target site duplication
+  (function () {
+    var T = randSeq(rng(11), 30), p = 12, html = '';
+    [4, 8, 12].forEach(function (s) {
+      var tsd = T.slice(p, p + s), res = T.slice(0, p) + tsd + SINE + tsd + T.slice(p + s);
+      var at = res.indexOf(SINE), k = 0, out = '', i, q, c;
+      for (q = 1; q <= 20 && at - q >= 0; q++) if (res.substr(at - q, q) === res.substr(at + SINE.length, q)) k = q;   // found from the result, not assumed
+      for (i = 0; i < res.length; i++) {
+        c = '';
+        if (i >= at && i < at + SINE.length) { q = i - at; c = q < HEAD.length ? 'b-head' : (q < HEAD.length + BODY.length ? 'b-body' : 'b-tail'); }
+        else if ((i >= at - k && i < at) || (i >= at + SINE.length && i < at + SINE.length + k)) c = 'b-tsd';
+        out += cls(res[i], c);
+      }
+      html += '<p class="b-lab">Cuts <b>' + s + '</b> bases apart: the duplicated stretch is <b>' + k + '</b> bases long (<code>' + res.substr(at - k, k) + '</code>)</p><div class="b-aln">' + out + '</div>';
+    });
+    $('b-tsd').innerHTML = html;
+  })();
+
+  // 2. Flanks are unique, the SINE is not
+  var igSeed = 5;
+  function drawIg() {
+    var r = rng(igSeed * 77), g = '', copies = [], i, c;
+    for (i = 0; i < 6; i++) {
+      g += randSeq(r, 60 + Math.floor(r() * 30));
+      c = mutate(HEAD + BODY, 0.03, r) + rep('A', 4 + Math.floor(r() * 5));
+      copies.push({ s: g.length, e: g.length + c.length }); g += c;
+    }
+    g += randSeq(r, 60 + Math.floor(r() * 30));
+    var W = 16, X = 620 / g.length, svg = svgIn($('b-ig'), 640, 36, 'Toy genome with six SINE copies');
+    el('rect', { x: 10, y: 9, width: g.length * X, height: 12, style: 'fill:var(--line)' }, svg);
+    copies.forEach(function (c, k) {
+      el('rect', { x: 10 + c.s * X, y: 5, width: Math.max(3, (c.e - c.s) * X), height: 20, style: 'fill:var(--accent)' }, svg);
+      el('text', { x: 10 + (c.s + c.e) / 2 * X, y: 34, 'text-anchor': 'middle', 'font-size': 10, style: 'fill:var(--fg)' }, svg, String(k + 1));
+    });
+    var sineW = approx(g, HEAD, 3), once = 0;
+    var rows = '<table><tr><th>copy</th><th>left flank</th><th>places</th><th>right flank</th><th>places</th></tr>';
+    copies.forEach(function (c, k) {
+      var lw = g.slice(c.s - W, c.s), rw = g.slice(c.e, c.e + W), ln = approx(g, lw, 3).length, rn = approx(g, rw, 3).length;
+      if (ln === 1) once++;
+      if (rn === 1) once++;
+      rows += '<tr><td>' + (k + 1) + '</td><td>' + lw + '</td><td><b>' + ln + '</b></td><td>' + rw + '</td><td><b>' + rn + '</b></td></tr>';
+    });
+    rows += '<tr><td>SINE</td><td>' + HEAD + '</td><td><b>' + sineW.length + '</b></td><td colspan="2">the first 16 bases of the SINE</td></tr></table>';
+    $('b-flk').innerHTML = rows;
+    $('b-igmsg').textContent = 'The SINE word occurs in ' + sineW.length + ' places' + (sineW.length === 6 ? ', one in each copy. ' : '. ') +
+      (once === 12 ? 'Each of the 12 flank words occurs in exactly 1 place' : once + ' of the 12 flank words occur in exactly 1 place') +
+      ', so the flanks identify the place of a copy.';
+  }
+  $('b-ignew').addEventListener('click', function () { igSeed++; drawIg(); });
+  drawIg();
+
+  // 3. Consensus
+  var cSeed = 3, CL = 60;
+  function consensus(rows, n, len) {
+    var out = '', j, i, cnt, best, bc, tie;
+    for (j = 0; j < len; j++) {
+      cnt = { A: 0, C: 0, G: 0, T: 0 };
+      for (i = 0; i < n; i++) cnt[rows[i][j]]++;
+      best = 0; bc = 'n'; tie = false;
+      'ACGT'.split('').forEach(function (b) { if (cnt[b] > best) { best = cnt[b]; bc = b; tie = false; } else if (cnt[b] === best) tie = true; });
+      out += tie ? 'n' : bc;
+    }
+    return out;
+  }
+  function drawCons() {
+    var r = rng(cSeed * 31), master = randSeq(r, CL), rows = [], i, j;
+    for (i = 0; i < 31; i++) rows.push(mutate(master, 0.10 + 0.15 * r(), r));
+    var show = 11, cons = consensus(rows, show, CL), h = '';
+    function line(label, s, ref) {
+      var o = '';
+      for (j = 0; j < s.length; j++) o += (ref && s[j] !== ref[j]) ? cls(s[j], 'b-bad') : (s[j] === 'n' ? cls('n') : col(s[j]));
+      return '<span class="b-w">' + label + '</span>' + o + '\n';
+    }
+    for (i = 0; i < show; i++) h += line(('copy ' + (i + 1) + '       ').slice(0, 10), rows[i]);
+    h += line('consensus ', cons, master);
+    h += line('source    ', master);
+    $('b-cons').innerHTML = h;
+    var box = $('b-consn'), wr = [], two = div('', 'b-two');
+    box.textContent = '';
+    box.appendChild(two);
+    [1, 3, 11, 31].forEach(function (n) {
+      var c = consensus(rows, n, CL), wrong = mism(c, master), d = div('<p class="b-lab"><b>' + n + '</b> ' + (n === 1 ? 'copy' : 'copies') + ': <b>' + wrong + '</b> of ' + CL + ' positions differ from the source</p><div class="svgbox"></div>');
+      wr.push(wrong);
+      two.appendChild(d);
+      var svg = svgIn(d.lastChild, 610, 16, n + ' copies: positions where the consensus differs from the source');
+      for (j = 0; j < CL; j++) el('rect', { x: 1 + j * 10, y: 1, width: 8.6, height: 12, style: 'fill:' + (c[j] === master[j] ? 'var(--line)' : 'var(--bad)') }, svg);
+    });
+    $('b-consmsg').textContent = 'Red: differs from the source (n: tied vote). With 31 copies ' +
+      (wr[3] === 0 ? 'every position is right' : 'only ' + wr[3] + ' of ' + CL + ' positions are wrong') +
+      '.';
+  }
+  $('b-cnew').addEventListener('click', function () { cSeed++; drawCons(); });
+  drawCons();
+
+  // 4. Subfamilies
+  var sSeed = 4, SL = 40, NA = 8, NB = 7;
+  function splitKey(rows, j) {
+    var cnt = { A: 0, C: 0, G: 0, T: 0 }, i, bs, k = [];
+    rows.forEach(function (s) { cnt[s[j]]++; });
+    bs = 'ACGT'.split('').sort(function (a, b) { return cnt[b] - cnt[a]; });
+    if (cnt[bs[1]] < 3) return null;
+    for (i = 0; i < rows.length; i++) if (rows[i][j] === bs[1]) k.push(i);
+    return { key: k.join(','), major: bs[0] };
+  }
+  function drawSub() {
+    var r = rng(sSeed * 53), srcA = randSeq(r, SL), diag = [], i, j, b = srcA, t;
+    while (diag.length < 3) { j = 6 + Math.floor(r() * (SL - 12)); if (diag.indexOf(j) < 0) diag.push(j); }
+    diag.sort(function (x, y) { return x - y; });
+    diag.forEach(function (d) { var c; do { c = 'ACGT'[Math.floor(r() * 4)]; } while (c === srcA[d]); b = b.slice(0, d) + c + b.slice(d + 1); });
+    var cps = [];
+    for (i = 0; i < NA + NB; i++) cps.push({ lin: i < NA ? 0 : 1, s: mutate(i < NA ? srcA : b, 0.03 + 0.13 * r(), r, diag) });
+    for (i = cps.length - 1; i > 0; i--) { j = Math.floor(r() * (i + 1)); t = cps[i]; cps[i] = cps[j]; cps[j] = t; }
+    var rows = cps.map(function (c) { return c.s; }), cons = consensus(rows, rows.length, SL);
+    var keys = [], found = [], j2;
+    for (j = 0; j < SL; j++) keys.push(splitKey(rows, j));
+    for (j = 0; j < SL; j++) {
+      if (!keys[j]) continue;
+      for (j2 = 0; j2 < SL; j2++) if (j2 !== j && keys[j2] && keys[j2].key === keys[j].key) { found.push(j); break; }
+    }
+    cps.forEach(function (c) {
+      c.n = mism(c.s, cons);
+      c.g = found.length && c.s[found[0]] !== keys[found[0]].major ? 1 : 0;
+    });
+    var byN = cps.slice().sort(function (x, y) { return x.n - y.n; });
+    var byG = cps.slice().sort(function (x, y) { return x.g - y.g || x.n - y.n; });
+    function changes(list) { var n = 0, q; for (q = 1; q < list.length; q++) if (list[q].lin !== list[q - 1].lin) n++; return n; }
+    function panel(title, list) {
+      var h = '<p class="b-lab"><b>' + title + '</b></p><div class="b-aln">', o;
+      o = '<span class="b-w">   </span>';
+      for (j = 0; j < SL; j++) o += found.indexOf(j) >= 0 ? cls('▼', 'b-dia') : cls(' ');
+      h += o + '\n';
+      list.forEach(function (c) {
+        o = '<span class="b-w" style="color:' + (c.lin ? 'var(--rep)' : 'var(--accent)') + '">■  </span>';
+        for (j = 0; j < SL; j++) o += c.s[j] === cons[j] ? cls('·', found.indexOf(j) >= 0 ? 'b-dia' : '') : cls(c.s[j], 'b-' + c.s[j] + (found.indexOf(j) >= 0 ? ' b-dia' : ''));
+        h += o + '\n';
+      });
+      return h + '</div>';
+    }
+    var box = $('b-sub');
+    box.innerHTML = '';
+    box.appendChild(div(panel('Ordered by number of differences from the consensus', byN)));
+    box.appendChild(div(panel('Grouped by the repeated positions', byG)));
+    var c1 = changes(byN), c2 = changes(byG);
+    $('b-s1').textContent = found.length ? found.map(function (x) { return x + 1; }).join(', ') : 'none';
+    $('b-s2').textContent = c1;
+    $('b-s3').textContent = c2;
+    var exact = found.length === 3 && found.every(function (x, k) { return x === diag[k]; });
+    $('b-submsg').textContent = 'Squares: the true lineage of each copy. Marked columns: positions the computer found. ' +
+      (exact && c2 === 1 ? 'They are the 3 positions where the lineages differ, and grouping by them separates the lineages. ' : 'They are not exactly the 3 true positions in this set: press New random copies. ') +
+      (c1 >= 2 ? 'Ordering by number of differences mixes the lineages, because it counts mostly private changes.' : 'Here the order by differences happens to keep the lineages together; press New random copies.');
+  }
+  $('b-snew').addEventListener('click', function () { sSeed++; drawSub(); });
+  drawSub();
+
+  // 5. Presence and absence
+  var SP = ['A', 'B', 'C', 'O'], YS = [20, 50, 90, 125];
+  // e: the branch on which the insertion happened (AB: the branch to the ancestor of A and B; ABC: to the ancestor of A, B and C)
+  var EVT = [{ e: 'AB' }, { e: 'AB' }, { e: 'AB' }, { e: 'ABC' }, { e: 'A' }];
+  var UNDER = { AB: ['A', 'B'], ABC: ['A', 'B', 'C'], A: ['A'] };
+  var ils = [false, false, false, false, false], none = [false, false, false, false, false];
+  // sorted: the copy was present in only some individuals when the ancestor of A, B, C split, and B kept the version without it
+  function states(ev, sorted) {
+    var under = sorted ? UNDER.ABC : UNDER[ev.e];
+    return SP.map(function (s) { return under.indexOf(s) >= 0 && !(sorted && s === 'B') ? 1 : 0; });
+  }
+  var EDGE = { ABC: [[10, 75], [50, 60]], AB: [[50, 60], [90, 35]], A: [[90, 35], [140, 20]], B: [[90, 35], [140, 50]], C: [[50, 60], [140, 90]], O: [[10, 75], [140, 125]] };
+  function drawTree(box, sorted, label) {
+    var svg = svgIn(box, 330, 150, label), cnt = {};
+    Object.keys(EDGE).forEach(function (k) { var a = EDGE[k]; el('line', { x1: a[0][0], y1: a[0][1], x2: a[1][0], y2: a[1][1], style: 'stroke:var(--muted);stroke-width:1.6' }, svg); });
+    EVT.forEach(function (ev, i) {
+      var edge = sorted[i] ? 'ABC' : ev.e, a = EDGE[edge], n = cnt[edge] = (cnt[edge] || 0), f = edge === 'A' ? 0.5 : 0.3 + 0.2 * n, x, y;
+      cnt[edge]++;
+      x = a[0][0] + (a[1][0] - a[0][0]) * f; y = a[0][1] + (a[1][1] - a[0][1]) * f;
+      el('circle', { cx: x, cy: y, r: 7, style: 'fill:' + (sorted[i] ? 'var(--bad)' : 'var(--accent)') }, svg);
+      el('text', { x: x, y: y + 3.5, 'text-anchor': 'middle', 'font-size': 10, style: 'fill:var(--bg);font-weight:700' }, svg, String(i + 1));
+    });
+    SP.forEach(function (s, si) {
+      el('text', { x: 146, y: YS[si] + 4, 'font-size': 13, 'font-style': 'italic', style: 'fill:var(--fg)' }, svg, s);
+      EVT.forEach(function (ev, i) {
+        var on = states(ev, sorted[i])[si], x = 176 + i * 29;
+        el('rect', { x: x, y: YS[si] - 9, width: 18, height: 18, rx: 2, style: on ? 'fill:var(--accent)' : 'fill:none;stroke:var(--muted);stroke-width:1.4' }, svg);
+        if (on) el('text', { x: x + 9, y: YS[si] + 4, 'text-anchor': 'middle', 'font-size': 11, style: 'fill:var(--bg);font-weight:700' }, svg, '1');
+      });
+    });
+    EVT.forEach(function (ev, i) { el('text', { x: 185 + i * 29, y: 6, 'text-anchor': 'middle', 'font-size': 10, style: 'fill:var(--muted)' }, svg, String(i + 1)); });
+  }
+  function groupsOf(sorted) {
+    var g = { 'A+B': 0, 'A+C': 0, 'B+C': 0 };
+    EVT.forEach(function (ev, i) {
+      var st = states(ev, sorted[i]), pres = SP.slice(0, 3).filter(function (s, k) { return st[k]; });
+      if (pres.length === 2) g[pres.join('+')]++;
+    });
+    return g;
+  }
+  var FL = (function () { var r = rng(909); return [randSeq(r, 8), randSeq(r, 8)]; })();
+  function drawPa() {
+    var box = $('b-pa');
+    box.innerHTML = '';
+    box.appendChild(div('<p class="b-lab"><b>Every insertion is clean</b></p><div class="svgbox"></div>'));
+    box.appendChild(div('<p class="b-lab"><b>Switch loci with the buttons below</b></p><div class="svgbox"></div>'));
+    drawTree(box.children[0].lastChild, none, 'Toy tree with five clean insertions and the table of presence and absence');
+    drawTree(box.children[1].lastChild, ils, 'Toy tree with the same insertions, switched loci marked red, and the table');
+    var g1 = groupsOf(none), g2 = groupsOf(ils), any = ils.some(function (x) { return x; });
+    Array.prototype.forEach.call($('b-pactl').children, function (b, i) { b.setAttribute('aria-pressed', String(ils[i])); });
+    $('b-pamsg').textContent = 'Columns: loci; rows: species; filled: copy present. Left: ' + g1['A+B'] +
+      ' loci have the copy in A and B only, so they support A and B as sisters; copies in A, B and C, or in A alone, say nothing about who is closest. ' +
+      (any ? 'Right: ' + g2['A+B'] + ' loci support A+B and ' + g2['A+C'] + ' support A+C. A switched locus (red) is incomplete lineage sorting: the copy was present in only some individuals when the species split, and was kept in A and C but not in B.' : 'Switch a locus on the right to see what a conflicting locus looks like.');
+    var st = states(EVT[0], false), h = '';
+    SP.forEach(function (s, k) { h += '<span class="b-w"><i>' + s + '</i>  </span>' + FL[0] + (st[k] ? '<span class="b-w" style="border-bottom:3px solid var(--accent)">[SINE]</span>' : '') + FL[1] + '\n'; });
+    $('b-flank').innerHTML = '<p class="b-lab"><b>Locus 1 as the genomes show it</b>: the flanks are the same in all four species; ' + st.filter(function (x) { return x; }).length + ' have the copy between them, ' + st.filter(function (x) { return !x; }).length + ' have the flanks joined.</p>' + h;
+  }
+  (function () {
+    var c = $('b-pactl');
+    EVT.forEach(function (ev, i) {
+      var b = document.createElement('button');
+      b.type = 'button'; b.className = 'btn'; b.textContent = 'Locus ' + (i + 1);
+      b.addEventListener('click', function () { ils[i] = !ils[i]; drawPa(); });
+      c.appendChild(b);
+    });
+  })();
+  drawPa();
+
+  // 6. Dot plots: scattered copies and an array
+  var dSeed = 6, U = 'GCCTGGTGGCTCAAGTCGAATTCA', WD = 8;
+  function findUnits(g) {
+    var hits = [], p = 0;
+    while (p + U.length <= g.length) { if (mism(U, g.substr(p, U.length)) <= 4) { hits.push(p); p += U.length; } else p++; }
+    return hits;
+  }
+  function dotplot(box, g, hits, label) {
+    var n = g.length - WD + 1, m = {}, i, svg = svgIn(box, n + 8, n + 8, label);
+    el('rect', { x: 4, y: 4, width: n, height: n, style: 'fill:none;stroke:var(--line);stroke-width:.6' }, svg);
+    for (i = 0; i < n; i++) { var w = g.substr(i, WD); (m[w] = m[w] || []).push(i); }
+    for (i = 0; i < n; i++) m[g.substr(i, WD)].forEach(function (jj) { el('rect', { x: 4 + i, y: 4 + jj, width: 1.1, height: 1.1, style: 'fill:' + (i === jj ? 'var(--muted)' : 'var(--accent)') }, svg); });
+    hits.forEach(function (h) { el('rect', { x: 4 + h, y: 0, width: U.length, height: 3, style: 'fill:var(--good)' }, svg); });
+  }
+  function neighbours(h) { return h.filter(function (p) { return h.indexOf(p + U.length) >= 0 || h.indexOf(p - U.length) >= 0; }).length; }
+  function drawDp() {
+    var r = rng(dSeed * 19), a = randSeq(r, 20), b, i;
+    for (i = 0; i < 4; i++) a += mutate(U, 0.03, r) + randSeq(r, 24 + Math.floor(r() * 10));
+    a += randSeq(r, 10);
+    b = randSeq(r, 38);
+    for (i = 0; i < 6; i++) b += mutate(U, 0.03, r);
+    b += randSeq(r, 38);
+    var ha = findUnits(a), hb = findUnits(b), box = $('b-dp');
+    box.innerHTML = '';
+    box.appendChild(div('<p class="b-lab"><b>Scattered copies</b>: ' + a.length + ' bases</p><div class="svgbox" style="max-width:420px"></div>'));
+    box.appendChild(div('<p class="b-lab"><b>An array</b>: ' + b.length + ' bases</p><div class="svgbox" style="max-width:420px"></div>'));
+    dotplot(box.children[0].lastChild, a, ha, 'Dot plot of a sequence with scattered copies');
+    dotplot(box.children[1].lastChild, b, hb, 'Dot plot of a sequence with an array of copies');
+    $('b-d1').textContent = ha.length; $('b-d2').textContent = neighbours(ha);
+    $('b-d3').textContent = hb.length; $('b-d4').textContent = neighbours(hb);
+    $('b-dmsg').textContent = 'Green bars: where the unit was found (up to 4 differences allowed). Blue dots: the same word at two places. The array gives lines parallel to the middle one, each a unit further away.';
+  }
+  $('b-dnew').addEventListener('click', function () { dSeed++; drawDp(); });
+  drawDp();
+})();
+
+</script>
+</body>
+</html>

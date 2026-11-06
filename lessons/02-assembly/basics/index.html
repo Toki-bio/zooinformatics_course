@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Genome Assembly: the basics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, stages in pipeline order, each stage = what it answers + figure + commands */
+:root{
+  --bg:#F5F7F8; --panel:#FFFFFF; --fg:#13212C; --muted:#586A77; --line:#D3DCE2;
+  --accent:#0A6C96;   /* homozygous peak / primary */
+  --het:#B9770E;      /* heterozygous peak */
+  --rep:#7B4FA6;      /* repeats */
+  --err:#9AA7B0;      /* errors */
+  --bad:#B4372F; --good:#2E7D4F;
+  --code-bg:#EBF0F3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:700;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-weight:600}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+section{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p code,li code,td code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+a{color:var(--accent)}
+/* sequential steps: one column, numbered markers joined by a line */
+.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column;max-width:72ch}
+.steps>li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:14px;padding-bottom:16px;position:relative;margin:0}
+.steps>li::before{content:counter(st);width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--f-mono);color:var(--accent);background:var(--bg);position:relative;z-index:1}
+.steps>li::after{content:"";position:absolute;left:13px;top:28px;bottom:0;border-left:1.5px solid var(--line)}
+.steps>li:last-child::after{display:none}
+.steps>li.later::before{content:"+";border-style:dashed;color:var(--muted);border-color:var(--muted)}
+.steps>li>div{min-width:0;padding-top:2px}
+.steps b{font-family:var(--f-display);font-size:16px}
+.steps .d{font-size:14.5px}
+.steps .t{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.steps a{font-size:13px;margin-left:6px}
+.qlist{font-size:16px;padding-left:22px;max-width:72ch}
+.qlist li+li{margin-top:6px}
+.defs{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 20px;margin:0}
+.defs dt{font-family:var(--f-display);font-weight:700}
+.defs dd{margin:0;max-width:68ch}
+@media (max-width:600px){.defs{grid-template-columns:1fr;gap:2px}.defs dd{margin-bottom:10px}}
+dfn{font-style:normal;font-weight:600}
+/* figure */
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:13.5px;color:var(--muted)}
+figcaption b{color:var(--fg)}
+.svgbox{overflow-x:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .lab{fill:var(--fg);font-size:11.5px}
+svg .ax{stroke:var(--line);stroke-width:1;fill:none}
+svg .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3;fill:none;opacity:.7}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.controls label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted);min-width:150px}
+.controls label output{font-family:var(--f-mono);color:var(--fg);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:170px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;background:transparent;color:var(--fg);border:0;padding:5px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;font-size:13px}
+.tool{border:1.5px solid var(--accent);border-radius:6px;background:var(--bg);padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.tool.explain{border-color:var(--het)}
+.tool.explain .tool-tag{background:var(--het)}
+.tool-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-tag{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:3px}
+.tool-note{font-size:13.5px;color:var(--muted)}
+.tool-note b{color:var(--fg)}
+.tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+.btn{font:600 13px var(--f-body);background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:6px 12px;cursor:pointer;align-self:flex-end}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout div{border-top:2px solid var(--line);padding-top:6px}
+.readout b{display:block;font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.grid2 figure{padding:12px}
+/* code */
+.code{position:relative;background:var(--code-bg);border-radius:4px;min-width:0}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:12.8px;line-height:1.55;white-space:pre}
+.code .c{color:var(--muted)}
+.code button{position:absolute;top:6px;right:6px;font:12px var(--f-mono);background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:2px 8px;cursor:pointer}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td b{font-family:var(--f-display)}
+.tag{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.s{color:var(--accent);border-color:var(--accent)}
+.tag.l{color:var(--het);border-color:var(--het)}
+.note{border-left:3px solid var(--het);padding:10px 14px;background:var(--panel);font-size:14.5px;max-width:none}
+.note.warn{border-left-color:var(--bad)}
+.formula{font-family:var(--f-mono);font-size:14px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:nowrap}
+details.simple{border:1px dashed var(--line);border-radius:4px;background:var(--panel);padding-inline:14px}
+details.simple summary{cursor:pointer;padding-block:10px;font-weight:600;color:var(--accent);font-size:14.5px}
+details.simple summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.simple[open]{padding-bottom:14px}
+details.simple .in{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.toy{font-family:var(--f-mono);font-size:13px;background:var(--code-bg);padding:10px 12px;border-radius:4px;overflow-x:auto;white-space:pre;line-height:1.6}
+.toy .h{color:var(--het);font-weight:600}.toy .a{color:var(--accent);font-weight:600}.toy .x{color:var(--bad);font-weight:600}
+.calc{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end}
+.calc label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+.calc input,.calc select{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px}
+.calc input{width:110px}
+.calc input.wide{width:min(100%,560px)}
+.calc label.wide{flex:1 1 100%}
+.slider-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13.5px;color:var(--muted)}
+.slider-row input[type=range]{width:min(100%,520px)}
+.kmer-lines{font-family:var(--f-mono);font-size:13px;line-height:1.45;white-space:pre;overflow-x:auto;background:var(--code-bg);padding:10px 12px;border-radius:4px;max-height:640px;overflow-y:auto}
+.kmer-lines .rep{color:var(--het);font-weight:600}.kmer-lines .pos{color:var(--muted)}
+.spec-mini{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;font-family:var(--f-mono);font-size:12.5px;max-width:520px}
+.spec-mini i{display:block;height:10px;background:var(--accent);opacity:.7;border-radius:2px}
+.warn-text{color:var(--bad);font-size:13px}
+ul{margin:0;padding-left:20px;max-width:70ch}
+li+li{margin-top:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.b-seq{display:flex;flex-wrap:wrap;font-family:var(--f-mono);font-size:14px;gap:1px}
+.b-seq span{width:1.25em;text-align:center;background:var(--panel);font-weight:600}
+.b-seq .b-hit{background:var(--code-bg)}
+.b-seq .b-on{background:var(--accent);color:var(--bg)!important}
+.b-A{color:var(--accent)}.b-C{color:var(--het)}.b-G{color:var(--rep)}.b-T{color:var(--good)}
+.b-reads{font-size:13px;line-height:1.9;min-height:1.9em}
+.b-lab{font-size:13.5px;margin:.7em 0 .2em}
+.b-long{font-size:13px!important;overflow-wrap:anywhere}
+
+/* ---- course frame (standalone hosting) ---- */
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* long words (file names, sequences) wrap instead of widening the page */
+.wrap{overflow-wrap:break-word}
+.crumb{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.crumb a{color:var(--accent);text-decoration:none}.crumb a:hover{text-decoration:underline}
+.lesson-nav{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px;font-size:14.5px}
+.lesson-nav a{color:var(--accent);text-decoration:none;font-weight:600}
+.lesson-nav a:hover{text-decoration:underline}
+.lesson-nav .next{margin-left:auto;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb" aria-label="Course navigation"><a href="../../../">← Zooinformatics course</a><span>/</span><a href="../">Lesson 2</a><span>/</span><span>The basics</span></nav>
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">Lesson 2 · the basics</div>
+  <h1>Genome Assembly: the basics</h1>
+  <p class="lede">The main ideas in a few short blocks, with things to try. The <a href="../">full lesson</a> has the details, commands and sources.</p>
+</header>
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A sequencer reads pieces, not whole chromosomes</h2>
+  <p>A chromosome is one very long DNA molecule, a chain of four kinds of bases: A, C, G and T. No machine can read it from end to end. We break the DNA of many cells into pieces, and the sequencer reports the order of bases in each piece. One such result is called a <dfn>read</dfn>.</p>
+  <div class="tool">
+    <div class="b-seq" id="b-chrom"></div>
+    <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button></div>
+    <div class="b-reads" id="b-reads" aria-live="polite"></div>
+    <p class="tool-note">The chromosome is shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>More reads cover more</h2>
+  <p>Reads land at random, so some places get many and others none. Each bar below is one read, stacked over the place it came from. Where nothing overlaps the next read, the assembly stops, and a piece built from joined reads is called a <dfn>contig</dfn>. <dfn>Coverage</dfn> says how many times an average place was read. These four stacks are the same genome with more and more reads.</p>
+  <div class="tool">
+    <div id="b-stacks"></div>
+    <button type="button" class="btn" id="b-new">New random reads</button>
+    <p class="tool-note">Grey bars: reads. Blue and purple bars under each stack: the contigs, one colour change for each break. Red: places no read covers. Two reads are joined only if they overlap by at least 10 bases.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>An overlap only helps if it occurs in one place</h2>
+  <p>We know two reads belong together because the end of one has the same bases as the start of the other. But a short run of bases occurs in many places by chance, so a short overlap proves nothing. The overlap has to be long enough to occur in one place only. Here the computer really searches a 600-base genome for the end of one read. Each line below the genome is a read that could fit at that place.</p>
+  <div class="tool">
+    <div class="seg" id="b-omode"><button type="button" data-m="uni">Read end in ordinary sequence</button><button type="button" data-m="rep">Read end inside a repeat</button></div>
+    <label>Length of the overlap <output id="b-k-out"></output><input id="b-ok" type="range" min="2" max="70" step="1" value="3" aria-label="Length of the overlap in bases"></label>
+    <div class="svgbox" id="b-places"></div>
+    <div class="readout">
+      <div>Overlap being searched<b id="b-oseq" class="b-long"></b></div>
+      <div>Places in the genome<b id="b-ocount"></b></div>
+    </div>
+    <p class="tool-note" id="b-omsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Only a read longer than the repeat crosses it</h2>
+  <p>Much of an animal genome is made of sequences that occur many times. Inside a repeat every overlap occurs in each copy, as you just saw, so more reads do not help. The only way across is a read that starts before the repeat and ends after it. This genome has one 60-base repeat in two places, and every read length here has the same coverage, 20×.</p>
+  <div class="tool">
+    <label>Read length <output id="b-l-o"></output><input id="b-l" type="range" min="20" max="120" step="5" value="40" aria-label="Read length"></label>
+    <button type="button" class="btn" id="b-lnew">New random reads</button>
+    <div class="svgbox" id="b-rep"></div>
+    <div class="readout">
+      <div>Contigs<b id="b-r1"></b></div>
+      <div>Reads wholly inside a repeat<b id="b-r2"></b></div>
+      <div>Reads crossing a whole repeat<b id="b-r3"></b></div>
+    </div>
+    <p class="tool-note">Red band: the repeat. Grey reads have a unique part, so their place is known. Red reads lie wholly inside a repeat and could belong to either copy. Green reads cross a whole repeat. Blue and purple bars: contigs, joined only where the overlap has at least 12 bases and occurs in one place.</p>
+    <p class="tool-note" id="b-repmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Assembling alone, or against a relative</h2>
+  <p>There are two ways to use reads. <dfn>De novo</dfn> assembly joins reads to each other and needs nothing else. <dfn>Reference-based</dfn> work places each read on the finished genome of a related species. The second is easier and cheaper, but it can only show what the relative has too.</p>
+  <div class="tool">
+    <div class="seg" id="b-way"><button type="button" data-w="ref">Against a relative</button><button type="button" data-w="dn">De novo</button></div>
+    <div class="svgbox" id="b-ways"></div>
+    <p class="tool-note" id="b-waymsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>How we judge the result</h2>
+  <p>A good assembly has few, long pieces. The usual number is <dfn>N50</dfn>: sort the contigs from longest to shortest, add up their lengths until you reach half of the assembly, and read the length of the contig where you stopped. A larger N50 means longer pieces. Length is not everything, so we also check that the genes every related animal has are present and whole. That check is called <span class="tip" title="BUSCO: a count of how many genes expected in this animal group are found complete in the assembly.">BUSCO</span>.</p>
+  <div class="tool">
+    <label>Number of contigs <output id="b-n50k"></output><input id="b-nk" type="range" min="3" max="40" step="1" value="12" aria-label="Number of contigs"></label>
+    <div class="svgbox" id="b-n50"></div>
+    <div class="readout">
+      <div>Assembly size<b>100 Mb</b></div>
+      <div>N50<b id="b-n50v"></b></div>
+      <div>Contigs needed to reach half<b id="b-n50c"></b></div>
+    </div>
+    <p class="tool-note">Blue: the longest contigs that together make half of the assembly. The last blue contig gives N50. Mb means a million bases.</p>
+  </div>
+</section>
+
+<nav class="lesson-nav" aria-label="Back to the lesson"><a href="../../../">← Course home</a><a class="next" href="../">Full lesson 2: Genome Assembly →</a></nav>
+</div>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag), k;
+    for (k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function svgIn(id, w, h, label) {
+    var box = $(id);
+    box.textContent = '';
+    return el('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', role: 'img', 'aria-label': label, style: 'display:block' }, box);
+  }
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  var rnd = rng(2026);
+
+  // 1. Reads from a chromosome
+  var RL = 12, CH = '', i;
+  for (i = 0; i < 48; i++) CH += 'ACGT'[Math.floor(rnd() * 4)];
+  var hits = [], reads = [];
+  function drawChrom(last) {
+    $('b-chrom').innerHTML = CH.split('').map(function (c, p) {
+      var on = last !== undefined && p >= last && p < last + RL;
+      return '<span class="b-' + c + (on ? ' b-on' : '') + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
+    }).join('');
+  }
+  function readOne() {
+    var p = Math.floor(rnd() * (CH.length - RL + 1)), k;
+    for (k = p; k < p + RL; k++) hits[k] = true;
+    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, CH.slice(p, p + RL));
+    return p;
+  }
+  function showReads() {
+    $('b-reads').innerHTML = reads.length ? reads.map(function (r) { return '<code>' + r + '</code>'; }).join(' ') : 'No reads yet.';
+  }
+  $('b-read').addEventListener('click', function () { var p = readOne(); drawChrom(p); showReads(); });
+  $('b-read10').addEventListener('click', function () { var p, k; for (k = 0; k < 10; k++) p = readOne(); drawChrom(p); showReads(); });
+  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; drawChrom(); showReads(); });
+  drawChrom(); showReads();
+
+  // Shared: stack reads in rows so that they do not touch.
+  function pack(reads) {                   // reads: [{s, e}] sorted by s; sets r.row, returns the number of rows
+    var ends = [];
+    reads.forEach(function (r) {
+      var k = 0;
+      while (k < ends.length && ends[k] + 2 > r.s) k++;
+      r.row = k; ends[k] = r.e;
+    });
+    return ends.length;
+  }
+
+  // 2. Stacks of reads at four coverages
+  var G = 1000, L = 50, MINOV = 10, covSeed = 7;
+  function contigs(reads) {
+    var out = [], cur = null;
+    reads.forEach(function (r) {
+      if (cur && r.s <= cur[1] - MINOV) cur[1] = Math.max(cur[1], r.e);
+      else if (!cur || r.e > cur[1]) { cur = [r.s, r.e]; out.push(cur); }
+    });
+    return out;
+  }
+  function drawStacks() {
+    var box = $('b-stacks'), X = 0.62;
+    box.textContent = '';
+    [1, 3, 10, 30].forEach(function (cov, q) {
+      var r = rng(covSeed * 10 + q), n = cov * G / L, reads = [], k, p, un = 0, depth = new Array(G).fill(0);
+      for (k = 0; k < n; k++) { p = Math.floor(r() * (G - L + 1)); reads.push({ s: p, e: p + L }); }
+      reads.sort(function (a, b) { return a.s - b.s; });
+      reads.forEach(function (d) { for (p = d.s; p < d.e; p++) depth[p]++; });
+      depth.forEach(function (d) { if (!d) un++; });
+      var rows = pack(reads), C = contigs(reads), RH = 2.6, h = rows * RH + 24;
+      var lab = document.createElement('p');
+      lab.className = 'b-lab';
+      lab.innerHTML = '<b>' + cov + '×</b> ' + n + ' reads: ' + C.length + (C.length === 1 ? ' contig' : ' contigs') + ', ' + (100 * un / G).toFixed(0) + ' % not covered';
+      box.appendChild(lab);
+      var div = document.createElement('div');
+      div.className = 'svgbox'; div.id = 'b-st' + q;
+      box.appendChild(div);
+      var svg = svgIn(div.id, 640, h, cov + ' times coverage: stack of reads and the contigs they give');
+      reads.forEach(function (d) { el('rect', { x: 10 + d.s * X, y: d.row * RH, width: L * X, height: RH - 0.7, style: 'fill:var(--err)' }, svg); });
+      for (p = 0; p < G; p++) if (!depth[p]) el('rect', { x: 10 + p * X, y: h - 20, width: X + 0.3, height: 5, style: 'fill:var(--bad)' }, svg);
+      C.forEach(function (c, i) { el('rect', { x: 10 + c[0] * X, y: h - 12, width: Math.max(1, (c[1] - c[0]) * X - 1.5), height: 10, style: 'fill:' + (i % 2 ? 'var(--rep)' : 'var(--accent)') }, svg); });
+    });
+  }
+  $('b-new').addEventListener('click', function () { covSeed++; drawStacks(); });
+  drawStacks();
+
+  // 3 and 4. One real genome of 600 bases with a 60-base repeat in two places.
+  var GL = 600, RS = [150, 380], RL2 = 60, GEN = '', gr = rng(55), z;
+  for (z = 0; z < GL; z++) GEN += 'ACGT'[Math.floor(gr() * 4)];
+  GEN = GEN.slice(0, RS[1]) + GEN.slice(RS[0], RS[0] + RL2) + GEN.slice(RS[1] + RL2);
+  function places(seq) {
+    var o = [], p = GEN.indexOf(seq);
+    while (p >= 0) { o.push(p); p = GEN.indexOf(seq, p + 1); }
+    return o;
+  }
+  function genomeBar(svg, y, X) {
+    el('rect', { x: 10, y: y, width: GL * X, height: 12, style: 'fill:var(--err);opacity:.5' }, svg);
+    RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: y, width: RL2 * X, height: 12, style: 'fill:var(--bad)' }, svg); });
+  }
+  var omode = 'uni', OSTART = { uni: 60, rep: 160 };
+  function uniqueAt(p) { var k = 1; while (places(GEN.substr(p, k)).length > 1) k++; return k; }
+  function drawPlaces() {
+    var k = +$('b-ok').value, p0 = OSTART[omode], seq = GEN.substr(p0, k), hits = places(seq), X = 620 / GL;
+    var shown = hits.slice(0, 12), H = 24 + shown.length * 9 + 6;
+    var svg = svgIn('b-places', 640, Math.max(H, 44), 'Genome with every place where the overlap occurs');
+    genomeBar(svg, 4, X);
+    hits.forEach(function (h) { el('rect', { x: 10 + h * X - 0.7, y: 1, width: Math.max(1.6, k * X), height: 18, style: 'fill:var(--accent)' }, svg); });
+    shown.forEach(function (h, i) {
+      var a = Math.max(0, h - 4), w = k + 30;
+      el('rect', { x: 10 + a * X, y: 24 + i * 9, width: Math.min(w, GL - a) * X, height: 6, style: 'fill:' + (hits.length === 1 ? 'var(--good)' : 'var(--het)') }, svg);
+    });
+    $('b-k-out').textContent = k + ' bases';
+    $('b-oseq').textContent = seq;
+    $('b-ocount').textContent = hits.length;
+    Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
+    var msg;
+    if (hits.length === 1) msg = 'One place only: a read with this overlap can belong here and nowhere else, so the join is safe.';
+    else if (omode === 'rep') msg = 'The overlap lies inside the repeat, so it occurs in both copies however long it gets. It becomes unique only when it runs past the end of the repeat and the two copies start to differ: here at ' + uniqueAt(p0) + ' bases.';
+    else msg = 'This run of bases occurs in ' + hits.length + ' places by chance' + (hits.length > 12 ? ' (the first 12 are drawn)' : '') + ', so reads from any of them would seem to fit. Make the overlap longer.';
+    $('b-omsg').textContent = msg;
+  }
+  $('b-ok').addEventListener('input', drawPlaces);
+  $('b-omode').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { omode = b.dataset.m; drawPlaces(); } });
+  drawPlaces();
+
+  var repSeed = 3, MINJ = 12;
+  function inRepeat(d) { return RS.some(function (s) { return d.s >= s && d.e <= s + RL2; }); }
+  function crosses(d) { return RS.some(function (s) { return d.s < s && d.e > s + RL2; }); }
+  function repContigs(reads) {             // reads sorted by start; those wholly inside a repeat have no known place
+    var out = [], cur = null;
+    reads.forEach(function (d) {
+      if (inRepeat(d)) return;
+      if (!cur) { cur = [d.s, d.e]; out.push(cur); return; }
+      if (d.e <= cur[1]) return;           // adds nothing to the contig
+      var ov = cur[1] - d.s;
+      if (ov >= MINJ && places(GEN.slice(d.s, cur[1])).length === 1) cur[1] = d.e;
+      else { cur = [d.s, d.e]; out.push(cur); }
+    });
+    return out;
+  }
+  function drawRep() {
+    var l = +$('b-l').value, n = Math.round(20 * GL / l), r = rng(repSeed * 1000 + l), reads = [], k, p, X = 620 / GL;
+    for (k = 0; k < n; k++) { p = Math.floor(r() * (GL - l + 1)); reads.push({ s: p, e: p + l }); }
+    reads.sort(function (a, b) { return a.s - b.s; });
+    var rows = pack(reads), RH = 3, top = 20, C = repContigs(reads), inside = reads.filter(inRepeat).length, cross = reads.filter(crosses).length;
+    var H = top + rows * RH + 26;
+    var svg = svgIn('b-rep', 640, H, 'Stack of reads over a genome with a repeat in two places, and the contigs they give');
+    RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: 0, width: RL2 * X, height: H - 18, style: 'fill:var(--bad);opacity:.14' }, svg); });
+    genomeBar(svg, 3, X);
+    reads.forEach(function (d) {
+      var c = inRepeat(d) ? 'var(--bad)' : (crosses(d) ? 'var(--good)' : 'var(--err)');
+      el('rect', { x: 10 + d.s * X, y: top + d.row * RH, width: l * X, height: RH - 0.8, style: 'fill:' + c }, svg);
+    });
+    C.forEach(function (c, i) { el('rect', { x: 10 + c[0] * X, y: H - 14, width: Math.max(1, (c[1] - c[0]) * X - 2), height: 11, style: 'fill:' + (i % 2 ? 'var(--rep)' : 'var(--accent)') }, svg); });
+    $('b-l-o').textContent = l + ' bases';
+    $('b-r1').textContent = C.length;
+    $('b-r2').textContent = inside;
+    $('b-r3').textContent = cross;
+    var msg;
+    if (l <= RL2) msg = 'These reads are not longer than the repeat, so none can cross it: the assembly stops at the repeats, however many reads we add.';
+    else if (C.length > 1) msg = 'Reads can now cross a repeat, but it takes one that starts before it and ends after it. Just above the repeat length few reads manage that. Press New random reads, or make them longer.';
+    else msg = 'Reads cross both repeats, and their overlaps reach unique sequence. The whole genome comes out as one contig.';
+    $('b-repmsg').textContent = msg;
+  }
+  $('b-l').addEventListener('input', drawRep);
+  $('b-lnew').addEventListener('click', function () { repSeed++; drawRep(); });
+  drawRep();
+
+  // 5. Two ways
+  var way = 'ref';
+  function drawWay() {
+    var svg = svgIn('b-ways', 640, 150, 'A new animal has a stretch its relative lacks');
+    function bar(x, w, y, c, t) {
+      el('rect', { x: x, y: y, width: w, height: 22, style: 'fill:' + c + ';opacity:.8' }, svg);
+      if (t) el('text', { x: x + w / 2, y: y + 15, 'text-anchor': 'middle', style: 'font-size:12px;fill:var(--bg)' }, svg, t);
+    }
+    function label(y, t) { el('text', { x: 10, y: y, style: 'font-size:12px;fill:var(--muted)' }, svg, t); }
+    label(14, 'Our animal really has');
+    bar(10, 200, 20, 'var(--accent)'); bar(210, 120, 20, 'var(--het)', 'extra stretch'); bar(330, 200, 20, 'var(--accent)');
+    if (way === 'ref') {
+      label(64, 'Genome of the relative');
+      bar(10, 200, 70, 'var(--err)'); bar(210, 200, 70, 'var(--err)');
+      label(114, 'What we get');
+      bar(10, 200, 120, 'var(--accent)'); bar(210, 200, 120, 'var(--accent)');
+      el('text', { x: 424, y: 136, style: 'font-size:12px;fill:var(--bad)' }, svg, 'reads from the extra stretch: no place');
+    } else {
+      label(64, 'No other genome used');
+      label(114, 'What we get');
+      bar(10, 200, 120, 'var(--accent)'); bar(210, 120, 120, 'var(--het)', 'found'); bar(330, 200, 120, 'var(--accent)');
+    }
+    Array.prototype.forEach.call($('b-way').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.w === way)); });
+    $('b-waymsg').textContent = way === 'ref' ? 'Reads are placed where they fit on the relative. Reads from a stretch the relative lacks have nowhere to go, and the result cannot show that stretch.'
+      : 'Reads are joined to each other, so a stretch unique to our animal is kept. This needs more reads and longer reads, and much more computing.';
+  }
+  $('b-way').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { way = b.dataset.w; drawWay(); } });
+  drawWay();
+
+  // 6. N50
+  function drawN50() {
+    var k = +$('b-nk').value, r = rng(k * 31 + 5), w = [], s = 0, j;
+    for (j = 0; j < k; j++) { w.push(-Math.log(1 - r())); s += w[j]; }
+    w = w.map(function (v) { return 100 * v / s; }).sort(function (a, b) { return b - a; });
+    var acc = 0, stop = -1;
+    w.forEach(function (v, q) { if (stop < 0) { acc += v; if (acc >= 50) stop = q; } });
+    var svg = svgIn('b-n50', 640, 130, 'Contigs sorted from longest to shortest');
+    var bw = 620 / k, mx = w[0];
+    w.forEach(function (v, q) {
+      var h = 104 * v / mx;
+      el('rect', { x: 10 + q * bw, y: 112 - h, width: Math.max(1, bw - 2), height: h, style: 'fill:' + (q <= stop ? 'var(--accent)' : 'var(--err)') + ';opacity:' + (q <= stop ? 1 : 0.55) }, svg);
+    });
+    el('text', { x: 630, y: 126, 'text-anchor': 'end', style: 'font-size:11px;fill:var(--muted)' }, svg, 'contigs, longest first');
+    $('b-n50k').textContent = k;
+    $('b-n50v').textContent = w[stop].toFixed(1) + ' Mb';
+    $('b-n50c').textContent = stop + 1;
+  }
+  $('b-nk').addEventListener('input', drawN50);
+  drawN50();
+})();
+
+</script>
+</body>
+</html>

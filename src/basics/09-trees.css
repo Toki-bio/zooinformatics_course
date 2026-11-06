@@ -1,0 +1,11 @@
+.b-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:.6em 0}
+.b-panel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+.b-panel h4{margin:0 0 4px;font-size:13.5px}
+.b-panel p{margin:4px 0 0;font-size:13px;line-height:1.45}
+.b-panel b{font-weight:600}
+.b-panel.b-win{border-color:var(--good);box-shadow:0 0 0 1px var(--good)}
+.b-panel.b-wrong{border-color:var(--bad);box-shadow:0 0 0 1px var(--bad)}
+.b-panel svg{overflow:visible}
+.b-yes{color:var(--good);font-weight:600}.b-no{color:var(--bad);font-weight:600}
+.b-node{cursor:pointer}
+.b-striphold{overflow-x:auto}

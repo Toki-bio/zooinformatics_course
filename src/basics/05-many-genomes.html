@@ -1,0 +1,57 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>More genomes make many more pairs to compare</h2>
+  <p>An animal carries two copies of each chromosome, so one genome gives one pair of copies to compare. Many animals give many copies, and every copy can be compared with every other. Each dot is one copy and each line is one pair.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-pairs"></div>
+    <p class="tool-note">Pairs grow much faster than animals, so a sample can ask who is related to whom, and how recently.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Neighbouring stretches of a chromosome have different trees</h2>
+  <p>Trace the copies of one stretch of chromosome back in time and they join at common ancestors. The result is a <dfn>tree</dfn>, the family tree of that stretch. At a <dfn>recombination</dfn>, an offspring chromosome switches from one parental chromosome to the other. The ancestors differ on each side, so the tree differs.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-chrbar"></div>
+    <div class="b-grid" id="b-trees"></div>
+    <button type="button" class="btn" id="b-tnew">New random chromosome</button>
+    <p class="tool-note" id="b-tmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>More recombination means more trees</h2>
+  <p>Each stretch between two recombinations has its own tree. The Y chromosome, over most of its length, and the mitochondrial DNA do not recombine, so each has a single tree. Below, one stretch is drawn with 0, 4 and 16 recombinations. Colour changes mark a new tree.</p>
+  <div class="tool">
+    <div class="b-grid b-grid1" id="b-rec"></div>
+    <button type="button" class="btn" id="b-rnew">New random history</button>
+    <p class="tool-note">A single tree is a single draw of history, however many bases it covers.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>A long shared segment means a recent common ancestor</h2>
+  <p>Two animals can hold the same stretch because both inherited it, uncut, from one common ancestor. Such a stretch is an <dfn>IBD segment</dfn> (identical by descent). Each generation back gives recombination another chance to cut it. Below, a common ancestor 3, 10, 30 or 100 generations back; every block is a piece never cut.</p>
+  <div class="tool">
+    <div class="b-grid b-grid1" id="b-ibd"></div>
+    <button type="button" class="btn" id="b-inew">New random draw</button>
+    <p class="tool-note">Length is in <span class="tip" title="centimorgan: a unit of genetic map length. One cM means a 1 in 100 chance of a crossover in one parent-to-child step.">cM</span>. One draw varies a lot, so a single segment cannot give the age; a whole set can.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>A small population shares many more long segments</h2>
+  <p>In a small population two copies are more likely to share a recent ancestor, so pairs share more long segments. <dfn>Ne</dfn>, the effective population size, is the size of an ideal population that loses diversity at the same rate, and it is usually well below the number of animals. Each panel shows the expected segments of each length shared by one pair.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-ne"></div>
+    <p class="tool-note">Counting segments of each length across a sample reads recent population size. Toy numbers, log scale.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>A SNP array sees only part of the variation</h2>
+  <p>Many large samples were read on a <dfn>SNP array</dfn>, a chip that reads one fixed list of variable positions, usually the common ones. The <dfn>minor allele frequency</dfn> (MAF) of a site is the share of chromosomes that carry its rarer version.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-arr"></div>
+    <p class="tool-note">Grey: all sites, as sequencing sees them. Coloured: sites an array keeps at a minimum MAF. Rare variants are mostly missed.</p>
+  </div>
+</section>

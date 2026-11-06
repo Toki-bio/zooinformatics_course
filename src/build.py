@@ -69,7 +69,10 @@ def lesson_page(n):
     if n == 1:
         s = read(STYLE_SOURCE)
         i = s.index('</style>')
-        return s[:i], s[i + len('</style>'):]
+        body = s[i + len('</style>'):]
+        if os.path.exists(os.path.join(SRC, 'basics', f'{LESSONS[0]["slug"]}.html')):
+            body = body.replace('</h1>\n', '</h1>\n  <p class="lede"><a href="basics/">New here? Start with the basics of this lesson</a>: a few short blocks with things to try.</p>\n', 1)
+        return s[:i], body
     cfg = json.loads(read(os.path.join(SRC, f'lesson{n:02d}', 'lesson.json')))
     base = read(STYLE_SOURCE)
     style = base[base.index('<style>') + 7:base.index('</style>')]
@@ -83,10 +86,12 @@ def lesson_page(n):
         f'<div class="d">{st["what"]}</div><div class="t">{st["tools"]}</div></div></li>'
         for i, st in enumerate(cfg['steps']))
     intro = '\n'.join(f'  <p class="lede">{p}</p>' for p in cfg['intro'])
+    first = ('  <p class="lede"><a href="basics/">New here? Start with the basics of this lesson</a>: a few short blocks with things to try.</p>\n'
+             if os.path.exists(os.path.join(SRC, 'basics', f'{LESSONS[n - 1]["slug"]}.html')) else '')
     header = f'''<header style="display:flex;flex-direction:column;gap:12px">
   <div class="eyebrow">{cfg["eyebrow"]}</div>
   <h1>{cfg["title"]}</h1>
-{intro}
+{first}{intro}
 </header>
 
 <section aria-labelledby="flow{n}">
@@ -138,7 +143,39 @@ def build(n):
     print(f'lesson {n}: {os.path.relpath(out, ROOT)} ({len(doc):,} bytes)')
 
 
+def basics_file(n, ext):
+    return os.path.join(SRC, 'basics', f'{LESSONS[n - 1]["slug"]}.{ext}')
+
+
+def build_basics(n):
+    """The short first version of lesson n, nested at lessons/NN-slug/basics/. Source: src/basics/NN-slug.{html,js,css}."""
+    if not os.path.exists(basics_file(n, 'html')):
+        return
+    meta = LESSONS[n - 1]
+    base = read(STYLE_SOURCE)
+    style = base[base.index('<style>') + 7:base.index('</style>')]
+    links = base[:base.index('<style>')].replace('<meta name="claude:viewport-fit-sides" content="cover">\n', '')
+    links = re.sub(r'<title>.*?</title>', f'<title>{meta["title"]}: the basics</title>', links)
+    css = read(basics_file(n, 'css')) if os.path.exists(basics_file(n, 'css')) else ''
+    js = read(basics_file(n, 'js')) if os.path.exists(basics_file(n, 'js')) else ''
+    crumb = ('<nav class="crumb" aria-label="Course navigation"><a href="../../../">← Zooinformatics course</a><span>/</span>'
+             f'<a href="../">Lesson {n}</a><span>/</span><span>The basics</span></nav>')
+    head = (f'<header style="display:flex;flex-direction:column;gap:12px">\n  <div class="eyebrow">Lesson {n} · the basics</div>\n'
+            f'  <h1>{meta["title"]}: the basics</h1>\n'
+            '  <p class="lede">The main ideas in a few short blocks, with things to try. The <a href="../">full lesson</a> has the details, commands and sources.</p>\n</header>')
+    nav = (f'<nav class="lesson-nav" aria-label="Back to the lesson"><a href="../../../">← Course home</a>'
+           f'<a class="next" href="../">Full lesson {n}: {meta["title"]} →</a></nav>')
+    doc = ('<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n'
+           '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n'
+           + links + '<style>' + style + '\n' + css + FRAME_CSS + '</style>\n</head>\n<body>\n<div class="wrap">\n' + crumb + '\n' + head + '\n'
+           + read(basics_file(n, 'html')) + '\n' + nav + '\n</div>\n<script>\n' + js + '\n</script>\n</body>\n</html>\n')
+    out = os.path.join(ROOT, 'lessons', meta['slug'], 'basics', 'index.html')
+    write(out, doc)
+    print(f'basics {n}: {os.path.relpath(out, ROOT)} ({len(doc):,} bytes)')
+
+
 if __name__ == '__main__':
     todo = [int(a) for a in sys.argv[1:]] or [m['number'] for m in LESSONS]
     for n in todo:
         build(n)
+        build_basics(n)

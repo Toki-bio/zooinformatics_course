@@ -19,7 +19,7 @@ projects (small mammals, including desmans) as worked examples.
 | 06 | [DNA Methylation from Long Reads](lessons/06-methylation/) | CpG methylation biology, nanopore and PacBio detection, modkit pileup, haplotype-resolved methylation, genes and repeats, differential methylation, QC and IGV |
 | 07 | [SINEs and Satellite DNA](lessons/07-sines-satellites/) | SINE biology, finding and discovering SINEs, tRNA heads, families and subfamilies, orthologous loci, satellite monomers and HORs, repeats in assemblies, a complete SINE study |
 | 08 | [Searching Sequences](lessons/08-search/) | grep to minimap2: exact and approximate search, hashing, alignment scoring, seed and extend, genome indexes, mappers, sketches, choosing the tool |
-| 09 | [Building Phylogenetic Trees](lessons/09-trees/) | Reading trees, characters, substitution models, UPGMA and neighbour joining, parsimony, maximum likelihood, branch support, Bayesian inference, dating, gene trees and species trees, choosing and reporting |
+| 09 | [Building Phylogenetic Trees](lessons/09-trees/) | Reading trees, characters, substitution models, UPGMA and neighbour joining, parsimony, maximum likelihood, branch support, Bayesian inference, dating, gene trees and species trees, choosing and reporting, one alignment through every method |
 
 
 ## How the lessons are made

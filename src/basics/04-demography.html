@@ -1,0 +1,65 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>Any two gene copies share an ancestor</h2>
+  <p>A <dfn>gene copy</dfn> is one copy of one stretch of DNA, so N animals hold 2N copies. Each copy comes from one copy in the generation before. Follow two copies back and they reach the same parent copy: they <dfn>coalesce</dfn>. The pictures show six toy populations; time runs down the page, and each copy picked its parent at random.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-wf"></div>
+    <button type="button" class="btn" id="b-wfnew">New populations</button>
+    <p class="tool-note" id="b-wfmsg" aria-live="polite"></p>
+    <p class="tool-note">Blue and orange: the two copies followed back. Red ring: where they meet.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Small populations meet sooner</h2>
+  <p>Each generation, the second line picks the same parent as the first with a chance of 1 in 2N. Few copies means a high chance. Below, 300 pairs were followed back in each of three populations; the bars count how many generations each pair waited.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-meet"></div>
+    <button type="button" class="btn" id="b-meetnew">New random pairs</button>
+    <p class="tool-note" id="b-meetmsg" aria-live="polite"></p>
+    <p class="tool-note">The dashed line is the average wait.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>Older ancestors mean more differences</h2>
+  <p>After the lines split, each collects random changes in the DNA, called <dfn>mutations</dfn>. The copies differ at almost every mutation on both lines, so more differences mean an older ancestor. Below, 40 bases are drawn for each of 4 animals. Red: a base where the mother's and father's copy differ.</p>
+  <div class="tool">
+    <div class="b-grid2" id="b-diff"></div>
+    <button type="button" class="btn" id="b-diffnew">New stretches</button>
+    <p class="tool-note" id="b-diffmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>A genome is many stretches, each with an ancestor</h2>
+  <p>In each generation <dfn>recombination</dfn> can cut a chromosome and join its halves to pieces from the other copy. So a chromosome becomes a row of stretches, each with its own ancestor. Each bar below is one stretch: width is its length, height is how long ago its ancestor lived.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-skyS"></div>
+    <div class="svgbox" id="b-skyL"></div>
+    <button type="button" class="btn" id="b-skynew">New chromosomes</button>
+    <div class="readout" id="b-skyread"></div>
+    <p class="tool-note">Height is on a logarithmic scale: each gridline is ten times higher.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Many stretches show past population size</h2>
+  <p>If the population was small in some period, many stretches had their ancestor then. Counting the meetings in each period gives a size for it. The method <dfn>PSMC</dfn> reads this signal from a real genome. Each panel is one animal with 3,000 stretches; the method does not see the grey line.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-hist"></div>
+    <button type="button" class="btn" id="b-histnew">New animals</button>
+    <p class="tool-note" id="b-histmsg" aria-live="polite"></p>
+    <p class="tool-note">Top: stretches per time. Bottom: grey, the true size; blue, the size read back.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>More stretches make a steadier curve</h2>
+  <p>The same history is read from 100, 1,000 and 10,000 stretches, six animals each. Periods with few meetings read poorly, and none gives no reading. The curve shows the <span class="tip" title="Effective population size: the size of an idealised, randomly mating population that would give the same rate of meeting as the real one. It is not a head count of the animals alive.">effective size</span>, not a head count.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-count"></div>
+    <button type="button" class="btn" id="b-countnew">New animals</button>
+    <p class="tool-note" id="b-countmsg" aria-live="polite"></p>
+    <p class="tool-note">Grey: the size we set. Blue: one line per animal. Error: the typical factor of miss.</p>
+  </div>
+</section>

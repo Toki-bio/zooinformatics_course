@@ -1,0 +1,69 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>An index beats re-reading for many queries</h2>
+  <p>A <dfn>query</dfn> is the sequence you look for; the <dfn>target</dfn> is the sequence you look in, such as a genome. A <dfn>scan</dfn> reads the whole target for every query. An <dfn>index</dfn> is a lookup table built once, so each query goes straight to the right place. The page counts the places each method examines.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-scan"></div>
+    <button type="button" class="btn" id="b-scannew">New random target</button>
+    <p class="tool-note" id="b-scanmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Short words match everywhere, long words match once</h2>
+  <p>An index is built from <dfn>words</dfn>: every run of k bases. Each dot is a word of the query found in the target (across: place in the target, down: place in the query). A real match is dots on one straight line. Change k and watch the other dots.</p>
+  <div class="tool">
+    <label>Word length k <output id="b-k-o"></output><input id="b-k" type="range" min="3" max="14" step="1" value="4" aria-label="Word length k in bases"></label>
+    <div class="svgbox" id="b-dots"></div>
+    <div class="readout">
+      <div>Words in the query<b id="b-d1"></b></div>
+      <div>Dots on the true line<b id="b-d2"></b></div>
+      <div>Dots elsewhere, by chance<b id="b-d3"></b></div>
+    </div>
+    <p class="tool-note">Green: on the true line. Orange: matches by chance.</p>
+    <p class="tool-note" id="b-dmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>A score tolerates differences</h2>
+  <p>An <dfn>alignment</dfn> lines two sequences up and gives a <dfn>score</dfn>: points for equal bases, a penalty for different ones. Below, one query is aligned to copies with more and more changes, and to an unrelated sequence.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-scores"></div>
+    <button type="button" class="btn" id="b-scnew">New random copies</button>
+    <p class="tool-note">Green: same base. Red: different. Bar: score. Dashed line: best score of 200 unrelated sequences.</p>
+    <p class="tool-note" id="b-scmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>A seed can miss a diverged copy</h2>
+  <p>Fast tools use an exact word as a first test and call it a <dfn>seed</dfn>. A copy with no seed is never looked at again. <dfn>Divergence</dfn> is the share of bases that differ. The bars show how many copies each word length finds.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-seeds"></div>
+    <button type="button" class="btn" id="b-sdnew">New random copies</button>
+    <p class="tool-note">Each bar: share of 300 simulated copies with at least one seed.</p>
+    <p class="tool-note" id="b-sdmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Extending a seed tells real from chance</h2>
+  <p>A seed is only a candidate. The program <dfn>extends</dfn> it: it walks outwards along both sequences, scoring as before, and stops when the score falls well below its best. Here every seed of a changed copy is extended and its final score plotted.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-ext"></div>
+    <button type="button" class="btn" id="b-extnew">New random query</button>
+    <p class="tool-note">One dot per seed. Green: at the true place. Orange: by chance. Right is a higher score.</p>
+    <p class="tool-note" id="b-extmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>A bigger target needs a higher score</h2>
+  <p>A bigger target has more places where a chance alignment can score well, so the score that counts as real must grow with its size. The lesson expresses this as an <span class="tip" title="E-value: the number of alignments at least this good that you expect by chance alone in a search of this size.">E-value</span>. Here a query is aligned to random targets of three sizes and to copies of itself.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-big"></div>
+    <button type="button" class="btn" id="b-bignew">New random sequences</button>
+    <p class="tool-note">Grey: best chance score in a random target. Green: score against a copy. A copy is found when its bar is higher than the grey one.</p>
+    <p class="tool-note" id="b-bigmsg" aria-live="polite"></p>
+  </div>
+</section>

@@ -3,6 +3,10 @@
 ## 2026-11-06
 - New lesson 05 "Population History from Many Genomes" (8 sections) and lesson 08 "Searching Sequences" (11 sections).
 - New lesson 09 "Building Phylogenetic Trees" (11 sections).
+- Lesson 09 section 12: a workbench that follows one editable alignment through every tree method and kind of support.
+- Lesson 09 section 10: an ABBA-BABA part with a toy (D, block jackknife, false alarms), and a toy that counts ASTRAL quartets on five species.
+- Lesson 09 section 10: the KKSC test on retroposon insertions, with a toy. Sections 07 and 12: comparing whole trees with KH, SH and AU.
+- Every lesson: a short nested page with the basics (`lessons/NN-slug/basics/`), six blocks with toys, linked from the top of the lesson.
 - Lessons renumbered: methylation is now lesson 06 (`lessons/06-methylation/`), SINEs and satellites lesson 07
   (`lessons/07-sines-satellites/`). Old addresses of these two lessons no longer work.
 - Lesson 04: coalescent theory from zero with an interactive Wright-Fisher display (s01); the principle of PSMC,

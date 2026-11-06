@@ -1,0 +1,7 @@
+.b-ch{display:flex;flex-wrap:wrap;font-family:var(--f-mono);font-size:12px;gap:1px;margin:.3em 0 .5em}
+.b-ch span{width:1.15em;text-align:center;background:var(--panel);font-weight:600}
+.b-ch .b-on{background:var(--rep);color:var(--bg)!important}
+.b-A{color:var(--accent)}.b-C{color:var(--het)}.b-G{color:var(--rep)}.b-T{color:var(--good)}
+.b-lab{font-size:13.5px;margin:.9em 0 .2em}
+.b-rl{font-size:12px;color:var(--muted);margin:.35em 0 0}
+.b-sm{font-size:13px;margin:.2em 0}

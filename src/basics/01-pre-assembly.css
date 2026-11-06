@@ -1,0 +1,8 @@
+.b-A{color:var(--accent)}.b-C{color:var(--het)}.b-G{color:var(--rep)}.b-T{color:var(--good)}
+.b-trip{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:14px}
+.b-panel{min-width:0}
+.b-lab{font-size:13.5px;margin:0 0 .3em}
+.b-stat{font-size:12.5px;line-height:1.55;margin:.2em 0 0;color:var(--muted)}
+.b-stat b{color:var(--fg);font-family:var(--f-mono);font-weight:600}
+.b-cut{font-family:var(--f-mono);font-size:13px;line-height:1.45;white-space:pre;overflow-x:auto;background:var(--code-bg);padding:8px 10px;border-radius:4px}
+.b-cut .b-top{font-weight:700;border-bottom:1px solid var(--line);display:block;margin-bottom:3px;padding-bottom:3px}

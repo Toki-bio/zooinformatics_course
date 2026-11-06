@@ -1,0 +1,4 @@
+.b-lab{font-size:13.5px;margin:.7em 0 .2em}
+.b-sw{display:inline-block;width:.9em;height:.9em;vertical-align:-.1em;margin-right:.3em;border-radius:2px}
+.b-svg text{fill:var(--fg);font-size:13px}
+.b-svg text.b-m{fill:var(--muted);font-size:12px}

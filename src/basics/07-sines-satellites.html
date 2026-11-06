@@ -1,0 +1,72 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A new copy duplicates a few bases beside it</h2>
+  <p>A <dfn>SINE</dfn> (short interspersed element) is a short piece of DNA that codes for no protein of its own. The cell copies it into RNA, and a <span class="tip" title="LINE: a longer transposable element that codes for the enzymes that write RNA back into DNA.">LINE</span> writes that RNA into the DNA at a new place. A copy has a head, a body and a tail. At insertion the DNA is cut at two places a few bases apart, and the stretch between the cuts ends up on both sides of the copy: a <dfn>target site duplication</dfn>.</p>
+  <div class="tool">
+    <div id="b-tsd"></div>
+    <p class="tool-note"><span class="b-head">head</span> <span class="b-body">body</span> <span class="b-tail">tail</span> <span class="b-tsd">target site duplication</span>. Plain letters: DNA that was there before. Cuts: 4, 8 and 12 bases apart.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>The copy repeats; its two sides occur once</h2>
+  <p><dfn>Interspersed</dfn> means the copies are scattered, each between two pieces of DNA that occur nowhere else: the <dfn>flanks</dfn>. The computer searches a toy genome with six copies for a 16-base word from the SINE and for the 16 bases on each side of every copy (3 differences allowed).</p>
+  <div class="tool">
+    <div class="svgbox" id="b-ig"></div>
+    <div class="b-tbl" id="b-flk"></div>
+    <button type="button" class="btn" id="b-ignew">New random genome</button>
+    <p class="tool-note" id="b-igmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>Many copies together give back the source</h2>
+  <p>Each copy is made from a source sequence and then changes on its own, in different places. In an <dfn>alignment</dfn>, copies lie one under another with equal positions lined up. Taking the base most copies have at each position gives the <dfn>consensus</dfn>. Here 31 toy copies come from a known source, each changed at about 10 to 25 % of its positions.</p>
+  <div class="tool">
+    <div class="b-aln" id="b-cons"></div>
+    <div id="b-consn"></div>
+    <button type="button" class="btn" id="b-cnew">New random copies</button>
+    <p class="tool-note" id="b-consmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Group copies by shared changes, not by their number</h2>
+  <p>Some changes arose once, in a source copy, and every copy made from it carries them. Copies sharing such changes form a <dfn>subfamily</dfn>; the positions where it differs from the other group are its <dfn>diagnostic positions</dfn>. Other changes are private to one copy. A dot means the same base as the consensus of all 15 copies; a letter is a difference.</p>
+  <div class="tool">
+    <div class="b-two" id="b-sub"></div>
+    <button type="button" class="btn" id="b-snew">New random copies</button>
+    <div class="readout">
+      <div>Positions that repeat the same split<b id="b-s1"></b></div>
+      <div>Lineage changes down the list, by number of differences<b id="b-s2"></b></div>
+      <div>Lineage changes down the list, by shared positions<b id="b-s3"></b></div>
+    </div>
+    <p class="tool-note" id="b-submsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>The same place in two species means one ancestor</h2>
+  <p>A copy inserted once stays at its place in every descendant, and the flanks (block 2) find the place. At one place a genome either has the copy (1) or has the two flanks joined (0). Here a toy tree of species <i>A</i>, <i>B</i>, <i>C</i> has an <dfn>outgroup</dfn> <i>O</i>, a species outside the group.</p>
+  <div class="tool">
+    <div class="b-two" id="b-pa"></div>
+    <div class="controls" id="b-pactl" role="group" aria-label="Switch a locus in the right-hand panel"></div>
+    <div class="b-aln" id="b-flank"></div>
+    <p class="tool-note" id="b-pamsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>In a satellite the copies sit side by side</h2>
+  <p>A <dfn>satellite</dfn> is one short sequence, the <dfn>monomer</dfn>, repeated head to tail; a run of monomers is an <dfn>array</dfn>. A <dfn>dot plot</dfn> compares a sequence with itself: a dot at (x, y) means the 8 bases starting at x equal the 8 starting at y. Both toy sequences have a unit of 24 bases.</p>
+  <div class="tool">
+    <div class="b-two" id="b-dp"></div>
+    <button type="button" class="btn" id="b-dnew">New random sequences</button>
+    <div class="readout">
+      <div>Interspersed: copies found<b id="b-d1"></b></div>
+      <div>Interspersed: copies with a copy next to them<b id="b-d2"></b></div>
+      <div>Array: copies found<b id="b-d3"></b></div>
+      <div>Array: copies with a copy next to them<b id="b-d4"></b></div>
+    </div>
+    <p class="tool-note" id="b-dmsg" aria-live="polite"></p>
+  </div>
+</section>

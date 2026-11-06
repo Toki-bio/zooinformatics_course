@@ -127,3 +127,48 @@ Not used: Maddison (1997) could not be opened (only its title came back), so it 
 - "ILS in one well-mixed ancestral population" is our wording: a structured ancestor might also tilt the two wrong trees, but no paper on that was read, so none is cited.
 - The drawings of gene flow and paralogy are schematic, with no computing behind them.
 - The ASTRAL commands were read from the documentation, not run.
+
+## Added 2026-11-06: ABBA-BABA and the quartet toy
+
+Sources were opened by a source-reading agent on 2026-11-06. Every quote was machine-checked against the opened text; its file with all quotes is kept in the internal repository (lesson09/sources_s10_add.md).
+
+16. **Green RE et al. (2010)** Science, doi 10.1126/science.1188021, PMC5100745. Main text only; the supplement was not reached.
+17. **Durand EY, Patterson N, Reich D, Slatkin M (2011)** Mol Biol Evol 28:2239-2252, doi 10.1093/molbev/msr048, PMC3144383. Full text read, equations from the images. D, the sign rule, the binomial sentence and the jackknife, gene flow between P1 and P2, ancestral subdivision, ghost populations, and Eq. A1.5 used in the control.
+18. **Patterson N et al. (2012)** Genetics, doi 10.1534/genetics.112.145037, PMC3522152. Full text read. D with BABA first. Gives no Z threshold or block size for D.
+19. **Martin SH, Davey JW, Jiggins CD (2015)** Mol Biol Evol, doi 10.1093/molbev/msu269, PMC4271521. Full text read.
+20. **Malinsky M, Matschiner M, Svardal H (2021)** Mol Ecol Resour, doi 10.1111/1755-0998.13265, PMC7116594, and the Dsuite README (master, fetched 2026-11-06), which gives the default of 20 blocks, the command forms and the sets file. The commands were read, not run.
+21. **Zheng Y, Janke A (2018)** BMC Bioinformatics 19:10, doi 10.1186/s12859-017-2002-4, PMC5759368. Full text read. Z > 3, population size.
+22. **Koppetsch T, Malinsky M, Matschiner M (2024)** Syst Biol, doi 10.1093/sysbio/syae028, PMC11639170. Full text read. Their slow-P2 case has ABBA above BABA, which agrees in sign with our fast-P2 case having BABA above ABBA.
+23. **Mirarab S et al. (2014)** Bioinformatics, doi 10.1093/bioinformatics/btu462, PMC4147915. Full text read.
+24. Sayyari and Mirarab (2016), source 5 above, now read in full for Theorems 1 and 2: local posterior and branch length. Lambda = 1/2 is the flat prior. The page shows the MAP length, as ASTRAL does.
+25. **Degnan JH (2013)** Syst Biol, doi 10.1093/sysbio/syt023. Abstract only. It states anomalous unrooted gene trees for 7 or more taxa and says they are characterized for 5 and 6. The five-species case on the page is from our own simulation, and Degnan is not cited for it.
+
+## Control for the additions
+
+`10-species-trees.control2.js`, run with `node`, prints CONTROL PASSED.
+- Quartet scores against a separate four-point count: 4,500 tree scores, none differ. The count uses its own distances and pairings, but takes the list of 15 trees from the engine.
+- Local posterior against Sayyari and Mirarab: 0.6612, 0.9297, 0.9970 against their 66.1, 93.0, 99.7 %.
+- Simulated shares of the five quartets against 1 - (2/3) exp(-d), three settings, 2,000,000 genes: largest |z| 2.52.
+- Anomaly preset, x = y = 0.05, z = 1, 4,000,000 genes, from a separate run of the page engine (not printed by the control): AB|E|CD 0.1209, AD|E|BC 0.1052, AC|E|BD 0.1051, species tree 0.0788. Runs of 1,000, from the control: quartets right 0.184, 0.329, 0.613, 0.942, 0.999 at 30, 100, 300, 1,000, 3,000 genes; vote right 0.092, 0.053, 0.011, 0, 0.
+- D against Durand Eq. A1.5 in coalescent units, 3fA / (3fA + 2(1-f)exp(-B) + 2f exp(-A)), A = t123 - tg, B = t123 - t12, 200,000 stretches, mu = 0.002: 0.0452/0.0429, 0.1028/0.1017, 0.1895/0.1871, 0.4262/0.4256. At the page's mu = 0.02 mean D is lower (0.155 at f = 0.1), which we attribute to repeat hits on the long outgroup branch.
+- Jackknife: by hand on three blocks, and against scikit-allel 1.3.13 `allel.stats.misc.jackknife` on five genomes: largest difference 7e-18.
+- 400 genomes per setting, |Z| above 3, jackknife / binomial: no gene flow 0.003 / 0.110; P3 into P2, 10 %: 0.690 / 0.968; P3 into P1: 0.755 / 0.983; P1 into P2: 0.007 / 0.105; P2 fast, no gene flow: 1.000 / 1.000, mean D -0.123.
+
+## Doubts for the additions
+
+- Compared with ASTRAL-III 5.7.8 (`-t 2`) on a server, 2026-11-06, eight gene tree sets of 30 to 2,000 genes from the page engine: same tree and quartet score in all eight; local posterior within 2e-11 and z values equal on all 16 branches; branch length equal to the MAP estimate (the ML estimate differed by up to 0.098, so the page was changed to MAP). Five tips only, complete trees, no polytomies: this does not test ASTRAL's search.
+- "We read it as chance matches with the outgroup" is our inference from the effect shrinking with a close outgroup (D -0.12 at outgroup time 3, -0.02 at 1.2), not a measured count.
+- Every stretch is independent in the toy; real genomes have linkage that fades gradually.
+
+## Added 2026-11-06: KKSC test
+
+26. **Kuritzin A, Kischka T, Schmitz J, Churakov G (2016)** Incomplete lineage sorting and hybridization statistics for large-scale retroposon insertion data. PLoS Comput Biol 12:e1004812, doi 10.1371/journal.pcbi.1004812, PMC4788455. Full text read by a source-reading agent; quotes and formulas in the internal repository (lesson09/sources_s10_add2.md). Equations 20 and 22 are used directly. It is one three-lineage model, with a multi-lineage version only announced.
+
+Doubts:
+- The source-reading agent's note gave P(Bin(22, 1/3) >= 8) for the paper's 0.293 on 9:8:5. That is wrong: the control shows it is P(Bin(22, 1/3) >= 9) = 0.29300, the same tree as 0.5811 (8 against 5).
+- Its example for 25:22:21 prints "30<33"; we reproduce the 30 but cannot explain the 33. The exact test is used here, not the normal approximation, and 33 is not used.
+- The verdict rule (asymmetry first, then tree, then polytomy) is our reading of the Methods and of Figure 3, not a sentence from the paper.
+- The presets are counts printed in the paper; they are not re-analysed.
+
+## Outside audit of the additions (GLM 5.3, 2026-11-06)
+Seven tasks, two re-checks per finding. 6 findings kept, 1 refuted, 5 fixed: a false alarm under sister gene flow read like a detection; the tick box changed more than its label said and "older species" changed no times; the Z chart cuts off at 10 without saying so; the rate label stood by the wrong branch. Of 5 findings dropped because their quotes were not found, one quoted code that is not in the file, one quoted a line of Hibbins and Hahn that is in the notes above, one mistook 0.4256 for 0.4257, and two (provenance of the 4,000,000 run, what "separate" means) are fixed in the notes. The KKSC toy was added after this audit.

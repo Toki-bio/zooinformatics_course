@@ -1,0 +1,57 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A repeat is a sequence that occurs again and again</h2>
+  <p>A genome contains the same stretch of DNA many times. In <dfn>interspersed</dfn> repeats the copies are scattered; most are <dfn>transposable elements</dfn>, pieces of DNA that copy themselves to new places. In <dfn>tandem</dfn> repeats the copies lie side by side. The computer marks every run of 10 bases that occurs at least twice.</p>
+  <div class="tool">
+    <div id="b-rp"></div>
+    <p class="tool-note" id="b-rpmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Repeat copies can look like genes</h2>
+  <p>A gene finder looks for DNA that resembles genes, and a repeat copy can resemble one. Each toy genome holds one real gene and some copies of one repeat. <dfn>Masking</dfn> the repeats first hides them from the finder.</p>
+  <div class="tool">
+    <div id="b-orf"></div>
+    <p class="tool-note">Green: the real gene. Red: a repeat copy reported as a gene. Purple: the repeat copies, which the mask covers.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>A gene is cut into pieces</h2>
+  <p>A gene is made of <dfn>exons</dfn>, which stay in the <dfn>mRNA</dfn> (the RNA copy used to make the protein), and <dfn>introns</dfn> between them, which are cut out. The <dfn>CDS</dfn> is the part that codes for the protein.</p>
+  <div class="tool">
+    <div id="b-gene"></div>
+    <div class="controls"><button type="button" class="btn" id="b-gnew">New random bases</button></div>
+    <p class="tool-note">Thick boxes: CDS. Lines: introns. The third row skips exon 3, another version of the gene.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>RNA reads show where the exons are</h2>
+  <p>The best evidence for a gene is the animal's own RNA, sequenced as short reads and laid on the genome. A read that crosses an exon-exon junction lies in two places: a <dfn>split read</dfn>. It shows where an intron was cut out.</p>
+  <div class="tool">
+    <div id="b-rna"></div>
+    <button type="button" class="btn" id="b-rnew">New random reads</button>
+    <p class="tool-note">Bars: reads per base. Arcs: introns shown by split reads (green: at least 2, orange: 1). Grey: true exons.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Identical stretches show shared ancestry</h2>
+  <p>An animal carries two copies of each chromosome. If both parents inherited a piece from one ancestor, the two copies are identical along it: a <dfn>run of homozygosity</dfn> (ROH). Each strip is one chromosome; bars show differences between the two copies.</p>
+  <div class="tool">
+    <div id="b-roh"></div>
+    <button type="button" class="btn" id="b-hnew">New random animals</button>
+    <p class="tool-note">Orange: differences. Blue: runs the computer calls (at least 1 Mb). Grey line: the true shared pieces. <dfn>F ROH</dfn> is the share of the chromosome inside runs.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>No reads is not no differences</h2>
+  <p>A window with no differences looks homozygous. But where no reads were placed, nobody could see differences. The <dfn>callable</dfn> bases are those where reads were good enough to see one. The lower strip uses only those.</p>
+  <div class="tool">
+    <label>Length of each gap with no reads <output id="b-gl-o"></output><input id="b-gl" type="range" min="0.1" max="3" step="0.05" value="1.5" aria-label="Length of each gap with no reads in megabases"></label>
+    <div id="b-gap"></div>
+    <p class="tool-note">Hatched grey: windows with no reads. The animal has one true 8 Mb run.</p>
+  </div>
+</section>

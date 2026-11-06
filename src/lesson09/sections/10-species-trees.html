@@ -75,6 +75,103 @@
   <p><dfn>Paralogy</dfn> is a different kind of problem. <span class="tip" title="Orthologs: gene copies in different species that trace back to a speciation.">Orthologs</span> trace back to a speciation, and <span class="tip" title="Paralogs: gene copies that trace back to a duplication.">paralogs</span> to a duplication (<a href="../03-annotation/#s07">lesson 3, section 07</a>). If you compare paralogs by mistake, the tree dates a duplication, not a speciation. This is why the characters must be checked first (<a href="#s02">section 02</a>). Different losses in different species can leave each species with a single copy, so the gene looks safe although it is not. The diagram shows this case. ASTRAL-Pro (Zhang et al. 2020) takes gene family trees with several copies per species, so paralogs need not be thrown away.</p>
   <p>Gene tree errors can look like all of these. A short alignment gives a poorly estimated tree, and that discordance is noise, not history. Keep this in mind for the rest of the section.</p>
 
+  <h3>ABBA-BABA: testing for gene flow from the columns</h3>
+  <p>The asymmetry above can be tested without building a single gene tree. The <dfn>D statistic</dfn>, also called the ABBA-BABA test, counts columns of an alignment (Green et al. 2010; Durand et al. 2011). Take four genomes: two sister species P1 and P2, a third species P3, and an <span class="tip" title="Outgroup: a species known to have split off before the others; it shows which base was ancestral.">outgroup</span> O. The base in the outgroup is called A, for ancestral, and a changed base B, for derived. Write a column in the order P1, P2, P3, O, and three patterns matter:</p>
+  <dl class="defs">
+    <dt>BBAA</dt><dd>P1 and P2 share the change. This fits the species tree.</dd>
+    <dt>ABBA</dt><dd>P2 and P3 share the change, and P1 does not. Without repeat changes this needs a gene tree that does not match the species tree, with the change on a branch shared by P2 and P3 (Durand et al. 2011).</dd>
+    <dt>BABA</dt><dd>P1 and P3 share the change, and P2 does not. This needs the other discordant gene tree.</dd>
+  </dl>
+  <p>Under ILS alone the two discordant gene trees are equally common, as you saw in the figure above, so ABBA and BABA columns should be about equally common too. Gene flow between P3 and one of the sisters tips the balance:</p>
+  <div class="formula">D = (ABBA &minus; BABA) / (ABBA + BABA)</div>
+  <p>D is 0 if the two are equal. In this order, D below 0 points to P3 exchanging genes with P1, and D above 0 to P3 exchanging genes with P2 (Durand et al. 2011). The sign says who was involved, not who gave and who received: "it can only identify which taxa are involved, and not the donor and recipient populations" (Hibbins and Hahn 2022). Beware of another trap: Patterson et al. (2012) define D with BABA first, so the sign can flip between papers unless the order of species is matched.</p>
+  <p>How far from 0 is far enough? Neighbouring columns share a history, so they are not independent, and "a simple binomial test to assess whether D significantly differs from zero is not appropriate" (Durand et al. 2011). The usual answer is the <dfn>block jackknife</dfn>. Cut the genome into blocks longer than the stretches that share a history, remove one block at a time, and recompute D. The spread of these values gives a <span class="tip" title="Standard error: how much an estimate would vary if the data were collected again.">standard error</span>, and Z = D / standard error says how many standard errors D lies from 0. Zheng and Janke (2018) counted Z above 3 as significant, and Dsuite's authors remind users to correct for testing many trios.</p>
+
+  <figure>
+    <div class="controls">
+      <div class="seg s10-wrapseg" id="s10-d-flow">
+        <button type="button" data-f="none">No gene flow</button>
+        <button type="button" data-f="p2">P3 into P2</button>
+        <button type="button" data-f="p1">P3 into P1</button>
+        <button type="button" data-f="sis">P1 into P2 (sisters)</button>
+      </div>
+      <label>Share of the genome that came by gene flow <output id="s10-d-f-o"></output><input id="s10-d-f" type="range" min="1" max="30" step="1" value="10" aria-label="Share of the genome that came by gene flow, in per cent"></label>
+      <label class="s10-chk"><input type="checkbox" id="s10-d-fast"> 5 times more changes on all branches, and P2 3 times faster still</label>
+      <button type="button" class="btn" id="s10-d-new">New genome</button>
+    </div>
+    <div class="grid2">
+      <div class="svgbox" id="s10-d-tree"></div>
+      <div>
+        <p class="tool-note">The first columns of this genome that show one of the three patterns. Blue: ABBA. Orange: BABA. Grey: BBAA.</p>
+        <div class="s10-cols" id="s10-d-cols"></div>
+      </div>
+    </div>
+    <div class="readout">
+      <div>ABBA columns<b id="s10-d-abba"></b></div>
+      <div>BABA columns<b id="s10-d-baba"></b></div>
+      <div>BBAA columns<b id="s10-d-bbaa"></b></div>
+      <div>D<b id="s10-d-D"></b></div>
+      <div>Standard error, block jackknife<b id="s10-d-se"></b></div>
+      <div>Z<b id="s10-d-Z"></b></div>
+      <div>Z if columns were independent<b id="s10-d-nz"></b></div>
+    </div>
+    <p class="tool-note" id="s10-d-verdict" aria-live="polite"></p>
+    <div class="svgbox" id="s10-d-blocks"></div>
+    <ol class="s10-calc" id="s10-d-calc"></ol>
+    <div class="controls"><button type="button" class="btn" id="s10-d-rep">Repeat 200 genomes</button></div>
+    <p class="tool-note" id="s10-d-reptext" aria-live="polite"></p>
+    <div class="svgbox" id="s10-d-hist"></div>
+    <figcaption><b>The ABBA-BABA test on one simulated genome.</b> The genome has 2,000 stretches of 100 columns. All columns of a stretch share one gene tree, and stretches are independent. The 20 blocks hold 100 stretches each. In the bar chart each bar is D of one block (cut off at ±0.8), and the orange line is D of the whole genome. The bottom chart collects Z from repeated genomes, with dashed lines at &minus;3 and +3; values beyond ±10 are drawn at the edge. The tick box stands for an older group, with more changes per site: split times stay as they are, the rate on every branch rises five times, and the tip of P2 runs three times faster again. Times in coalescent units: P1 and P2 split at 0.5, P3 at 1, the outgroup at 3, gene flow at 0.1.</figcaption>
+  </figure>
+  <p class="tool-note"><b>Try this.</b> (1) Choose No gene flow and repeat 200 genomes: the jackknife Z stays within ±3 almost every time, but the plain binomial test raises a false alarm about one time in ten. (2) Choose P3 into P2, then P3 into P1: D changes sign. At 10 % a genome still misses the signal about three times in ten. (3) Choose P1 into P2: genes moved, and D stays at 0, because "gene flow between P1 and P2 ... is not expected to produce a deviation" (Durand et al. 2011, shortened). (4) Choose No gene flow and tick the box: D is far from 0 with a large Z, and there was no gene flow at all.</p>
+  <p class="tool-note"><b>Control.</b> With few mutations the simulated D agrees with the formula of Durand et al. (2011): 0.190 against 0.187 at 10 % gene flow. Standard errors equal those of the package scikit-allel. In 400 genomes without gene flow, |Z| passed 3 in 0.3 % with the jackknife and 11 % with the binomial test. Details are in this section's notes.</p>
+  <p>The last case needs explaining, because a test can be right about the columns and wrong about the cause. D assumes that each site changed once and that rates are equal. When rates differ, "homoplasies are more likely to occur in the sister species with the higher rate", and D can falsely support gene flow (Koppetsch et al. 2024). In that study the test was significant "for all datasets simulated without introgression (m=0) whenever rate variation was present". The risk is higher in older groups. In our toy a faster P2 makes D negative, and the effect shrinks if the outgroup is brought close, so we read it as the fast species picking up chance matches with the outgroup. Other limits:</p>
+  <ul>
+    <li><b>Ancestral structure.</b> If the ancestral population was not randomly mating, one discordant tree can be more common without any gene flow. "D statistics do not allow us to distinguish between the models of admixture and ancestral subdivision" (Durand et al. 2011).</li>
+    <li><b>Unsampled species.</b> Genes from a species you did not sample can also produce a signal (Durand et al. 2011).</li>
+    <li><b>Population size.</b> The test is less sensitive when populations are large compared with the time since the split (Zheng and Janke 2018).</li>
+    <li><b>D is not an amount.</b> It rises with gene flow, but "it is not a good estimator" of the share of the genome that moved (Hibbins and Hahn 2022). The f4-ratio is used for that. D also fails in small windows, where it "is highly stochastic", and <span class="tip" title="fd: a statistic for the share of introgression in a window, built so that it stays between 0 and 1.">fd</span> was proposed for scanning a genome (Martin et al. 2015).</li>
+  </ul>
+  <p>Dsuite runs this on all trios of species in a VCF file (Malinsky et al. 2021). Its default is 20 jackknife blocks. The sets file has two columns, sample and species, with the word <code>Outgroup</code> in place of a species for the outgroup samples.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># D, Z, p-value and f4-ratio for all trios</span>
+Dsuite Dtrios -t TREE_FILE.nwk INPUT_FILE.vcf SETS.txt
+<span class="c"># assign the signal to branches of the tree; the second file is the _tree.txt output of Dtrios</span>
+Dsuite Fbranch TREE_FILE.nwk FVALS_tree.txt</pre></div>
+  <details class="simple">
+    <summary>Simple explanation with examples: why ABBA and BABA should balance</summary>
+    <div class="in">
+      <p>Think of P1 and P2 as twins, and of P3 as a cousin. A family quirk that the cousin shares with only one twin must come from old variation in the family, and chance gives it to either twin equally often. So the cousin should match each twin in the same number of quirks.</p>
+      <p>Now suppose the cousin matches the second twin in 1,120 quirks and the first in 880. D = (1,120 &minus; 880) / 2,000 = 0.12. Something joined the cousin and the second twin after the twins separated, or something else broke the balance, for example if one twin simply collects quirks faster.</p>
+    </div>
+  </details>
+
+  <h3>The same question with SINE insertions: the KKSC test</h3>
+  <p>Insertions of <span class="tip" title="Retroposons: mobile DNA that copies itself into new places, such as SINEs. Lesson 7 introduced them.">retroposons</span> can answer the question that ABBA-BABA asks of bases. A shared insertion is a rare event, so it is a clean character (<a href="#s05">section 05</a>; <a href="../07-sines-satellites/#s05">lesson 7, section 05</a>). Take three lineages and count the insertions shared by each pair. That gives three numbers, for example 8:2:0. Kuritzin et al. (2016) read them with two questions, each an exact binomial test:</p>
+  <ol class="qlist">
+    <li><b>Is the largest count more than a third?</b> With no resolved tree, each pair is expected to get one third of the insertions. If the largest count is well above that, the data support a tree.</li>
+    <li><b>Are the two smaller counts equal?</b> Under ILS the two wrong pairs should be about equal, the symmetry you saw above. If they differ clearly, ILS alone does not explain them, and the authors point to ancestral hybridization.</li>
+  </ol>
+  <figure>
+    <div class="controls">
+      <div class="seg s10-wrapseg" id="s10-k-pre">
+        <button type="button" data-v="8,2,0">8:2:0</button>
+        <button type="button" data-v="9,8,5">9:8:5</button>
+        <button type="button" data-v="25,22,21">25:22:21</button>
+        <button type="button" data-v="192,74,60">192:74:60</button>
+        <button type="button" data-v="101,11,0">101:11:0</button>
+      </div>
+      <label>A and B share <input type="number" class="s10-num" id="s10-k1" min="0" max="2000" aria-label="Insertions shared by A and B"></label>
+      <label>A and C share <input type="number" class="s10-num" id="s10-k2" min="0" max="2000" aria-label="Insertions shared by A and C"></label>
+      <label>B and C share <input type="number" class="s10-num" id="s10-k3" min="0" max="2000" aria-label="Insertions shared by B and C"></label>
+    </div>
+    <div class="tbl s10-sm" id="s10-k-tab"></div>
+    <p class="tool-note" id="s10-k-msg" aria-live="polite"></p>
+    <figcaption><b>Three counts, two tests.</b> Each row tests one tree. "More than a third" is the chance of at least this many insertions if each pair had one third. "Other two equal" is the two-sided chance of a split this uneven between the two other pairs if they were equal. The verdict uses the row with the largest count and a limit of 0.05. The presets are counts printed in the paper: rodents, the root of placental mammals in two data sets, Carnivora, and an invented skewed case.</figcaption>
+  </figure>
+  <p class="tool-note"><b>Try this.</b> (1) Type 3, 0, 0, then 2, 0, 0: the authors give three conflict-free markers as the smallest number for significant support (when the markers were found from at least two of the lineages). (2) Start from 8:2:0 and move the 2 up: the tree weakens. (3) Compare 25:22:21 with 101:11:0: the first is what a near-simultaneous split looks like, the second is lopsided. (4) Scale 8:2:0 to 80:20:0: the same proportions, but now the two smaller counts differ clearly.</p>
+  <p class="tool-note"><b>Control.</b> The toy reproduces the values printed in the paper: 0.0034 for 8:2:0; 0.293 and 0.5811 for 9:8:5; 0.111 for 3:1:0; p below 3.3 × 10<sup>&minus;21</sup> for 192:74:60.</p>
+  <p>The test rests on assumptions: the insertions are truly at the same place, presence is the derived state, and parallel insertions and exact deletions are rare. Its model has three lineages, so a larger tree is taken three at a time.</p>
+
   <h3>The anomaly zone: when the most common gene tree is wrong</h3>
   <p>With three species the matching tree is always the most common: the formula never drops below 1/3, and each of the others never rises above it. A natural idea is then to take a vote: build many gene trees and pick the one that turns up most often. With four or more species that vote can fail.</p>
   <p>Degnan and Rosenberg (2006) call a gene tree <dfn>anomalous</dfn> if it is more likely than the gene tree that matches the species tree. The <dfn>anomaly zone</dfn> is the set of branch lengths where such a tree exists. It exists for asymmetric species trees of four species, and for every species tree of five or more. It needs short branches, "especially if it is deep in the tree".</p>
@@ -113,6 +210,39 @@
 
   <h3>ASTRAL</h3>
   <p>ASTRAL is a summary method used in many studies. Its documentation describes it as "a tool for estimating an unrooted species tree given a set of unrooted gene trees". It "finds the species tree that has the maximum number of shared induced quartet trees with the set of gene trees". In plain words: for every set of four species, each gene tree shows one quartet. ASTRAL looks for the species tree that agrees with as many of these as possible, choosing among branches that it collects from the data. Because the most likely quartet is the true one, this is <span class="tip" title="Statistically consistent: the answer converges on the truth as the number of genes grows, if the model holds.">statistically consistent</span> under the multispecies coalescent, even in the anomaly zone, if gene trees are correct.</p>
+  <p>The next toy does this count on five species, where there are only five sets of four species and 15 possible unrooted trees, so every tree can be scored. A tree is written here by its two pairs and the species between them: AB|C|DE. Each tree contains exactly five quartets. The score of a tree is the number of gene tree quartets that agree with them. Real ASTRAL has far too many trees to score all of them, so it searches among branches found in the gene trees.</p>
+  <figure>
+    <div class="controls">
+      <div class="seg s10-wrapseg" id="s10-q-presets">
+        <button type="button" data-p="long">Long branches</button>
+        <button type="button" data-p="anomaly">Anomaly zone</button>
+        <button type="button" data-p="star">Almost a star</button>
+      </div>
+      <div class="s10-btns" id="s10-q-add">
+        <button type="button" class="btn" data-k="1">Add 1 gene</button>
+        <button type="button" class="btn" data-k="10">Add 10</button>
+        <button type="button" class="btn" data-k="100">Add 100</button>
+        <button type="button" class="btn" data-k="1000">Add 1,000</button>
+      </div>
+      <button type="button" class="btn" id="s10-q-clear">Clear</button>
+    </div>
+    <p class="tool-note" id="s10-q-note"></p>
+    <div class="svgbox" id="s10-q-sp"></div>
+    <div class="readout">
+      <div>Gene trees<b id="s10-q-n"></b></div>
+      <div>Vote: most common gene tree<b id="s10-q-vote"></b></div>
+      <div>Tree with most quartets<b id="s10-q-win"></b></div>
+      <div><span class="tip" title="The share of all quartets in the gene trees that agree with the winning tree: what ASTRAL reports as its normalized quartet score.">Normalized quartet score</span><b id="s10-q-score"></b></div>
+    </div>
+    <p class="tool-note" id="s10-q-last" aria-live="polite"></p>
+    <div class="tbl s10-sm" id="s10-q-tab"></div>
+    <p class="tool-note">✓ marks the arrangement in the species tree. The shaded cell has the most genes in its row.</p>
+    <div class="tbl s10-sm" id="s10-q-trees"></div>
+    <div class="s10-why" id="s10-q-why" aria-live="polite"></div>
+    <figcaption><b>Counting quartets.</b> Each gene is simulated with the multispecies coalescent inside the species tree shown, then its root is dropped. Click a tree in the table to see how its score adds up. Below the table are the two branches of that tree: z1, z2 and z3 are the genes showing each of the three arrangements around the branch, averaged over the two quartets around it.</figcaption>
+  </figure>
+  <p class="tool-note"><b>Try this.</b> (1) On Anomaly zone, add 1,000 genes several times. The three trees with E in the middle stay ahead of the species tree: about 12 % for AB|E|CD and 10.5 % for each of the two others, against 8 %. So the vote gets surer of a wrong answer. In our simulations the quartets chose the species tree in 33 % of runs with 100 genes, 61 % with 300 and 94 % with 1,000, and the vote was never right at 1,000. (2) Compare the branch lengths in the last table with x and y on the drawing as the genes add up. (3) On Almost a star, click several trees and compare their local posteriors: the scores lie close together and no branch is well supported.</p>
+  <p class="tool-note"><b>Control.</b> Scores match a separate brute-force count on 4,500 tree scores. The local posterior reproduces the values printed by Sayyari and Mirarab (2016): 66.1, 93.0 and 99.7 % for a branch in 40 % of 50, 200 and 500 genes. Simulated quartet shares match 1 &minus; (2/3) e<sup>&minus;d</sup>. On eight sets of simulated gene trees, from 30 to 2,000 genes, ASTRAL-III 5.7.8 gave the same tree and score, and the same local posterior and branch length for all 16 branches.</p>
   <p>The input is one file of gene trees in Newick format (<a href="#s01">section 01</a>), which you might make with IQ-TREE. The two main versions differ in what they report.</p>
   <div class="code"><button type="button">copy</button><pre><span class="c"># one tree per locus: a partition file says where each locus lies in the alignment</span>
 iqtree3 -s ALN_FILE -S PARTITION_FILE --prefix loci -T AUTO

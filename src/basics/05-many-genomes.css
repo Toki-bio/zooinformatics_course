@@ -1,0 +1,5 @@
+.b-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:.7em;margin:.5em 0}
+.b-grid1{grid-template-columns:1fr}
+.b-lab{font-size:13.5px;margin:.4em 0 .2em}
+.b-cell{min-width:0}
+.b-cell .svgbox{overflow-x:auto}

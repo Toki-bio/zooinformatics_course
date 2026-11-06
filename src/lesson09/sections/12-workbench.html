@@ -1,0 +1,70 @@
+<section aria-labelledby="s12" id="s12-wrap">
+  <h2 id="s12"><span class="n">12</span>One alignment, every method</h2>
+  <p class="lede">The earlier sections each used their own toy. Here one small alignment goes through all of them. You can follow every number from the columns to the finished tree, then see exactly how each support value on a branch is calculated.</p>
+
+  <p>Five tips is the smallest size that still shows everything. It has only 15 possible <span class="tip" title="A tree that shows who is related to whom, without saying where the root is.">unrooted trees</span>, so instead of a tree search the toy simply scores all 15, and nothing is hidden. Each ready-made alignment was simulated on the same known tree, so here, unlike in real work, you can check who was right. Click any base to change it, and all the trees and numbers are worked out again.</p>
+
+  <details class="simple">
+    <summary>Simple explanation with examples: what differs between the methods</summary>
+    <div class="in">
+      <p>All five methods read the same 20 columns, and they differ in what they do with them.</p>
+      <ul>
+        <li><b>UPGMA and neighbour joining</b> first squeeze the columns into one table of distances, then join tips by a fixed recipe. They never compare whole trees. See <a href="#s04">section 04</a>.</li>
+        <li><b>Parsimony</b> keeps the columns, and scores each tree by the fewest changes needed. See <a href="#s05">section 05</a>.</li>
+        <li><b>Maximum likelihood</b> keeps the columns too, and scores each tree by the probability of the columns under a model of change. See <a href="#s06">section 06</a>.</li>
+        <li><b>Bayesian inference</b> uses the same probability, adds a prior, and reports how much time a random walk spends at each tree. See <a href="#s08">section 08</a>.</li>
+      </ul>
+      <p>Example: two tips that both changed a lot may share a base by chance. A distance table cannot tell why they look alike. Parsimony counts it as a shared change. Likelihood knows that long branches make chance matches more probable, and allows for it.</p>
+    </div>
+  </details>
+
+  <div class="tool" id="s12-tool">
+    <div class="tool-head"><span class="tool-tag">toy</span> From columns to trees</div>
+    <div class="seg s12-wrapseg" id="s12-presets"></div>
+    <p class="tool-note" id="s12-note"></p>
+    <div id="s12-aln" class="s12-aln"></div>
+    <p class="tool-note">Click a base to change it, or a number to select that column. Below each column: ● <span class="tip" title="At least two bases each appear in two or more tips. Only these columns can favour one tree over another in parsimony.">informative</span>, ○ varies but uninformative, · constant.</p>
+    <h3>What each method concludes</h3>
+    <div id="s12-answers" class="s12-answers"></div>
+    <p class="tool-note" id="s12-truth"></p>
+    <h3>How each tree was made</h3>
+    <div class="seg s12-wrapseg" id="s12-tabs">
+      <button type="button" data-t="upgma">UPGMA</button>
+      <button type="button" data-t="nj">Neighbour joining</button>
+      <button type="button" data-t="pars">Parsimony</button>
+      <button type="button" data-t="ml">Maximum likelihood</button>
+      <button type="button" data-t="bayes">Bayesian</button>
+    </div>
+    <div id="s12-panel" class="s12-panel" aria-live="polite"></div>
+  </div>
+
+  <h3>Things to try</h3>
+  <ol class="qlist">
+    <li><b>One fast lineage.</b> Step through UPGMA, then neighbour joining. Compare the first join each makes, and read in the Q table why they differ.</li>
+    <li><b>Two long branches.</b> Open Parsimony and find the columns where A and C share a base. On the true tree such a column usually costs an extra step. Then open Maximum likelihood and see the same tree win or lose by how little.</li>
+    <li><b>Any preset.</b> Change one base in an informative column and watch which methods change their minds. With 20 columns, one base can be enough.</li>
+    <li><b>Bayesian.</b> Press 1 step a few times and read the arithmetic, then run 10,000 steps. On weak data the bars spread over several trees, which is the honest result.</li>
+  </ol>
+
+  <div class="tool" id="s12-tool2">
+    <div class="tool-head"><span class="tool-tag">toy</span> How the numbers on branches are calculated</div>
+    <p class="tool-note">This works on the alignment above, as it stands now. Support always belongs to one alignment and one method.</p>
+    <div class="seg s12-wrapseg" id="s12-stabs">
+      <button type="button" data-s="boot">Bootstrap</button>
+      <button type="button" data-s="sh">SH-aLRT</button>
+      <button type="button" data-s="pp">Posterior probability</button>
+      <button type="button" data-s="tt">Comparing whole trees</button>
+      <button type="button" data-s="all">Side by side</button>
+    </div>
+    <div id="s12-spanel" class="s12-panel" aria-live="polite"></div>
+  </div>
+
+  <h3>What this toy leaves out</h3>
+  <ul>
+    <li>Twenty columns is far too few for real work. Everything here is noisy on purpose, so that you can see the noise. The rules of thumb in <a href="#s07">section 07</a> were not made for alignments this small.</li>
+    <li>The only model is Jukes-Cantor (<a href="#s03">section 03</a>), and the simulated data obey it. On real data the model is an assumption, and a wrong one can give high support to a wrong branch.</li>
+    <li>Real programs cannot score every tree. They search, and can miss the best one.</li>
+    <li>IQ-TREE re-fits the five branches around a rearrangement in one pass by default, while this toy repeats until they settle. SH-aLRT values can therefore differ somewhat on data like these. With the pass count raised, IQ-TREE and this toy gave the same values, apart from resampling noise, wherever their likelihoods matched.</li>
+    <li>The Bayesian prior here is one simple choice. With so few columns it matters: an exponential prior with mean 0.1 pulls against long branches.</li>
+  </ul>
+</section>

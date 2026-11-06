@@ -1,0 +1,15 @@
+.b-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:14px}
+.b-two h3{font-size:14px;margin:.2em 0 .3em}
+.b-site{cursor:pointer}
+.b-site:focus{outline:none}
+.b-site:focus .b-hit,.b-site:hover .b-hit{stroke:var(--accent);stroke-width:2}
+.b-t{font-size:12px;fill:var(--fg);font-family:var(--f-mono)}
+.b-ts{font-size:11px;fill:var(--muted)}
+.b-lab{font-size:13.5px;margin:.7em 0 .2em}
+.b-files{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:12px}
+.b-card{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:10px 12px;font-size:13px}
+.b-card h3{font-size:14px;margin:0 0 .4em}
+.b-card pre{margin:.3em 0;padding:6px 8px;background:var(--code-bg);font-size:12px;overflow-x:auto;white-space:pre}
+.b-card .b-res{font-weight:600;margin:.4em 0 0}
+.b-card .b-no{color:var(--bad)}.b-card .b-yes{color:var(--good)}
+.b-card .b-m{color:var(--rep);font-weight:700}

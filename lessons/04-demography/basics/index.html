@@ -1,0 +1,566 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Population History from One Genome: the basics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Public+Sans:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: one reading column, stages in pipeline order, each stage = what it answers + figure + commands */
+:root{
+  --bg:#F5F7F8; --panel:#FFFFFF; --fg:#13212C; --muted:#586A77; --line:#D3DCE2;
+  --accent:#0A6C96;   /* homozygous peak / primary */
+  --het:#B9770E;      /* heterozygous peak */
+  --rep:#7B4FA6;      /* repeats */
+  --err:#9AA7B0;      /* errors */
+  --bad:#B4372F; --good:#2E7D4F;
+  --code-bg:#EBF0F3;
+  --f-display:"Archivo","Helvetica Neue",Arial,sans-serif;
+  --f-body:"Public Sans","Segoe UI",system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D151B; --panel:#141F27; --fg:#E1E8ED; --muted:#93A5B2; --line:#2A3A45;
+  --accent:#4DB2E2; --het:#E4A63E; --rep:#B48CE0; --err:#5E6E79; --bad:#E5736A; --good:#5CC48A;
+  --code-bg:#1A2731; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15.5px;line-height:1.6}
+.wrap{max-width:1000px;margin:0 auto;padding-block:28px 80px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:44px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.01em}
+h2{font-size:26px;font-weight:700;display:flex;gap:12px;align-items:baseline}
+h2 .n{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-weight:600}
+h3{font-size:17px;font-weight:700}
+p{margin:0;max-width:68ch}
+section{display:flex;flex-direction:column;gap:16px}
+.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.88em}
+p code,li code,td code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
+a{color:var(--accent)}
+/* sequential steps: one column, numbered markers joined by a line */
+.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column;max-width:72ch}
+.steps>li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:14px;padding-bottom:16px;position:relative;margin:0}
+.steps>li::before{content:counter(st);width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--f-mono);color:var(--accent);background:var(--bg);position:relative;z-index:1}
+.steps>li::after{content:"";position:absolute;left:13px;top:28px;bottom:0;border-left:1.5px solid var(--line)}
+.steps>li:last-child::after{display:none}
+.steps>li.later::before{content:"+";border-style:dashed;color:var(--muted);border-color:var(--muted)}
+.steps>li>div{min-width:0;padding-top:2px}
+.steps b{font-family:var(--f-display);font-size:16px}
+.steps .d{font-size:14.5px}
+.steps .t{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.steps a{font-size:13px;margin-left:6px}
+.qlist{font-size:16px;padding-left:22px;max-width:72ch}
+.qlist li+li{margin-top:6px}
+.defs{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 20px;margin:0}
+.defs dt{font-family:var(--f-display);font-weight:700}
+.defs dd{margin:0;max-width:68ch}
+@media (max-width:600px){.defs{grid-template-columns:1fr;gap:2px}.defs dd{margin-bottom:10px}}
+dfn{font-style:normal;font-weight:600}
+/* figure */
+figure{margin:0;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+figcaption{font-size:13.5px;color:var(--muted)}
+figcaption b{color:var(--fg)}
+.svgbox{overflow-x:auto}
+svg text{font-family:var(--f-mono);font-size:11px;fill:var(--muted)}
+svg .lab{fill:var(--fg);font-size:11.5px}
+svg .ax{stroke:var(--line);stroke-width:1;fill:none}
+svg .grid{stroke:var(--line);stroke-width:1;stroke-dasharray:2 3;fill:none;opacity:.7}
+.controls{display:flex;flex-wrap:wrap;gap:14px 22px;align-items:center}
+.controls label{display:flex;flex-direction:column;gap:2px;font-size:12.5px;color:var(--muted);min-width:150px}
+.controls label output{font-family:var(--f-mono);color:var(--fg);font-size:13px}
+input[type=range]{accent-color:var(--accent);width:170px}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:4px;overflow:hidden}
+.seg button{font:inherit;font-size:13px;background:transparent;color:var(--fg);border:0;padding:5px 12px;cursor:pointer}
+.seg button+button{border-left:1px solid var(--line)}
+.seg button[aria-pressed=true]{background:var(--accent);color:var(--bg)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:8px 14px;font-size:13px}
+.tool{border:1.5px solid var(--accent);border-radius:6px;background:var(--bg);padding:14px 16px 16px;display:flex;flex-direction:column;gap:12px}
+.tool.explain{border-color:var(--het)}
+.tool.explain .tool-tag{background:var(--het)}
+.tool-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.tool-tag{font:600 11px var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--bg);background:var(--accent);padding:2px 8px;border-radius:3px}
+.tool-note{font-size:13.5px;color:var(--muted)}
+.tool-note b{color:var(--fg)}
+.tip{text-decoration:underline dotted;text-underline-offset:3px;cursor:help}
+.btn{font:600 13px var(--f-body);background:var(--accent);color:var(--bg);border:1px solid var(--accent);border-radius:4px;padding:6px 12px;cursor:pointer;align-self:flex-end}
+.btn:hover{filter:brightness(1.1)}
+.btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.readout div{border-top:2px solid var(--line);padding-top:6px}
+.readout b{display:block;font-family:var(--f-mono);font-size:16px;font-variant-numeric:tabular-nums}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12.5px;color:var(--muted)}
+.legend i{display:inline-block;width:12px;height:3px;vertical-align:middle;margin-right:5px}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(290px,1fr));gap:12px}
+.grid2 figure{padding:12px}
+/* code */
+.code{position:relative;background:var(--code-bg);border-radius:4px;min-width:0}
+.code pre{margin:0;padding:14px 16px;overflow-x:auto;font-family:var(--f-mono);font-size:12.8px;line-height:1.55;white-space:pre}
+.code .c{color:var(--muted)}
+.code button{position:absolute;top:6px;right:6px;font:12px var(--f-mono);background:var(--panel);color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:2px 8px;cursor:pointer}
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:4px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;min-width:640px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--f-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;background:var(--code-bg)}
+tr:last-child td{border-bottom:0}
+td b{font-family:var(--f-display)}
+.tag{font-family:var(--f-mono);font-size:11px;padding:1px 6px;border-radius:3px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.s{color:var(--accent);border-color:var(--accent)}
+.tag.l{color:var(--het);border-color:var(--het)}
+.note{border-left:3px solid var(--het);padding:10px 14px;background:var(--panel);font-size:14.5px;max-width:none}
+.note.warn{border-left-color:var(--bad)}
+.formula{font-family:var(--f-mono);font-size:14px;background:var(--panel);border:1px solid var(--line);padding:12px 14px;border-radius:4px;overflow-x:auto;white-space:nowrap}
+details.simple{border:1px dashed var(--line);border-radius:4px;background:var(--panel);padding-inline:14px}
+details.simple summary{cursor:pointer;padding-block:10px;font-weight:600;color:var(--accent);font-size:14.5px}
+details.simple summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details.simple[open]{padding-bottom:14px}
+details.simple .in{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
+.toy{font-family:var(--f-mono);font-size:13px;background:var(--code-bg);padding:10px 12px;border-radius:4px;overflow-x:auto;white-space:pre;line-height:1.6}
+.toy .h{color:var(--het);font-weight:600}.toy .a{color:var(--accent);font-weight:600}.toy .x{color:var(--bad);font-weight:600}
+.calc{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-end}
+.calc label{display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)}
+.calc input,.calc select{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px}
+.calc input{width:110px}
+.calc input.wide{width:min(100%,560px)}
+.calc label.wide{flex:1 1 100%}
+.slider-row{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;font-size:13.5px;color:var(--muted)}
+.slider-row input[type=range]{width:min(100%,520px)}
+.kmer-lines{font-family:var(--f-mono);font-size:13px;line-height:1.45;white-space:pre;overflow-x:auto;background:var(--code-bg);padding:10px 12px;border-radius:4px;max-height:640px;overflow-y:auto}
+.kmer-lines .rep{color:var(--het);font-weight:600}.kmer-lines .pos{color:var(--muted)}
+.spec-mini{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;font-family:var(--f-mono);font-size:12.5px;max-width:520px}
+.spec-mini i{display:block;height:10px;background:var(--accent);opacity:.7;border-radius:2px}
+.warn-text{color:var(--bad);font-size:13px}
+ul{margin:0;padding-left:20px;max-width:70ch}
+li+li{margin-top:4px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.b-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:.5em 0}
+#b-hist,#b-count,#b-meet{grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.b-grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin:.5em 0}
+.b-cell{min-width:0}
+.b-cap{font-size:13px;margin:.2em 0;line-height:1.4}
+.b-pair{font-family:var(--f-mono);font-size:12px;line-height:1.35;white-space:pre;margin:0 0 .5em;overflow-x:auto}
+.b-pair span{display:inline-block;width:1ch}
+.b-pair .b-d{background:var(--bad);color:var(--bg)}
+.b-info{font-size:12.5px;color:var(--muted);margin:.5em 0 .1em}
+#b-wf{grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+
+/* ---- course frame (standalone hosting) ---- */
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* long words (file names, sequences) wrap instead of widening the page */
+.wrap{overflow-wrap:break-word}
+.crumb{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);display:flex;gap:8px;flex-wrap:wrap}
+.crumb a{color:var(--accent);text-decoration:none}.crumb a:hover{text-decoration:underline}
+.lesson-nav{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:16px;font-size:14.5px}
+.lesson-nav a{color:var(--accent);text-decoration:none;font-weight:600}
+.lesson-nav a:hover{text-decoration:underline}
+.lesson-nav .next{margin-left:auto;text-align:right}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="crumb" aria-label="Course navigation"><a href="../../../">← Zooinformatics course</a><span>/</span><a href="../">Lesson 4</a><span>/</span><span>The basics</span></nav>
+<header style="display:flex;flex-direction:column;gap:12px">
+  <div class="eyebrow">Lesson 4 · the basics</div>
+  <h1>Population History from One Genome: the basics</h1>
+  <p class="lede">The main ideas in a few short blocks, with things to try. The <a href="../">full lesson</a> has the details, commands and sources.</p>
+</header>
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>Any two gene copies share an ancestor</h2>
+  <p>A <dfn>gene copy</dfn> is one copy of one stretch of DNA, so N animals hold 2N copies. Each copy comes from one copy in the generation before. Follow two copies back and they reach the same parent copy: they <dfn>coalesce</dfn>. The pictures show six toy populations; time runs down the page, and each copy picked its parent at random.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-wf"></div>
+    <button type="button" class="btn" id="b-wfnew">New populations</button>
+    <p class="tool-note" id="b-wfmsg" aria-live="polite"></p>
+    <p class="tool-note">Blue and orange: the two copies followed back. Red ring: where they meet.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Small populations meet sooner</h2>
+  <p>Each generation, the second line picks the same parent as the first with a chance of 1 in 2N. Few copies means a high chance. Below, 300 pairs were followed back in each of three populations; the bars count how many generations each pair waited.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-meet"></div>
+    <button type="button" class="btn" id="b-meetnew">New random pairs</button>
+    <p class="tool-note" id="b-meetmsg" aria-live="polite"></p>
+    <p class="tool-note">The dashed line is the average wait.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>Older ancestors mean more differences</h2>
+  <p>After the lines split, each collects random changes in the DNA, called <dfn>mutations</dfn>. The copies differ at almost every mutation on both lines, so more differences mean an older ancestor. Below, 40 bases are drawn for each of 4 animals. Red: a base where the mother's and father's copy differ.</p>
+  <div class="tool">
+    <div class="b-grid2" id="b-diff"></div>
+    <button type="button" class="btn" id="b-diffnew">New stretches</button>
+    <p class="tool-note" id="b-diffmsg" aria-live="polite"></p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>A genome is many stretches, each with an ancestor</h2>
+  <p>In each generation <dfn>recombination</dfn> can cut a chromosome and join its halves to pieces from the other copy. So a chromosome becomes a row of stretches, each with its own ancestor. Each bar below is one stretch: width is its length, height is how long ago its ancestor lived.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-skyS"></div>
+    <div class="svgbox" id="b-skyL"></div>
+    <button type="button" class="btn" id="b-skynew">New chromosomes</button>
+    <div class="readout" id="b-skyread"></div>
+    <p class="tool-note">Height is on a logarithmic scale: each gridline is ten times higher.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>Many stretches show past population size</h2>
+  <p>If the population was small in some period, many stretches had their ancestor then. Counting the meetings in each period gives a size for it. The method <dfn>PSMC</dfn> reads this signal from a real genome. Each panel is one animal with 3,000 stretches; the method does not see the grey line.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-hist"></div>
+    <button type="button" class="btn" id="b-histnew">New animals</button>
+    <p class="tool-note" id="b-histmsg" aria-live="polite"></p>
+    <p class="tool-note">Top: stretches per time. Bottom: grey, the true size; blue, the size read back.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>More stretches make a steadier curve</h2>
+  <p>The same history is read from 100, 1,000 and 10,000 stretches, six animals each. Periods with few meetings read poorly, and none gives no reading. The curve shows the <span class="tip" title="Effective population size: the size of an idealised, randomly mating population that would give the same rate of meeting as the real one. It is not a head count of the animals alive.">effective size</span>, not a head count.</p>
+  <div class="tool">
+    <div class="b-grid" id="b-count"></div>
+    <button type="button" class="btn" id="b-countnew">New animals</button>
+    <p class="tool-note" id="b-countmsg" aria-live="polite"></p>
+    <p class="tool-note">Grey: the size we set. Blue: one line per animal. Error: the typical factor of miss.</p>
+  </div>
+</section>
+
+<nav class="lesson-nav" aria-label="Back to the lesson"><a href="../../../">← Course home</a><a class="next" href="../">Full lesson 4: Population History from One Genome →</a></nav>
+</div>
+<script>
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag), k;
+    for (k in attrs) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    if (text !== undefined) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function svgIn(box, w, h, label) {
+    box.textContent = '';
+    return el('svg', { viewBox: '0 0 ' + w + ' ' + h, width: '100%', role: 'img', 'aria-label': label, style: 'display:block' }, box);
+  }
+  function div(parent, cls) {
+    var d = document.createElement('div');
+    d.className = cls;
+    parent.appendChild(d);
+    return d;
+  }
+  function rng(seed) {
+    var a = seed >>> 0;
+    return function () {
+      a = (a + 0x6D2B79F5) >>> 0;
+      var t = a;
+      t = Math.imul(t ^ (t >>> 15), t | 1);
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+  function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function expo(r, mean) { return -Math.log(1 - r()) * mean; }
+  function poisson(r, lam) {
+    var L = Math.exp(-lam), k = 0, p = 1;
+    do { k++; p *= r(); } while (p > L);
+    return k - 1;
+  }
+  var TXT = 'font-size:10.5px;fill:var(--muted)';
+
+  // ---------- 1. Two lines in a toy population, traced back
+  var wfSeed = 1;
+  function drawWF() {
+    var box = $('b-wf'), r = rng(wfSeed * 7919), C = 10, G = 36, dx = 11, dy = 7.6, W = C * dx + 8, H = G * dy + 14;
+    var meets = [], i, q, g;
+    box.textContent = '';
+    function X(k) { return 4 + dx / 2 + k * dx; }
+    function Y(gg) { return 6 + (G - gg) * dy; }
+    for (q = 0; q < 6; q++) {
+      // par[g][i] = parent, in the row g+1 generations back, of copy i of the row g generations back
+      var par = [];
+      for (g = 0; g < G; g++) {
+        var ps = [];
+        for (i = 0; i < C; i++) ps.push(Math.floor(r() * C));
+        ps.sort(function (a, b) { return a - b; });       // copies of a row are interchangeable: sort so that links do not cross
+        par.push(ps);
+      }
+      var a = Math.floor(r() * C), b = Math.floor(r() * (C - 1)); if (b >= a) b++;
+      var pa = [a], pb = [b], meet = -1;
+      for (g = 0; g < G && meet < 0; g++) {
+        a = par[g][a]; b = par[g][b];
+        pa.push(a); pb.push(b);
+        if (a === b) meet = g + 1;
+      }
+      var cell = div(box, 'b-cell'), bx = div(cell, 'svgbox');
+      var svg = svgIn(bx, W, H, 'Toy population of 10 gene copies per generation with two lines followed back');
+      for (g = 0; g < G; g++) for (i = 0; i < C; i++) el('line', { x1: X(i), y1: Y(g), x2: X(par[g][i]), y2: Y(g + 1), style: 'stroke:var(--line);stroke-width:.8' }, svg);
+      for (g = 0; g <= G; g++) for (i = 0; i < C; i++) el('circle', { cx: X(i), cy: Y(g), r: 1.4, style: 'fill:var(--muted);opacity:.5' }, svg);
+      var last = meet < 0 ? G : meet;
+      for (g = 0; g < last; g++) {
+        el('line', { x1: X(pa[g]), y1: Y(g), x2: X(pa[g + 1]), y2: Y(g + 1), style: 'stroke:var(--accent);stroke-width:2' }, svg);
+        el('line', { x1: X(pb[g]), y1: Y(g), x2: X(pb[g + 1]), y2: Y(g + 1), style: 'stroke:var(--het);stroke-width:2' }, svg);
+      }
+      el('circle', { cx: X(pa[0]), cy: Y(0), r: 3, style: 'fill:var(--accent)' }, svg);
+      el('circle', { cx: X(pb[0]), cy: Y(0), r: 3, style: 'fill:var(--het)' }, svg);
+      if (meet > 0) el('circle', { cx: X(pa[meet]), cy: Y(meet), r: 5, style: 'fill:none;stroke:var(--bad);stroke-width:2' }, svg);
+      div(cell, 'b-cap').textContent = meet > 0 ? 'Met ' + meet + (meet === 1 ? ' generation' : ' generations') + ' back' : 'Not met within ' + G + ' generations';
+      meets.push(meet);
+    }
+    var met = meets.filter(function (m) { return m > 0; });
+    $('b-wfmsg').textContent = 'The copies met ' + (met.length ? 'between ' + Math.min.apply(null, met) + ' and ' + Math.max.apply(null, met) + ' generations back' : 'in none of them') +
+      ', and in ' + met.length + ' of 6 populations within ' + G + ' generations.';
+  }
+  $('b-wfnew').addEventListener('click', function () { wfSeed++; drawWF(); });
+  drawWF();
+
+  // ---------- 2. Waiting time for a pair, three population sizes
+  var meetSeed = 1;
+  function drawMeet() {
+    var box = $('b-meet'), r = rng(meetSeed * 104729), sizes = [10, 40, 160], P = 300, XMAX = 400, BW = 20, NB = XMAX / BW, out = [];
+    box.textContent = '';
+    sizes.forEach(function (n) {
+      var tot = 0, mx = 0, bins = [], b, k, w;
+      for (b = 0; b <= NB; b++) bins.push(0);
+      for (k = 0; k < P; k++) {
+        w = 1;
+        while (r() >= 1 / n) w++;                    // each generation: same parent with chance 1 in n
+        tot += w; if (w > mx) mx = w;
+        bins[Math.min(NB, Math.floor((w - 1) / BW))]++;
+      }
+      var avg = tot / P, top = Math.max.apply(null, bins);
+      var cell = div(box, 'b-cell'), cap = div(cell, 'b-cap'), bx = div(cell, 'svgbox');
+      cap.innerHTML = '<b>' + (n / 2) + ' animals</b>, ' + n + ' gene copies: chance of meeting 1 in ' + n + ' per generation';
+      var W = 330, x0 = 8, pw = 300, base = 120, ph = 100, bwid = pw / (NB + 1);
+      var svg = svgIn(bx, W, 150, 'Waiting times of 300 pairs of gene copies in a population of ' + (n / 2) + ' animals');
+      bins.forEach(function (c, i) {
+        var h = ph * c / top;
+        el('rect', { x: x0 + i * bwid + 0.5, y: base - h, width: bwid - 1, height: h, style: 'fill:' + (i === NB ? 'var(--muted)' : 'var(--accent)') }, svg);
+      });
+      el('line', { x1: x0, y1: base, x2: x0 + pw, y2: base, style: 'stroke:var(--fg)' }, svg);
+      [0, 100, 200, 300, 400].forEach(function (t) {
+        el('text', { x: x0 + t / XMAX * (NB * bwid), y: base + 13, 'text-anchor': 'middle', style: TXT }, svg, t);
+      });
+      el('text', { x: x0 + NB * bwid + bwid / 2, y: base + 13, 'text-anchor': 'middle', style: TXT }, svg, '>400');
+      el('text', { x: x0 + pw / 2, y: base + 28, 'text-anchor': 'middle', style: TXT }, svg, 'generations until the pair meets');
+      if (avg < XMAX) el('line', { x1: x0 + avg / XMAX * (NB * bwid), y1: base - ph - 4, x2: x0 + avg / XMAX * (NB * bwid), y2: base, style: 'stroke:var(--bad);stroke-width:1.6;stroke-dasharray:4 3' }, svg);
+      el('text', { x: x0 + 2, y: 11, style: TXT }, svg, 'tallest bar: ' + Math.round(100 * top / P) + ' % of pairs');
+      div(cell, 'b-cap').innerHTML = 'Average wait <b>' + avg.toFixed(0) + '</b> generations, longest <b>' + mx + '</b>.';
+      out.push(avg);
+    });
+    $('b-meetmsg').textContent = 'Average waits: ' + out.map(function (a) { return a.toFixed(0); }).join(', ') + ' generations, in populations of 5, 20 and 80 animals. Each is close to the number of gene copies (2N).';
+  }
+  $('b-meetnew').addEventListener('click', function () { meetSeed++; drawMeet(); });
+  drawMeet();
+
+  // ---------- 3. Differences between the two copies, small and large population
+  var diffSeed = 1, ML = 40, MU = 5e-6;
+  function mutate(r, seq, T) {
+    var s = seq.split(''), k = poisson(r, MU * T * ML), p, c;
+    while (k--) { p = Math.floor(r() * ML); do { c = 'ACGT'[Math.floor(r() * 4)]; } while (c === s[p]); s[p] = c; }
+    return s.join('');
+  }
+  function stretch(r, copies) {
+    var anc = '', i, T = Math.ceil(expo(r, copies));
+    for (i = 0; i < ML; i++) anc += 'ACGT'[Math.floor(r() * 4)];
+    var m = mutate(r, anc, T), f = mutate(r, anc, T), d = 0;
+    for (i = 0; i < ML; i++) if (m[i] !== f[i]) d++;
+    return { m: m, f: f, T: T, d: d };
+  }
+  function pairHTML(s) {
+    function row(a, b) { return a.split('').map(function (c, i) { return '<span' + (c !== b[i] ? ' class="b-d"' : '') + '>' + c + '</span>'; }).join(''); }
+    return '<div class="b-info">Ancestor ' + fmt(s.T) + ' generations back · <b>' + s.d + (s.d === 1 ? ' difference' : ' differences') + '</b></div>' +
+      '<div class="b-pair">mother ' + row(s.m, s.f) + '\nfather ' + row(s.f, s.m) + '</div>';
+  }
+  function drawDiff() {
+    var box = $('b-diff'), r = rng(diffSeed * 31337), avgs = [], times = [];
+    box.textContent = '';
+    [[1000, 'Small population: 1,000 animals'], [10000, 'Large population: 10,000 animals']].forEach(function (cfg) {
+      var cell = div(box, 'b-cell'), h = '', k, tot = 0, tt = 0, s, rr = rng(diffSeed * 99991 + cfg[0]);
+      div(cell, 'b-cap').innerHTML = '<b>' + cfg[1] + '</b>';
+      for (k = 0; k < 4; k++) h += pairHTML(stretch(r, cfg[0] * 2));
+      for (k = 0; k < 1000; k++) { s = stretch(rr, cfg[0] * 2); tot += s.d; tt += s.T; }
+      div(cell, 'b-cap').innerHTML = h + '<p class="b-cap">Over 1,000 such stretches: ancestors <b>' + fmt(tt / 1000) + '</b> generations back on average, <b>' + (tot / 1000).toFixed(2) + '</b> differences per 40 bases.</p>';
+      avgs.push(tot / 1000); times.push(tt / 1000);
+    });
+    $('b-diffmsg').textContent = 'The large population has ' + (avgs[1] / avgs[0]).toFixed(1) + ' times more differences, and its ancestors lived ' + (times[1] / times[0]).toFixed(1) + ' times further back.';
+  }
+  $('b-diffnew').addEventListener('click', function () { diffSeed++; drawDiff(); });
+  drawDiff();
+
+  // ---------- 4. A chromosome as a row of stretches
+  var skySeed = 1, RREC = 1e-8, CHL = 1e6;
+  function chrom(r, copies) {
+    var pos = 0, out = [], T, len, cap = 12 * copies;
+    while (pos < CHL) {
+      T = expo(r, copies);
+      if (r() > Math.min(1, T / cap)) continue;      // stretches of a younger ancestor are longer, so they cover more of the chromosome
+      len = expo(r, 1 / (2 * RREC * T));
+      out.push({ s: pos, l: Math.min(len, CHL - pos), T: T });
+      pos += len;
+    }
+    return out;
+  }
+  function drawSky() {
+    var cfg = [[2000, 'Small population, 1,000 animals', 'b-skyS'], [20000, 'Large population, 10,000 animals', 'b-skyL']], rd = '';
+    cfg.forEach(function (c, ci) {
+      var r = rng(skySeed * 8191 + ci), P = chrom(r, c[0]), W = 640, x0 = 56, pw = 578, base = 118, ph = 100, tmin = 100, tmax = 200000, tl = 0, ll = 0;
+      var svg = svgIn($(c[2]), W, 152, c[1] + ': stretches of one chromosome, each with the time since its common ancestor');
+      function yy(t) { return base - ph * Math.log(Math.min(tmax, Math.max(tmin, t)) / tmin) / Math.log(tmax / tmin); }
+      el('text', { x: x0, y: 10, style: 'font-size:12px;fill:var(--fg);font-weight:600' }, svg, c[1]);
+      [1000, 10000, 100000].forEach(function (t) {
+        el('line', { x1: x0, y1: yy(t), x2: x0 + pw, y2: yy(t), style: 'stroke:var(--line);stroke-dasharray:2 3' }, svg);
+        el('text', { x: x0 - 4, y: yy(t) + 3.5, 'text-anchor': 'end', style: TXT }, svg, fmt(t));
+      });
+      P.forEach(function (p, k) {
+        var wpx = p.l / CHL * pw;
+        el('rect', { x: x0 + p.s / CHL * pw, y: yy(p.T), width: Math.max(0.6, wpx - (wpx > 3 ? 0.8 : 0)), height: base - yy(p.T), style: 'fill:' + (k % 2 ? 'var(--rep)' : 'var(--accent)') }, svg);
+        tl += p.T * p.l; ll += p.l;
+      });
+      el('line', { x1: x0, y1: base, x2: x0 + pw, y2: base, style: 'stroke:var(--fg)' }, svg);
+      el('text', { x: x0, y: base + 14, style: TXT }, svg, '0');
+      el('text', { x: x0 + pw, y: base + 14, 'text-anchor': 'end', style: TXT }, svg, '1 million bases');
+      el('text', { x: x0 + pw / 2, y: 146, 'text-anchor': 'middle', style: TXT }, svg, 'bar height: generations back to the ancestor (log scale)');
+      rd += '<div>' + c[1].split(',')[0] + '<b>' + P.length + ' stretches, mean length ' + (ll / P.length / 1000).toFixed(1) + ' kb, ancestors ' + fmt(tl / ll) + ' generations back, averaged along the chromosome</b></div>';
+    });
+    $('b-skyread').innerHTML = rd;
+  }
+  $('b-skynew').addEventListener('click', function () { skySeed++; drawSky(); });
+  drawSky();
+
+  // ---------- 5 and 6. Reading the size back from many stretches
+  var EDGE = [0, 2000, 20000, 200000, Infinity];               // generations before today
+  var HIST = [
+    ['Constant size', [50000, 50000, 50000, 50000]],
+    ['A bottleneck', [50000, 3000, 50000, 50000]],
+    ['A growing population', [50000, 50000, 20000, 5000]]
+  ];
+  var PER = [0, 500, 1000, 2000, 4000, 8000, 20000, 40000, 80000, 200000, 400000, Infinity];
+  var TMIN = 100, TMAX = 1e6, NMIN = 1000, NMAX = 200000;
+  function drawT(r, ne) {                                       // time to the common ancestor, sizes constant within periods
+    var e = -Math.log(1 - r()), k, rate, len;
+    for (k = 0; k < 4; k++) {
+      rate = 1 / (2 * ne[k]); len = EDGE[k + 1] - EDGE[k];
+      if (e < rate * len) return EDGE[k] + e / rate;
+      e -= rate * len;
+    }
+  }
+  function truth(ne, a) { var k = 0; while (EDGE[k + 1] <= a) k++; return ne[k]; }
+  function estimate(Ts) {                                       // size in a period = (stretch-generations waited) / (2 x meetings)
+    return PER.slice(0, -1).map(function (a, k) {
+      var b = PER[k + 1], ev = 0, ex = 0, i, T;
+      for (i = 0; i < Ts.length; i++) {
+        T = Ts[i];
+        if (T > a) { ex += Math.min(T, b) - a; if (T < b) ev++; }
+      }
+      return { a: a, b: b, ev: ev, ne: ev ? ex / (2 * ev) : null };
+    });
+  }
+  function xs(t, x0, pw) { return x0 + pw * Math.log(Math.max(TMIN, Math.min(TMAX, t)) / TMIN) / Math.log(TMAX / TMIN); }
+  function ys(n, base, ph) { return base - ph * Math.log(Math.max(NMIN, Math.min(NMAX, n)) / NMIN) / Math.log(NMAX / NMIN); }
+  function xaxis(svg, x0, pw, base) {
+    el('line', { x1: x0, y1: base, x2: x0 + pw, y2: base, style: 'stroke:var(--fg)' }, svg);
+    [100, 1000, 10000, 100000, 1000000].forEach(function (t) {
+      el('line', { x1: xs(t, x0, pw), y1: base, x2: xs(t, x0, pw), y2: base + 3, style: 'stroke:var(--fg)' }, svg);
+      el('text', { x: xs(t, x0, pw), y: base + 14, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--muted)' }, svg, t === 1000000 ? '1M' : (t >= 1000 ? fmt(t / 1000) + 'k' : t));
+    });
+  }
+  function curve(svg, x0, pw, base, ph, ne, est) {
+    var d = '', k;
+    [1000, 10000, 100000].forEach(function (n) {
+      el('line', { x1: x0, y1: ys(n, base, ph), x2: x0 + pw, y2: ys(n, base, ph), style: 'stroke:var(--line);stroke-dasharray:2 3' }, svg);
+      el('text', { x: x0 - 4, y: ys(n, base, ph) + 3.5, 'text-anchor': 'end', style: 'font-size:10px;fill:var(--muted)' }, svg, fmt(n));
+    });
+    for (k = 0; k < 4; k++) {
+      d += (k ? 'L' : 'M') + xs(Math.max(TMIN, EDGE[k]), x0, pw) + ' ' + ys(ne[k], base, ph) + 'L' + xs(EDGE[k + 1] === Infinity ? TMAX : EDGE[k + 1], x0, pw) + ' ' + ys(ne[k], base, ph);
+    }
+    el('path', { d: d, style: 'fill:none;stroke:var(--muted);stroke-width:4;opacity:.45' }, svg);
+    est.forEach(function (list) {
+      var pth = '', open = false;
+      list.forEach(function (p) {
+        if (p.ne === null) { open = false; return; }
+        pth += (open ? 'L' : 'M') + xs(Math.max(TMIN, p.a), x0, pw) + ' ' + ys(p.ne, base, ph) + 'L' + xs(Math.min(TMAX, p.b), x0, pw) + ' ' + ys(p.ne, base, ph);
+        open = true;
+      });
+      el('path', { d: pth, style: 'fill:none;stroke:var(--accent);stroke-width:' + (est.length > 1 ? 1.2 : 2.2) + ';opacity:' + (est.length > 1 ? 0.7 : 1) }, svg);
+    });
+  }
+  var histSeed = 1;
+  function drawHist() {
+    var box = $('b-hist'), shares = [];
+    box.textContent = '';
+    HIST.forEach(function (h, hi) {
+      var r = rng(histSeed * 6007 + hi * 17), Ts = [], i, inb = 0, T, b, NBIN = 24, bins = [];
+      for (i = 0; i < 3000; i++) { T = drawT(r, h[1]); Ts.push(T); if (T >= 2000 && T < 20000) inb++; }
+      for (b = 0; b < NBIN; b++) bins.push(0);
+      Ts.forEach(function (t) { bins[Math.min(NBIN - 1, Math.floor(NBIN * Math.log(Math.max(TMIN, t) / TMIN) / Math.log(TMAX / TMIN)))]++; });
+      var cell = div(box, 'b-cell'), bx = div(cell, 'svgbox'), bx2 = div(cell, 'svgbox');
+      div(cell, 'b-cap').innerHTML = '<b>' + h[0] + '</b>: ' + Math.round(100 * inb / 3000) + ' % of the stretches have their ancestor 2,000 to 20,000 generations back.';
+      var x0 = 50, pw = 272, top = Math.max.apply(null, bins), bw = pw / NBIN;
+      var svg = svgIn(bx, 330, 124, h[0] + ': how many stretches have their common ancestor at each time');
+      el('rect', { x: xs(2000, x0, pw), y: 18, width: xs(20000, x0, pw) - xs(2000, x0, pw), height: 72, style: 'fill:var(--muted);opacity:.14' }, svg);
+      bins.forEach(function (c, k) { var hh = 72 * c / top; el('rect', { x: x0 + k * bw + 0.5, y: 90 - hh, width: bw - 1, height: hh, style: 'fill:var(--rep)' }, svg); });
+      xaxis(svg, x0, pw, 90);
+      el('text', { x: 2, y: 12, style: 'font-size:10px;fill:var(--muted)' }, svg, 'stretches per time bin');
+      el('text', { x: x0 + pw / 2, y: 120, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--muted)' }, svg, 'generations before today');
+      var svg2 = svgIn(bx2, 330, 100, h[0] + ': true size and size read back from the stretches');
+      el('rect', { x: xs(2000, x0, pw), y: 14, width: xs(20000, x0, pw) - xs(2000, x0, pw), height: 76, style: 'fill:var(--muted);opacity:.14' }, svg2);
+      curve(svg2, x0, pw, 90, 76, h[1], [estimate(Ts)]);
+      el('line', { x1: x0, y1: 90, x2: x0 + pw, y2: 90, style: 'stroke:var(--fg)' }, svg2);
+      el('text', { x: 2, y: 8, style: 'font-size:10px;fill:var(--muted)' }, svg2, 'size in animals');
+      shares.push(Math.round(100 * inb / 3000));
+    });
+    $('b-histmsg').textContent = 'Between 2,000 and 20,000 generations back, ' + shares[0] + ' % of the stretches meet with constant size, ' + shares[1] + ' % in the bottleneck and ' + shares[2] + ' % in the growing population.';
+  }
+  $('b-histnew').addEventListener('click', function () { histSeed++; drawHist(); });
+  drawHist();
+
+  var cntSeed = 1;
+  function drawCount() {
+    var box = $('b-count'), ne = HIST[1][1], N = [100, 1000, 10000], rows = [];
+    box.textContent = '';
+    N.forEach(function (n, ni) {
+      var r = rng(cntSeed * 4243 + ni * 13), est = [], a, i, err = 0, cnt = 0, gaps = 0, tot = 0, rec = 0;
+      for (a = 0; a < 6; a++) {
+        var Ts = [], e = null;
+        for (i = 0; i < n; i++) Ts.push(drawT(r, ne));
+        e = estimate(Ts);
+        est.push(e);
+        rec += e[0].ev + e[1].ev + e[2].ev;                      // periods 0 to 2,000 generations
+        e.forEach(function (p) {
+          tot++;
+          if (p.ne === null) { gaps++; return; }
+          err += Math.abs(Math.log(p.ne / truth(ne, p.a))); cnt++;
+        });
+      }
+      var cell = div(box, 'b-cell'), bx = div(cell, 'svgbox'), er = Math.exp(err / cnt);
+      var svg = svgIn(bx, 330, 128, fmt(n) + ' stretches per animal: true size and sizes read back for six animals');
+      el('text', { x: 2, y: 10, style: 'font-size:12px;fill:var(--fg);font-weight:600' }, svg, fmt(n) + ' stretches per animal');
+      curve(svg, 50, 272, 106, 84, ne, est);
+      xaxis(svg, 50, 272, 106);
+      div(cell, 'b-cap').innerHTML = 'Error <b>×' + er.toFixed(2) + '</b>; ' + gaps + ' of ' + tot + ' period readings empty; stretches meeting in the first 2,000 generations: <b>' + (rec / 6).toFixed(0) + '</b> per animal.';
+      rows.push({ er: er, rec: rec / 6 });
+    });
+    $('b-countmsg').textContent = 'Typical error: ×' + rows[0].er.toFixed(2) + ' with 100 stretches, ×' + rows[1].er.toFixed(2) + ' with 1,000 and ×' + rows[2].er.toFixed(2) + ' with 10,000.';
+  }
+  $('b-countnew').addEventListener('click', function () { cntSeed++; drawCount(); });
+  drawCount();
+})();
+
+</script>
+</body>
+</html>

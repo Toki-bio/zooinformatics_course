@@ -10,7 +10,8 @@ const CHROME = process.env.CHROME_PATH || [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   '/usr/bin/google-chrome', '/usr/bin/chromium', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
 ].find(p => fs.existsSync(p));
-const lessons = fs.readdirSync(path.join(ROOT, 'lessons')).filter(d => fs.existsSync(path.join(ROOT, 'lessons', d, 'index.html')));
+const top = fs.readdirSync(path.join(ROOT, 'lessons')).filter(d => fs.existsSync(path.join(ROOT, 'lessons', d, 'index.html')));
+const lessons = top.concat(top.map(d => d + '/basics').filter(d => fs.existsSync(path.join(ROOT, 'lessons', d, 'index.html'))));
 const ids = {};
 for (const d of lessons) ids[d] = new Set([...fs.readFileSync(path.join(ROOT, 'lessons', d, 'index.html'), 'utf8').matchAll(/id="([^"]+)"/g)].map(m => m[1]));
 

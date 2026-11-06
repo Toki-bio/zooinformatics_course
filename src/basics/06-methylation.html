@@ -1,0 +1,60 @@
+<section aria-labelledby="b1">
+  <h2 id="b1"><span class="n">1</span>A methyl group sits on a C and the letters stay the same</h2>
+  <p>Some cytosines (C) carry a small chemical tag, a methyl group. The sequence does not change: the mark sits on top of the letters, which is why it is called <dfn>epigenetic</dfn>. It sits mostly at a <dfn>CpG</dfn>, a C followed directly by a G. Click a CpG to add or remove the mark.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-dna"></div>
+    <div class="readout">
+      <div>Letters an ordinary sequencer reports<b id="b-letters" class="b-long"></b></div>
+      <div>Methylated CpG sites<b id="b-nm"></b></div>
+    </div>
+    <p class="tool-note">Whatever you click, the letters stay the same. To see the mark, a machine needs a different measurement (block 6).</p>
+  </div>
+</section>
+
+<section aria-labelledby="b2">
+  <h2 id="b2"><span class="n">2</span>Counting reads at one site gives a percentage</h2>
+  <p>A long read is one DNA molecule, so at one CpG it shows a mark or no mark. Stack many reads over the same CpG and count: the share of reads with the mark is the <dfn>methylation level</dfn> of that site. Each row is one read; each column is one CpG.</p>
+  <div class="tool">
+    <div class="svgbox" id="b-stack"></div>
+    <button type="button" class="btn" id="b-stack-new">Take other reads</button>
+    <p class="tool-note">Filled circle: marked. Open circle: not marked.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b3">
+  <h2 id="b3"><span class="n">3</span>More reads make the percentage more trustworthy</h2>
+  <p>Ten reads are only a small sample, so another ten would give another percentage. Below, one site with a true level of 60 % is measured 40 times, with 4, 10, 40 and 160 reads. Each dot is one measurement.</p>
+  <div class="tool">
+    <div id="b-prec"></div>
+    <button type="button" class="btn" id="b-prec-new">Measure again</button>
+    <p class="tool-note">Dashed line: the true level, 60 %.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b4">
+  <h2 id="b4"><span class="n">4</span>Unsure calls are set aside, so fewer reads count</h2>
+  <p>The machine gives each read a probability of "methylated", not a yes or no. Near 0 or 1 is a confident call; near the middle is unsure. The pass threshold is the minimum confidence a call needs; calls below it are not counted. The same 20 reads are shown three times.</p>
+  <div class="tool">
+    <div id="b-thr"></div>
+    <p class="tool-note">Each dot is one read, placed by its probability. Filled: methylated. Open: unmethylated. Grey: set aside.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b5">
+  <h2 id="b5"><span class="n">5</span>An average of 50 % can hide two parental copies that differ completely</h2>
+  <p>An animal has two copies of each chromosome. At some places one copy is methylated and the other is not, and the average of all reads says "50 %", which describes neither copy. A read shows its copy by a nearby <span class="tip" title="SNP: a place where the two copies have different bases. Here the two copies carry a different base, A or G, next to the CpGs.">SNP</span>. Sorting the reads by that base gives a level for each copy.</p>
+  <div class="tool">
+    <div class="b-two" id="b-hap"></div>
+    <button type="button" class="btn" id="b-hap-new">Take other reads</button>
+    <p class="tool-note">Each row is one read, with the base of its SNP at the left. Left region: the copy with A is methylated, the copy with G is not. Right region: the copies do not differ.</p>
+  </div>
+</section>
+
+<section aria-labelledby="b6">
+  <h2 id="b6"><span class="n">6</span>Only a file that keeps the signal or the calls can give a level</h2>
+  <p>A methylated C is still read as C, so the letters cannot show the mark. The machine measures a signal, and a program turns it into a probability per CpG. If the provider hands over only the letters (FASTQ), the mark is lost. Below, the same four reads are stored in three ways.</p>
+  <div class="tool">
+    <div class="b-files" id="b-files"></div>
+    <p class="tool-note">When ordering a run, ask the provider to keep the raw signal or a BAM with modification tags. The probabilities here are invented.</p>
+  </div>
+</section>
