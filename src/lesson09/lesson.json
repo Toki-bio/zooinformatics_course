@@ -1,0 +1,24 @@
+{
+ "number": 9,
+ "slug": "09-trees",
+ "title": "Building Phylogenetic Trees",
+ "eyebrow": "Lesson 9 · from an alignment to a dated species tree",
+ "intro": [
+  "A tree is the shape behind most of the earlier lessons: the relative whose genome was used to polish ours, the gene copies that TOGA2 matched across species, the SINE insertions shared by some animals and not others, the split time between two genomes. This lesson builds trees from the ground up. It starts with how to read one (root, clade, branch length, Newick), then turns an alignment into characters, corrects distances for multiple hits with substitution models, and builds trees by the four families of methods in the order they were invented: distance (UPGMA, neighbour joining), parsimony, maximum likelihood (IQ-TREE, RAxML-NG) and Bayesian inference (MrBayes). It then asks how much a branch can be trusted (bootstrap, UFBoot, SH-aLRT, posterior probability), puts time on the tree (clocks, calibrations, BEAST2), and explains why gene trees disagree with the species tree (incomplete lineage sorting, ASTRAL). It ends with a helper for choosing a method and a checklist for the methods paragraph.",
+  "Every section has a toy to try: the animals, sequences and branch lengths in the figures are invented so that each idea can be followed by hand, and no result from the lab's own projects is used. Commands and defaults were read from each tool's own manual and source code at the versions named in each section. Hover over a dotted term to see what it means."
+ ],
+ "steps": [
+  {"title": "Reading a tree", "what": "Root, tip, node, clade and sister group; rooted and unrooted trees; cladogram, phylogram and chronogram; rotating a node changes nothing; Newick; how fast the number of trees grows.", "tools": "Newick · outgroup rooting"},
+  {"title": "From sequences to characters", "what": "Homology, orthologs and paralogs; why the alignment is the data; constant and informative columns; aligning with MAFFT; trimming with trimAl, BMGE or ClipKIT; one gene or many.", "tools": "MAFFT · trimAl · BMGE · ClipKIT"},
+  {"title": "Distances and substitution models", "what": "p-distance, multiple hits and saturation; JC69, K80, HKY and GTR; gamma rates and invariable sites; choosing a model with AIC, BIC and ModelFinder.", "tools": "JC69 · K80 · HKY · GTR · +G · +I · ModelFinder"},
+  {"title": "Distance trees: UPGMA and neighbour joining", "what": "UPGMA step by step and its clock assumption; neighbour joining, the Q criterion and additive distances; why NJ copes with unequal rates and where both fail.", "tools": "UPGMA · neighbour joining"},
+  {"title": "Parsimony", "what": "Counting steps with the Fitch rule; informative sites; tree search; long-branch attraction; SINE insertions as nearly homoplasy-free characters.", "tools": "Fitch counting · a long-branch simulator · SINE presence and absence"},
+  {"title": "Maximum likelihood", "what": "The likelihood of one site, Felsenstein pruning, branch-length optimisation, tree search with NNI and SPR, model selection; running IQ-TREE and RAxML-NG.", "tools": "IQ-TREE · RAxML-NG"},
+  {"title": "How much to trust a branch", "what": "The Felsenstein bootstrap step by step with a resampler, why about 63 % of columns are drawn, UFBoot and SH-aLRT, what a support number does and does not say.", "tools": "bootstrap · UFBoot · SH-aLRT"},
+  {"title": "Bayesian inference", "what": "Prior, likelihood and posterior; MCMC and Metropolis-Hastings; burn-in, mixing and convergence diagnostics; posterior probabilities on a tree; running MrBayes.", "tools": "MrBayes · Tracer · ESS · PSRF · ASDSF"},
+  {"title": "Dating trees", "what": "Why rates and times cannot be separated; strict and relaxed clocks; calibrations as priors; node dating and tip dating; BEAST2 in outline.", "tools": "BEAST2 · BEAUti · Tracer · TreeAnnotator · LSD · penalised likelihood"},
+  {"title": "Gene trees and species trees", "what": "Incomplete lineage sorting from the coalescent, gene flow and paralogy as other causes of discord; concatenation against summary methods; ASTRAL.", "tools": "multispecies coalescent · ASTRAL · IQ-TREE concordance factors · SNaQ"},
+  {"title": "Choosing and reporting", "what": "A decision helper by data, goal and size; what a methods paragraph must state; common mistakes; Newick and Nexus files.", "tools": "decision helper · Newick · Nexus"}
+ ],
+ "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
+}

@@ -1,0 +1,93 @@
+<section aria-labelledby="s01" id="s01-wrap">
+  <h2 id="s01"><span class="n">01</span>Reading a tree</h2>
+  <p class="lede">A <span class="tip" title="A phylogenetic tree is a diagram of how a set of organisms, genes or sequences are related by descent from common ancestors. It is a hypothesis about history, not something anyone observed.">phylogenetic tree</span> is the result every method in this lesson produces. Before we ask how to build one, we must be able to read one: which parts of a picture carry information and which are only decoration. A reader who mixes these up will draw conclusions the tree does not support.</p>
+
+  <h3>The parts of a tree</h3>
+  <ul>
+    <li><dfn>Tips</dfn> (also called leaves, or <dfn>taxa</dfn>, singular <i>taxon</i>) are the things being compared: species, individuals, genes, or DNA sequences. Names are written at the tips.</li>
+    <li><dfn>Branches</dfn> (also called edges) are the lines. A branch joins an ancestor to its descendants.</li>
+    <li><dfn>Nodes</dfn> are the points where branches meet. An inner node stands for an ancestor that split into two (or, in a tree not fully resolved, more) lines of descent.</li>
+    <li>The <dfn>root</dfn> is the oldest node. A tree that has one is a <dfn>rooted</dfn> tree: every branch has a direction, from older to younger, and time runs from the root to the tips. Without a root, we have an <dfn>unrooted</dfn> tree: it shows which tips are close to which, and not which way time runs.</li>
+  </ul>
+
+  <h3>Two words for groups</h3>
+  <p>In a rooted tree, a <dfn>clade</dfn> is an ancestor together with all of its descendants. On the picture it is everything you cut off by cutting one branch. Wikipedia's definition is "a group of organisms with a last common ancestor"; we add "and all of its descendants", which is what makes a clade a clade. Two clades that come from the same node are <dfn>sister groups</dfn>: each is the closest relative of the other within the tree. Both words describe a <b>rooted</b> tree. On an unrooted tree they have no meaning until a root is chosen, and the next paragraphs and the figure show why.</p>
+
+  <h3>Where the root comes from</h3>
+  <p>The data used to build a tree, such as differences between DNA sequences, say how similar tips are. They do not say which direction time runs. The usual way to find the root is to add an <dfn>outgroup</dfn>: a lineage known from other evidence to have split off before all the others (the <dfn>ingroup</dfn>) diverged. Wikipedia describes it as "a more distantly related group of organisms that serves as a reference group when determining the evolutionary relationships of the ingroup", and says it "allows for the phylogeny to be rooted". The tree is built with the outgroup included; the root is then placed on the branch that leads to the outgroup. This is a choice, and a poorly chosen outgroup, one that is not really outside, puts the root in the wrong place. When no outgroup is available, a second approach is <dfn>midpoint rooting</dfn>: find the two tips that are farthest apart along the branches, and put the root halfway between them. It assumes that all lineages have changed at the same speed, the same assumption that UPGMA makes in section 04, and it fails when they have not.</p>
+
+  <h3>Branch lengths</h3>
+  <p>Branch lengths may mean something or nothing, and the figure legend or the methods must say which. Following Wikipedia: a <dfn>cladogram</dfn> has "branch lengths [that] do not represent time or relative amount of character change"; a <dfn>phylogram</dfn> has "branch lengths proportional to the amount of character change"; a <dfn>chronogram</dfn> "explicitly represents time through its branch lengths". A tree computed from DNA is normally a phylogram, and the scale bar then shows the amount of change per site (we say what this means in section 03). A tree can be redrawn as a cladogram by ignoring the lengths, and the figure below lets you do that.</p>
+
+  <h3>Rotating a node changes nothing</h3>
+  <p>A branching point is like a hinge. Each node can be turned half-way round, which swaps the order of the branches that come from it, and the tree is still the same tree: the same tips are still joined by the same branches. Only the order of the names on the page changes. The Newick text format, below, shows this too. In the words of the PHYLIP documentation, the left-right order of descendants of a node "affects the representation, even though it is biologically uninteresting". It follows that <b>two tips that are next to each other on the page need not be close relatives</b>, and that the tip at the top of a tree is not "first" or "more primitive". Closeness is read from the nodes: how far you must go back along the branches to the node where the two lines meet.</p>
+
+  <figure>
+    <div class="controls">
+      <button type="button" class="btn" id="s01-shuffle">Rotate nodes at random</button>
+      <button type="button" class="btn" id="s01-randroot">Move the root at random</button>
+      <button type="button" class="btn" id="s01-reset">Back to the start</button>
+      <div class="seg" role="group" aria-label="Branch lengths"><button type="button" id="s01-scale" aria-pressed="true">Branch lengths: to scale</button></div>
+    </div>
+    <p class="tool-note"><b>Click a circle</b> to rotate that node. <b>Click the red square</b> to swap the two sides of the root. <b>Click a branch</b> to put the root on it. The root splits the branch it sits on in two halves; the halves add up to the length of that branch. The toy tree uses real animal names, but the lengths are invented and the relationships simplified.</p>
+    <div class="s01-two">
+      <div class="svgbox" id="s01-tree"></div>
+      <div>
+        <div class="tool-note"><b>The same tree without a root</b> (not to scale). The red square shows where the root now sits. Nothing else in this picture ever changes.</div>
+        <div class="svgbox" id="s01-unrooted"></div>
+      </div>
+    </div>
+    <div class="legend"><span>Statements about the tree, and whether each is true now. "changed" means the answer differs from the start.</span></div>
+    <div id="s01-stm" aria-live="polite"></div>
+    <div class="readout">
+      <div>Moves made<b id="s01-moves" style="font-size:14px"></b></div>
+      <div>Unrooted tree still the same as at the start?<b id="s01-same" style="font-size:14px"></b></div>
+      <div>Branch length from Human to Mouse<b id="s01-dist"></b></div>
+    </div>
+    <div class="tool-note">The tree as drawn, written in Newick format (explained below):</div>
+    <div class="toy" id="s01-newick"></div>
+  </figure>
+  <p>What to take from the experiment. Rotating nodes changes the drawing statements and the Newick text, and nothing else. Moving the root leaves the unrooted tree and the distances along the branches unchanged, but it can change which groups are clades and which are sisters: <b>the same unrooted tree allows as many different rooted trees as it has branches</b>. This is why the choice of the outgroup matters for the biology, and the order of the names on the page does not.</p>
+
+  <h3>Newick format: a tree as text</h3>
+  <p>Programs exchange trees as text in the <dfn>Newick format</dfn>, written by an agreement reached at two meetings in 1986, the second at Newick's restaurant. The rules, quoted from the PHYLIP documentation: "Interior nodes are represented by a pair of matched parentheses. Between them are representations of the nodes that are immediately descended from that node, separated by commas." "The tree ends with a semicolon." A branch length is written "after a node and preceded by a colon". Here is a tiny example.</p>
+  <div class="toy">(A:0.1,B:0.2,(C:0.3,D:0.4):0.5);
+
+ A  and B  : tips, with branches of length 0.1 and 0.2
+(C,D)      : an inner node whose two descendants are C and D
+:0.5       : the branch from that inner node up to its parent</div>
+  <p>The text is always a <i>rooted</i> description: the outermost pair of parentheses is the root. To store an unrooted tree, programs pick any node as the starting point; Wikipedia says "an arbitrary node is chosen as its root". The unrooted toy tree above is therefore often written with three branches at the outermost level, and a reader must know that this last pair of parentheses is not a real root.</p>
+  <div class="toy">(Chicken:0.9,((Human:0.15,Chimp:0.15):0.1,Gorilla:0.3):0.2,(Mouse:0.3,Rat:0.25):0.35);</div>
+
+  <h3>How many trees are there?</h3>
+  <p>A method that looks for the best tree has to choose among possible trees. How many are there? Take only <dfn>binary</dfn> trees, where every inner node splits into exactly two, and give each tip its own name. The number depends on how many tips there are, <i>n</i>, and it grows with a speed that surprises everyone the first time:</p>
+  <div class="formula">rooted trees:&nbsp;&nbsp;&nbsp;(2n&minus;3)!! = 1 &times; 3 &times; 5 &times; &hellip; &times; (2n&minus;3)<br>unrooted trees: (2n&minus;5)!! = 1 &times; 3 &times; 5 &times; &hellip; &times; (2n&minus;5)</div>
+  <p>The double exclamation mark <i>m</i>!! (a <dfn>double factorial</dfn>) means "multiply every second number down from <i>m</i>". These are the formulas given in the Wikipedia article on phylogenetic trees; the numbers below were checked against the values printed there and in the Online Encyclopedia of Integer Sequences (OEIS, entry A001147), and against a program that lists every tree.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: where the formula comes from</summary><div class="in">
+    <p>Build an unrooted tree by adding the animals one at a time. Three animals can only be joined in one way: three branches meeting in the middle. Now add a fourth. It can be attached to any of the 3 branches, which gives 3 different trees. A tree with 4 tips has 5 branches (4 tip branches and 1 inner one), so the fifth animal can be attached in 5 ways, giving 3 &times; 5 = 15 trees. A tree with <i>k</i> tips has 2<i>k</i>&minus;3 branches, so the next animal always has 2<i>k</i>&minus;3 choices: 1 &times; 3 &times; 5 &times; 7 &hellip;</p>
+    <p>For a rooted tree with <i>n</i> tips, take any of the unrooted trees and place the root on any of its 2<i>n</i>&minus;3 branches. Each rooted tree arises from exactly one such pair, so the rooted count is the unrooted count times (2<i>n</i>&minus;3). For 4 tips: 3 &times; 5 = 15 rooted trees. The three unrooted trees for A, B, C, D are the three ways to pair the animals: AB|CD, AC|BD and AD|BC. The button below lists them.</p>
+    <p>Notice that the number of rooted trees for <i>n</i> tips equals the number of unrooted trees for <i>n</i>+1 tips: an outgroup is just one more tip.</p>
+  </div></details>
+
+  <figure>
+    <div class="calc">
+      <label>Number of tips, <i>n</i> (3 to 100)<input id="s01-n" type="number" min="3" max="100" step="1" value="10"></label>
+      <button type="button" class="btn" id="s01-listbtn">List all unrooted trees (up to 5 tips)</button>
+    </div>
+    <div class="readout">
+      <div>Rooted binary trees<b id="s01-nr"></b></div>
+      <div>Unrooted binary trees<b id="s01-nu"></b></div>
+      <div><span class="tip" title="A made-up speed: if a computer could score one million trees every second, how long would it need to look at every rooted tree once? Real programs do not do this; the point is the size of the number.">Time to look at every rooted tree at a million per second</span><b id="s01-ny" style="font-size:14px"></b></div>
+    </div>
+    <div class="tool-note" id="s01-chk" aria-live="polite"></div>
+    <div class="toy" id="s01-list" style="min-height:1.6em"></div>
+    <div class="tbl"><table style="min-width:520px">
+      <thead><tr><th>tips</th><th>rooted, published</th><th>unrooted, published</th><th>source</th><th>this page's formula</th></tr></thead>
+      <tbody id="s01-pub"></tbody>
+    </table></div>
+  </figure>
+  <p>Ten tips already allow more than two million unrooted trees; twenty tips allow about 2 &times; 10<sup>20</sup>. No computer can look at them all for the data sets we usually have, with tens or hundreds of tips. The methods in the rest of this lesson differ mainly in how they get around that: some build one tree by a fixed recipe (section 04), others search among trees with a score (sections 05 to 08).</p>
+
+  <div class="note"><b>Remember.</b> (1) The order of names on a page means nothing; the nodes mean everything. (2) Clade and sister group need a root; closeness along the branches does not. (3) The root usually comes from an outgroup, which is an assumption. (4) Branch lengths can mean amount of change, time, or nothing: check the legend. (5) A Newick string is one of many equivalent texts for the same tree. (6) The number of possible trees explodes, so every method is a way to avoid trying all of them. Next: <a href="#s02">how a set of sequences becomes the characters a tree is built from</a>. If you are not sure what makes two sequences "alignable" see <a href="../08-search/#s06">alignment as scoring</a>.</div>
+</section>

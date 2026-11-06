@@ -28,6 +28,7 @@ LESSONS = [
     {'number': 6, 'slug': '06-methylation', 'title': 'DNA Methylation from Long Reads'},
     {'number': 7, 'slug': '07-sines-satellites', 'title': 'SINEs and Satellite DNA'},
     {'number': 8, 'slug': '08-search', 'title': 'Searching Sequences'},
+    {'number': 9, 'slug': '09-trees', 'title': 'Building Phylogenetic Trees'},
 ]
 
 

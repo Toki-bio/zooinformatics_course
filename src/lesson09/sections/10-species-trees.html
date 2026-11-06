@@ -1,0 +1,155 @@
+<section aria-labelledby="s10" id="s10-wrap">
+  <h2 id="s10"><span class="n">10</span>Gene trees and species trees</h2>
+  <p class="lede">So far each method gave one tree from one alignment. But a tree built from one gene is the history of that gene. The species have their own history, and the two can honestly differ, even when every step of the analysis was right. This section explains why that happens, how often to expect it, and what to do when you have many genes that disagree.</p>
+
+  <h3>Two different things called a tree</h3>
+  <dl class="defs">
+    <dt>Species tree</dt><dd>The order in which populations split into separate species. There is one such history for a group of species.</dd>
+    <dt>Gene tree</dt><dd>The history of the copies of one stretch of DNA, traced back until they meet in common ancestors. There are as many gene trees as there are independent stretches of DNA.</dd>
+    <dt>Locus</dt><dd>One stretch of DNA, for example a gene (plural: loci). In this section "gene" and "locus" mean the same thing, as they do in the ASTRAL guide (Mirarab 2019): a stretch with no recombination inside it. Recombination cuts a genome into many such stretches, each with its own history (<a href="../04-demography/#s01">lesson 4, section 01</a>).</dd>
+    <dt>Discordance</dt><dd>Disagreement: a gene tree has a different branching order from the species tree, or from another gene tree.</dd>
+  </dl>
+  <p>Discordance is not rare. In the gorilla genome paper, Scally et al. (2012) report that "in 30% of the genome, gorilla is closer to human or chimpanzee than the latter are to each other". The species tree says human and chimpanzee are each other's closest relatives, yet nearly a third of the genome tells a different story. The evolutionary history of a gene can differ from that of its species for several reasons: "incomplete lineage sorting (ILS), duplication and loss (DupLoss for short), gene transfer, and hybridization" (Zhang et al. 2020). We take them in turn.</p>
+
+  <h3>Incomplete lineage sorting: the coalescent inside a species tree</h3>
+  <p>Think of the species tree as a set of tubes, and of gene lines as threads running inside the tubes. <a href="../04-demography/#s01">Lesson 4, section 01</a> showed the rule that moves the threads: follow gene copies back in time, and two of them meet in a common ancestor by chance. In a population of N animals, which holds 2N gene copies, two lines wait 2N generations on average. That meeting is called <span class="tip" title="Coalescence: two gene lines, followed back in time, meet in one ancestral copy.">coalescence</span>.</p>
+  <p>Take three species, with the species tree ((A,B),C): A and B are sisters. Sample one gene copy from each. The lines from A and B cannot meet while they are in separate species. They can first meet in the common ancestor of A and B, which lives only for the length of the <span class="tip" title="Internal branch: a branch between two splits, here the ancestor of A and B, which existed from the split from C until the split of A from B.">internal branch</span>. There are two cases.</p>
+  <ol class="qlist">
+    <li><b>A and B meet inside the internal branch.</b> The gene tree is ((A,B),C), the same as the species tree.</li>
+    <li><b>A and B do not meet in time.</b> All three lines reach the ancestor of all three species. There, any two can meet first, and each pair has the same chance, one in three. So one time in three the gene tree still matches, by luck. Two times in three it disagrees.</li>
+  </ol>
+  <p>The second case is <dfn>incomplete lineage sorting</dfn> (ILS): the gene lines did not sort into the species in time. The variation was already there in the ancestor, and it outlived a speciation.</p>
+  <p>The length of the internal branch only matters compared with the wait for two lines to meet. So we measure it in <dfn>coalescent units</dfn>: one unit is 2N generations, where N is the size of the population on that branch. For a branch of t generations:</p>
+  <div class="formula">T = t / (2N)<br>share of genes that match the species tree = 1 &minus; (2/3) e<sup>&minus;T</sup><br>share of each of the two other gene trees = (1/3) e<sup>&minus;T</sup></div>
+  <p>Here e<sup>&minus;T</sup> is the chance that A and B do not meet in T units. Degnan and Rosenberg (2006) give this result for the three-species tree. Their N counts gene copies, so their one unit is N generations; ours counts animals, so it is 2N.</p>
+
+  <figure>
+    <div class="controls">
+      <label>Internal branch length <output id="s10-t-o"></output><input id="s10-t" type="range" min="0" max="10" step="1" value="7" aria-label="Internal branch length in generations"></label>
+      <label>Population size on that branch <output id="s10-n-o"></output><input id="s10-n" type="range" min="0" max="7" step="1" value="3" aria-label="Population size in animals"></label>
+      <button type="button" class="btn" id="s10-one">Next gene</button>
+      <button type="button" class="btn" id="s10-more">Add 10,000 genes</button>
+      <button type="button" class="btn" id="s10-clear">Clear</button>
+    </div>
+    <div class="svgbox" id="s10-tree"></div>
+    <div class="legend"><span><i style="background:var(--good)"></i>matches: A and B met in the internal branch</span><span><i style="background:var(--het)"></i>matches by luck, after ILS</span><span><i style="background:var(--bad)"></i>disagrees, after ILS</span></div>
+    <p class="tool-note" id="s10-msg" aria-live="polite"></p>
+    <div class="readout">
+      <div>T, in coalescent units<b id="s10-r-T"></b></div>
+      <div>Formula: share that match<b id="s10-r-exp"></b></div>
+      <div><span class="tip" title="The share of matching genes in this simulation. The number after ± is two standard errors: the simulated share should fall this close to the formula about 19 times in 20.">Simulated: share that match</span><b id="s10-r-sim"></b></div>
+      <div>Genes simulated<b id="s10-r-n"></b></div>
+      <div>The two wrong trees, counts<b id="s10-r-wrong"></b></div>
+      <div>Matching genes that matched by luck<b id="s10-r-luck"></b></div>
+    </div>
+    <div class="grid2">
+      <div class="svgbox" id="s10-curve"></div>
+      <div class="svgbox" id="s10-bars"></div>
+    </div>
+    <figcaption><b>Gene lines inside a three-species tree.</b> Top: one gene at a time. The grey tubes are the species tree, and their width shows the population size. Each dot is a coalescence. Heights follow coalescent units up to T = 2; above the root the time scale is squeezed. Moving a slider simulates 1,000 new genes. Left: the formula (blue line), with your T (blue ring) and the simulated share (orange dot). Right: the three possible gene trees. Ticks show what the formula expects, and the orange part of the first bar shows genes that matched by luck. The toy uses one population size for the internal branch and the root; the root's size changes when lines meet, but not which pair meets first.</figcaption>
+  </figure>
+  <p class="tool-note"><b>Try this.</b> (1) Set the branch to 0: all three gene trees are equally common, and the data cannot tell which is right. (2) Compare 10,000 generations with 10,000 animals against 20,000 generations with 20,000 animals: T and the shares stay the same, because only the ratio counts. (3) Keep the branch fixed and raise the population size: discordance grows. A short speciation interval and a large ancestral population do the same thing. (4) At any setting, the two wrong trees stay about equally common, and each is about as common as the orange part. That symmetry is the fingerprint of ILS.</p>
+  <p class="tool-note"><b>Control.</b> The simulation above does not use the formula. We ran its code for 2 million genes at each of eight settings, and separately ran a plain population model in which every line draws a random parent each generation. All matched the formula within chance (details in this section's notes).</p>
+  <p>Back to the apes. If a share of 30 % disagreeing genes came from ILS alone, the formula would give T of about 0.8 (our calculation, from 2/3 e<sup>&minus;T</sup> = 0.3). Scally et al. (2012) also found "no significant difference" between the number of bases sorting as ((H,G),C) and as ((C,G),H), with H for human, C for chimpanzee and G for gorilla. That is the symmetry you just saw. They also found that the share varies along the genome and is lower around coding genes, so selection plays a part that this simple model leaves out.</p>
+  <details class="simple">
+    <summary>Simple explanation with examples: why a gene can be closer to the "wrong" species</summary>
+    <div class="in">
+      <p>Imagine an ancestral species with two forms of a gene, form 1 and form 2. It splits into C and the ancestor of A and B. Both daughters inherit both forms. Soon the ancestor of A and B also splits, before either form has been lost. Now drift removes forms at random: A keeps form 1, B keeps form 2, C keeps form 1. At this gene A and C look like sisters, because their copies come from the same form. Nothing went wrong: the gene correctly records its own history.</p>
+      <p>A long internal branch gives drift time to remove one of the forms before the next split. A large population slows drift down. That is why T is a ratio of the two.</p>
+      <p>Worked numbers: a branch of 40,000 generations in a population of 10,000 animals gives T = 2, and about 91 % of genes match. A branch of 4,000 generations in the same population gives T = 0.2, and only about 45 % match, so more than half of the genes disagree with the species tree, although the species tree is still the most common single answer.</p>
+    </div>
+  </details>
+
+  <h3>Gene flow and paralogy: two causes that break the symmetry</h3>
+  <div class="grid2">
+    <figure>
+      <div class="svgbox" id="s10-flow"></div>
+      <figcaption><b>Gene flow.</b> After the species split, hybrids carry a copy from C into B. At this gene, B's copy really is a recent relative of C's, so the gene tree is ((B,C),A).</figcaption>
+    </figure>
+    <figure>
+      <div class="svgbox" id="s10-para"></div>
+      <figcaption><b>Paralogy.</b> A duplication older than the species makes two copies (blue and orange). Each × is a loss. A and C keep blue, B keeps orange, and all three look like one gene. Its tree is ((A,C),B).</figcaption>
+    </figure>
+  </div>
+  <p><dfn>Gene flow</dfn> between species, through hybrids that back-cross into a parent species, is called <dfn>introgression</dfn>. It moves real pieces of genome between branches, so those pieces have a different history. Unlike ILS it has a direction: "one discordant tree topology can become more common than the other", and this asymmetry "is one of the clearest signals of introgression" (Hibbins and Hahn 2022). This holds for gene flow between species that are not sisters. If your counts show ((B,C),A) clearly more often than ((A,C),B), ILS in one well-mixed ancestral population does not explain them.</p>
+  <p><dfn>Paralogy</dfn> is a different kind of problem. <span class="tip" title="Orthologs: gene copies in different species that trace back to a speciation.">Orthologs</span> trace back to a speciation, and <span class="tip" title="Paralogs: gene copies that trace back to a duplication.">paralogs</span> to a duplication (<a href="../03-annotation/#s07">lesson 3, section 07</a>). If you compare paralogs by mistake, the tree dates a duplication, not a speciation. This is why the characters must be checked first (<a href="#s02">section 02</a>). Different losses in different species can leave each species with a single copy, so the gene looks safe although it is not. The diagram shows this case. ASTRAL-Pro (Zhang et al. 2020) takes gene family trees with several copies per species, so paralogs need not be thrown away.</p>
+  <p>Gene tree errors can look like all of these. A short alignment gives a poorly estimated tree, and that discordance is noise, not history. Keep this in mind for the rest of the section.</p>
+
+  <h3>The anomaly zone: when the most common gene tree is wrong</h3>
+  <p>With three species the matching tree is always the most common: the formula never drops below 1/3, and each of the others never rises above it. A natural idea is then to take a vote: build many gene trees and pick the one that turns up most often. With four or more species that vote can fail.</p>
+  <p>Degnan and Rosenberg (2006) call a gene tree <dfn>anomalous</dfn> if it is more likely than the gene tree that matches the species tree. The <dfn>anomaly zone</dfn> is the set of branch lengths where such a tree exists. It exists for asymmetric species trees of four species, and for every species tree of five or more. It needs short branches, "especially if it is deep in the tree".</p>
+  <p>Here is a toy case. Take the four-species tree (((A,B),C),D) with both internal branches 0.1 coalescent units long. We simulated 8 million genes from it:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Gene tree, rooted</th><th>Share of genes</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>((A,B),(C,D))</code></td><td>12.8 %</td><td>The most common of the 15 possible rooted trees, and it is wrong</td></tr>
+      <tr><td><code>(((A,B),C),D)</code></td><td>10.4 %</td><td>The true species tree</td></tr>
+    </tbody>
+  </table></div>
+  <p>Why does a wrong tree win? In the wrong tree the pairs A,B and C,D can meet in either order, so there are two paths to it. The species tree has one strict order of meetings, so only one path. Adding genes makes this worse, not better: the vote settles on the wrong tree more and more firmly. The authors call the vote "statistically inconsistent" here. That means it does not converge on the truth as data grow.</p>
+  <p>There is a way out. Forget the root and look only at <dfn>quartets</dfn>: unrooted trees of four species. Four species have just three of these, for example AB|CD, which says that A and B are on one side of the tree and C and D on the other. Under this model, "quartet trees do not have anomaly zones" (Sayyari and Mirarab 2016). In the same simulation:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Unrooted quartet</th><th>Share of genes</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>AB|CD</code></td><td>39.7 %</td><td>Fits the species tree, and it wins. Our familiar formula gives the same: 1 &minus; (2/3) e<sup>&minus;0.1</sup></td></tr>
+      <tr><td><code>AC|BD</code></td><td>30.1 %</td><td>Wrong</td></tr>
+      <tr><td><code>AD|BC</code></td><td>30.2 %</td><td>Wrong; equal to the other wrong one within chance</td></tr>
+    </tbody>
+  </table></div>
+
+  <h3>Concatenation against summary methods</h3>
+  <p>There are two common ways to use many loci.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Concatenation</th><th>Summary method</th></tr></thead>
+    <tbody>
+      <tr><td><b>What it does</b></td><td>Joins all loci end to end into one long alignment and builds one tree, for example by maximum likelihood (<a href="#s06">section 06</a>).</td><td>Builds one tree per locus first, then combines these gene trees into one species tree.</td></tr>
+      <tr><td><b>Assumes</b></td><td>All loci share one tree.</td><td>Usually: gene trees are correct, and they differ only through ILS. This is the <span class="tip" title="Multispecies coalescent: the model of this section, in which gene lines coalesce at random inside the branches of a species tree.">multispecies coalescent</span>.</td></tr>
+      <tr><td><b>Main risk</b></td><td>With much ILS it can settle on a wrong tree, with strong bootstrap support.</td><td>Errors in the gene trees: "all summary methods, including ASTRAL, are sensitive to gene tree estimation error" (Zhang et al. 2018).</td></tr>
+      <tr><td><b>Did better in simulations when</b></td><td>Discordance was low, or moderate to high together with high gene tree error.</td><td>Discordance was high, or gene tree error was relatively low.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Kubatko and Degnan (2007) showed by simulation that concatenation can be statistically inconsistent when the coalescent produces much discordance, and that the bootstrap can then give "moderate to strong support for an incorrect tree". For a four-species tree, Mendes and Hahn (2018) found that maximum likelihood on concatenated data fails both inside and outside the anomaly zone. The last row of the table comes from simulations reviewed by Mirarab (2019): which approach wins depends on how much real discordance there is and how good the gene trees are. Neither is always better.</p>
+  <p>The ideal input for a summary method is demanding. In Mirarab's words it is "a set of perfectly aligned orthologous regions present in all genomes, with each region small enough to avoid recombination but large enough to have a strong phylogenetic signal", placed far enough apart to be fully unlinked. Real data only approach this.</p>
+
+  <h3>ASTRAL</h3>
+  <p>ASTRAL is a summary method used in many studies. Its documentation describes it as "a tool for estimating an unrooted species tree given a set of unrooted gene trees". It "finds the species tree that has the maximum number of shared induced quartet trees with the set of gene trees". In plain words: for every set of four species, each gene tree shows one quartet. ASTRAL looks for the species tree that agrees with as many of these as possible, choosing among branches that it collects from the data. Because the most likely quartet is the true one, this is <span class="tip" title="Statistically consistent: the answer converges on the truth as the number of genes grows, if the model holds.">statistically consistent</span> under the multispecies coalescent, even in the anomaly zone, if gene trees are correct.</p>
+  <p>The input is one file of gene trees in Newick format (<a href="#s01">section 01</a>), which you might make with IQ-TREE. The two main versions differ in what they report.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># one tree per locus: a partition file says where each locus lies in the alignment</span>
+iqtree3 -s ALN_FILE -S PARTITION_FILE --prefix loci -T AUTO
+<span class="c"># ASTRAL-III (Java), branch lengths in coalescent units</span>
+java -jar astral.5.7.8.jar -i loci.treefile -o species.tre 2> astral.log
+<span class="c"># ASTRAL-IV (package ASTER), 4 threads; on Windows use .\exe\astral4.exe</span>
+bin/astral4 -t 4 -o species.tre loci.treefile 2> astral.log</pre></div>
+  <dl class="defs">
+    <dt>Branch lengths</dt><dd>ASTRAL-III gives internal branches in coalescent units, the same T as in our figure. Its guide calls them "a direct measure of the amount of discordance in the gene trees" and warns that they are "prone to underestimation because of statistical noise in gene tree estimation". ASTRAL-IV gives lengths in substitutions per site for all branches instead.</dd>
+    <dt>Support</dt><dd>The default is the <span class="tip" title="Local posterior probability: the probability that a branch is in the species tree, computed from the counts of the three quartet arrangements around it, assuming the neighbouring branches are correct.">local posterior probability</span> (Sayyari and Mirarab 2016). It assumes that gene trees differ "only due to ILS", so gene flow and paralogy are outside its model.</dd>
+    <dt>Rooting</dt><dd>Input trees are treated as unrooted and "the output of ASTRAL should also be treated as an unrooted tree" (ASTRAL guide). ASTRAL-IV has the option <code>--root YOUR_OUTGROUP</code> to root its output.</dd>
+    <dt>Low-support branches</dt><dd>Zhang et al. (2018) found that contracting gene tree branches with very low support, for example below 10 %, improved accuracy, while "overly aggressive filtering is harmful".</dd>
+    <dt>Which version</dt><dd>The ASTRAL-III page encourages using the newer code in the ASTER package. ASTRAL-IV lacks some ASTRAL-III features; its guide suggests passing its tree to ASTRAL-III with <code>-q</code> for these. Paralogs: <code>astral-pro3</code> in the same package.</dd>
+  </dl>
+
+  <h3>Concordance factors: how much of the genome agrees with a branch</h3>
+  <p>Bootstrap support answers "how sure are we of this branch, given the data?" (<a href="#s07">section 07</a>). With thousands of loci that answer is almost always 100 %. Concordance factors answer another question: how much of the data actually shows this branch?</p>
+  <dl class="defs">
+    <dt>gCF, gene concordance factor</dt><dd>The "percentage of 'decisive' gene trees containing that branch" (Minh et al. 2020). A gene tree is <dfn>decisive</dfn> for a branch if it has the species needed to show that branch.</dd>
+    <dt>sCF, site concordance factor</dt><dd>The "percentage of decisive sites supporting a branch". Alignment columns are compared on quartets of species, one at a time.</dd>
+    <dt>gDF1, gDF2, gDFP; sDF1, sDF2</dt><dd>The matching <dfn>discordance factors</dfn>. The numbers 1 and 2 are the two other arrangements around a branch, like our two wrong trees. gDFP collects the decisive gene trees that show none of the three arrangements (the P is for <span class="tip" title="Paraphyly: a group that does not hold all descendants of its common ancestor. Here, the species on one side of the branch do not form one group in that gene tree.">paraphyly</span>).</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># 1. a reference tree, here from the concatenated alignment</span>
+iqtree3 -s ALN_FILE -p PARTITION_FILE --prefix concat -B 1000 -T AUTO
+<span class="c"># 2. gene concordance factors, using the locus trees made above</span>
+iqtree3 -t concat.treefile --gcf loci.treefile --prefix concord
+<span class="c"># 3. site concordance factors, likelihood version, 100 quartets per branch</span>
+iqtree3 -te concat.treefile -s ALN_FILE --scfl 100 --prefix concord2</pre></div>
+  <p>IQ-TREE writes the values onto the tree (<code>concord.cf.tree</code>) and into a table (<code>concord.cf.stat</code>). Its documentation recommends <code>--scfl</code> (from version 2.2.2) over the older parsimony-based <code>--scf</code>, and at least 100 quartets per branch.</p>
+  <p>How to read them, following Lanfear and Hahn (2024):</p>
+  <ol class="qlist">
+    <li><b>A concordance factor is not support.</b> It is a "biological parameter": an estimate of "the proportion of the genome for which a given clade is true". A true branch can have a low one. Minh et al. (2020) show a tree in which all but one bootstrap value are 100 %, yet the lowest gCF is 4.5 % and the lowest sCF 33.2 %.</li>
+    <li><b>The figure above predicts them.</b> Under ILS alone, the expected concordance is our formula: near 1 for long branches, near 1/3 for very short ones, and about 75 % at T = 1.</li>
+    <li><b>Compare the discordance factors.</b> Under ILS alone, the two alternatives should be about equal. If one is clearly larger, ILS alone does not explain it, and gene flow is one possible reason.</li>
+    <li><b>Mind the floors.</b> sCF has a floor of about 33 %: a value near it means the sites hardly prefer this branch over the two others. gCF has no such floor, and estimation error in short loci pulls it down, because noisy gene trees fall outside all three arrangements.</li>
+  </ol>
+
+  <h3>Networks</h3>
+  <p>A tree cannot draw gene flow, because every branch has only one parent. A <dfn>phylogenetic network</dfn> adds extra edges for hybridization or gene flow, and each carries an inheritance probability: the share of the genes that a hybrid population took from that parent. One published method, SNaQ (Solís-Lemus and Ané 2016), takes a table of quartet concordance factors from many loci and models ILS and hybrid edges together. Networks are harder to infer than trees: those authors note that an earlier full likelihood method was practical only for "up to about 10 species and 4 hybridizations", and they built SNaQ to go further. If your discordance factors are clearly unequal, a network is the next model to try.</p>
+</section>

@@ -1,0 +1,230 @@
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">08</span>Bayesian inference</h2>
+  <p class="lede">Maximum likelihood (<a href="#s06">s06</a>) looks for the tree that makes the data most probable, and the bootstrap (<a href="#s07">s07</a>) tests how stable that tree is. Bayesian inference asks a different question: given the data, a model and what we assumed beforehand, how probable is each tree? This section builds the answer from zero: first a coin, then one distance, then three trees.</p>
+
+  <h3>Three words: prior, likelihood, posterior</h3>
+  <p>The Bayesian method uses probability to describe everything we do not know, including the values in the model (Nascimento et al. 2017). Three quantities do all the work:</p>
+  <dl class="defs">
+    <dt>Prior</dt><dd>What you believe about the unknown value <b>before</b> seeing the data, written as probabilities.</dd>
+    <dt>Likelihood</dt><dd>The probability of the data <b>if</b> a given value were true. This is the same quantity as in <a href="#s06">s06</a>.</dd>
+    <dt>Posterior</dt><dd>What you should believe <b>after</b> seeing the data. It combines the prior and the likelihood.</dd>
+  </dl>
+  <p>The rule that joins them is <dfn>Bayes's theorem</dfn>:</p>
+  <div class="formula">posterior of a value = prior × likelihood ÷ (sum of prior × likelihood over all possible values)</div>
+  <p>The sum on the bottom is called the <dfn>marginal likelihood</dfn>. It is one number, the same for every value, and its only job here is to make the posterior probabilities add up to 1. So the posterior is proportional to prior × likelihood.</p>
+
+  <h3>A coin, worked by hand</h3>
+  <p>A coin is one of three kinds: it lands heads 30 %, 50 % or 70 % of the time. We toss it 10 times and get 7 heads. Each row below takes the likelihood of "7 heads in 10", multiplies it by the prior, and divides by the sum of those products. The table does this for two priors. The first has no preference. The second is sceptical: it gives 80 % to the fair coin, since most coins are fair.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Heads rate</th><th>Likelihood of 7 in 10</th><th>Equal prior</th><th>Posterior</th><th>Sceptical prior</th><th>Posterior</th></tr></thead>
+    <tbody>
+      <tr><td>30 %</td><td>0.0090</td><td>1/3</td><td>0.023</td><td>0.1</td><td>0.007</td></tr>
+      <tr><td>50 %</td><td>0.1172</td><td>1/3</td><td>0.298</td><td>0.8</td><td>0.773</td></tr>
+      <tr><td>70 %</td><td>0.2668</td><td>1/3</td><td>0.679</td><td>0.1</td><td>0.220</td></tr>
+    </tbody>
+  </table></div>
+  <p>With only 10 tosses the two priors give opposite answers. Now suppose we toss 100 times and get 70 heads. The posterior for the 70 % coin is 0.9997 with the equal prior and 0.9979 with the sceptical prior. <b>Weak data leave the prior in charge. Strong data outweigh it.</b></p>
+  <details class="simple"><summary>Simple explanation with examples: the same logic in the field</summary><div class="in">
+    <p>You hear a call at night that could be one of two bat species. The call fits species X slightly better. But species Y is a hundred times more common at this site. Your final belief is the fit of the call (likelihood) weighed by how common each species is (prior). One unclear call leaves you with Y. Twenty clear calls that fit X would change your mind.</p>
+    <p>Nothing here is special to bats or coins. A prior is written down, the data are weighed, and the result is a new statement of belief that can be checked and argued with.</p>
+  </div></details>
+
+  <h3>Why a chain is needed</h3>
+  <p>For the coin the bottom sum had three terms. For one distance between two sequences we can still do it: try thousands of evenly spaced values on a <dfn>grid</dfn> and add them up. For a tree we cannot. The sum runs over every possible tree (<a href="#s01">s01</a> shows how fast their number grows) and, for each tree, over all branch lengths and model values together. It "may be too expensive to compute" (Nascimento et al. 2017).</p>
+  <p><dfn>Markov chain Monte Carlo</dfn> (MCMC) avoids the sum. Instead of calculating the posterior, it draws a sample from it, and the sample shows us its shape. "Monte Carlo" means the method uses random numbers. "Markov chain" means each step depends only on where the chain is now, not on where it has been. The usual recipe is the <dfn>Metropolis-Hastings algorithm</dfn>:</p>
+  <ol class="qlist">
+    <li><b>Start</b> at any value.</li>
+    <li><b>Propose</b> a new value near the current one. Here we use a <dfn>sliding window</dfn>: a random value from a window of fixed width centred on the current value.</li>
+    <li><b>Compare.</b> Calculate R = (prior × likelihood at the new value) ÷ (prior × likelihood at the current value). The bottom sum of Bayes's theorem cancels in this ratio, so it is never needed.</li>
+    <li><b>Decide.</b> If R is 1 or more, move. If R is below 1, move with probability R. If the move fails, stay, and <b>count the current value again</b>.</li>
+    <li><b>Repeat</b> many times, and record the value every so often.</li>
+  </ol>
+  <p>The chain visits each value in proportion to its posterior probability (Nascimento et al. 2017), so a histogram of the visited values is an estimate of the posterior. A sliding window is <span class="tip" title="Symmetrical proposal: going from x to y is as likely as going from y to x. If a proposal is not symmetrical, the ratio R needs a correction, called the Hastings ratio.">symmetrical</span>, so step 3 needs no correction.</p>
+  <details class="simple"><summary>Simple explanation with examples: a walker on a hill in fog</summary><div class="in">
+    <p>Think of the posterior as a hill. The walker sees only the ground under their feet and the ground one step away. A step uphill is always taken. A step downhill is taken only sometimes, and a steep one rarely. So the walker wanders over the hill, but stays longest on the high ground.</p>
+    <p>Now count how many times the walker stood at each spot. That count is a map of the height of the hill, drawn without ever seeing it from outside. The downhill steps matter: a walker who only climbed would stop at the top, which gives one best value (like maximum likelihood) and no picture of the uncertainty.</p>
+  </div></details>
+
+  <div class="tool" id="s08-tool1">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3>MCMC walker for one distance</h3></div>
+    <p class="tool-note">Two invented sequences differ at k of n <span class="tip" title="Site: one column of an alignment.">sites</span>. The unknown is the distance d, in expected changes per site, under the JC69 model (<a href="#s03">s03</a>): a site differs with probability ¾ (1 − e<sup>−4d/3</sup>). The walker estimates d. The orange curve is the posterior calculated on a grid of 10,000 points, with no chain at all, so it is the right answer for the chain to reach.</p>
+    <div class="controls">
+      <div><div class="tool-note">Data</div><div class="seg" id="s08-data" role="group" aria-label="Data">
+        <button type="button" data-v="a" aria-pressed="false">3 of 20</button><button type="button" data-v="b" aria-pressed="true">10 of 100</button><button type="button" data-v="c" aria-pressed="false">100 of 1,000</button><button type="button" data-v="none" aria-pressed="false">No data</button>
+      </div></div>
+      <div><div class="tool-note">Prior on d</div><div class="seg" id="s08-prior" role="group" aria-label="Prior on d">
+        <button type="button" data-v="flat" aria-pressed="false">Flat, 0 to 3</button><button type="button" data-v="gentle" aria-pressed="true"><span class="tip" title="A gamma distribution with shape 2 and rate 20. Its mean is 0.1, and it is the prior on sequence distance in the worked example of Nascimento et al. (2017).">Gentle, mean 0.1</span></button><button type="button" data-v="strong" aria-pressed="false"><span class="tip" title="A gamma distribution with shape 100 and rate 200: mean 0.5, standard deviation 0.05. It claims to know d well, and for these data it is wrong.">Strong, mean 0.5</span></button>
+      </div></div>
+    </div>
+    <div class="controls">
+      <label>Step size (window width) <output id="s08-step-o">0.30</output><input type="range" id="s08-step" min="0" max="100" step="0.5" value="72.5"></label>
+      <label>Starting value of d <output id="s08-start-o">1.50</output><input type="range" id="s08-start" min="0.01" max="2" step="0.01" value="1.5"></label>
+      <label>Burn-in (share thrown away) <output id="s08-burn-o">25 %</output><input type="range" id="s08-burn" min="0" max="75" step="1" value="25"></label>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s08-more1">+1 step</button>
+      <button type="button" class="btn" id="s08-more2">+1,000 steps</button>
+      <button type="button" class="btn" id="s08-more3">+20,000 steps</button>
+      <button type="button" class="btn" id="s08-again">Start again</button>
+    </div>
+    <p class="tool-note" id="s08-last" aria-live="polite"></p>
+    <figure>
+      <div class="svgbox" id="s08-trace"></div>
+      <figcaption><b>Trace plot.</b> The value of d at each step. The grey block is the burn-in. The dotted lines are the 95 % interval from the grid.</figcaption>
+    </figure>
+    <figure>
+      <div class="svgbox" id="s08-hist"></div>
+      <div class="legend"><span><i style="background:var(--accent);height:10px;opacity:.45"></i>chain, after burn-in</span><span><i style="background:var(--het)"></i>posterior from the grid</span><span><i style="background:var(--muted)"></i>prior (dashed)</span></div>
+      <figcaption><b>The control.</b> The histogram should sit under the orange curve. A very tall prior is cut off at the top of the plot.</figcaption>
+    </figure>
+    <div class="readout">
+      <div>Samples kept<b id="s08-r-n"></b></div>
+      <div><span class="tip" title="The share of proposed moves that were taken, after burn-in.">Acceptance</span><b id="s08-r-acc"></b></div>
+      <div><span class="tip" title="Effective sample size: how many independent draws this correlated chain is worth.">ESS</span><b id="s08-r-ess"></b></div>
+      <div>Mean: chain / grid<b id="s08-r-mean"></b></div>
+      <div><span class="tip" title="95 % credible interval: the range that holds the middle 95 % of the posterior.">95 % interval</span>: chain / grid<b id="s08-r-ci"></b></div>
+      <div><span class="tip" title="Share of the histogram that would have to move to match the grid exactly. Random error alone keeps this above zero.">Histogram off by</span><b id="s08-r-tv"></b></div>
+    </div>
+    <p class="tool-note" id="s08-verdict" aria-live="polite"></p>
+  </div>
+
+  <p>Things to try, each from the starting settings. Press <b>+1 step</b> a few times and read the line above the plots. Then:</p>
+  <ul>
+    <li><b>Step size 0.002.</b> The chain creeps down from 1.5 and does not arrive: nearly every move is accepted (about 99 %), yet the mean stays above 1 even after 25,000 steps. A high acceptance rate is not a sign of quality.</li>
+    <li><b>Step size 2.</b> The chain reaches the hill in a few steps, then often stays put: only about 10 % of moves are accepted, and the ESS falls.</li>
+    <li><b>Burn-in 0 %.</b> The walk down from 1.5 now counts as data. With 5,000 steps it pulls the mean up a little (0.111 instead of 0.106 in one run). With more steps its effect fades.</li>
+    <li><b>Data "3 of 20", then the three priors.</b> The prior moves the answer a lot. With "100 of 1,000", the flat and gentle priors nearly agree, but the strong prior still pulls the answer up. A confident wrong prior needs a lot of data to overcome.</li>
+    <li><b>No data.</b> The chain now returns the prior. This is a real check used on real programs (see below).</li>
+  </ul>
+
+  <h3>Burn-in, mixing and convergence</h3>
+  <p>Two different things can go wrong, and the walker shows both (Nascimento et al. 2017):</p>
+  <dl class="defs">
+    <dt>Convergence</dt><dd>How quickly a chain gets from its starting point to the high part of the posterior. After that it is said to be <dfn>stationary</dfn>: it samples the posterior and no longer drifts.</dd>
+    <dt>Burn-in</dt><dd>The early samples, from before the chain became stationary. They are thrown away.</dd>
+    <dt>Mixing</dt><dd>How efficiently the chain moves around the posterior once it is there.</dd>
+  </dl>
+  <p>The step size controls mixing. If the steps are too large, most proposals land in the tails and are rejected. If they are too small, almost all are accepted but the chain hardly goes anywhere. For a move that changes a number, Nascimento et al. (2017) put the best acceptance "at about 30-40%", and the RevBayes guide gives common recommendations of 0.2 to 0.4. Most current programs tune their step sizes automatically, so this is rarely your job (Nascimento et al. 2017).</p>
+
+  <h3>How to check a run</h3>
+  <p>In a real analysis there is no grid and no orange curve. You have only the chain, so you judge it with <dfn>diagnostics</dfn>. "Reliable automatic stopping rules do not exist" (Nascimento et al. 2017); the RevBayes guide likewise says there is no theoretical test, and that you must decide when you have sampled enough. All the checks below can warn you of a problem. None can prove there is none.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Check</th><th>What it is</th><th>Rule of thumb</th></tr></thead>
+    <tbody>
+      <tr><td><b>Trace plot</b></td><td>Log likelihood or a sampled value against the step number, viewed in R or <a href="https://beast.community/analysing_beast_output">Tracer</a>.</td><td>After burn-in, it should fluctuate in a stable band without a trend. The MrBayes manual warns that likelihood trends "can be deceiving".</td></tr>
+      <tr><td><b>ESS</b>, effective sample size</td><td>Neighbouring samples of a chain are alike. The ESS is "the number of effectively independent draws" the chain is worth (BEAST2 documentation).</td><td>MrBayes: below 100 means poor mixing. Tracer flags values below 100, and the BEAST2 pages say above 200 "would be better". RevBayes's Convenience package uses 625.</td></tr>
+      <tr><td><b>Independent runs</b></td><td>The same analysis started again from different points.</td><td>Means, standard deviations and histograms should match. RevBayes recommends at least two runs, preferably four. Start them far apart.</td></tr>
+      <tr><td><b>PSRF</b>, potential scale reduction factor</td><td>Compares the variance between runs with the variance within runs, for one value.</td><td>Should be close to 1.0. The MrBayes manual suggests aiming for 1.0 to 1.2.</td></tr>
+      <tr><td><b>ASDSF</b>, average standard deviation of split frequencies</td><td>A <span class="tip" title="Split: a branch cuts the species into two groups, written for example AB | CD.">split</span>'s frequency is the share of sampled trees that contain it. For each split, take the standard deviation of that frequency between runs. Then average over splits.</td><td>MrBayes: below 0.01 is "very good indication of convergence", and 0.01 to 0.05 "may be adequate depending on the purpose".</td></tr>
+    </tbody>
+  </table></div>
+  <p>The thresholds differ because they are conventions, not laws. The ESS of 625 comes from asking that the error of the estimated mean be below 1 % of the width of the 95 % interval. The RevBayes guide also criticises the ASDSF: on large trees, splits with frequencies near 0 or 1 can dominate it, so a split found in every sample of one run and in no sample of another can go unnoticed. It suggests calculating an ESS for each split instead.</p>
+  <div class="note warn"><b>Agreement between runs is not proof.</b> Several runs can all be stuck on the same peak of the posterior and give a false impression of convergence (Nascimento et al. 2017). This is why runs should start from widely separated points. MrBayes also runs heated chains by default (see below) to help a run get off a peak.</div>
+
+  <h3>From one number to a tree</h3>
+  <p>In a tree analysis the chain's position is a whole tree: its <span class="tip" title="Topology: the branching order of a tree, ignoring branch lengths.">topology</span>, its branch lengths and the values of the substitution model. Moves that change a number work as above. Moves that change the topology use the branch swaps of the tree search in <a href="#s06">s06</a>: <span class="tip" title="Nearest-neighbour interchange: swap two subtrees across one inner branch.">NNI</span>, <span class="tip" title="Subtree pruning and regrafting: cut off a subtree and attach it elsewhere.">SPR</span> or <span class="tip" title="Tree bisection and reconnection: cut the tree in two and rejoin the parts at any pair of branches.">TBR</span> (Nascimento et al. 2017).</p>
+  <p>The output is a long list of sampled trees. To read it, you count. The <dfn>posterior probability</dfn> of a tree is the share of samples that are that tree, and the posterior probability of a <span class="tip" title="Clade: a group made of an ancestor and all its descendants.">clade</span> is the share of samples that contain it.</p>
+  <p>Four species have exactly three unrooted trees, so a small example can be solved in full. The toy alignment has 300 sites: 20 sites where one species alone differs, and a few sites that each support one tree. All other sites are identical. To make a grid answer possible, the four outer branches are fixed at 0.1, and only the inner branch length t is unknown, with an exponential prior of mean 0.05. All three trees have the same prior, 1/3. Each step tries, with equal chance, either a new t or one of the other two trees.</p>
+
+  <div class="tool" id="s08-tool2">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3>Two runs over three trees</h3></div>
+    <p class="tool-note">Run 1 starts on tree 1 and run 2 on tree 2. The first 25 % of each run is thrown away, the default in MrBayes. "Grid" is the exact answer: for each tree, prior × likelihood summed over 3,000 values of t. "Boot" is a bootstrap of the same sites (1,000 replicates, each keeping the tree with the highest likelihood).</p>
+    <div class="controls">
+      <div><div class="tool-note">Data</div><div class="seg" id="s08-presets" role="group" aria-label="Data presets">
+        <button type="button" data-v="6,4,2" aria-pressed="true">Weak signal</button><button type="button" data-v="12,3,1" aria-pressed="false">Clear signal</button><button type="button" data-v="5,5,5" aria-pressed="false">Tie</button>
+      </div></div>
+      <div><div class="tool-note">Steps per run</div><div class="seg" id="s08-len" role="group" aria-label="Steps per run">
+        <button type="button" data-v="300" aria-pressed="false">300</button><button type="button" data-v="20000" aria-pressed="true">20,000</button>
+      </div></div>
+    </div>
+    <div class="controls">
+      <label>Sites supporting tree 1 <output id="s08-sa-o">6</output><input type="range" id="s08-sa" min="0" max="30" step="1" value="6"></label>
+      <label>Sites supporting tree 2 <output id="s08-sb-o">4</output><input type="range" id="s08-sb" min="0" max="30" step="1" value="4"></label>
+      <label>Sites supporting tree 3 <output id="s08-sc-o">2</output><input type="range" id="s08-sc" min="0" max="30" step="1" value="2"></label>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s08-tmore1">+20,000 steps</button>
+      <button type="button" class="btn" id="s08-tmore2">+100,000 steps</button>
+      <button type="button" class="btn" id="s08-tagain">Start again</button>
+    </div>
+    <figure>
+      <div class="svgbox" id="s08-bars"></div>
+      <figcaption><b>The control.</b> Run 1 and run 2 should both match the grid. The bootstrap answers a different question, so it need not match.</figcaption>
+    </figure>
+    <figure>
+      <div class="svgbox" id="s08-ttrace"></div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>run 1</span><span><i style="background:var(--rep)"></i>run 2</span></div>
+      <figcaption><b>Trace over the trees.</b> Which tree each run was on at each step. Grey: burn-in.</figcaption>
+    </figure>
+    <div class="readout">
+      <div>Steps<b id="s08-t-n"></b></div>
+      <div><span class="tip" title="Average standard deviation of split frequencies between the two runs, calculated after burn-in as MrBayes does.">ASDSF</span><b id="s08-t-sd"></b></div>
+      <div><span class="tip" title="Largest difference between the average of the two runs and the grid, over the three trees.">Largest gap to grid</span><b id="s08-t-diff"></b></div>
+      <div><span class="tip" title="The share of tree moves that were taken, over the whole run. The limit is 2 × (1 − posterior of the best tree).">Tree moves accepted</span><b id="s08-t-acc"></b></div>
+    </div>
+    <p class="tool-note" id="s08-t-verdict" aria-live="polite"></p>
+  </div>
+
+  <p>Things to try:</p>
+  <ul>
+    <li><b>300 steps.</b> Press <b>Start again</b> a few times. The two runs differ from each other and from the grid. Sometimes the ASDSF is above 0.05. Sometimes it is low although both runs are far from the grid, which shows why agreement alone proves nothing. Add steps and watch both numbers fall.</li>
+    <li><b>Clear signal.</b> Tree moves are almost never accepted. That is correct, not a fault. If the best tree has posterior P, the acceptance of tree moves cannot exceed 2(1 − P) (Nascimento et al. 2017). A near-zero acceptance rate means a bad step size for a number, but it can simply mean a dominant tree for a topology.</li>
+    <li><b>Tie.</b> All three trees get about 1/3, as they should.</li>
+    <li><b>Weak signal.</b> Compare the grid and the bootstrap. Six sites against four give tree 1 a posterior of 0.84 but a bootstrap of about 0.70.</li>
+  </ul>
+
+  <h3>Posterior probability against bootstrap</h3>
+  <p>The toy shows a pattern that is well known from real comparisons: posterior probabilities tend to be higher than bootstrap values for the same branch. They are not two versions of one number.</p>
+  <dl class="defs">
+    <dt>Posterior probability</dt><dd>The probability that the clade is correct, given the data, the model and the prior (Nascimento et al. 2017). It is only as good as those assumptions.</dd>
+    <dt>Bootstrap</dt><dd>How often the clade comes back when the sites are resampled (<a href="#s07">s07</a>). It is a measure of stability, not a probability that the clade is true.</dd>
+  </dl>
+  <p>Simulation studies give a consistent picture. In Erixon et al. (2003), posterior probabilities were "significantly higher" than bootstrap frequencies for true clades, "but also ... erroneous conclusions will be made more often", and those errors were "strongly accentuated" when the model was too simple. Alfaro et al. (2003) found the two often strongly correlated, but substantially different on short branches, and found that posterior probabilities gave high support to correct groups with fewer characters. Douady et al. (2003) concluded that the two are "surely not interchangeable and cannot be directly compared". A posterior of 0.95 and a bootstrap of 95 % therefore do not mean the same thing. Report which one you used.</p>
+  <p>There is also a known hazard on very short branches. When the true tree is a <span class="tip" title="Star tree: all branches leave one central point, so the branching order does not exist.">star</span>, posterior probabilities for the three resolved trees do not settle at 1/3 even with unlimited data; they vary between data sets (Yang 2007). This <dfn>star-tree paradox</dfn> reflects "high and presumably spurious posterior probabilities", and they are "very sensitive to the prior". A high posterior on a very short branch deserves a second look.</p>
+  <details class="simple"><summary>Simple explanation with examples: two different questions</summary><div class="in">
+    <p>Take a clade with bootstrap 70 % and posterior 0.98. The bootstrap says: shake the data, and it falls apart in 3 of 10 trials. The posterior says: if this model and prior are right, this clade is very likely true. Both can hold at once. The word "if" carries the weight. With a poor model, the posterior can be confidently wrong.</p>
+  </div></details>
+
+  <h3>Choosing and checking priors</h3>
+  <p>The prior is part of your analysis, whether you chose it or not. "Default priors in many Bayesian software packages may not be appropriate" and "specification of the prior is the biologist's responsibility" (Nascimento et al. 2017). The same paper warns that independent exponential or uniform priors on branch lengths can produce very long trees from highly similar sequences. Three checks are cheap:</p>
+  <ol class="qlist">
+    <li><b>Run without data.</b> Some programs can sample from the prior alone. Compare the result with the prior you meant to set. This is the "No data" button above: it should return the prior, and it does.</li>
+    <li><b>Compare prior and posterior.</b> If they look alike, the data say little about that value. If they barely overlap, the prior and the data may conflict.</li>
+    <li><b>Change the prior and run again.</b> If the conclusion changes, say so. But never tune the prior to match the posterior: a prior states what you knew before the analysis.</li>
+  </ol>
+
+  <h3>Running it: MrBayes</h3>
+  <p><a href="https://nbisweden.github.io/MrBayes/">MrBayes</a> (Ronquist et al. 2012) is a command-line program. The manual's quick version has four steps; these commands are from it, and <code>primates.nex</code> is its example file.</p>
+  <div class="code"><button type="button">copy</button><pre>execute primates.nex
+lset nst=6 rates=invgamma
+mcmc ngen=20000 samplefreq=100 printfreq=100 diagnfreq=1000
+sump
+sumt</pre></div>
+  <p><code>execute</code> reads the data, <code>lset</code> sets the model (here GTR + I + gamma, see <a href="#s03">s03</a>), and <code>mcmc</code> runs the chains. <code>sump</code> summarises the model values and <code>sumt</code> the trees. At the end of the run the program asks whether to continue. Answer yes and add generations until the standard deviation of split frequencies is below 0.01, or below 0.05 if you care mainly about well-supported parts of the tree. A <dfn>generation</dfn> is one step of the chain.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>Meaning</th></tr></thead>
+    <tbody>
+      <tr><td><code>Ngen</code></td><td>1,000,000</td><td>Generations to run.</td></tr>
+      <tr><td><code>Nruns</code></td><td>2</td><td>Independent runs, from different random trees.</td></tr>
+      <tr><td><code>Nchains</code></td><td>4</td><td>Chains per run: one "cold" chain, which gives the samples, and three heated ones.</td></tr>
+      <tr><td><code>Samplefreq</code></td><td>500</td><td>Record the chain every this many generations.</td></tr>
+      <tr><td><code>Diagnfreq</code></td><td>5,000</td><td>Calculate the diagnostics every this many generations.</td></tr>
+      <tr><td><code>Burninfrac</code></td><td>0.25</td><td>Share of samples discarded (with <code>Relburnin=Yes</code>).</td></tr>
+      <tr><td><code>Minpartfreq</code></td><td>0.10</td><td>A split counts in the ASDSF if it reaches this frequency in at least one run.</td></tr>
+      <tr><td><code>Topologypr</code></td><td>Uniform</td><td>Prior: all topologies equally probable.</td></tr>
+      <tr><td><code>Brlenspr</code></td><td>Unconstrained: GammaDir(1.0, 0.100, 1.0, 1.0)</td><td>Prior on branch lengths: a prior on the total tree length, divided among branches by a <span class="tip" title="Dirichlet distribution: a probability distribution over a set of shares that add up to 1, here the share of the total tree length that each branch gets.">Dirichlet distribution</span>.</td></tr>
+    </tbody>
+  </table></div>
+  <p><b>Heated chains.</b> A heated chain walks on a flattened copy of the posterior, so it crosses valleys more easily. By default, at every generation two chains are picked at random and an attempt is made to swap their states, which can carry the cold chain to another peak. This is <dfn>Metropolis coupling</dfn>. The manual says heating "is essential for some data sets but it is not needed for others", and that the time needed grows in proportion to the number of chains.</p>
+  <p><b>Output files.</b> The <code>.p</code> files hold the sampled model values, and the <code>.t</code> files the sampled trees. <code>sump</code> prints the mean, the 95 % credibility interval, ESS and PSRF for each value. <code>sumt</code> writes a consensus tree with posterior probabilities to <code>.con.tre</code>, and the sampled trees sorted by probability to <code>.trprobs</code>. Open <code>.con.tre</code> in FigTree. The <code>.p</code> files are tab-delimited text that most statistics and graphing programs can import.</p>
+
+  <h3>Other programs</h3>
+  <p><a href="https://revbayes.github.io/">RevBayes</a> comes from the same authors. In their words, it lets users "build complex phylogenetic models interactively, from small building blocks", at the price of requiring more from the user. Its <a href="https://revbayes.github.io/tutorials/mcmc/binomial">coin tutorial</a> and <a href="https://revbayes.github.io/tutorials/convergence/">convergence tutorial</a> are good next steps after this section. <a href="https://www.beast2.org/">BEAST2</a> uses the same MCMC logic, and <a href="#s09">s09</a> covers it for dating. Note that one iteration is not the same thing in every program, so iteration counts cannot be compared between programs: compare the ESS instead (Nascimento et al. 2017).</p>
+
+  <details class="simple"><summary>Sources for this section</summary><div class="in">
+    <p>Nascimento FF, dos Reis M, Yang Z (2017) A biologist's guide to Bayesian phylogenetic analysis. Nat Ecol Evol 1:1446-1454. <a href="https://doi.org/10.1038/s41559-017-0280-x">doi:10.1038/s41559-017-0280-x</a></p>
+    <p>Ronquist F, Huelsenbeck JP, Teslenko M, Zhang C. MrBayes version 3.2 manual. <a href="https://github.com/NBISweden/MrBayes/blob/develop/doc/manual/Manual_MrBayes_v3.2.pdf">PDF</a>. Ronquist F et al. (2012) Syst Biol 61:539-542. <a href="https://doi.org/10.1093/sysbio/sys029">doi:10.1093/sysbio/sys029</a></p>
+    <p>RevBayes tutorials: <a href="https://revbayes.github.io/tutorials/convergence/">convergence</a>, <a href="https://revbayes.github.io/tutorials/mcmc_troubleshooting/">troubleshooting</a>. BEAST documentation on ESS: <a href="https://www.beast2.org/what-is-ess/">what is ESS</a>, <a href="https://beast.community/ess_tutorial">ESS tutorial</a>.</p>
+    <p>Erixon P et al. (2003) Syst Biol 52:665-673. <a href="https://doi.org/10.1080/10635150390235485">doi:10.1080/10635150390235485</a>. Alfaro ME et al. (2003) Mol Biol Evol 20:255-266. <a href="https://doi.org/10.1093/molbev/msg028">doi:10.1093/molbev/msg028</a>. Douady CJ et al. (2003) Mol Biol Evol 20:248-254. <a href="https://doi.org/10.1093/molbev/msg042">doi:10.1093/molbev/msg042</a>. Yang Z (2007) Mol Biol Evol 24:1639-1655. <a href="https://doi.org/10.1093/molbev/msm081">doi:10.1093/molbev/msm081</a>. For these four papers we read the abstracts only.</p>
+  </div></details>
+</section>

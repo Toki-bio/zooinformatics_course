@@ -1,0 +1,30 @@
+# Section 07, How much to trust a branch: sources and checks
+
+## Sources opened, with the supporting sentence
+- Felsenstein 1985, Evolution 39:783-791, doi:10.1111/j.1558-5646.1985.tb00420.x (abstract read, via PubMed). "It involves resampling points from one's own data, with replacement, to create a series of bootstrap samples of the same size as the original data." "...the proper method of resampling is to keep all of the original species while sampling characters with replacement, under the assumption that the characters have been independently drawn..." "If a group shows up 95% of the time or more, the evidence for it is taken to be statistically significant."
+- Hillis and Bull 1993, Syst Biol 42:182-192 (abstract read only, OUP page). Bootstrap proportions give "biased but highly conservative estimates"; "bootstrap proportions of >=70% usually correspond to a probability of >=95% that the corresponding clade is real" under stated conditions (equal rates, symmetric phylogenies, internodal change affecting about 20% or fewer characters); very high or unequal rates can make values above 50% overestimate accuracy. The page paraphrases; the quoted fragments come from a summary of the abstract, so re-check wording against the PDF.
+- Minh, Nguyen, von Haeseler 2013, Mol Biol Evol 30:1188-1195, doi:10.1093/molbev/mst024 (abstract read). RELL + candidate-tree collection, stopping rule, median speed-up 3.1 (0.66-33.3) to 10.2 (1.32-41.4) vs RAxML RBS; "relatively unbiased compared with the conservative standard bootstrap"; "provides a more direct interpretation of the bootstrap support".
+- Hoang et al. 2018, Mol Biol Evol 35:518-522, doi:10.1093/molbev/msx281 (full text read). "one can trust branches with UFBoot2 support >=95%" under no or mild model violation; "UFBoot2 (like UFBoot) overestimated the branch supports" under severe violation; "UFBoot2 + NNI should be applied if severe model violations are present"; invoked with -bnni.
+- Guindon et al. 2010, Syst Biol 59:307-321, doi:10.1093/sysbio/syq010 (abstract read ONLY). "a new test to assess the support of the data for internal branches... extends the recently proposed approximate likelihood-ratio test and relies on a nonparametric, Shimodaira-Hasegawa-like procedure." The exact SH-aLRT construction is not described on the page for that reason.
+- Lemoine et al. 2018, Nature 556:452-456, doi:10.1038/s41586-018-0043-0 (full text via PMC6030568, first 100,000 of 111,355 characters read). "Felsenstein's bootstrap tends to yield very low supports, especially on deep branches"; "A replicated branch must match a reference branch exactly"; TBE(b) = 1 - (average transfer index)/(p-1), p = size of the smaller side; "TBE supports are easily interpreted as fractions of unstable taxa"; "should not be interpreted as the confidence level of some statistical test"; "cannot be interpreted as the probability for the branch b to belong to the true phylogeny"; "70% is a reasonable threshold to start with"; "better for users to interpret the TBE values depending on the data". The paper's last 11 % of text was not read.
+- IQ-TREE tutorial, https://iqtree.github.io/doc/Tutorial (fetched 2026-11-06): -B and -alrt, "1000 is the minimum number recommended"; "Numbers in parentheses are SH-aLRT support (%) / ultrafast bootstrap support (%)"; -bnni added in 1.6 "to reduce the risk of overestimating branch supports with UFBoot due to severe model violations". The tutorial page itself gives no 95/80 cut-offs.
+- IQ-TREE FAQ, https://iqtree.github.io/doc/Frequently-Asked-Questions (fetched 2026-11-06): "For UFBoot, you should only start to rely on a branch if its support is >= 95%"; "One would be more confident if a clade has its SH-aLRT >= 80% and UFboot >= 95%"; "a different meaning than the normal (more conservative) bootstrap supports"; "you should not compare BS% with UFBoot% directly"; thresholds for single-gene trees; for concatenated data both reach 100 % and concordance factors are recommended. IQ-TREE version of the FAQ not stated on the page.
+
+## Our own material (flagged on the page)
+- 1 - 1/e share of columns: standard probability, derived on the page.
+- TBE worked example (p = 5, one taxon moves): our arithmetic from the paper's formula.
+- Toy alignment: 6 invented taxa, 30 columns, simulated with a Jukes-Cantor-type model on an invented unrooted tree ((A,B),(C,(D,E)),F); replicate trees by neighbour joining on p-distance (Saitou and Nei 1987, not re-opened for this section; the code was checked against a second implementation).
+
+## Controls (run 2026-11-06)
+1. Share of original columns in a resample: n=30, 20,000 resamples, mean 0.6374 vs exact 1-(29/30)^30 = 0.6383. n=100: 0.6374 (exact 0.6340); n=1000: 0.6314 (0.6323); n=10000: 0.6319 (0.6321); limit 1-1/e = 0.6321. Pass.
+2. Split frequencies: the page's engine drew 1000 resamples (seed 2026) and recorded the column lists; a separate Python neighbour-joining (different data structures, frozenset taxa) rebuilt every tree from those lists. All 8 split counts identical (e.g. CDEF|AB 1000, DE|ABCF 988, CF|ABDE 611, CDE|ABF 360). Pass. Limits: both use the same resample lists and the same NJ algorithm, so this checks the code, not NJ itself.
+
+## Doubts
+- Hillis and Bull wording from abstract only.
+- "A real analysis would use likelihood" is a statement about the toy, not a source claim.
+- Toy shows FBP only; UFBoot, SH-aLRT and TBE are explained in text and have no widget.
+- Links #s06, #s10 assume the lesson's final section ids.
+
+## Final review 2026-11-06
+- Reviewer voice changed from "I" to "we" in two places. The example command now calls `iqtree3`, as s06 does (version 2 is `iqtree2`).
+- Added a tooltip for "resampling estimated log-likelihood" (RELL): column likelihoods are computed once per candidate tree and resamples are scored from the stored values. Our plain-language description of the method named in the UFBoot abstract; the original RELL paper (Kishino, Miyata and Hasegawa 1990) was not opened.

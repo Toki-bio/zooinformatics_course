@@ -1,0 +1,169 @@
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">09</span>Dating trees</h2>
+  <p class="lede">The trees of <a href="#s06">s06</a> and <a href="#s08">s08</a> have branch lengths in substitutions per site. A zoologist usually wants millions of years: when did these two species split? Sequences alone cannot answer that. This section shows why, what a clock model adds, how an outside date (a calibration) turns the tree into a dated tree, and how much that one choice controls every age in it.</p>
+
+  <h3>Why rates and times cannot be separated</h3>
+  <p>A branch length is a product:</p>
+  <div class="formula">branch length = rate × time</div>
+  <p>The branch length is in substitutions per site, the rate in substitutions per site per million years, and the time in million years (My). A branch of 0.01 can be a rate of 0.001 acting for 10 My, or a rate of 0.002 acting for 5 My. Both give the same expected amount of change, so no amount of sequence can tell them apart. Drummond et al. (2006) say it directly: "the individual contributions of rate and time to molecular evolution cannot be separated". Even under a perfect clock, "the divergence times and the overall substitution rate can only be separately estimated if there is a source of external calibration information". Heath et al. (2014) put it more shortly: "molecular sequence data are not informative on absolute time".</p>
+  <p>That outside information is a <dfn>calibration</dfn>. Drummond et al. (2006) list three kinds:</p>
+  <ol class="qlist">
+    <li><b>An age for an internal node</b>, usually from a fossil. This is the usual case for animals.</li>
+    <li><b>Known ages of the sequences at the tips.</b> This works when samples were taken at clearly different times, as with fast RNA viruses.</li>
+    <li><b>A rate taken from an earlier, independent study.</b> It can be fixed or given a range. This is the same kind of step as using a mutation rate to turn a PSMC curve into years (<a href="../04-demography/#s04">lesson 4, s04</a>).</li>
+  </ol>
+  <p>With no calibration at all, you can still get <em>relative</em> ages: this node is three times older than that one (Heath, FBD tutorial). If the rate is simply fixed at 1, time is measured in substitutions per site (Drummond et al. 2006).</p>
+
+  <details class="simple"><summary>Simple explanation with examples: a trail with no clock</summary><div class="in">
+    <p>You follow a wolf's trail for 30 km. Did it walk for 3 hours at 10 km/h, or for 6 hours at 5 km/h? The trail looks the same. The length of the trail is the branch length, and speed and time are the rate and the age.</p>
+    <p>Now one camera trap on the trail gives a time stamp: the wolf passed the 10 km mark 2 hours after it set out. That gives a speed of 5 km/h. If the wolf kept the same speed, you can also time every other point on the trail. The time stamp is the calibration, and "kept the same speed" is the clock model.</p>
+  </div></details>
+
+  <div class="tool" id="s09-tool1">
+    <div class="tool-head"><span class="tool-tag">Try it</span><b>Slide a calibration and watch every age change</b></div>
+    <figure>
+      <div class="controls">
+        <div><div class="tool-note">Node with the calibration</div>
+        <div class="seg" role="group" aria-label="Node with the calibration" id="s09-node">
+          <button type="button" data-v="n1" aria-pressed="false">P+Q</button>
+          <button type="button" data-v="n2" aria-pressed="true">P+Q+R</button>
+          <button type="button" data-v="n3" aria-pressed="false">root</button>
+        </div></div>
+        <label for="s09-age">Age given to that node (My)
+          <input type="range" id="s09-age" min="6" max="72" step="1" value="30">
+          <output id="s09-age-out">30 My</output></label>
+      </div>
+      <div class="svgbox"><svg id="s09-tree" viewBox="0 0 760 290" width="100%" style="min-width:620px" role="img" aria-label="A strict-clock tree of four invented species on a time axis in million years. The ages of the three internal nodes follow the calibration."></svg></div>
+      <div class="readout">
+        <div><b id="s09-r-rate"></b>rate, substitutions per site per My</div>
+        <div><b id="s09-r-n1"></b>age of node P+Q</div>
+        <div><b id="s09-r-n2"></b>age of node P+Q+R</div>
+        <div><b id="s09-r-n3"></b>age of the root</div>
+        <div><b id="s09-r-bl"></b>branch to P = rate × time, in substitutions per site</div>
+        <div><b id="s09-r-ratio"></b>root age ÷ age of P+Q</div>
+      </div>
+      <figcaption><b>What to watch.</b> The last two numbers never change: they are what the sequences tell you. Everything measured in years changes in proportion to the calibration. Double the calibration and every age doubles, and the rate halves.</figcaption>
+    </figure>
+    <p class="tool-note">Invented data for four invented species, P, Q, R and S, under a strict clock. The tool reads the distances below and takes each node's depth as half the average distance between its two groups. Worked by hand:</p>
+    <div class="toy">Distances (substitutions per site)
+     P     Q     R
+Q   0.02
+R   0.06  0.06
+S   0.10  0.10  0.10
+
+Depth = half the distance
+P+Q     0.02 / 2 = 0.01
+P+Q+R   0.06 / 2 = 0.03
+root    0.10 / 2 = 0.05
+
+Calibrate P+Q+R at 30 My
+rate  = 0.03 / 30    = 0.001 per My
+P+Q   = 0.01 / 0.001 = 10 My
+root  = 0.05 / 0.001 = 50 My</div>
+    <p class="tool-note">Depth is half the distance because a distance between two species counts the changes on both lines of descent, and each line has run for the whole time since the split.</p>
+  </div>
+
+  <h3>Clock models: strict and relaxed</h3>
+  <p>The tool used a <dfn>strict clock</dfn>: one rate on every branch, which is why one calibration fixed everything. It is the same assumption that UPGMA makes (<a href="#s04">s04</a>). Dating began this way, with a constant clock whose rate was set from the fossil record (Ronquist et al. 2012, citing Zuckerkandl and Pauling 1962). But rates differ between lineages, and "it is now standard practice to accommodate such rate variation using relaxed-clock models" (Ronquist et al. 2012).</p>
+  <p>A small example of the damage. In the toy, suppose the true age of P+Q is 10 My and the rate is 0.001, but the line to P ran twice as fast. Then the branch to P is 0.02, the branch to Q is 0.01, and their distance is 0.03. Half of that is 0.015, and a strict clock with the same rate reads 15 My instead of 10.</p>
+  <p>A <dfn>relaxed clock</dfn> lets the rate differ between branches. To separate rate and time on each branch, the method then needs a model of how rates vary (Heath, FBD tutorial):</p>
+  <div class="tbl"><table style="min-width:620px">
+    <thead><tr><th>Clock model</th><th>What it assumes</th></tr></thead>
+    <tbody>
+      <tr><td><b>Strict</b></td><td>One rate for the whole tree.</td></tr>
+      <tr><td><b>Local clocks</b></td><td>A separate rate for each group of branches that you name yourself.</td></tr>
+      <tr><td><b>Autocorrelated</b></td><td>A branch's rate is drawn from a distribution whose mean depends on the rate of its parent branch, so relatives have similar rates.</td></tr>
+      <tr><td><b>Uncorrelated</b></td><td>Each branch's rate is drawn independently from one shared distribution, such as a <span class="tip" title="A skewed distribution of positive numbers. Its logarithm follows a normal bell curve.">lognormal</span> (UCLN) or an exponential (UCED). A branch's rate says nothing about its neighbour's.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="tool-note">Definitions from Drummond et al. (2006).</p>
+  <p>In their simulations, Drummond et al. (2006) found that when the data did not follow a clock, a strict-clock analysis "did extremely poorly": the true rates fell inside its <span class="tip" title="95 % highest posterior density interval: the narrowest range of values that holds 95 % of the posterior probability. Loosely, the Bayesian version of a confidence interval.">95 % HPD</span> only 3 to 11 % of the time. The uncorrelated models "also perform well when the data are clocklike". The price of relaxing is precision: on their real data sets, the strict clock always gave the most precise tree estimates. These figures come from one study, not a universal rule.</p>
+
+  <h3>A calibration is a prior, not a date</h3>
+  <p>A fossil does not date a split. It shows that the lineage already existed when the animal died. If the fossil truly belongs to the group, it gives "a reliable minimum age bound", while "maximum bounds are far more difficult to come by" (Heath, FBD tutorial). The fossil probably sits on a side branch of unknown length, not on the node itself (Ronquist et al. 2012). So point calibrations taken from the oldest fossils "are likely to be substantial underestimates" (Drummond et al. 2006).</p>
+  <p>Bayesian dating therefore states a <span class="tip" title="What you believe about a value before seeing the sequence data. See s08.">prior</span> on the node's age, called a <dfn>calibration density</dfn>. The common shapes (Heath, FBD tutorial; Barba-Montoya et al. 2017):</p>
+  <dl class="defs">
+    <dt>Uniform</dt><dd>Equal probability between a minimum and a maximum. In BEAST2 and MrBayes these are <dfn>hard bounds</dfn>: ages outside have zero probability. <dfn>Soft bounds</dfn> leave a small probability outside.</dd>
+    <dt>Exponential, offset</dt><dd>Starts at the fossil age, with most weight just above it. Useful "if the fossil age is very close to the age of its ancestral node".</dd>
+    <dt>Lognormal, offset</dt><dd>Starts at the fossil age, with "the highest probability on ages somewhat older than the fossil", and a long tail.</dd>
+    <dt>Normal</dt><dd>Symmetrical around a mean. "Not always appropriate" for fossils, but useful for a geological date or for an age taken from an earlier study.</dd>
+  </dl>
+  <p><dfn>Offset</dfn> means the curve starts at the fossil age, so it describes the time that passed between the split and the fossil.</p>
+
+  <div class="tool" id="s09-tool2">
+    <div class="tool-head"><span class="tool-tag">Try it</span><b>Change the calibration prior and watch the ages move</b></div>
+    <figure>
+      <div class="controls">
+        <div><div class="tool-note">Shape of the prior</div>
+        <div class="seg" role="group" aria-label="Shape of the prior" id="s09-shape" style="flex-wrap:wrap">
+          <button type="button" data-v="point" aria-pressed="false">fixed at fossil</button>
+          <button type="button" data-v="unif" aria-pressed="false">uniform</button>
+          <button type="button" data-v="exp" aria-pressed="false">exponential</button>
+          <button type="button" data-v="ln" aria-pressed="true">lognormal</button>
+        </div></div>
+        <label for="s09-fos">Fossil age, the minimum (My)
+          <input type="range" id="s09-fos" min="10" max="60" step="1" value="30">
+          <output id="s09-fos-out">30 My</output></label>
+        <label for="s09-gap">Average gap from split to fossil (My)
+          <input type="range" id="s09-gap" min="1" max="20" step="1" value="8">
+          <output id="s09-gap-out">8 My</output></label>
+      </div>
+      <div class="svgbox"><svg id="s09-prior" viewBox="0 0 760 260" width="100%" style="min-width:620px" role="img" aria-label="Probability curves for the age of the calibrated node P+Q+R and for the root of the same toy tree, on an axis in million years."></svg></div>
+      <div class="legend"><span><i style="background:var(--het)"></i>node P+Q+R (has the calibration)</span><span><i style="background:var(--accent)"></i>root (no calibration of its own)</span></div>
+      <div class="tbl"><table style="min-width:400px">
+        <thead><tr><th>Node</th><th>Median age (My)</th><th>Central 95 % range (My)</th></tr></thead>
+        <tbody id="s09-body"></tbody>
+      </table></div>
+      <p class="tool-note" id="s09-verdict" aria-live="polite"></p>
+      <figcaption><b>What to watch.</b> Same fossil, same average gap, different shape: the median moves, and so does the whole tree. The root has no calibration, yet it inherits a stretched copy of this curve.</figcaption>
+    </figure>
+    <p class="tool-note">The toy tree from the first tool, with a strict clock and sequences so long that the branch lengths are known exactly. All the uncertainty left is the calibration. The three curves have the same mean gap: the uniform runs from the fossil to fossil + 2 × gap, and the lognormal has σ = 0.6 (our choice). Real analyses also have uncertain rates and limited sequence, so they do not give simple copies like this.</p>
+  </div>
+
+  <p>The toy has perfect sequence data and the ages are still uncertain. That is the general point: fossil calibrations are "expected to have a major impact on divergence time estimates even if a huge amount of molecular data is available" (Barba-Montoya et al. 2017). A narrow result is no proof either: conflict between calibrations and branch lengths can give ages that are "grossly incorrect, yet have a narrow posterior distribution" (Rannala 2016).</p>
+  <div class="note warn"><b>The prior you type is not the prior you get.</b> Calibration densities "do not represent the marginal prior distribution of the calibration node" (Heled and Drummond 2012). The marginal prior is the prior of that one node once all the other priors have acted on it. In BEAST2 and MrBayes the density you specify is multiplied with the tree prior, and ancestors must also stay older than descendants, so "the effective priors on the calibration node ages after the truncation can be very different from the user-specified calibration densities" (Barba-Montoya et al. 2017). Always look at the prior the program really uses: run it once without the sequence data.</div>
+  <p>The fossil itself needs a justification. Parham et al. (2012) give a checklist of five points for any fossil calibration:</p>
+  <ol class="qlist">
+    <li>Museum numbers of the specimens.</li>
+    <li>A diagnosis based on derived characters, or an up-to-date phylogenetic analysis that includes the specimens.</li>
+    <li>A statement on how morphological and molecular data sets were reconciled.</li>
+    <li>The locality and the stratigraphic level.</li>
+    <li>A published radioisotopic age or numeric timescale, and how the number was chosen.</li>
+  </ol>
+  <p>For a minimum, they say to use the youngest possible age of the fossil, not the midpoint of the interval.</p>
+
+  <h3>Fossils at the nodes, or fossils at the tips</h3>
+  <figure>
+    <div class="svgbox"><svg id="s09-nodetip" viewBox="0 0 760 210" width="100%" style="min-width:620px" role="img" aria-label="Left: node dating, a fossil's age is turned into a prior on a node of the tree of living species. Right: tip dating, each fossil is a dated tip on its own side branch of the tree."></svg></div>
+    <figcaption><b>Two ways to use a fossil.</b> Left: the fossil only sets a curve under a node. Right: the fossils are part of the tree.</figcaption>
+  </figure>
+  <p><dfn>Node dating</dfn> is everything above: turn a fossil into a prior on a node. Ronquist et al. (2012) list its weaknesses. The calibration must be tied to a node, although no node is known with certainty. Only the oldest fossil of a group is used, so "one thus often ends up discarding most of the information preserved in the fossil record". And the step from fossil to curve is hard to justify: Parham et al. (2012) note that "there is presently no practical way to estimate curve parameters".</p>
+  <p><dfn>Tip dating</dfn> puts the fossils into the tree as tips with their own ages. There are two forms:</p>
+  <dl class="defs">
+    <dt>Total-evidence dating</dt><dd>Fossils and living species are analysed together, with morphological characters for the fossils and sequences for the living species. The morphology places each fossil and informs the length of its side branch, so no node has to be fixed (Ronquist et al. 2012). In their study of Hymenoptera, the ages were less sensitive to the priors and tended to be more precise than with node dating.</dd>
+    <dt>Fossilized birth-death (FBD) model</dt><dd>A tree prior that treats living species and fossils as products of one process, with rates of speciation, extinction and fossil recovery and a sampling probability for living species. Under it "arbitrary calibration densities are not necessary", and all reliable fossils can be used (Heath et al. 2014). A fossil may also be a direct ancestor of a later sample (a <dfn>sampled ancestor</dfn>). The model works without morphological characters too, but you then need some prior knowledge of relationships (Heath, FBD tutorial).</dd>
+  </dl>
+  <p>Tip dating has its own traps. Ronquist et al. (2016) found that under some conditions total-evidence ages are "pushed back to very old strata" and very imprecise, which they call <dfn>deep root attraction</dfn>. It occurs "when there are model errors or conflicts in the data". And FBD is meant for fossil occurrences: it is "not suitable for dating trees using biogeographical information or secondary calibration dates" (Heath, FBD tutorial). A <dfn>secondary calibration</dfn> is an age estimated in an earlier study.</p>
+
+  <h3>BEAST2 as used for dating</h3>
+  <p><a href="https://www.beast2.org/">BEAST2</a> (Bouckaert et al. 2019) estimates the tree, the rates and the ages together by <span class="tip" title="Markov chain Monte Carlo: a walk through possible trees and values that visits each in proportion to its posterior probability. See s08.">MCMC</a> (<a href="#s08">s08</a>). Because the tree itself can change during the run, you do not calibrate a fixed node: you give a prior to the most recent common ancestor of a named set of species (Drummond et al. 2006). It is the same program that draws skyline plots (<a href="../05-many-genomes/#s07">lesson 5, s07</a>). The usual path, from the two tutorials listed below:</p>
+  <ol class="qlist">
+    <li><b>BEAUti</b>, the setup program, reads the alignment and writes an XML file for BEAST. Set the substitution model (<a href="#s03">s03</a>).</li>
+    <li><b>Clock Model.</b> The default is Strict Clock. The FBD tutorial uses the Optimized Relaxed Clock from the ORC package, an uncorrelated lognormal clock.</li>
+    <li><b>Tree prior.</b> <span class="tip" title="The Yule model is a simple tree prior: species split at a constant rate and none go extinct.">Calibrated Yule</span> in the node-dating tutorial, Fossilized Birth Death Model (SA package) in the FBD tutorial. This choice matters: "because the rate and time are confounded in the branch-length parameter, the prior describing the branching times can have a strong effect on divergence time estimation" (Heath, FBD tutorial).</li>
+    <li><b>Calibration.</b> For node dating, add a taxon set, tick Monophyletic (the tutorial requires it with Calibrated Yule), and choose a distribution for the group's common ancestor. The tutorial's human and chimpanzee example is a lognormal with M = 1.78 and S = 0.085: centred near 6 My, with a central 95 % range of 5 to 7 My.</li>
+    <li><b>Run with Sample From Prior first.</b> This box on the MCMC panel makes BEAST ignore the sequence likelihood. Fossil occurrence times still count. Compare the resulting ages with the curves you meant to give.</li>
+    <li><b>Run with the sequences, then check the run in Tracer</b>: look at the <span class="tip" title="Effective sample size: how many independent samples the correlated MCMC samples are worth. See s08.">ESS</span> and the 95 % HPD of each age.</li>
+    <li><b>TreeAnnotator</b> summarises the sampled trees, for example as a <span class="tip" title="The sampled tree with the highest product of clade posterior probabilities across all nodes.">maximum clade credibility tree</span> with median node heights. <b>FigTree</b> draws it.</li>
+  </ol>
+  <p class="tool-note">The FBD tutorial is written for BEAST v2.7.x (latest release when this was written: v2.7.8). The node-dating tutorial was written for version 2.2, so its menus may differ from current BEAUti.</p>
+
+  <h3>Faster methods for a tree you already have</h3>
+  <p>Bayesian programs struggle with trees of thousands of tips (To et al. 2016). Two other approaches take a finished tree with branch lengths and fit ages to it:</p>
+  <dl class="defs">
+    <dt>Least-squares dating (LSD)</dt><dd>To et al. (2016) model each branch length as rate × time plus noise, and find the rate and ages that fit best. Input is a tree and the sampling dates of the tips, so it is built for samples taken through time, such as viruses. On simulated data its accuracy was similar to the most sophisticated methods at much less computing time, and the model is robust to uncorrelated departures from a clock.</dd>
+    <dt>Penalised likelihood</dt><dd>Sanderson (2002) gives every lineage its own rate, then adds a "roughness penalty that discourages rates from varying too much across a phylogeny". <span class="tip" title="Prune lineages from the tree, predict them, and measure the prediction error.">Cross-validation</span> chooses how strong the penalty is. We read only the abstract of this paper.</dd>
+  </dl>
+
+  <p class="tool-note"><b>Sources.</b> <a href="https://doi.org/10.1371/journal.pbio.0040088">Drummond et al. 2006</a>; <a href="https://doi.org/10.1093/sysbio/sys058">Ronquist et al. 2012</a>; <a href="https://doi.org/10.1098/rstb.2015.0136">Ronquist et al. 2016</a>; <a href="https://doi.org/10.1073/pnas.1319091111">Heath et al. 2014</a> (abstract only); <a href="https://doi.org/10.1093/sysbio/syr107">Parham et al. 2012</a>; <a href="https://doi.org/10.1093/sysbio/syr087">Heled and Drummond 2012</a>; <a href="https://doi.org/10.1016/j.ympev.2017.07.005">Barba-Montoya et al. 2017</a>; <a href="https://doi.org/10.1098/rstb.2015.0134">Rannala 2016</a> (abstract only); <a href="https://doi.org/10.1371/journal.pcbi.1006650">Bouckaert et al. 2019</a>; <a href="https://doi.org/10.1093/sysbio/syv068">To et al. 2016</a>; <a href="https://doi.org/10.1093/oxfordjournals.molbev.a003974">Sanderson 2002</a> (abstract only). Tutorials: <a href="https://taming-the-beast.org/tutorials/FBD-tutorial/">FBD tutorial (Heath, Taming the BEAST)</a>; <a href="https://beast2-dev.github.io/beast-docs/beast2/DivergenceDating/DivergenceDatingTutorial.html">Divergence Dating tutorial</a>.</p>
+</section>

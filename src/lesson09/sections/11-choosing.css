@@ -1,0 +1,3 @@
+#s11-wrap #s11-src a, #s11-wrap #s11-src li{overflow-wrap:anywhere}
+#s11-wrap .defs dd, #s11-wrap .qlist li{overflow-wrap:anywhere}
+#s11-wrap .seg{flex-wrap:wrap}

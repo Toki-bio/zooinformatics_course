@@ -1,0 +1,101 @@
+<section aria-labelledby="s05" id="s05-wrap">
+  <h2 id="s05"><span class="n">05</span>Parsimony</h2>
+  <p class="lede">The distance methods of the last section first squeeze the sequences into a table of distances and then build a tree from the table. <dfn>Parsimony</dfn> does not make a table. It looks at the sequences column by column and asks one question of every possible tree: how many changes would this tree need to explain what we see? The tree that needs the fewest is the winner. The idea is old, simple and easy to do by hand, and its failure is also instructive. This section shows how the changes are counted, which columns carry information, how the method is misled when some branches are long, and why a SINE insertion is a particularly clean kind of character.</p>
+
+  <h3>The criterion</h3>
+  <p>A <span class="tip" title="One column of an alignment: the same position in all the sequences, or any other feature that can be compared across species.">character</span> is one column of the alignment. In each taxon (a species or sequence in the tree) the character shows one <span class="tip" title="One of the values a character can take. For DNA the states are A, C, G and T.">state</span>. A tree explains a character if we can write a state on every inside node of the tree so that the states change as rarely as possible along the branches. Each change is one step. The <dfn>parsimony score</dfn> of a tree is the number of steps summed over all characters. Among the trees that were tried, <dfn>maximum parsimony</dfn> picks the lowest score. "Parsimony" means thrift: the tree that needs the fewest changes is the one that assumes the least.</p>
+  <p>Notice what is missing. There is no model of how fast each base changes, and branch lengths play no part in the count. That keeps the method simple, and it is also where it goes wrong later in this section. Compare the model-based methods in <a href="#s06">section 06</a>.</p>
+
+  <h3>Counting the steps on one tree: Fitch's method</h3>
+  <p>For one character on one tree there could be very many ways to write states on the inside nodes. Fitch (1971) gave a method that finds the smallest number of changes without trying them all. Start at the tips. Every tip has a set holding its one state. Then move toward the root, taking two sister nodes at a time:</p>
+  <div class="formula">if the two sets share a state:&nbsp;&nbsp;parent set = the shared states&nbsp;&nbsp;(no step)<br>otherwise:&nbsp;&nbsp;parent set = both sets together&nbsp;&nbsp;(add one step)</div>
+  <p>The number of "otherwise" cases is the score for that character. The page below applies this rule to a 5-taxon tree. Click a letter on the tree, or in the table, to change a state. Red dots mark the nodes where a step was added.</p>
+
+  <figure>
+    <div class="controls">
+      <div class="seg" id="s05-trees" role="group" aria-label="Choose a tree"></div>
+      <button type="button" class="btn" id="s05-reset">Reset the table</button>
+    </div>
+    <div class="tool-note">Showing <b>site <span id="s05-site-n"></span></b> on the chosen tree. Click a tip to change its base. Click a number in the first column of the table to show another site. Steps for this site: <b id="s05-steps"></b></div>
+    <div class="svgbox" id="s05-tree"></div>
+    <div class="legend"><span><i style="background:var(--muted);height:10px;width:10px;border-radius:5px"></i>the two sets share a state</span><span><i style="background:var(--bad);height:10px;width:10px;border-radius:5px"></i>no shared state: one step</span></div>
+    <div class="svgbox" id="s05-mat"></div>
+    <div class="readout">
+      <div>Sites in the table<b id="s05-r-inf" style="font-size:14px"></b></div>
+      <div>Fewest total changes<b id="s05-r-best" style="font-size:14px"></b></div>
+      <div>Do constant and uninformative sites help choose a tree?<b id="s05-r-unin" style="font-size:14px"></b></div>
+    </div>
+    <p class="tool-note" id="s05-ctl"></p>
+    <figcaption>The three trees are three of the 15 possible unrooted trees for five taxa. A, B, C, D and E are invented taxa, and the table is invented. The sets are written with the letters of the bases.</figcaption>
+  </figure>
+
+  <h3>Which sites matter</h3>
+  <p>Look at the table's "kind of site" column and try changing bases.</p>
+  <ul>
+    <li>A <b>constant</b> site has the same state everywhere. It needs no change on any tree.</li>
+    <li>A site where every state except one is shared by only one taxon (for example A A A A T) is <b>uninformative</b>. That single odd taxon needs exactly one change wherever it is placed, so every tree costs the same.</li>
+    <li>A site is <b>informative</b> when at least two different states each occur in at least two taxa (G G A A A). Only such a site can prefer one tree over another.</li>
+  </ul>
+  <p>"Informative" means only that the site <em>could</em> prefer some tree. A site can be informative in general and still cost the same on the three trees shown, as site 8 does here. Parsimony therefore ignores most of an alignment: only the informative sites vote. When the species are close relatives, most columns are constant, and a few informative ones decide the tree.</p>
+  <p>Counting steps for one tree is easy. Finding the best tree is not: the number of possible trees grows very fast with the number of taxa (see <a href="#s01">section 01</a>), so programs search through trees rather than test them all. Searching is the same problem for every tree method, and <a href="#s06">section 06</a> comes back to it.</p>
+
+  <h3>When parsimony is misled: long branches</h3>
+  <p>Parsimony counts every change as evidence. Think about two lineages that have changed a great deal, so that their branches in the tree are long. Each has many changes of its own. Because there are only four bases, some of these changes will by chance land on the same base in both lineages. To the counting method, a base shared by two taxa looks like a base inherited from a common ancestor, and the two long branches are pulled together, even when they are not close relatives. This is <dfn>long-branch attraction</dfn>.</p>
+  <p>Felsenstein (1978) showed this in a four-taxon case. His abstract says that for the three parsimony and <span class="tip" title="Compatibility methods: a related family that looks for the tree on which the largest number of characters fit with no repeated change. The paper studied them alongside parsimony.">compatibility</span> methods he studied, the conditions of failure "are essentially that parallel changes exceed informative, nonparallel changes", that this is possible "even when change is improbable a priori, provided that evolutionary rates in different lineages are sufficiently unequal", and that the methods "will fail to converge to the true phylogeny as more and more data are accumulated". (We read the abstract only; the paper itself was not available to us.) The last point matters most: more data does not rescue the method, because the extra data carry the same wrong signal.</p>
+  <p>The simulator below tests this. It makes DNA sequences on a true tree in which A and C have long branches and B and D short ones. Each branch has a length in expected changes per site: 0.75 means that a typical site has changed 0.75 times on that branch. A simple model is used (every base changes to any other with equal chance; it is the Jukes-Cantor model of <a href="#s03">section 03</a>). Then it counts the steps needed on the three possible trees for four taxa and records which one parsimony chooses. It does this 100 times and shows how often each tree wins.</p>
+
+  <figure>
+    <div class="controls">
+      <button type="button" class="btn" id="s05-p-fels">Long branches A and C</button>
+      <button type="button" class="btn" id="s05-p-even">All branches equal</button>
+      <button type="button" class="btn" id="s05-p-few">Long branches, few sites</button>
+    </div>
+    <div class="controls">
+      <label>Sites (alignment length) <output id="s05-n-o"></output><input id="s05-n" type="range" min="100" max="6000" step="100" value="2000"></label>
+      <label>Long branches (A and C) <output id="s05-long-o"></output><input id="s05-long" type="range" min="0.05" max="1.2" step="0.05" value="0.75"></label>
+      <label>Short branches (B and D) <output id="s05-short-o"></output><input id="s05-short" type="range" min="0.01" max="1.2" step="0.01" value="0.05"></label>
+      <label>Inside branch <output id="s05-in-o"></output><input id="s05-in" type="range" min="0.01" max="0.5" step="0.01" value="0.05"></label>
+      <button type="button" class="btn" id="s05-run">Simulate 100 data sets</button>
+    </div>
+    <div class="svgbox" id="s05-lbatree"></div>
+    <div id="s05-bars" style="display:flex;flex-direction:column;gap:6px"></div>
+    <p class="tool-note" id="s05-one"></p>
+    <figcaption><b>How to read it.</b> The right tree is (A,B | C,D). With the long branches on A and C, parsimony prefers (A,C | B,D) in nearly every data set, and the 2,000-site result is not better than the 100-site result. Check the second preset: when all branches are equal the right tree wins in every data set. Change the sliders and press the button to look for the edge of the zone where it fails. Results use a fixed random seed, so the same settings give the same numbers.</figcaption>
+  </figure>
+  <p class="tool-note"><b>Control.</b> The step counts in both figures come from the same code. On this page's load it was compared with a brute-force count (all assignments of states to the inside nodes); see the check line under the first figure. We ran the same engine outside the page: 3,072 five-taxon cases and 4,096 six-taxon cases gave no difference, and with all branch lengths set to zero 100 of 100 simulated data sets were ties, as they should be.</p>
+  <p>One way out is the models of the next sections, which allow for hidden repeated changes on long branches (<a href="#s06">section 06</a>). Parsimony also does better when the data contain few changes per site: the shorter the branches in the simulator, the less it is misled.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why a shared base does not always mean shared ancestry</summary><div class="in">
+    <p>Imagine two cousins, each given a different number at birth, who both change their phone number every month. Over years each has had hundreds of numbers. Sooner or later both will have had the same number at some time, by pure chance. If you only compared lists of numbers and counted the matches, you would think they shared a household.</p>
+    <p>DNA has four letters, so a match by chance is far easier: a position that changes often will land on the same letter in two unrelated lineages one time in four. The cousins with few changes are rarely matched by chance, so for them a match is better evidence of a family link.</p>
+    <p>That is the whole idea. Fast-changing, long branches produce matches that mean nothing, and parsimony cannot tell them from the matches that do.</p>
+  </div></details>
+
+  <details class="simple"><summary>Simple explanation with examples: counting by hand with the rule</summary><div class="in">
+    <p>Take the four taxa A, B, C, D with bases G, G, A, A on the tree (A,B) (C,D).</p>
+    <div class="toy">tips:        A=G   B=G   C=A   D=A
+pairs:       {G}         {A}       (A,B) agree; (C,D) agree
+root:             {G,A}            {G} and {A} share nothing: 1 step</div>
+    <p>Score: one step. On the tree (A,C) (B,D) the pairs are G with A and G with A: both pairs share nothing, so each adds a step, and then {G,A} and {G,A} share states, so the root adds none: two steps. Parsimony prefers (A,B) (C,D) because it needs one change instead of two. This site is informative.</p>
+  </div></details>
+
+  <h3>Rare genomic changes: SINE insertions as characters</h3>
+  <p>A base can change again and again. A new <span class="tip" title="A short, repeated piece of DNA that copies itself into new places in a genome. Lesson 7 introduced them.">SINE</span> insertion at one place in one genome is a rare event. <a href="../07-sines-satellites/#s05">Lesson 7, section 05</a> shows how the same place is found in several genomes and why "copy present" or "empty site" can be written as a character; this section does not repeat that. What matters here is how such a character is read with a parsimony count.</p>
+  <p>Each locus (one place in the genome) has two states: 1, the copy is present, and 0, the empty site. The ancestral state is 0, because the copy had to arrive at some time, and reversal is rare. If two species share a copy, the simplest explanation is one insertion in their common ancestor, so they form a group. A copy in only one species says nothing about the tree, just like an uninformative base. A locus that does not fit a tree would need a second insertion or a loss. In the table below the code checks each locus against each of the three trees.</p>
+  <div class="svgbox" id="s05-sine"></div>
+  <p>Four of the five informative loci (1, 2, 3 and 4) fit Tree 1. Locus 6 (A and C share a copy) does not fit it, but it does fit Tree 2, which fits only three loci. Tree 3 fits none. So Tree 1 is best, and locus 6 is the one that disagrees. The table is invented. In real data conflicting loci come from the causes listed under "Incomplete lineage sorting" and "homoplasy" in <a href="../07-sines-satellites/#s05">lesson 7, section 05</a>, and the point is that each conflict can be seen locus by locus, as one clear observation. Nikaido, Rooney and Okada (1999) used SINE and LINE insertions this way for the even-toed ungulates and whales, and, by the abstract (read; the full text was not), concluded that whales are deeply nested within the even-toed ungulates and form a group with the hippopotamuses. For a given amount of data, rare changes like this are slow to collect, since each locus must be found, checked in the other genomes and confirmed to be at the same place, so the data sets are small compared with sequence alignments.</p>
+  <p class="note">A SINE locus needs a different count from the DNA one. The Fitch count allows a change from 1 back to 0 as easily as 0 to 1. For SINE insertions a loss is rare, so the toy table asks only whether the sharing group is a group of the tree.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why an insertion is better evidence than a base</summary><div class="in">
+    <p>If two books have the same word on page 100, it could be because the word is common. If both have the same <em>misprint</em> in the same place, they were probably copied from the same book. A SINE insertion is the misprint; a base is the common word.</p>
+    <p>The comparison is not perfect. A misprint can be copied from an old edition into only some of the later ones, so a gene tree may disagree with the species tree even when nothing is wrong. That is the subject of <a href="#s10">section 10</a>.</p>
+  </div></details>
+
+  <h3>What to take away</h3>
+  <ul>
+    <li>Parsimony chooses the tree that needs the fewest changes. Fitch counting finds that number for a given tree, one site at a time.</li>
+    <li>Only informative sites separate trees.</li>
+    <li>When branches differ much in length, parsimony may join the long ones, and more data makes this worse, not better.</li>
+    <li>Rare changes such as SINE insertions are characters with a known direction and little chance of repeating, which suits a simple counting method.</li>
+  </ul>
+</section>

@@ -1,0 +1,9 @@
+#s07-wrap .s07-row{display:grid;grid-template-columns:5.5em 1fr 4.6em;gap:.5em;align-items:center;margin:.25em 0;font-size:.92em}
+#s07-wrap .s07-bar{background:var(--code-bg);border:1px solid var(--line);height:1.1em;position:relative}
+#s07-wrap .s07-bar i{display:block;height:100%;background:var(--accent);opacity:.5}
+#s07-wrap .s07-bar i.s07-ref{opacity:.95}
+#s07-wrap .s07-bar b{position:absolute;top:-2px;bottom:-2px;width:0;border-left:2px dashed var(--err)}
+#s07-wrap .s07-name{font-family:ui-monospace,Consolas,monospace;font-size:.9em}
+#s07-wrap .s07-btns{display:flex;flex-wrap:wrap;gap:.5em;margin:.5em 0}
+#s07-wrap .s07-btns button{cursor:pointer}
+#s07-wrap .s07-tag{font-size:.8em;color:var(--muted)}

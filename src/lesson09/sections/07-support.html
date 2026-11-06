@@ -1,0 +1,93 @@
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">07</span>How much to trust a branch</h2>
+  <p class="lede">A tree method always returns a tree, even from poor data. It does not say which of its branches the data really support. This section is about the numbers written on branches: what the <span class="tip" title="A resampling method: you build many new data sets out of the one you have, run the same analysis on each, and see how much the answers vary.">bootstrap</span>, the ultrafast bootstrap, SH-aLRT and the transfer bootstrap each count, and what none of them tells you. Read it after <a href="#s06">maximum likelihood</a>: the faster methods below are built on likelihood trees.</p>
+
+  <h3>The question, and why we cannot ask it directly</h3>
+  <p>Suppose the tree says that species D and E are each other's closest relatives. The honest question is: if I could collect a fresh, equally large set of data from the same animals, would I get D and E together again? I cannot collect fresh data. So the bootstrap does the next best thing: it treats the data I have as a stand-in for all the data I could have collected, and draws new data sets from it.</p>
+
+  <h3>The bootstrap, step by step (Felsenstein 1985)</h3>
+  <p>The data are an <span class="tip" title="Sequences of several species written one above the other so that each column holds the bases claimed to descend from one ancestral position.">alignment</span>: one row per species, one column per position. Felsenstein argued that the proper way to resample is to keep all the species and to draw the <i>columns</i> with replacement, assuming the columns evolved independently. In his words, the bootstrap "involves resampling points from one's own data, with replacement, to create a series of bootstrap samples of the same size as the original data."</p>
+  <ol class="qlist">
+    <li><b>Draw</b> as many columns as the alignment has, one at a time, each time from all original columns. <span class="tip" title="With replacement: a column that was drawn is put back, so it can be drawn again. Some columns therefore appear twice or more in a resample, and some not at all.">With replacement</span> means a column can come up twice or more, and some never come up.</li>
+    <li><b>Build a tree</b> from the new alignment, with exactly the same method you used for the real one.</li>
+    <li><b>Repeat</b> hundreds or thousands of times. Each new alignment, with its tree, is called a <span class="tip" title="One resampled data set and the tree made from it.">replicate</span>.</li>
+    <li><b>Count.</b> For every branch of your real tree, write down the percentage of replicates whose tree contains the same branch. That percentage is the bootstrap support. To compare branches between trees we describe each branch by the <span class="tip" title="A branch cuts the species into two groups. Writing the two groups, for example AB | CDEF, names the branch without drawing the tree.">split</span> it makes: the two groups of species it separates.</li>
+  </ol>
+
+  <h3>Try it on a small alignment</h3>
+  <p>Six invented animals, A to F, and 30 alignment columns (made by a computer simulation, not real data). To keep the toy fast, each replicate tree here is built by <span class="tip" title="Neighbour joining: a quick method that builds a tree from a table of pairwise differences, covered in the section on distance trees. A real analysis would use the likelihood method of the previous section.">neighbour joining</span> on the proportion of differing columns. Press the buttons and watch three things: which columns are drawn, how many of the original columns a resample contains, and how the split counts grow.</p>
+
+  <div class="tool" id="s07-tool">
+    <div class="tool-head"><span class="tool-tag">toy</span> Bootstrap resampler</div>
+    <div class="s07-btns">
+      <button type="button" class="btn" id="s07-b1">Draw 1 resample</button>
+      <button type="button" class="btn" id="s07-b100">Draw 100 more</button>
+      <button type="button" class="btn" id="s07-b1000">Draw 1000 more</button>
+      <button type="button" class="btn" id="s07-reset">Start over</button>
+    </div>
+    <div class="svgbox" id="s07-aln"></div>
+    <div class="readout" id="s07-read1" aria-live="polite"></div>
+    <h4>Branches (splits) found, with the share of resamples that contained each</h4>
+    <div id="s07-splits"></div>
+    <div class="readout" id="s07-read2" aria-live="polite"></div>
+  </div>
+
+  <p>Things to notice. (1) In one resample about two thirds of the original columns are present; the rest of the 30 draws are repeats. The exact figure is worked out below. (2) A branch held up by many columns pointing the same way (here AB | CDEF) comes back almost every time. A branch held up by few columns comes back less often, and rival splits appear now and then. (3) The tree from the original data contains CF | ABDE, but after a thousand resamples only about 60 % of them agree: the data barely support it. In this simulation we know the truth (C is closer to D and E than F is), so that branch is wrong. Real data never tell you this, which is why a low number is a warning and a high number is not a proof.</p>
+
+  <h3>Why about 63 % of the columns appear</h3>
+  <p>An alignment has <i>n</i> columns. In one draw a given column is <em>not</em> picked with probability 1 &minus; 1/<i>n</i>. It is missed in all <i>n</i> draws with probability (1 &minus; 1/<i>n</i>)<sup><i>n</i></sup>, which for large <i>n</i> approaches 1/<i>e</i> &asymp; 0.368. So the expected share of original columns that appear at least once is 1 &minus; 1/<i>e</i> &asymp; 0.632. For 30 columns the exact value is 1 &minus; (29/30)<sup>30</sup> = 0.638. The readout under the toy shows your own average next to this figure. This is ordinary probability, not a claim from a paper. It explains why a replicate is a thinner, noisier copy of the data, and why a branch supported by only one or two columns is easily lost.</p>
+
+  <h3>What the number means, and what it does not</h3>
+  <p><b>The suggested reading.</b> Felsenstein proposed that "if a group shows up 95% of the time or more, the evidence for it is taken to be statistically significant." That is the origin of the popular 95 % rule.</p>
+  <p><b>A later check.</b> Hillis and Bull (1993) tested bootstrap values on simulated data with a known true tree. In their abstract (we read the abstract only), bootstrap proportions are "biased but highly conservative" estimates of how likely a clade is to be real: under their conditions (equal rates of change, symmetric trees, few changes on each internal branch) a value of 70 % or more usually corresponded to a probability of 95 % or more that the clade is real. They also warn that under very high rates of change, or very unequal rates between lineages, values above 50 % can overestimate accuracy.</p>
+  <p>So the number is best read as a measure of <b>repeatability</b>: how stable the answer is when the columns are reshuffled and reweighted. It is not a probability that the branch is true, because:</p>
+  <ul>
+    <li><b>It only sees random sampling error.</b> If the method or the model is wrong in a consistent way, every replicate is wrong in the same way and the support can be high for a false branch. The long-branch attraction of the parsimony section is the standard example. A bootstrap cannot fix a biased method.</li>
+    <li><b>It assumes independent columns.</b> Neighbouring sites in a gene, or the three sites of a codon, are not independent. The bootstrap treats them as if they were (Felsenstein states this as his assumption).</li>
+    <li><b>It depends on the alignment.</b> A branch can be stable over columns and still come from a poor alignment.</li>
+    <li><b>It judges one branch at a time.</b> A tree whose every branch has 70 % support is not 70 % right as a whole.</li>
+  </ul>
+
+  <h3>Ultrafast bootstrap (UFBoot)</h3>
+  <p>The ordinary bootstrap needs a full tree search on every replicate, which becomes slow for large data. Minh, Nguyen and von Haeseler (2013) built UFBoot to compute the support of groups in likelihood trees much faster. By their abstract it combines the "<span class="tip" title="RELL: the likelihood of each column on each candidate tree is computed once; a resample is then scored by adding up the stored column values, with no new tree search.">resampling estimated log-likelihood method</span>" with a "simple but effective collection scheme of candidate trees", and adds a stopping rule that decides when the support values have converged. They report a median speed-up of 3.1 to 10.2 times over the RAxML rapid bootstrap on real data. In their simulations the values "appear to be relatively unbiased compared with the conservative standard bootstrap", which they say "provides a more direct interpretation of the bootstrap support".</p>
+  <p>That last point is the catch. <b>A UFBoot percentage and a standard bootstrap percentage are not the same kind of number.</b> The IQ-TREE FAQ says so directly: UFBoot has "a different meaning than the normal (more conservative) bootstrap supports", and "you should not compare BS% with UFBoot% directly".</p>
+  <p><b>Threshold, as the program's authors give it.</b> The IQ-TREE FAQ: "For UFBoot, you should only start to rely on a branch if its support is &ge; 95%". The UFBoot2 paper (Hoang et al. 2018) gives the same figure for data with "no or mild" <span class="tip" title="The model of how DNA changes (earlier sections) does not describe the real data well, for example because base composition differs between lineages.">model violations</span>. Under severe violations UFBoot2 "overestimated the branch supports". For that case the paper recommends an extra nearest-neighbour-interchange step on each replicate, which IQ-TREE switches on with <code>-bnni</code>. That is the authors' recommendation, not a guarantee: it reduces the risk of over-estimating, it does not repair a wrong model.</p>
+
+  <h3>SH-aLRT</h3>
+  <p>SH-aLRT (Guindon et al. 2010) is not a count of resampled trees. It is a test, based on likelihood ratios, of how well the data support one internal branch; the abstract calls it "a nonparametric, Shimodaira-Hasegawa-like procedure" that extends the earlier approximate likelihood-ratio test. We read only the abstract of this paper, so the exact construction (which alternatives each branch is compared with) is not described here; see the paper or the IQ-TREE documentation. IQ-TREE prints it next to UFBoot as "SH-aLRT support (%) / ultrafast bootstrap support (%)", for example 92.5/98. Its FAQ gives a joint rule: "One would be more confident if a clade has its SH-aLRT &ge; 80% and UFboot &ge; 95%."</p>
+
+  <h3>Transfer bootstrap (TBE)</h3>
+  <p>The classical (Felsenstein) bootstrap proportion, <span class="tip" title="FBP: the percentage of bootstrap trees that contain exactly the same split as the reference tree.">FBP</span>, counts a replicate only if it contains the <em>identical</em> split. Lemoine et al. (2018) point out that for large trees this is harsh: "A replicated branch must match a reference branch exactly", and a difference of just one taxon is enough to make a nearly identical branch count as absent. As a result the FBP "tends to yield very low supports, especially on deep branches".</p>
+  <p>Their alternative, the <b>transfer bootstrap expectation</b> (TBE), measures how many taxa you would have to move ("transfer") from one side of the branch to the other to make a branch of the replicate tree identical to the reference branch. The formula in the paper is TBE(<i>b</i>) = 1 &minus; (average transfer index) / (<i>p</i> &minus; 1), where <i>p</i> is the number of taxa on the smaller side of branch <i>b</i>. It runs from 0 to 1, and the authors write that "TBE supports are easily interpreted as fractions of unstable taxa".</p>
+  <div class="toy">Worked example of the formula (ours, not from the paper)
+Reference branch: {1,2,3,4,5} | the other taxa, so p = 5.
+In every replicate taxon 5 wanders off, but 1-4 stay together.
+FBP: the split is never identical          -> 0 %
+Transfer index: moving 1 taxon repairs it  -> 1
+TBE = 1 - 1/(5-1) = 0.75                   -> 75 %</div>
+  <p><b>What the authors say about reading it.</b> It "should not be interpreted as the confidence level of some statistical test" and "cannot be interpreted as the probability for the branch b to belong to the true phylogeny". On a cut-off: "our results suggest that 70% is a reasonable threshold to start with", but "it is better for users to interpret the TBE values depending on the data". TBE is a different quantity from FBP and from UFBoot, so a TBE of 80 % and an FBP of 80 % do not mean the same.</p>
+
+  <h3>The four numbers side by side</h3>
+  <div class="svgbox"><table class="tbl" style="min-width:640px">
+    <tr><th>Number</th><th>What is counted</th><th>Threshold as stated by its authors or docs</th><th>Does not mean</th></tr>
+    <tr><td>Felsenstein bootstrap (FBP)</td><td>Share of resampled-alignment trees that contain exactly this split</td><td>Felsenstein: 95 % or more. Hillis and Bull: 70 % or more often went with a 95 % chance of being real, under their simulated conditions</td><td>The probability that the branch is true; protection against a wrong model</td></tr>
+    <tr><td>UFBoot / UFBoot2</td><td>Fast approximation of the bootstrap on a likelihood tree</td><td>95 % or more (IQ-TREE FAQ; UFBoot2 paper, under no or mild model violation)</td><td>The same thing as a standard bootstrap percentage; safe under severe model violation without <code>-bnni</code></td></tr>
+    <tr><td>SH-aLRT</td><td>A likelihood-based test of the branch on the one tree, not resampled trees</td><td>80 % or more, together with UFBoot 95 % or more (IQ-TREE FAQ)</td><td>A bootstrap; a probability</td></tr>
+    <tr><td>Transfer bootstrap (TBE)</td><td>1 minus the average share of taxa that must be moved to match the branch</td><td>70 % "a reasonable threshold to start with"; interpret by data</td><td>A confidence level; comparable to FBP</td></tr>
+  </table></div>
+  <p>The IQ-TREE FAQ adds that these thresholds are for single-gene trees. For trees from many genes joined into one alignment, both UFBoot and the standard bootstrap often reach 100 %, and it recommends computing <span class="tip" title="Concordance factors: for each branch, the share of individual gene trees (or sites) that agree with it. Covered in the section on gene trees and species trees.">concordance factors</span> instead (see <a href="#s10">gene trees and species trees</a>).</p>
+
+  <h3>Running it</h3>
+  <p>In IQ-TREE the options are <code>-B</code> (ultrafast bootstrap replicates) and <code>-alrt</code> (SH-aLRT replicates). The tutorial gives 1000 as the recommended minimum for each, and says <code>-bnni</code> was added in version 1.6 to reduce over-estimated UFBoot support when the model is badly violated.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># version 3 is called iqtree3; version 2 is called iqtree2</span>
+iqtree3 -s alignment.fasta -B 1000 -alrt 1000 -bnni</pre></div>
+  <p>The IQ-TREE tutorial describes the support numbers as SH-aLRT support (%) / ultrafast bootstrap support (%), for example <code>92.5/98</code>. Always say which kind of number you show, and which threshold you used.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why shuffle the columns?</summary><div class="in">
+    <p>Imagine the alignment as a deck of 30 cards, one per column, and the tree as the story the whole deck tells. To test how much the story depends on particular cards, draw 30 cards from the deck, putting each back after you look at it, and read the story again. If the story barely changes whichever cards you happen to draw, many cards say the same thing: the branch is stable. If a branch appears only when one particular card is drawn, it rested on that card.</p>
+    <p>Example: if 10 columns support AB | CDEF and none support a rival, almost every draw of 30 contains at least one of the 10 columns, so the split comes back almost every time. If only 2 columns support a split, a draw can easily miss both, and the split vanishes from many replicates.</p>
+  </div></details>
+  <details class="simple"><summary>Simple explanation with examples: 95 % of what?</summary><div class="in">
+    <p>"This branch has 95 % support" is easy to read as "there is a 95 % chance this branch is real". It does not say that. It says: in 95 of 100 resampled data sets, the same method found this branch. If the method is biased towards a wrong answer, it will find the wrong branch in 95 of 100 resampled data sets too. Think of a bathroom scale that reads 2 kg too heavy: weighing yourself 100 times gives the same number 100 times, the repeatability is perfect, and the number is wrong.</p>
+  </div></details>
+</section>

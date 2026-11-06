@@ -1,0 +1,6 @@
+/* the wide inputs include their padding, so they stay inside the panel on phones */
+#s06-wrap .calc input.wide{box-sizing:border-box}
+#s06-wrap .formula{white-space:normal;line-height:1.7}
+#s06-wrap .btn:disabled{opacity:.45;cursor:default}
+#s06-wrap .toy{white-space:pre-wrap}
+#s06-wrap #s06-terms{white-space:pre}

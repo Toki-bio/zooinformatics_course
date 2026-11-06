@@ -1,0 +1,89 @@
+<section aria-labelledby="s02" id="s02-wrap">
+  <h2 id="s02"><span class="n">02</span>From sequences to characters</h2>
+  <p class="lede">A tree-building program does not read your sequences. It reads a table: one row per sequence, one column per position, and in every column the letters that sit in the same place. Each column is called a <dfn>character</dfn> and the letter in it is its <dfn>state</dfn>. Everything the program concludes comes from comparing states within columns. So the first job is not choosing a tree method. It is deciding which letters belong in the same column, and that decision is a claim about history.</p>
+
+  <h3>Homology, orthology and paralogy</h3>
+  <p>Two sequences are <dfn>homologous</dfn> if they descend from one sequence in a common ancestor. Homology is a conclusion, not a measurement. Similarity is the evidence we use for it (lesson 8, <a href="../08-search/#s06">section 06</a>, shows how similarity is scored and why a high score is hard to get by chance). Homologous genes are of two kinds, and the difference decides what a tree of them means. Koonin (2005) puts it in one sentence: orthologs and paralogs are "two fundamentally different types of homologous genes that evolved, respectively, by vertical descent from a single ancestral gene and by duplication".</p>
+  <ul>
+    <li><dfn>Orthologs</dfn>: copies in different species that separated because the species separated. They are "the same gene" in two animals.</li>
+    <li><dfn>Paralogs</dfn>: copies that separated because the gene was duplicated within a genome. They can sit in one animal, or in two, if the duplication was older than the species split.</li>
+  </ul>
+  <p>A gene tree of orthologs follows the species. A gene tree that mixes in a paralog follows a gene duplication, not a species split, and it can look wrong for the species tree although the programs worked correctly. Click any two genes below.</p>
+  <figure>
+    <div class="svgbox"><svg id="s02-orth" viewBox="0 0 560 250" width="100%" style="min-width:480px" role="group" aria-label="A gene family: one duplication, then one species split in each copy"></svg></div>
+    <div class="legend"><span><i style="background:var(--het)"></i>duplication (square)</span><span><i style="background:var(--accent)"></i>species split (circle)</span><span><i style="background:var(--bad)"></i>where the two chosen genes meet</span></div>
+    <div class="readout" aria-live="polite"><div>Chosen genes<b id="s02-o-pair">none yet</b></div><div>They are<b id="s02-o-kind">click two genes</b></div></div>
+    <div class="toy" id="s02-o-why" aria-live="polite">Rule: look at the oldest event that joins the two genes. If it is a species split they are orthologs. If it is a duplication they are paralogs.</div>
+    <div class="controls"><button type="button" class="btn" id="s02-o-ctl">Run control</button><span class="tool-note" id="s02-o-ctlout" aria-live="polite"></span></div>
+    <figcaption><b>One gene, copied once, in two species.</b> A single gene was duplicated, and later the species split. Gene X1 and gene Y2 live in different species but are paralogs, because they separated at the duplication. The control compares the program's answer for all 6 pairs with a list written by hand.</figcaption>
+  </figure>
+  <p>For SINEs the same question is asked about insertion sites: whether two copies sit at the same place in two genomes (<a href="../07-sines-satellites/#s05">lesson 7, section 05</a>). Section <a href="#s10">10</a> of this lesson returns to gene trees that disagree with the species tree.</p>
+
+  <h3>The alignment is the data</h3>
+  <p>Lesson 8 built an alignment between two sequences. Tree programs need one for many sequences at once, a <dfn>multiple sequence alignment</dfn>, often shortened to MSA. Each column says: these letters descend from one letter in the ancestor. A dash says that a letter was inserted in the other sequences or deleted from this one. Wong and colleagues (2008) describe the usual practice bluntly: "the alignment is treated as an observation, and all of the subsequent inferences depend on the alignment being correct". Their yeast data showed that different alignment methods can lead to different conclusions. An alignment is a hypothesis you test, not a measurement you read.</p>
+  <p>What goes into a column depends on the data type. For DNA each column is one base position, and the states are A, C, G, T (plus the dash). For a SINE insertion the character can be a whole insertion that is present or absent (section <a href="#s05">05</a>). For amino acids there are 20 states. This lesson uses DNA.</p>
+  <p>Most columns carry no information about the tree. A column where all sequences have the same letter is <dfn>constant</dfn>. A column is <dfn>parsimony-informative</dfn> if at least two different letters each occur in at least two sequences, because only then can it prefer one grouping of the sequences over another (section <a href="#s05">05</a> shows how). A letter that occurs in only one sequence says something about that sequence alone.</p>
+
+  <h3>Move a gap, trim a column</h3>
+  <p>Below are four invented sequences with a known history. The alignment starts in its correct form. Two of them have a gap. Choose which gap to move and slide it, then click column numbers to remove columns (trim them). Watch the table of pairwise differences. For two sequences, a <dfn>difference</dfn> is a column where both have a letter and the letters differ. This page ignores columns where either sequence has a dash, which is a choice of this toy: programs handle gaps in different ways. The <dfn>p-distance</dfn> is the number of differences divided by the number of columns compared (section <a href="#s03">03</a> explains what it misses).</p>
+  <figure id="s02-fig">
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Which gap to move">
+        <button type="button" id="s02-g2" aria-pressed="true">Gap in seq 2</button>
+        <button type="button" id="s02-g4" aria-pressed="false">Gap in seq 4</button>
+      </div>
+      <button type="button" class="btn" id="s02-left">&larr; slide gap left</button>
+      <button type="button" class="btn" id="s02-right">slide gap right &rarr;</button>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s02-trgap">Trim columns with a gap</button>
+      <button type="button" class="btn" id="s02-trconst">Trim constant columns</button>
+      <button type="button" class="btn" id="s02-reset">Reset all</button>
+    </div>
+    <div class="svgbox"><div id="s02-aln" role="group" aria-label="Alignment of four toy sequences"></div></div>
+    <div class="legend"><span><i style="background:var(--accent);opacity:.5"></i>variable column</span><span><i style="background:var(--het);opacity:.6"></i>contains a gap</span><span><i style="background:var(--err)"></i>trimmed</span><span><b>i</b> = parsimony-informative</span></div>
+    <div class="readout">
+      <div>Columns kept<b id="s02-r-kept"></b></div>
+      <div>Informative columns kept<b id="s02-r-inf"></b></div>
+      <div>Gap moved from start by<b id="s02-r-moved"></b></div>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Pair</th><th>Columns compared</th><th>Differences</th><th>p-distance</th><th>Differences at start</th></tr></thead>
+      <tbody id="s02-tbody"></tbody>
+    </table></div>
+    <div class="controls"><button type="button" class="btn" id="s02-ctl">Run control</button><span class="tool-note" id="s02-ctlout" aria-live="polite"></span></div>
+    <figcaption><b>Things to try.</b> (1) Slide the gap in seq 4 one step either way: nothing changes, because it sits in a run of three C and the dash can be any one of the three. Nothing in the data prefers one place. (2) Slide the gap in seq 2 by one step: differences appear that were never there. (3) Trim the columns with a gap: the pairs lose columns, but the differences that remain are all in columns where every sequence has a letter. (4) Trim the constant columns: the differences stay the same, the columns compared fall, and the p-distance rises for every pair. That is why trimming by "what looks boring" is not neutral. The control recomputes every pair with a second, differently written routine on 300 random slides and trims, checks that sliding never changes the letters of a sequence, and checks the start table against numbers counted by hand.</figcaption>
+  </figure>
+
+  <details class="simple"><summary>Simple explanation with examples: why a misplaced gap makes sequences look different</summary><div class="in">
+    <p>Take two spellings of one word: <code>COLOUR</code> and <code>COLOR</code>. Line them up letter by letter and you get <code>COLOUR</code> over <code>COLOR-</code>: the U meets O, the R meets U, and three of six columns "differ". Put the dash under the U instead, <code>COLOUR</code> over <code>COLO-R</code>, and nothing differs at all. The words did not change. Only the claim about which letter is the same letter changed.</p>
+    <p>A tree program sees only the columns. If a gap is in the wrong place, it counts invented differences, and an invented difference looks exactly like a real one. This is why the alignment is treated as part of the result, and why you should look at it.</p>
+    <p>In a run of identical letters, as in the three C above, the dash can be placed at any of the three spots and the columns agree equally. That is a different problem: a gap whose place cannot be known. It is harmless for distances, but it shows that some columns are less certain than others.</p>
+  </div></details>
+
+  <h3>Making the alignment: MAFFT</h3>
+  <p>MAFFT is a widely used program for multiple alignment of nucleotide or amino acid sequences. Its manual says that <code>--auto</code> "automatically selects an appropriate strategy from L-INS-i, FFT-NS-i and FFT-NS-2, according to data size", where FFT-NS-2 is the fast progressive method. The manual calls L-INS-i "probably most accurate" and recommends it for fewer than 200 sequences. That strategy (<code>--localpair</code> with <code>--maxiterate 1000</code>) computes all pairwise alignments with the Smith-Waterman method (lesson 8, <a href="../08-search/#s06">section 06</a>) and then refines the result by repeated cycles. Gap opening and extension scores play the same role as in that section. The manual page is dated 2007 and says it does not cover all features of the latest version, so check <code>mafft --help</code> for the version you install.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># let MAFFT choose the strategy from the data size</span>
+mafft --auto genes.fa &gt; genes.aln.fa
+<span class="c"># fewer than 200 sequences, most accurate strategy of the manual (L-INS-i)</span>
+mafft --localpair --maxiterate 1000 genes.fa &gt; genes.aln.fa</pre></div>
+  <p>Look at the result before you use it, in a viewer that shows columns. Regions where the sequences have no clear similarity, long gaps, and a sequence of very different length are the places to check.</p>
+
+  <h3>Trimming: remove columns you do not trust</h3>
+  <p>Some columns are badly aligned, or have changed so often that their letters carry no signal. The ClipKIT authors write that such "highly divergent sites ... can stem from erroneous inference of homology and saturation of substitutions". Trimming programs remove them before the tree is built. Each uses its own rule, shown here as its documentation or paper states it.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Program</th><th>What it uses</th><th>What the documentation says</th></tr></thead>
+    <tbody>
+      <tr><td>trimAl</td><td>gaps, similarity, and agreement between alignments</td><td>Selects positions by "the proportion of sequences with a gap, the level of amino acid similarity and, if several alignments for the same set of sequences are provided, the level of consistency across different alignments" (Capella-Gutierrez et al. 2009). <code>-gt</code> is "1 - (fraction of gaps in the column)"; <code>-gappyout</code> "relies on the gap distribution"; <code>-automated1</code> is "specifically fine-tuned" for maximum likelihood trees.</td></tr>
+      <tr><td>BMGE</td><td>an entropy-like score per column</td><td>The score is "weighted with BLOSUM or PAM similarity matrices"; "sets of contiguous characters with a score above a given threshold" are removed (Criscuolo and Gribaldo 2010).</td></tr>
+      <tr><td>ClipKIT</td><td>informative columns are kept</td><td>It "aims to identify and retain parsimony-informative sites" instead of removing the doubtful ones (Steenwyk et al. 2020).</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># trimAl: let it choose the gap rule (example 3 of its usage page)</span>
+trimal -in genes.aln.fa -out genes.trim.fa -gappyout</pre></div>
+  <div class="note warn"><b>Trimming is not always an improvement.</b> Tan et al. (2015) tested automated filters on large real and simulated data sets and report that "the trees obtained from filtered MSAs are on average worse than those obtained from unfiltered MSAs". They found that light filtering, up to 20 % of positions, "has little impact on tree accuracy". The ClipKIT authors report that their own method, which keeps informative sites, outperformed the others. So the effect depends on the data and on the program. Record what you trimmed, with which program and settings. (We read the abstracts of these papers, and the trimAl and MAFFT documentation on their sites.)</div>
+
+  <h3>One gene or many genes joined together</h3>
+  <p>A single gene gives one alignment, and its tree is the history of that gene. It can be short and carry little signal. The usual remedy is to align many genes one by one and join the alignments end to end into one long table, a <dfn>concatenated</dfn> alignment (also called a supermatrix). The program then looks for the one tree that fits all columns. That assumes that all the genes follow the same tree, and they do not always do so: paralogs, as above, and chance differences in how gene copies were inherited (section <a href="#s10">10</a>) both break it. The other route is to build a tree for each gene and combine the gene trees afterwards. Both routes start from the careful alignments of this section.</p>
+  <div class="note"><b>Before you build a tree.</b> Keep orthologs only, align them, look at the alignment, decide what to trim and write it down, and know whether you join genes into one table or keep them apart. The next section turns the columns into distances.</div>
+</section>

@@ -1,0 +1,86 @@
+<section aria-labelledby="s04" id="s04-wrap">
+  <h2 id="s04"><span class="n">04</span>Distance trees: UPGMA and neighbour joining</h2>
+  <p class="lede">Section <a href="#s03">03</a> turned a pair of sequences into one number, the distance between them. This section builds a tree from a table of such numbers. Two methods do it: UPGMA, which is simple and assumes every lineage changes at the same speed, and neighbour joining, which does not need that assumption. You will run both, step by step, on the same small table, and then make one lineage evolve faster and watch one of them fail.</p>
+
+  <h3>What a distance method does</h3>
+  <p>A <dfn>distance matrix</dfn> is a table with one number for every pair of tips: how different those two sequences are. A distance method uses only this table. It never looks at the sequences again. It repeats one move: find the pair that should be neighbours, replace the pair by one new group, and shrink the table by one row. When one group is left, the tree is finished. This is quick, and it is easy to follow by hand. The two methods differ in one thing only: what "should be neighbours" means.</p>
+  <p>Words used below. A <dfn>cluster</dfn> is a tip or a group of tips treated as one item. A <dfn>branch length</dfn> is the amount of change along a branch, in the same units as the table. The <dfn>topology</dfn> is the branching pattern alone, without lengths.</p>
+
+  <h3>UPGMA: join the closest pair, always</h3>
+  <p>The name is "unweighted pair group method with arithmetic mean". It is the method of Sokal and Michener (1958). The steps:</p>
+  <ol>
+    <li>Find the smallest number in the table. Join those two clusters.</li>
+    <li>Put the new node halfway: its <b>height</b> is half the distance. Each of the two new branches reaches from the new node down to its cluster's own height (a tip has height 0).</li>
+    <li>Make a smaller table. The distance from the new cluster to any other cluster is the <b>average</b> of all tip-to-tip distances between them. This is the formula of the <code>average</code> method in SciPy, which its documentation calls "the UPGMA algorithm".</li>
+    <li>Repeat until one cluster is left. That cluster is the root.</li>
+  </ol>
+  <p>The tree it draws has every tip at the same distance from the root. The word for this is <dfn>ultrametric</dfn>. That is a built-in assumption: UPGMA gives the correct tree only if all lineages changed at the same rate, a <span class="tip" title="Molecular clock: the idea that DNA changes accumulate at a steady rate, so a larger distance means a longer time since the two sequences shared an ancestor. Section 09 covers clocks.">molecular clock</span> (<a href="#s09">s09</a>). Then distance grows with time since the split, so the smallest distance is the youngest split, and joining the closest pair is right. If one lineage changes faster, it is far from everyone, even from its own sister, and the closest pair in the table may not be the closest relatives.</p>
+
+  <h3>Neighbour joining: join the pair that is close compared with everything else</h3>
+  <p>Saitou and Nei (1987) proposed it. The abstract says: "The principle of this method is to find pairs of operational taxonomic units (OTUs [= neighbors]) that minimize the total branch length at each stage of clustering of OTUs starting with a starlike tree." A <dfn>starlike tree</dfn> has all tips joined to one central point and nothing else. Each step pulls one pair out of the star, choosing the pair that keeps the total length of the tree smallest. The formulas below are as written in the code comments of the scikit-bio implementation, which cites that paper. With <i>n</i> clusters left:</p>
+  <dl class="defs">
+    <dt>Row sum <i>r</i></dt>
+    <dd>For each cluster <i>i</i>, add up its distances to all the other clusters: <i>r<sub>i</sub></i>. A cluster on a long branch has a large <i>r</i>.</dd>
+    <dt><span class="tip" title="The Q criterion: the number neighbour joining computes for every pair. The pair with the smallest Q is joined.">Q criterion</span></dt>
+    <dd><i>Q</i>(<i>i</i>,<i>j</i>) = (<i>n</i> &minus; 2) &times; <i>d</i>(<i>i</i>,<i>j</i>) &minus; <i>r<sub>i</sub></i> &minus; <i>r<sub>j</sub></i>. Join the pair with the <b>smallest</b> <i>Q</i>. A pair scores well if it is close to each other and each of the two is far from everything else.</dd>
+    <dt>Branch lengths</dt>
+    <dd><i>L<sub>i</sub></i> = <i>d</i>(<i>i</i>,<i>j</i>)/2 + (<i>r<sub>i</sub></i> &minus; <i>r<sub>j</sub></i>)/(2(<i>n</i> &minus; 2)), and <i>L<sub>j</sub></i> = <i>d</i>(<i>i</i>,<i>j</i>) &minus; <i>L<sub>i</sub></i>. The two branches are not equal: the cluster with the larger row sum gets the longer branch.</dd>
+    <dt>New table</dt>
+    <dd><i>d</i>(new,<i>k</i>) = (<i>d</i>(<i>i</i>,<i>k</i>) + <i>d</i>(<i>j</i>,<i>k</i>) &minus; <i>d</i>(<i>i</i>,<i>j</i>))/2 for every other cluster <i>k</i>.</dd>
+    <dt>The end</dt>
+    <dd>When three clusters are left, their three branch lengths follow from the three distances: the branch to <i>a</i> is (<i>d</i>(<i>a</i>,<i>b</i>) + <i>d</i>(<i>a</i>,<i>c</i>) &minus; <i>d</i>(<i>b</i>,<i>c</i>))/2, and likewise for the others.</dd>
+  </dl>
+  <p>The result is an <b>unrooted</b> tree: it has no root and no time direction, and its tips are not all the same distance from the centre (<a href="#s01">s01</a>). To root it you add an outgroup or use the midpoint of the longest path, as <a href="#s01">s01</a> explains. In the figures below an unrooted tree is drawn from an inner node, only so that it fits on the page.</p>
+  <p>Why does this work when rates differ? Take a tip on a long branch. All its distances are large, so its row sum <i>r</i> is large, and <i>Q</i> subtracts that. The long branch no longer makes the pair look unrelated. NJ compares each pair with the whole row of distances, not with the single smallest number.</p>
+  <p>The test case for NJ is the <dfn>additive</dfn> distance matrix: the distance between two tips equals the sum of the branch lengths on the path between them in some tree. If the table is additive, NJ gives back that tree. The scikit-bio documentation says "NJ is most accurate when distances are additive", and the check at the end of this section confirms exact recovery on 200 random additive tables. Real tables are not exactly additive, because distances are estimated from finite sequences (<a href="#s03">s03</a>). The same documentation warns that then "negative branch lengths may be produced". In that implementation NJ takes time proportional to <i>n</i><sup>3</sup> for <i>n</i> tips.</p>
+
+  <div class="tool" id="s04-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s04-tool-h">UPGMA and neighbour joining on the same table, one step at a time</h3></div>
+    <p class="tool-note"><b>Toy data, not real sequences.</b> The true tree has five tips and is drawn first. With the slider at 1 every tip changes at the same speed, so the table is ultrametric. Move the slider to make lineage 1 evolve faster: its branch becomes that many times longer, and every distance to tip 1 grows. The table stays <b>additive</b> (it still equals path lengths in a tree) but it is no longer ultrametric. Press <b>Step</b> to run both methods. Branch colours say whether a grouping exists in the true tree: <span style="color:var(--good)">green</span> yes, <span style="color:var(--bad)">red</span> no.</p>
+    <div class="slider-row">
+      <label for="s04-f">Speed of lineage 1 (1 = same as the others)</label>
+      <input type="range" id="s04-f" min="1" max="8" step="0.5" value="1">
+      <output id="s04-fo" for="s04-f">1</output>
+    </div>
+    <div class="calc">
+      <button type="button" class="btn" id="s04-step">Step</button>
+      <button type="button" class="btn" id="s04-end">To the end</button>
+      <button type="button" class="btn" id="s04-reset">Reset</button>
+    </div>
+    <div class="s04-lab">The true tree (rooted, branch lengths to scale)</div>
+    <div class="svgbox"><svg id="s04-svgT" width="100%" style="min-width:520px" role="img" aria-label="The true tree of five tips"></svg></div>
+
+    <div class="s04-lab" id="s04-labU">UPGMA</div>
+    <div class="s04-txt" id="s04-txtU" aria-live="polite"></div>
+    <div class="tbl s04-m"><table id="s04-tabU"></table></div>
+    <div class="svgbox"><svg id="s04-svgU" width="100%" style="min-width:520px" role="img" aria-label="Tree built by UPGMA so far"></svg></div>
+
+    <div class="s04-lab" id="s04-labN">Neighbour joining</div>
+    <div class="s04-txt" id="s04-txtN" aria-live="polite"></div>
+    <div class="s04-two">
+      <div><div class="s04-cap">distance table <i>d</i></div><div class="tbl s04-m"><table id="s04-tabN"></table></div></div>
+      <div><div class="s04-cap">Q table (join the smallest)</div><div class="tbl s04-m"><table id="s04-tabQ"></table></div></div>
+    </div>
+    <div class="svgbox"><svg id="s04-svgN" width="100%" style="min-width:520px" role="img" aria-label="Tree built by neighbour joining so far"></svg></div>
+
+    <div class="legend"><span><i style="background:var(--good);height:10px"></i>grouping is in the true tree</span><span><i style="background:var(--bad);height:10px"></i>grouping is not in the true tree</span><span><i style="background:var(--fg);height:10px"></i>single tip (no grouping to judge)</span></div>
+    <div class="readout">
+      <div>UPGMA tree equals the true tree?<b id="s04-rU">-</b></div>
+      <div>Neighbour joining tree equals the true tree?<b id="s04-rN">-</b></div>
+    </div>
+    <div class="note" id="s04-out" aria-live="polite"></div>
+  </div>
+
+  <p>Try the slider at 4 or above and press <b>To the end</b>. UPGMA first joins tips 4 and 5, as it should. Then the smallest distance in its table is between tips 2 and 3, not between tips 1 and 2, because tip 1 is now so far from everyone. At speed 3 the two distances are equal and the program takes the first one it finds. Neighbour joining gets the true tree at every speed, because its Q values cancel a long branch.</p>
+  <p>Two things this toy does not show. The toy table is exact; real tables carry noise, so NJ's answer is then only an estimate and can be wrong. And both methods give one tree with no measure of how far to trust it: that needs <a href="#s07">s07</a>. Methods that score whole trees against the sequences come next, in <a href="#s05">s05</a> and <a href="#s06">s06</a>.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why the closest pair can be the wrong pair</summary><div class="in">
+    <p>Think of a family. Anna and her brother Ben grew up in the same town. Ben still lives there, and so does their cousin Carl, in the next street. Anna emigrated and now lives 9,000 km away. Measure only how far apart people live: Ben and Carl are closest, and "join the closest pair" says Ben and Carl are the nearest relatives. But Anna and Ben are siblings. Distance travelled is not the same as kinship.</p>
+    <p>DNA does the same. If Anna's lineage changed fast, its sequence is far from everyone, including its sister lineage. UPGMA reads the table like a map of distances and trusts the smallest number, so it pairs the wrong two. Neighbour joining asks: "who is close, once I allow for who is far from <i>everybody</i>?" Anna is far from everybody, so her large distances are discounted, and her best partner, Ben, is found.</p>
+  </div></details>
+
+  <h3>Check: the toy code against known answers</h3>
+  <p>The tree code on this page was tested when the page loaded, with the same functions the toy uses. A "split" is one grouping in a tree. A tree counts as recovered if it has the same splits and its distances reproduce the table.</p>
+  <ul class="s04-check" id="s04-check" aria-live="polite"><li>Running the checks...</li></ul>
+  <p class="s04-small">Sources: Saitou and Nei 1987 (only the abstract was read; the full paper is behind a paywall, so the formulas are quoted from the scikit-bio code, which cites it); Sokal and Michener 1958 (named in the scikit-bio documentation, not opened); the SciPy and scikit-bio documentation for the average formula, the ultrametric property and the warning about additivity.</p>
+</section>

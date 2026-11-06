@@ -1,0 +1,13 @@
+#s04-wrap .s04-lab{font:600 13px var(--f-mono);letter-spacing:.04em;margin-top:6px;border-top:2px solid var(--line);padding-top:8px}
+#s04-wrap .s04-txt{font-size:14px;min-height:2.6em}
+#s04-wrap .s04-cap{font-size:12.5px;color:var(--muted);margin-bottom:3px}
+#s04-wrap .s04-two{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px}
+#s04-wrap .s04-m table{border-collapse:collapse;font:12.5px var(--f-mono);font-variant-numeric:tabular-nums;width:auto}
+#s04-wrap .s04-m th,#s04-wrap .s04-m td{padding:3px 9px;text-align:right;border:1px solid var(--line)}
+#s04-wrap .s04-m td.s04-hit{background:var(--accent);color:var(--bg);font-weight:700}
+#s04-wrap .s04-m td.s04-na{background:var(--code-bg)}
+#s04-wrap .s04-check li{margin:3px 0}
+#s04-wrap .s04-check .ok{color:var(--good);font-weight:700}
+#s04-wrap .s04-check .no{color:var(--bad);font-weight:700}
+#s04-wrap .s04-small{font-size:12.5px;color:var(--muted)}
+#s04-wrap #s04-out:empty{display:none}

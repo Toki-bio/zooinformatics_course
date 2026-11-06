@@ -1,0 +1,148 @@
+<section aria-labelledby="s11" id="s11-wrap">
+  <h2 id="s11"><span class="n">11</span>Choosing and reporting</h2>
+  <p class="lede">Sections <a href="#s01">01</a> to <a href="#s10">10</a> gave you the methods one by one. This last section puts them together. It has four parts: a helper that goes from your data and your question to a method, a list of what a methods paragraph must say, the usual mistakes, and the file formats and programs for drawing the result. Every recommendation is tagged. A <span class="tag s">source</span> tag means a manual or paper we opened says it, and the sources are listed at the end. An <span class="tag l">advice</span> tag means it is our own advice, which you may argue with.</p>
+
+  <h3>From data and question to method</h3>
+  <p>Choose what you have and what you want to know. The helper does not run anything. It shows a plan with reasons, and each reason says where it comes from.</p>
+
+  <div class="tool" id="s11-tool">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s11-h">Which method for my data?</h3></div>
+    <p class="tool-note">Three choices, then read the plan below. A <b>locus</b> is one stretch of DNA, for example one gene. A <b>concatenated</b> alignment joins many loci end to end into one long alignment.</p>
+    <div class="calc">
+      <div>
+        <div class="tool-note">What data do you have?</div>
+        <div class="seg" role="group" aria-label="Data">
+          <button type="button" id="s11-d-loci" aria-pressed="true">One gene or a few genes</button>
+          <button type="button" id="s11-d-genome" aria-pressed="false">Many genes or whole genomes</button>
+          <button type="button" id="s11-d-sine" aria-pressed="false">SINE insertions (present or absent)</button>
+        </div>
+      </div>
+      <div>
+        <div class="tool-note">What do you want?</div>
+        <div class="seg" role="group" aria-label="Goal">
+          <button type="button" id="s11-g-draft" aria-pressed="true">A first look</button>
+          <button type="button" id="s11-g-final" aria-pressed="false">A tree for a paper</button>
+          <button type="button" id="s11-g-dated" aria-pressed="false">Divergence times</button>
+          <button type="button" id="s11-g-conflict" aria-pressed="false">Do genes disagree?</button>
+        </div>
+      </div>
+      <div>
+        <div class="tool-note">How many sequences or species?</div>
+        <div class="seg" role="group" aria-label="Size">
+          <button type="button" id="s11-z-small" aria-pressed="true">Up to about 100</button>
+          <button type="button" id="s11-z-large" aria-pressed="false">Thousands</button>
+        </div>
+      </div>
+    </div>
+    <div class="note" id="s11-out" aria-live="polite"></div>
+    <div id="s11-para-box"></div>
+    <div class="note" id="s11-ctl" aria-live="polite"></div>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: why the answer depends on the question</summary><div class="in">
+    <p>Think of choosing a vehicle. A bicycle is fine for the shop round the corner, a lorry is needed for a house move, and neither goes to another continent. A quick tree from one gene is the bicycle. A tree of many genes with checks of how much they disagree is the lorry. Divergence times need a different kind of vehicle again, because you must add a clock and something that tells the clock how old a branch is, such as a fossil.</p>
+    <p>Example: you sequenced one mitochondrial gene from 30 frogs and want to see which ones group together. A first look is enough, and the helper says so. Now you want to publish the species tree of those frogs. One gene is the history of one piece of DNA, and the helper tells you why that may not be the history of the species (<a href="#s10">s10</a>).</p>
+  </div></details>
+
+  <h3>What a methods paragraph must state</h3>
+  <p>A reader should be able to repeat your tree from your paragraph and your files. The list below follows the steps of an analysis. Kapli, Yang and Telford (2020) name the major steps as finding orthologous genes, multiple sequence alignment, choice of substitution model and the inference method, and say that understanding the sources of error at each step is essential <span class="tag s">source: Kapli 2020, abstract only</span>. <b>Orthologous</b> genes are copies that diverged at a speciation, not at a gene duplication (<a href="#s02">s02</a>). The items themselves are our advice, except where tagged.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>State</th><th>Why</th><th>Basis</th></tr></thead>
+    <tbody>
+      <tr><td><b>Data</b>: which sequences, from where (accession numbers), how many</td><td>So others can get the same input</td><td><span class="tag l">advice</span></td></tr>
+      <tr><td><b>Orthology</b>: how you made sure the loci are orthologous</td><td>Wrong homologs give a tree of the wrong thing</td><td><span class="tag s">Kapli 2020</span></td></tr>
+      <tr><td><b>Alignment</b>: program, version, settings, and any trimming</td><td>Different alignments give different trees</td><td><span class="tag s">Kapli 2020</span> (alignment named as a step)</td></tr>
+      <tr><td><b>Model</b>: the substitution model, and how it was chosen</td><td>Branch lengths and sometimes the shape depend on it</td><td><span class="tag s">Kapli 2020</span>, <span class="tag s">IQ-TREE</span></td></tr>
+      <tr><td><b>Program</b>: name, version, the command or main settings</td><td>Defaults change between versions. IQ-TREE says, for example, that from version 1.5.4 model selection is the default</td><td><span class="tag s">IQ-TREE</span></td></tr>
+      <tr><td><b>Support</b>: which kind (bootstrap, UFBoot, SH-aLRT, posterior probability), how many replicates, and what you call strong</td><td>The kinds are not on the same scale: IQ-TREE says not to compare standard bootstrap with UFBoot directly</td><td><span class="tag s">IQ-TREE FAQ</span></td></tr>
+      <tr><td><b>Bayesian runs</b>: number of runs and generations, burn-in, the split-frequency value at the end, ESS and PSRF</td><td>Shows the run had converged (<a href="#s08">s08</a>)</td><td><span class="tag s">MrBayes</span></td></tr>
+      <tr><td><b>Dating</b>: the calibrations with their source, the clock model, the priors</td><td>The ages are only as good as the calibrations</td><td><span class="tag l">advice</span></td></tr>
+      <tr><td><b>Genes against species</b>: whether the tree is a gene tree, a concatenation or a species tree, and what you did about disagreement</td><td>These answer different questions (<a href="#s10">s10</a>)</td><td><span class="tag s">IQ-TREE FAQ</span>, <span class="tag s">ASTRAL-III</span></td></tr>
+      <tr><td><b>Root</b>: the outgroup, or the rooting method</td><td>Without a root, the reader cannot tell which way time runs</td><td><span class="tag l">advice</span></td></tr>
+      <tr><td><b>Files</b>: the alignment and the tree in a public place</td><td>Lets others redo and check</td><td><span class="tag l">advice</span></td></tr>
+    </tbody>
+  </table></div>
+  <p>The helper above writes a draft paragraph for the plan it shows. The square brackets mark what only you can fill in.</p>
+
+  <h3>Common mistakes</h3>
+  <dl class="defs">
+    <dt>Reading the tree as a ladder</dt>
+    <dd>Omland, Cook and Crisp call it the "primitive lineage fallacy": assuming that a species-poor lineage that looks "early branching" or "basal" is ancestral <span class="tag s">source: Omland 2008, abstract only</span>. Present-day species on a tree are all the same age. The order of tips on the page means nothing, because any node can be rotated (try it in the drawing tool below).</dd>
+    <dt>Calling 100 % "proof"</dt>
+    <dd>IQ-TREE's FAQ warns that for phylogenomic data UFBoot and even the standard bootstrap "will tend to be 100%", and recommends concordance factors for any phylogenomic analysis <span class="tag s">source: IQ-TREE FAQ</span>. The gene concordance factor is the percentage of decisive gene trees that contain the branch, and the site concordance factor the percentage of decisive sites that support it <span class="tag s">source: IQ-TREE concordance factors</span>. A branch can be strongly supported by the pooled data and still be contradicted by many genes.</dd>
+    <dt>Using the wrong support scale</dt>
+    <dd>Do not set UFBoot beside the standard bootstrap as if they were the same measure <span class="tag s">source: IQ-TREE FAQ</span>. The FAQ says to start relying on a branch at UFBoot of at least 95 %, and to be more confident when SH-aLRT is at least 80 % as well, but it adds that these recommendations only apply to single gene trees <span class="tag s">source: IQ-TREE FAQ</span>.</dd>
+    <dt>Trusting a Bayesian run that has not converged</dt>
+    <dd>The MrBayes manual calls an average standard deviation of split frequencies below 0.01 "very good indication of convergence", and values between 0.01 and 0.05 possibly adequate for some purposes. It says an effective sample size (ESS) below 100 suggests poor mixing, and that PSRF should be close to 1.0 <span class="tag s">source: MrBayes manual</span>.</dd>
+    <dt>One gene taken for the species tree</dt>
+    <dd>A single locus is the history of that piece of DNA (<a href="#s10">s10</a>). Say "gene tree" in the text unless you have dealt with disagreement between loci. <span class="tag l">advice</span></dd>
+    <dt>Branch lengths read as time</dt>
+    <dd>On a tree from sequences, a branch length is an amount of change, not years, unless you did a dating analysis (<a href="#s09">s09</a>). <span class="tag l">advice</span></dd>
+    <dt>No root, or an unstated root</dt>
+    <dd>Most programs give an unrooted tree, and the drawing program chooses some root to show it. A rooted-looking figure must say how it was rooted. The Newick description itself says that for an unrooted tree the convention is to root it arbitrarily and report the result <span class="tag s">source: Newick standard</span>.</dd>
+  </dl>
+
+  <h3>File formats</h3>
+  <p>A <b>tree file</b> is plain text. Two formats cover nearly every program.</p>
+  <dl class="defs">
+    <dt>Newick</dt>
+    <dd>Interior nodes are written as matched parentheses. Inside them are the descendants, separated by commas. The tree ends with a semicolon. A branch length comes after a node, after a colon. A name may be any printable characters except blanks, colons, semicolons, parentheses and square brackets <span class="tag s">source: Newick standard</span>. Trees "can be multifurcating at any level" (a node may have more than two children).</dd>
+    <dt>Nexus</dt>
+    <dd>A file made of separate blocks. Each block holds one kind of data, such as taxa, characters or trees, so that one file can carry the alignment and the trees together <span class="tag s">source: Maddison et al. 1997, abstract only</span>. Inside a trees block the trees are usually written in Newick.</dd>
+  </dl>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># Newick: the first two examples are on the Newick standard page</span>
+((A,B),(C,D));                          <span class="c"># shape only</span>
+(B:6.0,(A:5.0,C:3.0,E:4.0):5.0,D:11.0); <span class="c"># with branch lengths, and a node with three children</span>
+((A,B)95,(C,D)88);                      <span class="c"># numbers after a bracket: usually support values</span>
+
+<span class="c"># Nexus: the same idea inside a block</span>
+#NEXUS
+BEGIN TREES;
+  TREE example = ((A:1,B:1):1,(C:1,D:1):1);
+END;</pre></div>
+  <p>The third Newick line is a common habit, not part of the standard we read: programs often write support values in the place where an interior node's name would go. Such a number belongs to the branch above that node, so if you re-root the tree in a program that does not know this, the numbers can end up on the wrong branches. Check your support values after re-rooting. <span class="tag l">advice</span> The Nexus block is our own small example of the layout, not copied from the paper.</p>
+
+  <div class="tool" id="s11-nw">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s11-nw-h">Read a Newick string, and turn the tree around</h3></div>
+    <p class="tool-note">Type or paste a Newick tree, or press an example. <b>Rotate every node</b> swaps the order of the children at each node, so the picture becomes its mirror image. The list of groups below the picture does not change, because a rotation does not change the relationships. Then press <b>Swap two names</b>, which really does change the tree.</p>
+    <div class="seg" role="group" aria-label="Examples">
+      <button type="button" id="s11-nw-e1" aria-pressed="false">Example 1</button>
+      <button type="button" id="s11-nw-e2" aria-pressed="true">Example 2</button>
+      <button type="button" id="s11-nw-e3" aria-pressed="false">Example 3</button>
+    </div>
+    <div class="calc">
+      <label class="wide">Newick<input class="wide" id="s11-nw-in" maxlength="200" spellcheck="false" autocomplete="off" style="width:min(520px,80vw)"></label>
+      <button type="button" class="btn" id="s11-nw-rot">Rotate every node</button>
+      <button type="button" class="btn" id="s11-nw-swap">Swap two names</button>
+    </div>
+    <div class="svgbox"><svg id="s11-nw-svg" width="100%" role="img" aria-label="The tree drawn from the Newick text"></svg></div>
+    <div class="readout">
+      <div>Tips<b id="s11-nw-tips">0</b></div>
+      <div>Groups (clades) with two or more tips<b id="s11-nw-cl">0</b></div>
+      <div>Sum of branch lengths<b id="s11-nw-sum">0</b></div>
+      <div>Same relationships as the start?<b id="s11-nw-same">yes</b></div>
+    </div>
+    <div class="note" id="s11-nw-msg" aria-live="polite"></div>
+    <div class="note" id="s11-nw-ctl" aria-live="polite"></div>
+  </div>
+
+  <details class="simple"><summary>Simple explanation with examples: what a rotation is</summary><div class="in">
+    <p>A tree is like a hanging mobile. Each node is a joint where two or more arms hang. Spin any joint and the arms swap places, but nothing is cut or tied differently. <code>((A,B),(C,D));</code> and <code>((D,C),(B,A));</code> are the same tree, drawn twice. In both, A and B are sisters, and C and D are sisters.</p>
+    <p>So do not say "A is close to C" because their tips are drawn next to each other. Find the node where the paths from A and from C meet. The nearer that node is to the tips, the closer the relatives.</p>
+  </div></details>
+
+  <h3>Drawing trees</h3>
+  <p>The programs below read a tree file, and you can rotate nodes, change the root, show branch lengths and support values, and save a picture. Choose by how you work.</p>
+  <dl class="defs">
+    <dt>FigTree</dt>
+    <dd>"Designed as a graphical viewer of phylogenetic trees and as a program for producing publication-ready figures", and made to show trees summarised by BEAST. Its README says it has been superseded by PearTree <span class="tag s">source: FigTree README</span>.</dd>
+    <dt>iTOL</dt>
+    <dd>A web tool for "the display, annotation and management of phylogenetic and other trees". It reads Newick, Nexus, PhyloXML and Jplace, and you add annotation files by dragging them onto the tree <span class="tag s">source: iTOL help</span>.</dd>
+    <dt>ggtree</dt>
+    <dd>An R package that extends the <code>ggplot2</code> plotting system, made for "visualization and annotation of phylogenetic trees and other tree-like structures" <span class="tag s">source: Bioconductor page, version 4.2.1</span>.</dd>
+  </dl>
+  <p>For any figure we advise: show a scale bar if branch lengths mean something, say in the legend which support values you show, state the root, and keep the tree file you drew from. <span class="tag l">advice</span></p>
+
+  <h3>Sources for this section</h3>
+  <ul class="qlist" id="s11-src"></ul>
+</section>

@@ -1,0 +1,247 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Maximum likelihood</h2>
+  <p class="lede">Parsimony counts changes. Maximum likelihood asks a different question: if this tree and this model of evolution were true, how probable would our alignment be? The tree that makes the alignment most probable wins. This section works through that calculation by hand on four sequences, then shows how programs do the same thing on thousands.</p>
+
+  <h3>What a likelihood is</h3>
+  <p>The <dfn>likelihood</dfn> of a tree is the probability of the data given that tree. Here the data are the aligned sequences. The "tree" means its shape (the <dfn>topology</dfn>) and its branch lengths, together with a model of substitution from <a href="#s03">section 03</a>. Posada and Crandall (2021) write it as P(S | T, M): the probability of the sequences S, given tree T and model M.</p>
+  <p>Read that direction carefully. A likelihood is the chance of the data if the tree is right. It is not the chance that the tree is right. Getting from one to the other needs extra assumptions, which is what <a href="#s08">section 08</a> is about.</p>
+  <p>Felsenstein's 1981 method makes two simplifying assumptions, and most programs still make them: sites change independently of each other, and branches change independently of each other. Posada and Crandall call these "unrealistic", but they are what makes the calculation possible. Because sites are independent, the likelihood of the alignment is the likelihood of each column multiplied together.</p>
+  <p>The numbers become very small very quickly, so programs add up the natural logarithms of the column likelihoods instead of multiplying. This sum is the <dfn>log-likelihood</dfn>, written ln L. It is negative, and a value closer to zero is better. RAxML-NG's own tutorial shows a real example of −5708.92 for one alignment.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: likelihood with a coin</summary><div class="in">
+    <p>You toss a coin 10 times and get 7 heads. You want to know the coin's chance of heads, h.</p>
+    <p>If h = 0.5, the probability of exactly this sequence of tosses is 0.5<sup>7</sup> × 0.5<sup>3</sup> = 0.00098. If h = 0.7, it is 0.7<sup>7</sup> × 0.3<sup>3</sup> = 0.00222. So h = 0.7 is the better explanation: it has the higher likelihood. No other value of h does better, so 0.7 is the <dfn>maximum likelihood estimate</dfn>.</p>
+    <p>Nothing here says "h is probably 0.7". It says only that, among the values of h, 0.7 makes what we saw most probable. Tree inference works the same way. The tree plays the part of h, and the alignment plays the part of the tosses.</p>
+  </div></details>
+
+  <h3>The likelihood of one site</h3>
+  <p>Take one column of an alignment with four sequences, P, Q, R and S. (These letters avoid confusion with the bases A, C, G, T.) Four sequences have three possible unrooted trees (<a href="#s01">section 01</a>). Take the tree that joins P with Q and R with S. It has two internal nodes, u and v, which stand for ancestors we never saw.</p>
+  <p>If we knew the ancestors' bases, the probability of the column would be a simple product: the chance of the base at the start, times the chance of what happened along each of the five branches. We do not know them, so we must add up every possibility. Each of the two nodes could be any of four bases, which gives 4 × 4 = 16 products:</p>
+  <div class="formula">L = &sum;<sub>u</sub> &sum;<sub>v</sub> &pi;<sub>v</sub> × P(v&rarr;u, m) × P(u&rarr;P's base, t<sub>P</sub>) × P(u&rarr;Q's base, t<sub>Q</sub>) × P(v&rarr;R's base, t<sub>R</sub>) × P(v&rarr;S's base, t<sub>S</sub>)</div>
+  <p>Here &pi;<sub>v</sub> is the chance of that base at the starting node. <i>P</i>(x&rarr;y, t) is the chance that base x has become base y after a branch of length t. Branch lengths are in expected substitutions per site, as in <a href="#s03">section 03</a>. Under JC69 every base has &pi; = ¼, and the branch chances have a simple form:</p>
+  <div class="formula">same base: ¼ + ¾ e<sup>&minus;4t/3</sup>&nbsp;&nbsp;&nbsp;&nbsp;one particular different base: ¼ &minus; ¼ e<sup>&minus;4t/3</sup></div>
+  <p>Sixteen terms is easy. The trouble is growth. Posada and Crandall give the count: for 12 sequences, a rooted tree has 11 internal nodes, so 4<sup>11</sup> = 4,194,304 products of 23 terms each, for every site.</p>
+
+  <h3>Felsenstein pruning</h3>
+  <p>Felsenstein's answer was to work from the tips towards the root, one node at a time. Posada and Crandall describe it as computing "in terms of conditional likelihoods, starting from the tips". The <dfn>conditional likelihood</dfn> of a node for a base is the probability of everything seen above that node, given that the node had that base. Each node holds four such numbers, one per base.</p>
+  <ol class="qlist">
+    <li><b>Tips.</b> A tip has 1 for the base we see and 0 for the other three.</li>
+    <li><b>Each internal node, once its neighbours are done.</b> For each base the node might have had: for each neighbour, sum over that neighbour's four bases the chance of the branch change times the neighbour's own number. Then multiply the neighbours' results together.</li>
+    <li><b>Finish at the root.</b> Weight the root's four numbers by &pi; and add them up.</li>
+  </ol>
+  <p>This works because a node's four numbers already summarise everything above it, so nothing above it needs to be looked at again. The work now grows in step with the number of nodes, not as a power of four. The method is known as Felsenstein pruning. It gives exactly the same answer as the full sum; it only avoids repeating work. The figure below checks this for whatever you set.</p>
+
+  <figure id="s06-fig1">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note"><b>One site, step by step.</b> JC69, so every base has &pi; = ¼.</span></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Tree topology">
+        <button type="button" id="s06-top0" aria-pressed="true">PQ | RS</button>
+        <button type="button" id="s06-top1" aria-pressed="false">PR | QS</button>
+        <button type="button" id="s06-top2" aria-pressed="false">PS | QR</button>
+      </div>
+    </div>
+    <div class="calc">
+      <label>Base at P<select id="s06-tip0"><option>A</option><option>C</option><option>G</option><option>T</option><option value="-">- (gap)</option></select></label>
+      <label>Base at Q<select id="s06-tip1"><option>A</option><option>C</option><option>G</option><option>T</option><option value="-">- (gap)</option></select></label>
+      <label>Base at R<select id="s06-tip2"><option>A</option><option>C</option><option>G</option><option>T</option><option value="-">- (gap)</option></select></label>
+      <label>Base at S<select id="s06-tip3"><option>A</option><option>C</option><option>G</option><option>T</option><option value="-">- (gap)</option></select></label>
+    </div>
+    <div class="controls">
+      <label>Branch to P <output id="s06-t0-o"></output><input id="s06-t0" type="range" min="0.01" max="2" step="0.01"></label>
+      <label>Branch to Q <output id="s06-t1-o"></output><input id="s06-t1" type="range" min="0.01" max="2" step="0.01"></label>
+      <label>Branch to R <output id="s06-t2-o"></output><input id="s06-t2" type="range" min="0.01" max="2" step="0.01"></label>
+      <label>Branch to S <output id="s06-t3-o"></output><input id="s06-t3" type="range" min="0.01" max="2" step="0.01"></label>
+      <label>Internal branch m <output id="s06-m-o"></output><input id="s06-m" type="range" min="0.01" max="2" step="0.01"></label>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="s06-reset">Start again</button>
+      <button type="button" class="btn" id="s06-prev">Back</button>
+      <button type="button" class="btn" id="s06-next">Next step</button>
+      <button type="button" class="btn" id="s06-all">Show all</button>
+      <span class="tool-note" id="s06-steplab" aria-live="polite"></span>
+    </div>
+    <div class="svgbox" id="s06-tree"></div>
+    <div class="toy" id="s06-work" aria-live="polite"></div>
+    <div class="readout">
+      <div>Likelihood by pruning<b id="s06-r-L"></b></div>
+      <div>ln L of this site<b id="s06-r-ln"></b></div>
+      <div>Likelihood by adding all 16 products<b id="s06-r-b"></b></div>
+      <div>Pruning against the full sum<b id="s06-r-d"></b></div>
+    </div>
+    <details class="simple"><summary>All 16 products, largest first</summary><div class="in"><div class="toy" id="s06-terms"></div></div></details>
+    <figcaption><b>Things to try.</b> The site starts as A, A, G, G. Switch between the three trees: PQ | RS explains it with one change on the internal branch, and its likelihood is about fifteen times higher than the others. Then make the internal branch long and watch the gap shrink. Set a tip to a gap: IQ-TREE's FAQ says gaps are treated "as unknown characters, which represent no information", so here it becomes 1 for all four bases.</figcaption>
+  </figure>
+
+  <p>The root in the figure is at node v, but that choice does not matter. Felsenstein showed that for a <span class="tip" title="A reversible process looks the same run forwards or backwards in time. JC69, HKY and GTR are all reversible.">reversible</span> model the likelihood is the same wherever the root is placed; he called this the pulley principle. So the method gives an <strong>unrooted</strong> tree, and the root must come from elsewhere, such as an outgroup (<a href="#s01">section 01</a>).</p>
+  <p>Real analyses add one more layer. With gamma rates (<a href="#s03">section 03</a>), each site's likelihood is calculated once for each rate category, and the results are averaged using the category weights. The pruning itself does not change.</p>
+
+  <h3>Branch lengths are estimated too</h3>
+  <p>A topology alone has no likelihood. Its branch lengths must be chosen first, and the fair choice is the set that gives that topology its highest likelihood. Finding that set is <dfn>branch length optimisation</dfn>.</p>
+  <p>The smallest case is two sequences joined by one branch, length d. With n sites and k differences under JC69, the log-likelihood has only two kinds of column:</p>
+  <div class="formula">ln L(d) = n ln ¼ + (n &minus; k) ln(¼ + ¾ e<sup>&minus;4d/3</sup>) + k ln(¼ &minus; ¼ e<sup>&minus;4d/3</sup>)</div>
+  <p>The value of d at the top of this curve is the maximum likelihood distance. In this one case there is a formula for it, and it is the JC69 correction you have already met in <a href="#s03">section 03</a>: d = &minus;¾ ln(1 &minus; 4p/3), with p = k/n. So the correction was a likelihood estimate all along.</p>
+
+  <figure id="s06-fig2">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note"><b>Climb to the top of the curve.</b> The page finds the peak by searching the curve, then compares it with the formula.</span></div>
+    <div class="controls">
+      <label>Sites n <output id="s06-n-o"></output><input id="s06-n" type="range" min="10" max="200" step="1" value="100"></label>
+      <label>Differences k <output id="s06-k-o"></output><input id="s06-k" type="range" min="0" max="100" step="1" value="30"></label>
+    </div>
+    <div class="svgbox" id="s06-curve"></div>
+    <div class="readout">
+      <div>p = k / n<b id="s06-q-p"></b></div>
+      <div>d from the formula<b id="s06-q-c"></b></div>
+      <div>d from searching the curve<b id="s06-q-n"></b></div>
+      <div>Gap between the two<b id="s06-q-g"></b></div>
+    </div>
+    <p class="tool-note" id="s06-q-m" aria-live="polite"></p>
+    <figcaption><b>Things to try.</b> Keep p the same but raise n, from 15 of 50 to 60 of 200: the peak stays put and gets sharper, because more sites pin the estimate down. Then push k above 75 % of n.</figcaption>
+  </figure>
+
+  <p>A larger tree has no such formula, so programs climb numerically. Felsenstein's method improves one branch at a time while the others stay fixed, then goes round again until nothing improves. RAxML-NG's default for this step is a Newton-Raphson method (<code>--blopt nr_fast</code>), which is a way of climbing a curve using its slope and bend.</p>
+
+  <h3>Comparing the three trees</h3>
+  <p>Now everything can be put together. For an alignment of four sequences, take each of the three topologies, optimise its five branch lengths, and compare the best ln L each one can reach. This is a complete maximum likelihood analysis, because with four sequences every tree can be tried.</p>
+
+  <figure id="s06-fig3">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note"><b>All three topologies on a short alignment.</b> Invented data, JC69. You can edit the sequences (A C G T, with - or N for unknown; up to 40 sites).</span></div>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Example alignment">
+        <button type="button" id="s06-pre-clear" aria-pressed="true">Clear signal</button>
+        <button type="button" id="s06-pre-conf" aria-pressed="false">Conflict</button>
+        <button type="button" id="s06-pre-none" aria-pressed="false">No signal</button>
+        <button type="button" id="s06-pre-gap" aria-pressed="false">With gaps</button>
+      </div>
+    </div>
+    <div class="calc">
+      <label class="wide">P<input class="wide mono" id="s06-seq0" type="text" maxlength="40" spellcheck="false" autocomplete="off"></label>
+      <label class="wide">Q<input class="wide mono" id="s06-seq1" type="text" maxlength="40" spellcheck="false" autocomplete="off"></label>
+      <label class="wide">R<input class="wide mono" id="s06-seq2" type="text" maxlength="40" spellcheck="false" autocomplete="off"></label>
+      <label class="wide">S<input class="wide mono" id="s06-seq3" type="text" maxlength="40" spellcheck="false" autocomplete="off"></label>
+    </div>
+    <div class="tbl"><table>
+      <thead><tr><th>Topology</th><th>Best ln L</th><th>Behind the best</th><th>Internal branch</th><th>P</th><th>Q</th><th>R</th><th>S</th></tr></thead>
+      <tbody id="s06-a-body"></tbody>
+    </table></div>
+    <div class="readout">
+      <div>Alignment<b id="s06-a-pat" style="font-size:14px"></b></div>
+      <div>Best tree<b id="s06-a-best"></b></div>
+      <div><span class="tip" title="The difference between two ln L values. A lead of 1 log unit means the data are e, about 2.7, times more probable on the better tree.">Lead over the next tree (log units)</span><b id="s06-a-gap"></b></div>
+    </div>
+    <p class="tool-note" id="s06-a-msg" aria-live="polite"></p>
+    <div class="svgbox" id="s06-sites"></div>
+    <figcaption><b>Each bar is one site:</b> its ln L on the best tree minus its ln L on the second-best tree. The tree's ln L is the sum of all columns, so you can see which sites carry the decision. In <i>Conflict</i>, sites pull in both directions. In <i>No signal</i> every variable site is a change in one sequence only, and the three trees tie exactly with an internal branch of almost zero.</figcaption>
+  </figure>
+
+  <p>Two things differ from parsimony (<a href="#s05">section 05</a>). First, every column counts. IQ-TREE's FAQ says that constant sites "are important for the correct estimation of the branch lengths", and should not be thrown away. Delete the constant columns from the example and watch the branch lengths grow. Second, the size of the answer is meaningful. Branch lengths come out of the same calculation as the score, and a change on a long branch costs less than a change on a short one.</p>
+  <p>The ln L values above are only comparable with each other because the alignment and model are the same. Our reading: never compare ln L between different alignments. Within one alignment, a lead of a few log units from a handful of sites is not yet a statement of confidence; that needs <a href="#s07">section 07</a>.</p>
+  <p>One warning from building this figure. Even on a single fixed tree, a short alignment can have more than one peak for its branch lengths. On the <i>Conflict</i> example, some starting points stopped about 2 log units below the best value, because a change could be placed on either of two sister tips. The page therefore starts from five points and keeps the best. Real programs face the same risk, which is one reason for the repeated runs below.</p>
+
+  <h3>Searching for the tree</h3>
+  <p>With four sequences we simply tried all three trees. With 50 sequences that is impossible (<a href="#s01">section 01</a>). Finding the best tree is what computer scientists call NP-hard, which means, in plain terms, that no shortcut is known that would guarantee it for large data sets. So, as Nguyen et al. (2015) put it, "one has to rely on search heuristics". A <dfn>heuristic</dfn> is a good method with no guarantee.</p>
+  <p>The basic search is <dfn>hill climbing</dfn>. Start from a quick tree, try small changes, keep any change that raises the likelihood, and stop when nothing nearby is better. Two kinds of small change are common:</p>
+
+  <figure id="s06-fig4">
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Tree rearrangement">
+        <button type="button" id="s06-mv-start" aria-pressed="true">Starting tree</button>
+        <button type="button" id="s06-mv-nni" aria-pressed="false">After an NNI</button>
+        <button type="button" id="s06-mv-spr" aria-pressed="false">After an SPR</button>
+      </div>
+    </div>
+    <div class="svgbox" id="s06-move"></div>
+    <figcaption id="s06-move-cap" aria-live="polite"></figcaption>
+  </figure>
+
+  <ul>
+    <li><b><dfn>Nearest neighbour interchange</dfn> (NNI)</b> "swaps two subtrees across an internal branch". Each internal branch offers two such swaps, so a tree of n sequences has 2(n &minus; 3) NNI neighbours (Nguyen et al. 2015). With n = 4 that is 2: from any of the three topologies in the figure above, one NNI reaches either of the other two.</li>
+    <li><b><dfn>Subtree pruning and regrafting</dfn> (SPR)</b> cuts off a subtree and attaches it to another branch. It reaches many more trees in one move. RAxML-NG's search is built on SPR moves, and its <dfn>radius</dfn> limits how far away a subtree may be reinserted.</li>
+  </ul>
+  <p>Hill climbing has a known weakness: it can stop on a lower peak, a <dfn>local optimum</dfn>, because every nearby tree is worse even though a better tree exists further away. Nguyen et al. note that this is worse when a move reaches few trees, which is why SPR often beats NNI in plain hill climbing.</p>
+  <p>The two main programs escape in different ways. <b>IQ-TREE</b> keeps a small set of good trees, randomly disturbs one of them with a few NNIs, and climbs again. It stops when the best tree has not improved after 100 such attempts. <b>RAxML-NG</b> runs complete SPR searches from several different starting trees and keeps the best result. Its tutorial shows why: on one data set, 15 of 20 searches ended near ln L = −9974.67, and 5 ended near −9980.60 on a different tree.</p>
+  <p>Neither result is guaranteed to be the true best tree. Nguyen et al. found that both programs "still finish sometimes in local optima", and advise repeated runs. Compare the final ln L across runs. If they differ, keep the highest and be more careful with that data set.</p>
+
+  <h3>Choosing the model</h3>
+  <p>Likelihood also tells us which model to use. <a href="#s03">Section 03</a> explained the idea: richer models always fit at least as well, so the fit must be charged for its parameters. These are the formulas used in the IQ-TREE source code, where <i>k</i> is the number of free parameters and <i>n</i> is the number of alignment sites:</p>
+  <div class="formula">AIC = &minus;2 ln L + 2k&nbsp;&nbsp;&nbsp;&nbsp;BIC = &minus;2 ln L + k ln n</div>
+  <p>A lower score is better. In IQ-TREE's report, k counts the branches as well as the model parameters, so a tree of 10 sequences starts at 17.</p>
+  <details class="simple"><summary>Simple explanation with examples: AIC and BIC with invented numbers</summary><div class="in">
+    <p>An invented alignment of 10 sequences and 1,000 sites, so ln n = 6.91 and the tree has 17 branches. HKY adds 4 free parameters and GTR adds 8.</p>
+    <div class="toy">model   ln L      k    AIC        BIC
+JC69    -5200.0   17   10434.0    10517.4
+HKY     -5120.0   21   10282.0    10385.1  &lt;- best BIC
+GTR     -5115.0   25   10280.0    10402.7  &lt;- best AIC</div>
+    <p>GTR has the highest ln L, as a richer model must. BIC says its extra 5 log units do not pay for 4 more parameters. AIC, with its lighter charge, just prefers it. The criteria can disagree, so report which one you used.</p>
+  </div></details>
+  <p>ModelFinder in IQ-TREE computes these scores for many models on one quick tree, a parsimony tree, and keeps the model with the lowest BIC. RAxML-NG 2 has a similar tool called MOOSE, also using BIC by default. In the ModelFinder paper, a BIC difference above 10 is treated as strong evidence against the higher score. Because the default compares models on a single tree, the paper notes that a poor starting tree can lead to a suboptimal model. The <code>-mtree</code> option does a full tree search for each model, at a large cost in time.</p>
+
+  <h3>IQ-TREE</h3>
+  <p>IQ-TREE 3 (Wong et al. 2026) is the current major version; the latest release when this was written was 3.1.4. The program itself is called <code>iqtree3</code>, while much of the documentation still writes <code>iqtree</code>, and version 1 used some different option names. Commands to adapt:</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># the simplest run: choose the model with ModelFinder, then search for the tree</span>
+iqtree3 -s alignment.fasta -T 4 --seed 1 --prefix run1
+
+<span class="c"># the same, with a model you chose yourself</span>
+iqtree3 -s alignment.fasta -m GTR+G --seed 1 --prefix run2
+
+<span class="c"># no tree search: the likelihood of one fixed tree</span>
+iqtree3 -s alignment.fasta -te mytree.nwk -m GTR+G --prefix fixed</pre></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Setting</th><th>Default</th><th>Option</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Model</td><td>ModelFinder, then tree search</td><td><code>-m MFP</code></td><td>Chooses by BIC. Change with <code>-AIC</code> or <code>-AICc</code>.</td></tr>
+      <tr><td>Starting trees</td><td>100 parsimony trees + 1 BIONJ tree</td><td><code>--ninit</code></td><td>BIONJ is a variant of neighbour joining (<a href="#s04">section 04</a>).</td></tr>
+      <tr><td>Trees improved first</td><td>20</td><td><code>--ntop</code></td><td>The best initial trees get a full NNI climb.</td></tr>
+      <tr><td>Candidate trees kept</td><td>5</td><td><code>--nbest</code></td><td>The small set that is disturbed and climbed again.</td></tr>
+      <tr><td>Stop rule</td><td>100 attempts with no better tree</td><td><code>--nstop</code></td><td>The manual suggests raising it, with a lower <code>--perturb</code>, for data sets of many short sequences.</td></tr>
+      <tr><td>Perturbation strength</td><td>0.5</td><td><code>--perturb</code></td><td>How strongly a candidate tree is disturbed.</td></tr>
+      <tr><td>Independent runs</td><td>1</td><td><code>--runs</code></td><td>The manual advises at least 10 runs if you suspect local optima.</td></tr>
+      <tr><td>CPU threads</td><td>1</td><td><code>-T</code></td><td><code>-T AUTO</code> tests how many are useful. More threads help long alignments most.</td></tr>
+      <tr><td>Random seed</td><td>From the clock</td><td><code>--seed</code></td><td>Set it if you want to repeat a run exactly.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The main result is the <code>.iqtree</code> report, which is readable as text. The tree itself is in <code>.treefile</code>, and the screen output is kept in <code>.log</code>. Branch support options are in <a href="#s07">section 07</a>.</p>
+
+  <h3>RAxML-NG</h3>
+  <p>RAxML-NG (Kozlov et al. 2019) is a rewrite of the older RAxML. The latest release when this was written was 2.0.4. Version 2 changed some behaviour, and the wiki's tutorial was written for version 0.8, so we checked the defaults below in the 2.0.4 source code. Unlike IQ-TREE, it stops with an error if you give no <code>--model</code>.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># check the alignment first; the tutorial says most failed runs are format errors</span>
+raxml-ng --check --msa alignment.fasta --model GTR+G --prefix T1
+
+<span class="c"># tree search under a model you chose</span>
+raxml-ng --msa alignment.fasta --model GTR+G --prefix T2 --threads 2 --seed 2
+
+<span class="c"># choose the model with MOOSE, then search (new in version 2)</span>
+raxml-ng --msa alignment.fasta --model DNA --prefix T3 --seed 2
+
+<span class="c"># set the number of starting trees yourself</span>
+raxml-ng --msa alignment.fasta --model GTR+G --tree pars{25},rand{25} --prefix T4 --seed 2
+
+<span class="c"># no tree search: the likelihood of one fixed tree</span>
+raxml-ng --evaluate --msa alignment.fasta --model GTR+G --tree mytree.nwk --prefix E1</pre></div>
+  <div class="tbl"><table>
+    <thead><tr><th>Setting</th><th>Default in 2.0.4</th><th>Option</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Model</td><td>None; you must give one</td><td><code>--model</code></td><td><code>--model DNA</code> or <code>AA</code> runs MOOSE first (BIC).</td></tr>
+      <tr><td>Starting trees</td><td>Chosen automatically: 1 to 10 random and 1 to 10 parsimony</td><td><code>--tree</code></td><td>Set from how hard the alignment is predicted to be. The fallback, and the older default, is 10 + 10.</td></tr>
+      <tr><td>Search method</td><td>Adaptive</td><td><code>--opt-topology</code></td><td>Uses the same difficulty score (Togkousidis et al. 2023). <code>--adaptive off</code> gives the classic search.</td></tr>
+      <tr><td>SPR radius</td><td>Detected automatically</td><td><code>--spr-radius</code></td><td>How far a subtree may move in the fast rounds.</td></tr>
+      <tr><td>CPU threads</td><td>Detected automatically</td><td><code>--threads</code></td><td><code>--parse</code> reports a recommended number.</td></tr>
+      <tr><td>Random seed</td><td>From the clock</td><td><code>--seed</code></td><td>Set it if you want to repeat a run exactly.</td></tr>
+    </tbody>
+  </table></div>
+  <p>The best tree is in <code>.raxml.bestTree</code>, its fitted model in <code>.raxml.bestModel</code>, one tree per starting tree in <code>.raxml.mlTrees</code>, and everything printed on screen in <code>.raxml.log</code>. The tutorial's check for a run is to read the "Final LogLikelihood" line and to compare the trees with <code>--rfdist</code>.</p>
+  <p>The two programs are not rivals with a clear winner. Nguyen et al. found higher likelihoods with IQ-TREE on most of their benchmark, and still recommended using more than one program. Kozlov et al. found that RAxML-NG was generally faster and scored higher on alignments with many sequences, while IQ-TREE's results varied much less between runs. Both of these are the authors' tests of their own software, on older versions.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what a maximum likelihood run does, in order</summary><div class="in">
+    <ol class="qlist">
+      <li>Read the alignment and merge identical columns, since they have the same likelihood.</li>
+      <li>Choose a model, by you or by BIC.</li>
+      <li>Build quick starting trees.</li>
+      <li>For a tree: fit the branch lengths and model values, using pruning to get ln L at each try.</li>
+      <li>Rearrange the tree with NNI or SPR moves, and keep what improves ln L.</li>
+      <li>Stop by the program's rule, and report the best tree found.</li>
+    </ol>
+    <p>Step 4 sits inside step 5, so pruning runs a very large number of times. That is why likelihood is slow compared with distance methods, and why these programs spend so much effort on making it fast.</p>
+  </div></details>
+
+  <p class="tool-note">Sources: Felsenstein 1981 (abstract read); Posada and Crandall 2021; Nguyen et al. 2015; Kalyaanamoorthy et al. 2017; Kozlov et al. 2019; Togkousidis et al. 2023; Wong et al. 2026; IQ-TREE documentation and 3.1.4 source; RAxML-NG wiki and 2.0.4 source. Details are in the section notes.</p>
+</section>

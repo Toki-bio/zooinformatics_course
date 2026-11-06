@@ -1,0 +1,90 @@
+<section aria-labelledby="s03" id="s03-wrap">
+  <h2 id="s03"><span class="n">03</span>Distances and substitution models</h2>
+  <p class="lede">Once sequences are aligned (<a href="#s02">section 02</a>), the first thing we want is a number: how far apart are two species? The obvious answer, the share of letters that differ, is always too small, and the error grows with time. This section shows why, how a <span class="tip" title="A substitution model is a set of rules for how one letter of DNA turns into another: how often, and which changes are more likely. Programs use it to turn what we see into an estimate of what happened.">substitution model</span> repairs it, and what each added piece of the model (unequal change rates, unequal base frequencies, rate differences between sites) buys.</p>
+
+  <h3>The plain distance: p</h3>
+  <p>Take two aligned sequences and count the columns where the letters differ. Divide by the number of columns compared. This is the <dfn>p-distance</dfn>. Columns with a gap are left out of the count (a gap is not a letter; see <a href="../08-search/#s06">alignment scoring</a>).</p>
+  <div class="toy">A  A C G T T G C A A G C T T A C G G A T C
+B  A C G T C G C A A G C T T G C G G A T A
+           <span class="x">^</span>                 <span class="x">^</span>           <span class="x">^</span>    3 differences in 20 columns: p = 3/20 = 0.15</div>
+  <p>A change from one letter to another is a <dfn>substitution</dfn>. The p-distance counts the <em>differences we can see</em>. It does not count the substitutions that happened, and the two are not the same.</p>
+
+  <h3>Multiple hits and saturation</h3>
+  <p>A site can change more than once. Along one branch, an A may become G and later G becomes A again: two substitutions, no visible difference. Or A becomes G and then T: two substitutions, one visible difference. These hidden changes are called <dfn>multiple hits</dfn>. The older the split, the more of them there are, so p falls further and further behind the true amount of change.</p>
+  <p>There is also a ceiling. Once every site has been hit many times, the two sequences have forgotten their common ancestor. Each pair of letters is then unrelated, and two unrelated letters agree one time in four if the four bases are equally common. So p cannot go above 3/4 = 0.75, however long ago the species split. This flattening is <dfn>saturation</dfn>. Two saturated sequences look equally different whether they split 20 million or 200 million years ago.</p>
+  <p>The remedy is to correct the distance with a model. The simplest is <b>JC69</b> (Jukes and Cantor, 1969): every site changes at the same rate, and a change goes to each of the three other bases equally often. Write <i>d</i> for the true distance: the <b>average number of substitutions per site</b> on the whole path between the two sequences (both branches added together, counting every hit, visible or hidden). Under JC69 the expected p is</p>
+  <div class="formula">p = 3/4 &times; (1 &minus; e<sup>&minus;4d/3</sup>)&nbsp;&nbsp;&nbsp;&nbsp;so&nbsp;&nbsp;&nbsp;&nbsp;d = &minus;3/4 &times; ln(1 &minus; 4p/3)</div>
+  <p>For small <i>d</i> the curve follows p = <i>d</i>. As <i>d</i> grows it bends and flattens at 0.75. The second form is the correction: give it a p measured from data and it returns an estimate of <i>d</i>. It cannot be used when p reaches 0.75, because the logarithm no longer exists. In practice the estimate becomes very uncertain well before that, since a tiny change in p then means a huge change in <i>d</i>.</p>
+
+  <figure id="s03-fig">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Simulate two sequences that split <i>d</i> substitutions per site ago, then see what p shows and what the correction recovers.</span></div>
+    <div class="controls">
+      <label>True distance d (substitutions per site) <output id="s03-d-o"></output><input id="s03-d" type="range" min="0.05" max="3" step="0.05" value="0.5"></label>
+      <label>Sequence length (sites) <output id="s03-L-o"></output><input id="s03-L" type="range" min="100" max="3000" step="100" value="1000"></label>
+      <label><span class="tip" title="Real sites do not all change at the same rate. In this toy, a gamma distribution gives each site its own rate; a small shape number means a few sites change a lot and most change little. 'None' means all sites share one rate (JC69).">Rate differences between sites (gamma shape)</span>
+        <select id="s03-a"><option value="0">none (all sites equal)</option><option value="2">mild (shape 2)</option><option value="0.5">strong (shape 0.5)</option><option value="0.2">very strong (shape 0.2)</option></select></label>
+      <label><span class="tip" title="Invariable sites cannot change at all, for example because any change would break the protein. In this toy a chosen share of sites is frozen; the rest change faster so that the average stays d.">Share of invariable sites</span> <output id="s03-f-o"></output><input id="s03-f" type="range" min="0" max="0.6" step="0.1" value="0"></label>
+      <button type="button" class="btn" id="s03-new">Simulate another pair</button>
+      <button type="button" class="btn" id="s03-clr">Clear points</button>
+    </div>
+    <div class="svgbox"><svg id="s03-svg" viewBox="0 0 640 310" width="100%" style="min-width:520px" role="img" aria-label="Observed p against true distance"></svg></div>
+    <div class="legend"><span><i style="background:var(--muted);height:2px"></i>p = d (no hidden changes)</span><span><i style="background:var(--accent);height:3px"></i>expected p for the chosen settings</span><span><i style="background:var(--err);height:3px"></i>JC69, equal sites (for comparison)</span><span><i style="background:var(--het);height:10px;width:10px;border-radius:50%"></i>simulated pair (latest: ring)</span></div>
+    <div class="toy" id="s03-aln" aria-live="polite"></div>
+    <div class="readout" aria-live="polite">
+      <div>True distance d<b id="s03-r-d"></b></div>
+      <div>Expected p from the formula<b id="s03-r-pe"></b></div>
+      <div>Observed p in this pair<b id="s03-r-p"></b></div>
+      <div><span class="tip" title="The JC69 correction applied to the observed p: d = -3/4 ln(1 - 4p/3).">Distance after the JC69 correction</span><b id="s03-r-dj"></b></div>
+    </div>
+    <p class="tool-note" id="s03-verdict" aria-live="polite"></p>
+    <p class="tool-note" id="s03-control"></p>
+  </figure>
+  <p>Things to try. Leave the settings at "none" and slide <i>d</i> up: the dots follow the blue curve and the corrected distance stays near the truth until p nears 0.75. Shorten the sequences: the dots scatter, and the corrected value scatters even more, because a short sequence gives a noisy p. Then choose strong rate differences or invariable sites: p flattens <em>earlier</em>, and the JC69 correction, which assumes equal sites, now falls short of the true <i>d</i>. That shortfall is the reason for the extra model pieces below.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: why p stops at 0.75</summary><div class="in">
+    <p>Imagine a column that starts as A in the ancestor. Each lineage keeps changing that column from time to time. After a very long time, the letter in species 1 is just whichever of the four letters it landed on, and the same in species 2, independently. Two independent picks from four letters agree 1 time in 4, so they differ 3 times in 4.</p>
+    <p>Short time: most columns have no change, so p is about the number of changes. Medium time: some columns change twice and are partly hidden, so p lags. Long time: p is stuck at 0.75 and tells you nothing more. A correction can still recover the distance in the middle, but not at the end.</p>
+    <p>Example with numbers: p = 0.30 under JC69 gives d = &minus;0.75 &times; ln(1 &minus; 0.4) = 0.38 substitutions per site. The sequences differ at 30 % of sites but changed 38 times per 100 sites.</p>
+  </div></details>
+
+  <h3>Not all changes are equal: K80</h3>
+  <p>The four bases come in two chemical families. The <span class="tip" title="Purines: A and G. They are the two larger, double-ring bases.">purines</span> are A and G; the <span class="tip" title="Pyrimidines: C and T (U in RNA). They are the two smaller, single-ring bases.">pyrimidines</span> are C and T. A change inside a family (A&harr;G or C&harr;T) is a <dfn>transition</dfn>; a change between families is a <dfn>transversion</dfn>. In real DNA transitions are usually much more common than JC69 expects. If all changes were equally likely there would be twice as many transversions (two targets per base) as transitions (one target).</p>
+  <p>Kimura (1980) built this in. He took the share of sites with a transition difference (<i>P</i>) and with a transversion difference (<i>Q</i>) and gave the distance per site as</p>
+  <div class="formula">K = &minus;&frac12; ln[(1 &minus; 2P &minus; Q) &times; &radic;(1 &minus; 2Q)]</div>
+  <p>This is the formula given in the paper's abstract. Programs now usually fit the ratio of the two kinds of change by likelihood instead, but the idea is the same. Our reading, not a statement from the paper: transitions saturate sooner than transversions, so counting them separately keeps information that a single p throws away.</p>
+
+  <h3>HKY and GTR: unequal base frequencies and free rates</h3>
+  <p>The next two steps drop two more equalities. Real genomes do not have 25 % of each base; many are rich in A+T or in G+C. And the six kinds of change (A&harr;C, A&harr;G, A&harr;T, C&harr;G, C&harr;T, G&harr;T) need not all have the same rate. <b>HKY</b> (Hasegawa, Kishino and Yano, 1985) keeps K80's two classes of change and lets the base frequencies differ. <b>GTR</b>, the "general time-reversible" model, gives each of the six kinds of change its own rate, plus free base frequencies. "Time-reversible" means that the process looks the same run forwards or backwards in time, so the tree does not need an arrow of time and can be drawn unrooted.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Model</th><th>Assumes</th><th>Free parameters (IQ-TREE)</th></tr></thead>
+    <tbody>
+      <tr><td><b>JC69</b></td><td>All changes equally likely; equal base frequencies</td><td>0</td></tr>
+      <tr><td><b>K80</b> (also called K2P)</td><td>Transitions and transversions at different rates; equal base frequencies</td><td>1</td></tr>
+      <tr><td><b>HKY</b></td><td>As K80, but base frequencies can differ</td><td>4</td></tr>
+      <tr><td><b>GTR</b></td><td>Six kinds of change each with their own rate; base frequencies can differ</td><td>8</td></tr>
+      <tr><td><b>+I</b></td><td>A share of sites cannot change</td><td>adds 1 (the share)</td></tr>
+      <tr><td><b>+G</b></td><td>Sites change at gamma-distributed rates, 4 categories by default</td><td>adds 1 (the shape)</td></tr>
+    </tbody></table></div>
+  <p>A <dfn>free parameter</dfn> is a number the program must estimate from your alignment. Each one adds flexibility and a little uncertainty. The counts for JC69 to GTR are those in the IQ-TREE documentation; for +I and +G the "adds 1" is our reading of the ModelFinder paper, which says the I+&Gamma; model "is parameterized using two parameters".</p>
+
+  <h3>Sites differ in rate: gamma and invariable sites</h3>
+  <p>All the models above give every site the same rate. In coding DNA that is clearly false: the third position of a codon changes far more freely than the first two, and some positions cannot change without damage to the protein. Two additions handle this; they are written after the model name.</p>
+  <ul class="qlist">
+    <li><b>+I, invariable sites.</b> A share of the sites is set to rate zero. They stay the same for ever.</li>
+    <li><b>+G, gamma-distributed rates.</b> Each site has its own rate, drawn from a gamma distribution (a smooth curve of positive numbers) whose single "shape" number controls how unequal the rates are. Small shape: most sites nearly frozen, a few very fast. Large shape: nearly equal rates. Yang (1994) approximated the curve with a few equal-probability categories and found that "four such categories appear to be sufficient"; four is also the IQ-TREE default (<code>+G</code>, or <code>+G8</code> for eight).</li>
+  </ul>
+  <p>The two can be combined (<code>+I+G</code>). The toy above shows the effect: a few very fast sites hit the ceiling early while the many slow sites barely change, so p rises quickly at first and then creeps. A model that gives every site the same rate misreads this as less change than really happened. ModelFinder also offers a "free-rate" family (<code>+R</code>) that estimates the rate categories from the data instead of forcing a gamma curve; its authors note that the gamma assumptions "may be unrealistic and bias phylogenetic estimates".</p>
+  <p>A rate model assumes the alignment columns are homologous (<a href="#s02">section 02</a>). Gamma will not rescue a misaligned column.</p>
+
+  <h3>How a model is chosen</h3>
+  <p>More parameters always fit the data at least as well, just as a wiggly curve always fits a scatter of points better than a straight line. The question is whether the extra fit is worth the extra parameters. Model selection scores each model by its fit minus a penalty for its parameters. The common scores are <dfn>AIC</dfn> (the Akaike information criterion) and <dfn>BIC</dfn> (the Bayesian information criterion); BIC punishes parameters harder, and <a href="#s06">section 06</a> gives both formulas. The model with the best score is used.</p>
+  <p>You do not do this by hand. ModelFinder (Kalyaanamoorthy et al. 2017), built into IQ-TREE, runs it for you: it compares 22 DNA substitution models together with several rate models (equal, +I, +G, +R) and reports the best by the criterion you choose. Its worked example uses BIC and reads a difference above 10 as "strong evidence against the model with the higher BIC score". Its authors also warn that the search can get trapped and recommend repeating the model selection.</p>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># model selection only, no tree search (command form as in the ModelFinder paper)</span>
+iqtree -s alignment.fasta -m MF</pre></div>
+  <p>Two cautions. First, "best model" means best <em>among the ones tried</em>; none of them may describe the data well. Second, richer is not always needed. Our reading: when p is small (say below 0.1) there are few hidden changes and JC69 and GTR give nearly the same distance; the choice matters most for old splits, where saturation is serious. The next section turns distances into trees (<a href="#s04">section 04</a>), and the maximum-likelihood section later uses the same models directly.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: the model ladder</summary><div class="in">
+    <p>Think of the models as a ladder, each rung giving up one simplifying assumption. JC69: "every change equally likely, every base equally common." K80: "but transitions are more likely." HKY: "and bases can be unequally common." GTR: "and every kind of change has its own rate." +I and +G: "and sites differ in rate."</p>
+    <p>Example: two sequences differing at 5 % of sites. Almost no site has been hit twice, so every rung of the ladder gives almost the same distance, about 0.05. Two sequences differing at 60 % of sites are close to the ceiling: the corrected distance depends strongly on which rung you chose. In practice you let ModelFinder choose and then report which model it chose.</p>
+  </div></details>
+</section>

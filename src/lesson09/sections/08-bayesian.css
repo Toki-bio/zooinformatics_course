@@ -1,0 +1,2 @@
+/* the long formula wraps on phones instead of scrolling */
+#s08-wrap .formula{white-space:normal;line-height:1.7}
