@@ -860,7 +860,7 @@ kmergenie reads.list -t 16             <span class="c"># last line of output = b
     <div class="svgbox" id="s04-rp-fig"></div>
     <div class="legend"><span><i style="background:var(--muted)"></i>unique sequence</span><span><i style="background:var(--rep)"></i>repeat copy</span><span><i style="background:var(--good)"></i>read that bridges a copy</span><span><i style="background:var(--err)"></i>read that ends inside or too close</span><span><i style="background:var(--accent)"></i>resulting contig</span></div>
     <div class="readout" id="s04-rp-out"></div>
-    <p class="tool-note">The number under each copy counts every simulated read that bridges it. The picture draws only a few of the longest reads, so it shows fewer reads than that number. A read is green if it bridges at least one copy, so a green read can still end inside the next copy.</p>
+    <p class="tool-note">The picture draws every read that reaches a copy. The number under a copy counts the reads that bridge it: they cover the whole copy and reach at least 1 kb into unique sequence on both sides. A read is green if it bridges at least one copy, so a green read can still end inside the next copy.</p>
     <p class="tool-note">Things to try: set the repeat to 6 kb and switch between <b>B-like</b> and <b>A-like</b>. Then keep the A-like read lengths and lower the coverage to 10×: fewer reads means fewer lucky long ones. The randomness is fixed, so the same settings always give the same picture. Real assemblers need several bridging reads, not one, so real genomes break more easily than this toy.</p>
   </section>
 
@@ -3943,8 +3943,20 @@ datasets download genome accession GCA_003774525.2 --preview      <span class="c
     $('s04-rco').textContent = cov + '×';
     var sim = simulate(med, R, cov);
     var W = 900, padL = 70, padR = 20, x0 = padL, x1 = W - padR;
-    var lanes = 5, laneH = 9;
-    var H = 300;
+    // every read that reaches a copy is drawn, so the picture holds as many reads as the count under each copy
+    var picked = [];
+    sim.copies.forEach(function(cp){
+      cp.bridge.concat(cp.touch).forEach(function(r){ if (picked.indexOf(r) < 0) picked.push(r); });
+    });
+    picked.sort(function(a,b){ return a[0]-b[0]; });
+    var laneEnd = [], laneOf = [];
+    picked.forEach(function(r, i){
+      var k = 0, gap = sim.G*0.006;
+      while (k < laneEnd.length && laneEnd[k] > r[0]-gap) k++;
+      laneEnd[k] = r[1]; laneOf[i] = k;
+    });
+    var lanes = Math.max(5, laneEnd.length), step = lanes > 10 ? 7 : 13, laneH = step > 7 ? 9 : 7;
+    var ry0 = 72, ryEnd = ry0 + lanes*step, cy = ryEnd + 63, H = cy + 100;
     var svg = svgRoot($('s04-rp-fig'), W, H, 560);
     var sx = function(p){ return x0 + (x1-x0)*p/sim.G; };
     // genome bar
@@ -3957,37 +3969,23 @@ datasets download genome accession GCA_003774525.2 --preview      <span class="c
     });
     el('text', {x:sx(0), y:gy+22}, svg, '0');
     el('text', {x:sx(sim.G), y:gy+22, 'text-anchor':'end'}, svg, kb(sim.G));
-    // reads around each copy: longest reads touching or bridging it
-    var ry0 = 72;
+    // reads around each copy, all of them
     el('text', {x:8, y:ry0+20, 'class':'lab'}, svg, 'reads');
-    el('text', {x:8, y:ry0+34}, svg, '(longest)');
-    // pick the longest reads at each copy, then pack them into lanes without overlaps
-    var picked = [];
-    sim.copies.forEach(function(cp){
-      cp.bridge.concat(cp.touch).sort(function(a,b){ return (b[1]-b[0])-(a[1]-a[0]); }).slice(0, lanes)
-        .forEach(function(r){ if (picked.indexOf(r) < 0) picked.push(r); });
-    });
-    picked.sort(function(a,b){ return a[0]-b[0]; });
-    var laneEnd = [];
-    picked.forEach(function(r){
-      var k = 0, gap = sim.G*0.006;
-      while (k < laneEnd.length && laneEnd[k] > r[0]-gap) k++;
-      if (k >= lanes) return;
-      laneEnd[k] = r[1];
+    picked.forEach(function(r, i){
+      var k = laneOf[i];
       var br = sim.copies.some(function(cp){ return r[0] <= cp.s-ANCHOR && r[1] >= cp.e+ANCHOR; });
-      el('rect', {x:sx(r[0]), y:ry0 + k*(laneH+4), width:Math.max(1.5, sx(r[1])-sx(r[0])), height:laneH-2, rx:2,
+      el('rect', {x:sx(r[0]), y:ry0 + k*step, width:Math.max(1.5, sx(r[1])-sx(r[0])), height:laneH-2, rx:2,
         fill: br ? 'var(--good)' : 'var(--err)'}, svg);
     });
     sim.copies.forEach(function(cp){
       // dashed copy borders
-      el('line', {x1:sx(cp.s), x2:sx(cp.s), y1:gy+8, y2:ry0+lanes*(laneH+4), stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
-      el('line', {x1:sx(cp.e), x2:sx(cp.e), y1:gy+8, y2:ry0+lanes*(laneH+4), stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
+      el('line', {x1:sx(cp.s), x2:sx(cp.s), y1:gy+8, y2:ryEnd, stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
+      el('line', {x1:sx(cp.e), x2:sx(cp.e), y1:gy+8, y2:ryEnd, stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
       var ok = cp.bridge.length > 0;
-      el('text', {x:(sx(cp.s)+sx(cp.e))/2, y:ry0+lanes*(laneH+4)+14, 'text-anchor':'middle', fill: ok ? 'var(--good)' : 'var(--bad)'}, svg,
+      el('text', {x:(sx(cp.s)+sx(cp.e))/2, y:ryEnd+14, 'text-anchor':'middle', fill: ok ? 'var(--good)' : 'var(--bad)'}, svg,
         ok ? ('✓ ' + cp.bridge.length + ' bridge' + (cp.bridge.length===1?'':'s')) : '✗ break');
     });
     // contigs
-    var cy = 200;
     el('text', {x:8, y:cy+4, 'class':'lab'}, svg, 'contigs');
     var contigs = [], start = 0, anyBreak = false;
     sim.copies.forEach(function(cp){

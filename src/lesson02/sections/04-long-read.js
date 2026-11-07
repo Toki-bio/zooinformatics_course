@@ -69,8 +69,20 @@
     $('s04-rco').textContent = cov + '×';
     var sim = simulate(med, R, cov);
     var W = 900, padL = 70, padR = 20, x0 = padL, x1 = W - padR;
-    var lanes = 5, laneH = 9;
-    var H = 300;
+    // every read that reaches a copy is drawn, so the picture holds as many reads as the count under each copy
+    var picked = [];
+    sim.copies.forEach(function(cp){
+      cp.bridge.concat(cp.touch).forEach(function(r){ if (picked.indexOf(r) < 0) picked.push(r); });
+    });
+    picked.sort(function(a,b){ return a[0]-b[0]; });
+    var laneEnd = [], laneOf = [];
+    picked.forEach(function(r, i){
+      var k = 0, gap = sim.G*0.006;
+      while (k < laneEnd.length && laneEnd[k] > r[0]-gap) k++;
+      laneEnd[k] = r[1]; laneOf[i] = k;
+    });
+    var lanes = Math.max(5, laneEnd.length), step = lanes > 10 ? 7 : 13, laneH = step > 7 ? 9 : 7;
+    var ry0 = 72, ryEnd = ry0 + lanes*step, cy = ryEnd + 63, H = cy + 100;
     var svg = svgRoot($('s04-rp-fig'), W, H, 560);
     var sx = function(p){ return x0 + (x1-x0)*p/sim.G; };
     // genome bar
@@ -83,37 +95,23 @@
     });
     el('text', {x:sx(0), y:gy+22}, svg, '0');
     el('text', {x:sx(sim.G), y:gy+22, 'text-anchor':'end'}, svg, kb(sim.G));
-    // reads around each copy: longest reads touching or bridging it
-    var ry0 = 72;
+    // reads around each copy, all of them
     el('text', {x:8, y:ry0+20, 'class':'lab'}, svg, 'reads');
-    el('text', {x:8, y:ry0+34}, svg, '(longest)');
-    // pick the longest reads at each copy, then pack them into lanes without overlaps
-    var picked = [];
-    sim.copies.forEach(function(cp){
-      cp.bridge.concat(cp.touch).sort(function(a,b){ return (b[1]-b[0])-(a[1]-a[0]); }).slice(0, lanes)
-        .forEach(function(r){ if (picked.indexOf(r) < 0) picked.push(r); });
-    });
-    picked.sort(function(a,b){ return a[0]-b[0]; });
-    var laneEnd = [];
-    picked.forEach(function(r){
-      var k = 0, gap = sim.G*0.006;
-      while (k < laneEnd.length && laneEnd[k] > r[0]-gap) k++;
-      if (k >= lanes) return;
-      laneEnd[k] = r[1];
+    picked.forEach(function(r, i){
+      var k = laneOf[i];
       var br = sim.copies.some(function(cp){ return r[0] <= cp.s-ANCHOR && r[1] >= cp.e+ANCHOR; });
-      el('rect', {x:sx(r[0]), y:ry0 + k*(laneH+4), width:Math.max(1.5, sx(r[1])-sx(r[0])), height:laneH-2, rx:2,
+      el('rect', {x:sx(r[0]), y:ry0 + k*step, width:Math.max(1.5, sx(r[1])-sx(r[0])), height:laneH-2, rx:2,
         fill: br ? 'var(--good)' : 'var(--err)'}, svg);
     });
     sim.copies.forEach(function(cp){
       // dashed copy borders
-      el('line', {x1:sx(cp.s), x2:sx(cp.s), y1:gy+8, y2:ry0+lanes*(laneH+4), stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
-      el('line', {x1:sx(cp.e), x2:sx(cp.e), y1:gy+8, y2:ry0+lanes*(laneH+4), stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
+      el('line', {x1:sx(cp.s), x2:sx(cp.s), y1:gy+8, y2:ryEnd, stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
+      el('line', {x1:sx(cp.e), x2:sx(cp.e), y1:gy+8, y2:ryEnd, stroke:'var(--rep)', 'stroke-dasharray':'2 3', 'stroke-width':1}, svg);
       var ok = cp.bridge.length > 0;
-      el('text', {x:(sx(cp.s)+sx(cp.e))/2, y:ry0+lanes*(laneH+4)+14, 'text-anchor':'middle', fill: ok ? 'var(--good)' : 'var(--bad)'}, svg,
+      el('text', {x:(sx(cp.s)+sx(cp.e))/2, y:ryEnd+14, 'text-anchor':'middle', fill: ok ? 'var(--good)' : 'var(--bad)'}, svg,
         ok ? ('✓ ' + cp.bridge.length + ' bridge' + (cp.bridge.length===1?'':'s')) : '✗ break');
     });
     // contigs
-    var cy = 200;
     el('text', {x:8, y:cy+4, 'class':'lab'}, svg, 'contigs');
     var contigs = [], start = 0, anyBreak = false;
     sim.copies.forEach(function(cp){

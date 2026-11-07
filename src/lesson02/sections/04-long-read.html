@@ -19,7 +19,7 @@
     <div class="svgbox" id="s04-rp-fig"></div>
     <div class="legend"><span><i style="background:var(--muted)"></i>unique sequence</span><span><i style="background:var(--rep)"></i>repeat copy</span><span><i style="background:var(--good)"></i>read that bridges a copy</span><span><i style="background:var(--err)"></i>read that ends inside or too close</span><span><i style="background:var(--accent)"></i>resulting contig</span></div>
     <div class="readout" id="s04-rp-out"></div>
-    <p class="tool-note">The number under each copy counts every simulated read that bridges it. The picture draws only a few of the longest reads, so it shows fewer reads than that number. A read is green if it bridges at least one copy, so a green read can still end inside the next copy.</p>
+    <p class="tool-note">The picture draws every read that reaches a copy. The number under a copy counts the reads that bridge it: they cover the whole copy and reach at least 1 kb into unique sequence on both sides. A read is green if it bridges at least one copy, so a green read can still end inside the next copy.</p>
     <p class="tool-note">Things to try: set the repeat to 6 kb and switch between <b>B-like</b> and <b>A-like</b>. Then keep the A-like read lengths and lower the coverage to 10×: fewer reads means fewer lucky long ones. The randomness is fixed, so the same settings always give the same picture. Real assemblers need several bridging reads, not one, so real genomes break more easily than this toy.</p>
   </section>
 
