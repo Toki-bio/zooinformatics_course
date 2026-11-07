@@ -1,6 +1,7 @@
 # Changelog
 
 ## 2026-11-07
+- Lesson 07 section 02: what `-g -3` does in the ssearch36 call, tested. Lesson 06 section 06: the two array numbers told apart. Lesson 09: tip letters marked as letters only.
 - Lesson 03: the text no longer names who ran the tools on species A. Lesson 09 section 01: the Newick root and the tree counts now cite PHYLIP and OEIS instead of Wikipedia.
 - Lesson 09 section 10: the polytomy test in the quartet toy, a topology weighting toy (Twisst) along three chromosomes, short notes on SVDquartets, QuIBL and per-gene likelihoods.
 - Lesson 09 section 11: a Robinson-Foulds toy that measures how far apart two trees are.

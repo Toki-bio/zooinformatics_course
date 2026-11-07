@@ -64,7 +64,7 @@ Written 2026-10-31.
 - Default threshold = first multiple of 5 above the highest shuffled score.
 
 ## Open doubts / left out
-- `-g -3` in sear's ssearch36 call: the lab manual reads it differently from the FASTA36 man page; not explained on the page.
+- `-g -3` in sear's ssearch36 call, tested 2026-11-07 with ssearch36 on a random 200-base query against itself with a deletion of k = 1, 2, 5, 10 bases: s-w opt 979, 970, 943, 898 by default (5 x matches - (12 + 4k)) and 980, 972, 948, 908 with `-g -3` (5 x matches - (12 + 3k)). A reverse-complement subject is found in full with `-g -3 ... 3` and by default, but not with a real `-3`. So `-g` takes -3 as its value, as initfa.c and the FASTA36 guide say; the lab manual's reading ("global", "both strands") was wrong.
 - Whether ssearch36 ignores the trailing `3` is inferred from the guide, not run-tested.
 - Timings of sear on a whole genome: not stated (no documented numbers).
 - The -z 11 run-to-run variation size measured in lab notes is not quoted here (left for s04).
