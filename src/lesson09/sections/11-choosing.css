@@ -1,3 +1,5 @@
 #s11-wrap #s11-src a, #s11-wrap #s11-src li{overflow-wrap:anywhere}
 #s11-wrap .defs dd, #s11-wrap .qlist li{overflow-wrap:anywhere}
 #s11-wrap .seg{flex-wrap:wrap}
+#s11-wrap .s11-rf-in{width:100%;font:13px var(--f-mono);padding:3px 5px;box-sizing:border-box}
+#s11-wrap #s11-rf label{display:block}

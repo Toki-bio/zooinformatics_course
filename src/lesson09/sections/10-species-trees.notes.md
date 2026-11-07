@@ -172,3 +172,11 @@ Doubts:
 
 ## Outside audit of the additions (GLM 5.3, 2026-11-06)
 Seven tasks, two re-checks per finding. 6 findings kept, 1 refuted, 5 fixed: a false alarm under sister gene flow read like a detection; the tick box changed more than its label said and "older species" changed no times; the Z chart cuts off at 10 without saying so; the rate label stood by the wrong branch. Of 5 findings dropped because their quotes were not found, one quoted code that is not in the file, one quoted a line of Hibbins and Hahn that is in the notes above, one mistook 0.4256 for 0.4257, and two (provenance of the 4,000,000 run, what "separate" means) are fixed in the notes. The KKSC toy was added after this audit.
+
+## Added 2026-11-07: polytomy test, topology weighting, three short mentions
+
+27. **Sayyari E, Mirarab S (2018)** Genes 9:132, doi 10.3390/genes9030132, PMC5867853. Full text read. Equation 1. ASTRAL-III `-t 10` on the eight gene tree sets: all 16 branches equal, apart from ASTRAL's printed rounding (largest difference 5e-6).
+28. **Martin SH, Van Belleghem SM (2017)** Genetics 206, doi 10.1534/genetics.116.194720, PMC5419486. Full text read, symbols lost in the text returned. twisst README, commit a5e10034 (2025-01-05). Quotes in the internal repository (lesson09/sources_s10_add3.md). The README says the output holds counts, the paper speaks of proportions; the page says so.
+29. **Edelman NB et al. (2019)** Science, doi 10.1126/science.aaw2090, PMC7197882: passage on QuIBL read, quote checked. **Shen X-X, Hittinger CT, Rokas A (2017)** Nat Ecol Evol, doi 10.1038/s41559-017-0126, PMC5560076, and **Chifman J, Kubatko L (2014)** Bioinformatics, doi 10.1093/bioinformatics/btu530, PMC4296144: abstracts only. "Comparing the per-gene likelihoods" is our wording of Shen et al.'s approach.
+The toy's rows and the block are invented. Windows are independent, which real windows are not. Toy trees are the true ones.
+Compared with twisst.py (commit a5e10034) on a server, 2026-11-07: 300 simulated windows of 12 samples, a third with gene flow: subtree counts equal in all 300. The script refuses the `-o` flag its README describes, and needs numpy below version 2 (it uses np.NaN); topologies are written at the top of the weights file. The twisst command on the page is the README's.

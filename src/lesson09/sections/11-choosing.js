@@ -389,6 +389,114 @@
     return { fails: fails, r: r };
   }
 
+  // =====================================================================
+  // Robinson-Foulds distance
+  // =====================================================================
+  // RF-BEGIN
+  // A split is a branch of the unrooted tree: it cuts the tips in two groups, each of at least two tips.
+  // It is written as the group that does not hold the first tip in alphabetical order.
+  function splitsOf(t) {
+    var names = leaves(t).slice().sort(), n = names.length, out = {};
+    (function rec(nd) {
+      if (!nd.kids.length) return;
+      var l = leaves(nd);
+      if (l.length >= 2 && l.length <= n - 2) {
+        var side = l.indexOf(names[0]) >= 0 ? names.filter(function (x) { return l.indexOf(x) < 0; }) : l.slice();
+        out[side.sort().join(' ')] = true;
+      }
+      nd.kids.forEach(rec);
+    })(t);
+    return Object.keys(out);
+  }
+  function rfDistance(a, b) {
+    var ta = leaves(a).slice().sort().join(' '), tb = leaves(b).slice().sort().join(' ');
+    if (ta !== tb) throw new Error('the two trees must have the same tips');
+    var A = splitsOf(a), B = splitsOf(b), n = leaves(a).length;
+    var only1 = A.filter(function (s) { return B.indexOf(s) < 0; }), only2 = B.filter(function (s) { return A.indexOf(s) < 0; });
+    return { only1: only1, only2: only2, shared: A.length - only1.length, rf: only1.length + only2.length, max: A.length + B.length, n: n };
+  }
+  // RF-END
+  var RF_EX = {
+    same: ['(((A,B),(C,D)),((E,F),(G,H)));', '(((H,G),(F,E)),((D,C),(B,A)));'],
+    near: ['(((A,B),(C,D)),((E,F),(G,H)));', '(((A,C),(B,D)),((E,F),(G,H)));'],
+    far: ['(A,(B,(C,(D,(E,(F,(G,H)))))));', '(B,(C,(D,(E,(F,(G,(H,A)))))));'],
+    other: ['(((A,B),(C,D)),((E,F),(G,H)));', '(((A,E),(B,F)),((C,G),(D,H)));']
+  };
+  function rfDraw(id, t, bad, label) {
+    var NSs = 'http://www.w3.org/2000/svg', box = $(id), ys = {}, y = 0, W = 300;
+    box.textContent = '';
+    var names = leaves(t).slice().sort();
+    function depth(n) { return n.kids.length ? 1 + Math.max.apply(null, n.kids.map(depth)) : 0; }
+    var D = depth(t), H = leaves(t).length * 20 + 6, sx = (W - 40) / D;
+    var svg = document.createElementNS(NSs, 'svg');
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H); svg.setAttribute('width', '100%'); svg.setAttribute('role', 'img'); svg.setAttribute('aria-label', label);
+    svg.setAttribute('style', 'display:block;max-width:320px');
+    box.appendChild(svg);
+    function ln(x1, y1, x2, y2, c, w) {
+      var e = document.createElementNS(NSs, 'line');
+      e.setAttribute('x1', x1); e.setAttribute('y1', y1); e.setAttribute('x2', x2); e.setAttribute('y2', y2);
+      e.setAttribute('style', 'stroke:' + c + ';stroke-width:' + w); svg.appendChild(e);
+    }
+    function key(n) {
+      var l = leaves(n);
+      if (l.length < 2 || l.length > names.length - 2) return '';
+      return (l.indexOf(names[0]) >= 0 ? names.filter(function (x) { return l.indexOf(x) < 0; }) : l.slice()).sort().join(' ');
+    }
+    function lay(n, lev) {
+      var x = 8 + lev * sx, yy;
+      if (!n.kids.length) {
+        yy = 14 + y * 20; y++;
+        var e = document.createElementNS(NSs, 'text');
+        e.setAttribute('x', W - 26); e.setAttribute('y', yy + 4); e.setAttribute('style', 'font:13px var(--f-mono);fill:var(--fg)');
+        e.textContent = n.name; svg.appendChild(e);
+        return { x: W - 32, y: yy };
+      }
+      var ps = n.kids.map(function (k) {
+        var p = lay(k, lev + 1), isBad = bad.indexOf(key(k)) >= 0;
+        ln(x, p.y, p.x, p.y, 'var(--fg)', 1.5);
+        if (isBad) ln(x, p.y, x + sx, p.y, 'var(--bad)', 4);
+        return p;
+      });
+      yy = (ps[0].y + ps[ps.length - 1].y) / 2;
+      ln(x, ps[0].y, x, ps[ps.length - 1].y, 'var(--fg)', 1.5);
+      return { x: x, y: yy };
+    }
+    lay(t, 0);
+  }
+  function rfLoad() {
+    var msg = $('s11-rf-msg');
+    try {
+      var a = parseNewick($('s11-rf-a').value), b = parseNewick($('s11-rf-b').value), r = rfDistance(a, b);
+      rfDraw('s11-rf-d1', a, r.only1, 'First tree, branches missing from the second tree marked');
+      rfDraw('s11-rf-d2', b, r.only2, 'Second tree, branches missing from the first tree marked');
+      $('s11-rf-sh').textContent = r.shared;
+      $('s11-rf-o1').textContent = r.only1.length;
+      $('s11-rf-o2').textContent = r.only2.length;
+      $('s11-rf-v').textContent = r.rf;
+      $('s11-rf-n').textContent = r.max > 0 ? (r.rf / r.max).toFixed(2) : '–';
+      msg.textContent = r.rf === 0 ? 'The trees have all the same splits: they are the same unrooted tree, however they are drawn.' : 'Red branches have no match in the other tree. Distance = ' + r.only1.length + ' + ' + r.only2.length + ' = ' + r.rf + ', of a largest possible ' + r.max + ' for ' + r.n + ' tips.';
+    } catch (e) {
+      msg.textContent = 'Cannot compare these trees: ' + e.message;
+      ['s11-rf-sh', 's11-rf-o1', 's11-rf-o2', 's11-rf-v', 's11-rf-n'].forEach(function (id) { $(id).textContent = '–'; });
+      $('s11-rf-d1').textContent = ''; $('s11-rf-d2').textContent = '';
+    }
+  }
+  Array.prototype.forEach.call($('s11-rf-ex').children, function (bt) {
+    bt.addEventListener('click', function () {
+      $('s11-rf-a').value = RF_EX[bt.dataset.e][0]; $('s11-rf-b').value = RF_EX[bt.dataset.e][1];
+      Array.prototype.forEach.call($('s11-rf-ex').children, function (x) { x.setAttribute('aria-pressed', String(x === bt)); });
+      rfLoad();
+    });
+  });
+  ['s11-rf-a', 's11-rf-b'].forEach(function (id) {
+    $(id).addEventListener('input', function () {
+      Array.prototype.forEach.call($('s11-rf-ex').children, function (x) { x.setAttribute('aria-pressed', 'false'); });
+      rfLoad();
+    });
+  });
+  $('s11-rf-a').value = RF_EX.near[0]; $('s11-rf-b').value = RF_EX.near[1];
+  rfLoad();
+
   // ---------- start ----------
   render();
   $('s11-nw-in').value = EX.e2; load(EX.e2);

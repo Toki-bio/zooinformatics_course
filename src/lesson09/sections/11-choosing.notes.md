@@ -27,3 +27,8 @@ Methods checklist items for data, dating, root, files; the support-values-on-rer
 
 ## Final review 2026-11-06
 - The helper's example commands now call `iqtree3`, as s06 and s10 do. The FigTree README note ("superseded by PearTree") was re-checked on the GitHub README.
+
+## Added 2026-11-07: Robinson-Foulds distance
+Definition and largest value 2n - 6 from the phangorn help page for treedist (rdrr.io/cran/phangorn/man/treedist.html), following Steel and Penny 1993. Robinson and Foulds 1981 (doi 10.1016/0025-5564(81)90043-2) could not be opened, and is cited for the name only. "One tip moved far" is computed by the toy itself: no source was opened for that wording. The abstract of Smith 2020 (doi 10.1093/bioinformatics/btaa614) also warns about the measure.
+Compared with `iqtree3 -rf_all` 3.1.4 on a server, 2026-11-07: 200 pairs of random unrooted trees of 5 to 12 tips, no difference.
+GLM audit 2026-11-07: a failed comparison left old numbers on screen, now cleared; the largest distance is now the number of splits in the two trees, as in phangorn, which is 2n - 6 for binary trees and smaller with polytomies.

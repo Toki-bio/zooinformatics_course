@@ -3,7 +3,7 @@
 const fs = require('fs'), path = require('path');
 const src = fs.readFileSync(path.join(__dirname, '10-species-trees.js'), 'utf8');
 const eng = src.slice(src.indexOf('// ENGINE-BEGIN'), src.indexOf('// ENGINE-END'));
-const E = new Function(eng + '\nreturn { Q_TREES, qKey, qCounts, qScore, qSimGene, qBranch, localPP, qLength, dGenome, dGenealogy, dColumns, dStat, dJackknife, kkscRow, kkscVerdict, binomTail };')();
+const E = new Function(eng + '\nreturn { Q_TREES, qKey, qCounts, qScore, qSimGene, qBranch, localPP, qLength, dGenome, dGenealogy, dColumns, dStat, dJackknife, kkscRow, kkscVerdict, binomTail, polyP, twWindow, twCounts };')();
 function rng(seed) { let a = seed >>> 0; return () => { a = (a + 0x6D2B79F5) >>> 0; let t = a; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
 let fail = 0;
 function check(name, ok, info) { if (!ok) fail++; console.log((ok ? 'ok   ' : 'FAIL ') + name + (info ? '  ' + info : '')); }
@@ -102,6 +102,7 @@ const jh = E.dJackknife([[10, 5, 0], [6, 7, 0], [8, 2, 0]]);
 const loo = [(14 - 9) / 23, (18 - 7) / 25, (16 - 12) / 28], m = (loo[0] + loo[1] + loo[2]) / 3;
 const se = Math.sqrt(2 / 3 * loo.reduce((s, v) => s + (v - m) * (v - m), 0));
 check('jackknife by hand', Math.abs(jh.se - se) < 1e-12 && jh.ABBA === 24 && jh.BABA === 14 && Math.abs(jh.D - 10 / 38) < 1e-12, `se ${jh.se.toFixed(5)}`);
+check('polytomy test against ASTRAL -t 10', Math.abs(E.polyP([712, 628, 660]) - 0.06747) < 1e-5 && Math.abs(E.polyP([729, 625, 646]) - 0.01071) < 1e-5, 'two values printed by ASTRAL 5.7.8');
 // 7. KKSC against the numbers printed in Kuritzin et al. 2016.
 const near = (x, w, d) => Math.abs(x - w) < d;
 check('KKSC 8:2:0 tree 0.0034', near(E.kkscRow([8, 2, 0], 0).tree, 0.0034, 0.00005), String(E.kkscRow([8, 2, 0], 0).tree));
@@ -113,6 +114,15 @@ const car = E.kkscRow([192, 74, 60], 0);
 check('KKSC 192:74:60 below 3.3e-21, 74:60 above 0.2', car.tree < 3.3e-21 && car.sym > 0.2, `${car.tree} ${car.sym}`);
 check('KKSC 101:11:0 hybrid below 0.001', E.kkscRow([101, 11, 0], 0).sym < 0.001 && E.kkscVerdict([101, 11, 0]).kind === 'hybrid');
 for (const y of [[8, 2, 0], [9, 8, 5], [25, 22, 21], [192, 74, 60], [101, 11, 0], [80, 20, 0], [3, 0, 0], [2, 0, 0], [5, 5, 0], [0, 0, 0]]) console.log('     ', y.join(':'), E.kkscVerdict(y).kind, JSON.stringify(E.kkscVerdict(y).r));
+// 8. Topology weighting: counts sum to 81; simulated shares for one sample each match 1 - 2/3 exp(-d) with d = t123 - t12.
+{
+  const M = { t12: 0.5, t123: 1.5, tO: 3, tg: 0.1 }, r = rng(8); let m = 0, N = 300000, okc = true;
+  for (let i = 0; i < N; i++) { const c = E.twCounts(E.twWindow(M, 1, 0, r).T, 1); if (c[0] + c[1] + c[2] !== 1) okc = false; m += c[0]; }
+  const want = 1 - 2 / 3 * Math.exp(-1), z = (m / N - want) / Math.sqrt(want * (1 - want) / N);
+  check('topology weights, one sample each, against the formula', okc && Math.abs(z) < 3.5, `${(m / N).toFixed(4)} against ${want.toFixed(4)}, z ${z.toFixed(2)}`);
+  const c3 = E.twCounts(E.twWindow(M, 3, 0, r).T, 3);
+  check('81 subtrees with three samples each', c3[0] + c3[1] + c3[2] === 81);
+}
 if (process.argv[2]) fs.writeFileSync(process.argv[2], JSON.stringify(Object.keys(dump).map(k => ({ k, B: dump[k], ...E.dJackknife(dump[k]) }))));
 console.log(fail ? 'CONTROL FAILED: ' + fail : 'CONTROL PASSED');
 process.exit(fail ? 1 : 0);

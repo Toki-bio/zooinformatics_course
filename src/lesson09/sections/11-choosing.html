@@ -131,6 +131,30 @@ END;</pre></div>
     <p>So do not say "A is close to C" because their tips are drawn next to each other. Find the node where the paths from A and from C meet. The nearer that node is to the tips, the closer the relatives.</p>
   </div></details>
 
+  <div class="tool" id="s11-rf">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s11-rf-h">How far apart are two trees?</h3></div>
+    <p class="tool-note">Each inner branch of an unrooted tree cuts the tips into two groups. Such a cut is a <dfn>split</dfn>. The <dfn>Robinson-Foulds distance</dfn> counts the splits found in one tree but not in the other (Robinson and Foulds 1981). Two identical trees have distance 0.</p>
+    <div class="seg" id="s11-rf-ex" role="group" aria-label="Pairs of trees">
+      <button type="button" data-e="same" aria-pressed="false">Same tree, redrawn</button>
+      <button type="button" data-e="near" aria-pressed="true">Two tips swapped</button>
+      <button type="button" data-e="far" aria-pressed="false">One tip moved far</button>
+      <button type="button" data-e="other" aria-pressed="false">Different trees</button>
+    </div>
+    <label>First tree <input type="text" class="s11-rf-in" id="s11-rf-a" aria-label="First tree in Newick format"></label>
+    <label>Second tree <input type="text" class="s11-rf-in" id="s11-rf-b" aria-label="Second tree in Newick format"></label>
+    <div class="grid2"><div class="svgbox" id="s11-rf-d1"></div><div class="svgbox" id="s11-rf-d2"></div></div>
+    <div class="readout">
+      <div>Splits in both<b id="s11-rf-sh"></b></div>
+      <div>Only in the first<b id="s11-rf-o1"></b></div>
+      <div>Only in the second<b id="s11-rf-o2"></b></div>
+      <div>Distance<b id="s11-rf-v"></b></div>
+      <div>Share of the largest possible<b id="s11-rf-n"></b></div>
+    </div>
+    <p class="tool-note" id="s11-rf-msg" aria-live="polite"></p>
+    <p class="tool-note"><b>Try this.</b> Press One tip moved far. Only tip A moved, yet every split changed and the distance is the largest possible. The distance counts branches that differ, not how far anything moved, so read it with care. The root and the order of the tips make no difference.</p>
+    <p class="tool-note">In IQ-TREE, all pairs among the trees of one file: <code>iqtree3 -rf_all TREE_FILE</code>.</p>
+  </div>
+
   <h3>Drawing trees</h3>
   <p>The programs below read a tree file, and you can rotate nodes, change the root, show branch lengths and support values, and save a picture. Choose by how you work.</p>
   <dl class="defs">

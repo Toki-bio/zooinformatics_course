@@ -1,5 +1,9 @@
 # Changelog
 
+## 2026-11-07
+- Lesson 09 section 10: the polytomy test in the quartet toy, a topology weighting toy (Twisst) along three chromosomes, short notes on SVDquartets, QuIBL and per-gene likelihoods.
+- Lesson 09 section 11: a Robinson-Foulds toy that measures how far apart two trees are.
+
 ## 2026-11-06
 - New lesson 05 "Population History from Many Genomes" (8 sections) and lesson 08 "Searching Sequences" (11 sections).
 - New lesson 09 "Building Phylogenetic Trees" (11 sections).

@@ -142,6 +142,12 @@
     var m = Math.max(l[0], l[1], l[2]), e = l.map(function (v) { return Math.exp(v - m); }), s = e[0] + e[1] + e[2];
     return e.map(function (v) { return v / s; });
   }
+  // Sayyari and Mirarab 2018, Equation 1: chi-square of the three counts against equal shares, two degrees of freedom.
+  function polyP(z) {
+    var n = z[0] + z[1] + z[2], e = n / 3, c = 0;
+    z.forEach(function (x) { c += (x - e) * (x - e) / e; });
+    return n ? Math.exp(-c / 2) : 1;
+  }
   function qLength(z1, n) {                // Theorem 2, MAP estimate with lambda = 1/2, which is what ASTRAL reports
     return n && z1 >= (n + 1) / 3 ? -Math.log(1.5 * (1 - z1 / (n + 1))) : 0;
   }
@@ -257,6 +263,45 @@
     if (y[o[0]] === y[o[1]] && y[o[0]] > 0 && r.sym > 0.05) return { kind: 'none', top: o[0], r: r };
     if (r.sym <= 0.05) return { kind: 'hybrid', top: o[0], r: r };
     return { kind: r.tree <= 0.05 ? 'tree' : 'none', top: o[0], r: r };
+  }
+  // ---- Topology weighting (Martin and Van Belleghem 2017). One window: a genealogy of s samples from each of P1, P2, P3, O.
+  // M: t12, t123, tO, tg in coalescent units; move = chance that a line of P2 came from P3 at tg in this window.
+  function twWindow(M, s, move, rnd) {
+    var n = 4 * s, T = [], pops = [[], [], [], []], i, j;
+    for (i = 0; i < n; i++) { T.push(new Array(n).fill(0)); pops[Math.floor(i / s)].push({ tips: [i], nw: 'x' + (i + 1) }); }
+    function run(p, t0, t1) {
+      var t = t0, L = pops[p], w, a, b, A, B;
+      function keep(_, k) { return k !== a && k !== b; }
+      while (L.length > 1) {
+        w = -Math.log(1 - rnd()) / (L.length * (L.length - 1) / 2);
+        if (t + w >= t1) return;
+        t += w;
+        a = Math.floor(rnd() * L.length); b = Math.floor(rnd() * (L.length - 1)); if (b >= a) b++;
+        A = L[a]; B = L[b];
+        A.tips.forEach(function (x) { B.tips.forEach(function (y) { T[x][y] = T[y][x] = t; }); });
+        L = L.filter(keep); L.push({ tips: A.tips.concat(B.tips), nw: '(' + A.nw + ',' + B.nw + ')' }); pops[p] = L;
+      }
+    }
+    for (i = 0; i < 3; i++) run(i, 0, move ? M.tg : M.t12);
+    if (move) {
+      pops[1] = pops[1].filter(function (l) { if (rnd() < move) { pops[2].push(l); return false; } return true; });
+      for (i = 0; i < 3; i++) run(i, M.tg, M.t12);
+    }
+    pops[0] = pops[0].concat(pops[1]); pops[1] = [];
+    run(0, M.t12, M.t123); run(2, M.t12, M.t123);
+    pops[0] = pops[0].concat(pops[2]); pops[2] = [];
+    run(0, M.t123, M.tO);
+    pops[0] = pops[0].concat(pops[3]); pops[3] = [];
+    run(0, M.tO, Infinity);
+    return { T: T, nw: pops[0][0].nw + ';' };
+  }
+  function twCounts(T, s) {                // all s^4 subtrees; the arrangement is the pairing with the smallest sum of meeting times
+    var c = [0, 0, 0], a, b, d, o, x, y, z;
+    for (a = 0; a < s; a++) for (b = s; b < 2 * s; b++) for (d = 2 * s; d < 3 * s; d++) for (o = 3 * s; o < 4 * s; o++) {
+      x = T[a][b] + T[d][o]; y = T[b][d] + T[a][o]; z = T[a][d] + T[b][o];
+      c[x < y && x < z ? 0 : (y < z ? 1 : 2)]++;
+    }
+    return c;
   }
   // ENGINE-END
 
@@ -526,10 +571,10 @@
     var T = Q_TREES[mark];
     h = '<p><b>' + qKey(T) + '</b> contains these five quartets, so its score is their sum: ' + [4, 3, 2, 1, 0].map(function (x) { return qName(x, Q_ARR[mark][x]) + ' ' + fmt(Q[x][Q_ARR[mark][x]]); }).join(' + ') + ' = <b>' + fmt(sc[mark]) + '</b> of ' + fmt(5 * n) + ' possible.</p>';
     if (n) {
-      h += '<table><thead><tr><th>Branch of this tree</th><th>z1 (this branch)</th><th>z2</th><th>z3</th><th><span class="tip" title="Local posterior probability of this branch against the two other arrangements around it, from the formula of Sayyari and Mirarab (2016) with a flat prior.">Local posterior</span></th><th>Length, coalescent units</th></tr></thead><tbody>';
+      h += '<table><thead><tr><th>Branch of this tree</th><th>z1 (this branch)</th><th>z2</th><th>z3</th><th><span class="tip" title="Local posterior probability of this branch against the two other arrangements around it, from the formula of Sayyari and Mirarab (2016) with a flat prior.">Local posterior</span></th><th><span class="tip" title="The chance of counts this uneven if the three arrangements were equally common, that is, if this branch had length zero. Below 0.05 the branch is unlikely to be a polytomy.">Polytomy test p</span></th><th>Length, coalescent units</th></tr></thead><tbody>';
       [0, 1].forEach(function (s) {
         var z = qBranch(Q, T, s), pp = localPP(z, 0.5), len = qLength(z[0], n), p = T.p[s];
-        h += '<tr><td>' + QT[p[0]] + QT[p[1]] + ' | rest</td><td>' + z[0] + '</td><td>' + z[1] + '</td><td>' + z[2] + '</td><td>' + pp[0].toFixed(3) + '</td><td>' + len.toFixed(3) + '</td></tr>';
+        h += '<tr><td>' + QT[p[0]] + QT[p[1]] + ' | rest</td><td>' + z[0] + '</td><td>' + z[1] + '</td><td>' + z[2] + '</td><td>' + pp[0].toFixed(3) + '</td><td>' + polyP(z).toFixed(4) + '</td><td>' + len.toFixed(3) + '</td></tr>';
       });
       h += '</tbody></table>';
     }
@@ -670,6 +715,48 @@
   $('s10-k-pre').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) kSet(b.dataset.v); });
   ['s10-k1', 's10-k2', 's10-k3'].forEach(function (id) { $(id).addEventListener('input', kRender); });
   kSet('8,2,0');
+
+  // ---- Toy: topology weighting
+  var TW_ROWS = [
+    { name: 'No gene flow, long branch', M: { t12: 0.5, t123: 2, tO: 3, tg: 0.1 }, block: null },
+    { name: 'No gene flow, short branch', M: { t12: 0.5, t123: 0.7, tO: 3, tg: 0.1 }, block: null },
+    { name: 'Gene flow into P2 in one block', M: { t12: 0.5, t123: 2, tO: 3, tg: 0.1 }, block: [60, 72] }
+  ];
+  var twSeed = 3;
+  function twDraw() {
+    var box = $('s10-tw-rows'), S3 = 3, NW = 100;
+    box.textContent = '';
+    TW_ROWS.forEach(function (R, q) {
+      var r = rng(twSeed * 100 + q), Wts = [], k, sum = [0, 0, 0], ins = [0, 0, 0], nin = 0;
+      for (k = 0; k < NW; k++) {
+        var inb = R.block && k >= R.block[0] && k < R.block[1];
+        var c = twCounts(twWindow(R.M, S3, inb ? 0.8 : 0, r).T, S3).map(function (x) { return x / 81; });
+        Wts.push(c);
+        c.forEach(function (x, i) { sum[i] += x / NW; if (inb) ins[i] += x; });
+        if (inb) nin++;
+      }
+      var lab = document.createElement('p');
+      lab.className = 's10-twlab';
+      function pc(v) { return Math.round(100 * v) + ' %'; }
+      lab.innerHTML = '<b>' + R.name + '.</b> Whole chromosome: ' + pc(sum[0]) + ', ' + pc(sum[1]) + ', ' + pc(sum[2]) + (nin ? '. Inside the block: ' + pc(ins[0] / nin) + ', ' + pc(ins[1] / nin) + ', ' + pc(ins[2] / nin) : '') + '.';
+      box.appendChild(lab);
+      var div = document.createElement('div');
+      div.className = 'svgbox'; div.id = 's10-tw' + q;
+      box.appendChild(div);
+      var svg = svgIn(div.id, 640, 74, 300, R.name + ': three topology weights along the chromosome');
+      Wts.forEach(function (c, i) {
+        var x = 10 + i * 6.2, y = 0;
+        ['var(--accent)', 'var(--het)', 'var(--rep)'].forEach(function (col, j) {
+          var h = 64 * c[j];
+          if (h > 0) el('rect', { x: x, y: y, width: 6.2, height: h, style: 'fill:' + col }, svg);
+          y += h;
+        });
+      });
+      if (R.block) el('rect', { x: 10 + R.block[0] * 6.2, y: 68, width: (R.block[1] - R.block[0]) * 6.2, height: 4, style: 'fill:var(--fg)' }, svg);
+    });
+  }
+  $('s10-tw-new').addEventListener('click', function () { twSeed++; twDraw(); });
+  twDraw();
 
   $('s10-q-presets').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) qLoad(b.dataset.p); });
   $('s10-q-add').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { qAdd(+b.dataset.k); qs.pick = -1; qRender(); } });
