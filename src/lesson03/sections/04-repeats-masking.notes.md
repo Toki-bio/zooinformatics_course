@@ -31,7 +31,7 @@ Written 2026-10-31. All sources fetched/cloned into `lesson3/src/s04_*` (shallow
 - Rough run-time extrapolation on the page: 3,000 x 15 s = 12.5 h for a 3 Gb genome at the help-file benchmark speed (1 Mb in 15 s on 16 cores, RMBlast, human). This is MY arithmetic from the doc numbers and the doc's statement that time is linear in length; labelled "rough" on the page.
 
 ## Not verified / left out
-- Exact versions and options of the Hiller-lab RepeatMasker run on species A (the facts sheet: UNVERIFIED) — page says so.
+- Exact versions and options of the RepeatMasker run on species A (the facts sheet: UNVERIFIED) — page says so.
 - Which divergence (raw .out column vs Kimura) is in rm_by_repeat.tsv mean_div — page says unknown.
 - Why the table sum and the lowercase share differ — not explained; page quotes the help file's general warning and says it is not checked for our run.
 - RAM needs of RepeatMasker / WindowMasker / Red on a mammal genome: no documented numbers found -> left out (WindowMasker -mem default 1536 MB is a setting, quoted as such).

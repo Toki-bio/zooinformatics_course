@@ -125,7 +125,7 @@
       dna: { rs: 0, iso: 0, cp: 0, ref: 0, big: 1, gpu: 0, sub: 0, tax: 1 }
     };
     var PNOTE = {
-      spA: 'Our species A (a rodent, not yet published): no RNA of any kind; the human annotation was projected with TOGA2 by the Hiller lab. Whether proteomes of close relatives exist was not checked for this page, so that box is left empty.',
+      spA: 'Our species A (a rodent, not yet published): no RNA of any kind; the human annotation was projected with TOGA2. Whether proteomes of close relatives exist was not checked for this page, so that box is left empty.',
       rich: 'Everything available. Even then, run a second, independent route as a check.',
       dna: 'Only the genome (plus the public OrthoDB file). Typical for a museum specimen.'
     };

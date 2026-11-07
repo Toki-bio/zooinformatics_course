@@ -25,7 +25,7 @@ Local copies of sources: local copies of the sources (not kept in the repository
 
 ## Project facts used (the internal project-facts sheet)
 - No RNA-seq for species A (unpublished; qualitative only on the page, owner request 2026-11-01); inputs = long reads, a published close-relative HiFi genome, human annotation via TOGA2 (hooks s01, s05).
-- TOGA2 (Hiller lab, human -> species A): counts given on the page only as "most genes found, large majority 1:1".
+- TOGA2 (human -> species A): counts given on the page only as "most genes found, large majority 1:1".
 - STAR genomeChrBinNbits example uses round toy numbers: 2.5 Gb, 25,000 contigs; log2(100,000) = 16.61 -> 16. Arithmetic mine.
 
 ## Arithmetic on the page

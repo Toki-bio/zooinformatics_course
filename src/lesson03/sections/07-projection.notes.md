@@ -44,7 +44,7 @@ Fetched 2026-10-31.
 - Whether make_lastz_chains uses chainNet internally: not checked; page only says TOGA2 takes chains as input.
 - "SSMD/SSMA" splice mutation type names taken from wiki list; stop codon type string in real TSV not checked (toy shows `STOP`).
 - the facts sheet 1d: the four flank-test categories do not sum to the L+M total; the page gives them only as rough shares.
-- Hiller-lab "intact/missing/inactivating" counts (the facts sheet 1a last bullet): UNVERIFIED meaning, not used. Lost-only counts not shown; page says "about half". Species A and its relative are unpublished: all project counts and gene names on the page were made qualitative 2026-11-01 (owner request); the public gene_ortho_flanks repo is no longer linked because its README names the taxa.
+- The "intact/missing/inactivating" counts (the facts sheet 1a last bullet): UNVERIFIED meaning, not used. Lost-only counts not shown; page says "about half". Species A and its relative are unpublished: all project counts and gene names on the page were made qualitative 2026-11-01 (owner request); the public gene_ortho_flanks repo is no longer linked because its README names the taxa.
 
 ## Cross-links used / suggested
 - ../02-assembly/#s10 (ortholog/BUSCO), ../02-assembly/#s06 (polishing).

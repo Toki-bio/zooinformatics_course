@@ -389,13 +389,13 @@ img{max-width:100%}
  A  and B  : tips, with branches of length 0.1 and 0.2
 (C,D)      : an inner node whose two descendants are C and D
 :0.5       : the branch from that inner node up to its parent</div>
-  <p>The text is always a <i>rooted</i> description: the outermost pair of parentheses is the root. To store an unrooted tree, programs pick any node as the starting point; Wikipedia says "an arbitrary node is chosen as its root". The unrooted toy tree above is therefore often written with three branches at the outermost level, and a reader must know that this last pair of parentheses is not a real root.</p>
+  <p>The text is always a <i>rooted</i> description: the outermost pair of parentheses is the root. To store an unrooted tree, programs pick any node as the starting point; the PHYLIP description of the format says "the convention is simply to arbitrarily root the tree and report the resulting rooted tree". The unrooted toy tree above is therefore often written with three branches at the outermost level, and a reader must know that this last pair of parentheses is not a real root.</p>
   <div class="toy">(Chicken:0.9,((Human:0.15,Chimp:0.15):0.1,Gorilla:0.3):0.2,(Mouse:0.3,Rat:0.25):0.35);</div>
 
   <h3>How many trees are there?</h3>
   <p>A method that looks for the best tree has to choose among possible trees. How many are there? Take only <dfn>binary</dfn> trees, where every inner node splits into exactly two, and give each tip its own name. The number depends on how many tips there are, <i>n</i>, and it grows with a speed that surprises everyone the first time:</p>
   <div class="formula">rooted trees:&nbsp;&nbsp;&nbsp;(2n&minus;3)!! = 1 &times; 3 &times; 5 &times; &hellip; &times; (2n&minus;3)<br>unrooted trees: (2n&minus;5)!! = 1 &times; 3 &times; 5 &times; &hellip; &times; (2n&minus;5)</div>
-  <p>The double exclamation mark <i>m</i>!! (a <dfn>double factorial</dfn>) means "multiply every second number down from <i>m</i>". These are the formulas given in the Wikipedia article on phylogenetic trees; the numbers below were checked against the values printed there and in the Online Encyclopedia of Integer Sequences (OEIS, entry A001147), and against a program that lists every tree.</p>
+  <p>The double exclamation mark <i>m</i>!! (a <dfn>double factorial</dfn>) means "multiply every second number down from <i>m</i>". The Online Encyclopedia of Integer Sequences (OEIS, entry A001147) gives these numbers as "the number of unordered full binary trees with n+1 labeled leaves"; the numbers below were checked against the values printed there, and against a program that lists every tree.</p>
 
   <details class="simple"><summary>Simple explanation with examples: where the formula comes from</summary><div class="in">
     <p>Build an unrooted tree by adding the animals one at a time. Three animals can only be joined in one way: three branches meeting in the middle. Now add a fourth. It can be attached to any of the 3 branches, which gives 3 different trees. A tree with 4 tips has 5 branches (4 tip branches and 1 inner one), so the fifth animal can be attached in 5 ways, giving 3 &times; 5 = 15 trees. A tree with <i>k</i> tips has 2<i>k</i>&minus;3 branches, so the next animal always has 2<i>k</i>&minus;3 choices: 1 &times; 3 &times; 5 &times; 7 &hellip;</p>
@@ -2362,7 +2362,7 @@ END;</pre></div>
 
   /* ---------- number-of-trees calculator ---------- */
   var PUB = [[3, '3', '1', 'OEIS A001147'], [4, '15', '3', 'OEIS A001147'], [5, '105', '15', 'OEIS A001147'], [6, '945', '105', 'OEIS A001147'],
-             [7, '10395', '945', 'OEIS A001147'], [8, '135135', '10395', 'OEIS A001147'], [10, '34459425', '2027025', 'Wikipedia, Phylogenetic tree']];
+             [7, '10395', '945', 'OEIS A001147'], [8, '135135', '10395', 'OEIS A001147'], [10, '34459425', '2027025', 'OEIS A001147']];
   function fmt(b){
     var s = b.toString();
     if (s.length <= 12) return s.replace(/\B(?=(\d{3})+(?!\d))/g, ',');

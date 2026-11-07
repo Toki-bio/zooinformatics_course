@@ -32,3 +32,4 @@ All pages were opened with a web-fetch tool that returns a short model-made extr
 
 ## Final review 2026-11-06
 - Added one sentence on midpoint rooting (root halfway between the two most distant tips; assumes equal rates), because s04 refers to it as explained here. Our wording of the standard method; no source opened for it.
+Sources changed 2026-11-07: the arbitrary root of an unrooted Newick tree now quotes the PHYLIP page ("Here the convention is simply to arbitrarily root the tree and report the resulting rooted tree."), and the tree counts rest on OEIS A001147 (data line holds 2027025 and 34459425; comment "the number of unordered full binary trees with n+1 labeled leaves (Stanley, ex 5.2.6)"). The definitions of clade, outgroup, cladogram, phylogram and chronogram still quote Wikipedia: the open textbook-level source tried (Gregory 2008, Evo Edu Outreach) could not be opened here.
