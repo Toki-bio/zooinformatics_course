@@ -2,8 +2,8 @@
   <h2 id="b1"><span class="n">1</span>A sequencer reads pieces, not whole chromosomes</h2>
   <p>A chromosome is one very long DNA molecule, a chain of four kinds of bases: A, C, G and T. No machine can read it from end to end. We break the DNA of many cells into pieces, and the sequencer reports the order of bases in each piece. One such result is called a <dfn>read</dfn>.</p>
   <div class="tool">
-    <div class="b-map" id="b-chrom"></div>
     <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button></div>
+    <div class="b-map" id="b-chrom"></div>
     <p class="b-lab">What the sequencer gives us: the same reads, in random order, with no place attached.</p>
     <div class="b-reads" id="b-reads" aria-live="polite"></div>
     <p class="tool-note">The chromosome, and each read drawn under the bases it was copied from, are shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
@@ -23,13 +23,16 @@
 
 <section aria-labelledby="b3">
   <h2 id="b3"><span class="n">3</span>An overlap only helps if it occurs in one place</h2>
-  <p>We know two reads belong together because the end of one has the same bases as the start of the other. But a short run of bases occurs in many places by chance, so a short overlap proves nothing. The overlap has to be long enough to occur in one place only. Here the computer really searches a 600-base genome for the end of one read. Each line below the genome is a read that could fit at that place.</p>
+  <p>The assembler has only the reads. It decides that one read follows another when the <b>end</b> of the first has the same letters as the <b>start</b> of the second. These shared letters are the <dfn>overlap</dfn>. Two or three letters occur in many places of a genome by chance, so a read starting with them could come from any of those places, and joining it would be a guess. A longer overlap usually occurs in one place only, and then the join is safe. Below, the computer really searches a small genome of 200 letters for the overlap.</p>
   <div class="tool">
-    <div class="seg" id="b-omode"><button type="button" data-m="uni">Read end in ordinary sequence</button><button type="button" data-m="rep">Read end inside a repeat</button></div>
-    <label>Length of the overlap <output id="b-k-out"></output><input id="b-ok" type="range" min="2" max="70" step="1" value="3" aria-label="Length of the overlap in bases"></label>
-    <div class="svgbox" id="b-places"></div>
+    <div class="seg" id="b-omode"><button type="button" data-m="uni">Our read ends in ordinary sequence</button><button type="button" data-m="rep">Our read ends inside a repeat</button></div>
+    <label>Length of the overlap <output id="b-k-out"></output><input id="b-ok" type="range" min="2" max="24" step="1" value="3" aria-label="Length of the overlap in letters"></label>
+    <p class="b-lab">Our read. Its last letters (highlighted) are the overlap: the next read must start with them.</p>
+    <div class="b-map" id="b-oread"></div>
+    <p class="b-lab">The genome, searched for the overlap. Every place it occurs is highlighted.</p>
+    <div class="b-map" id="b-ogen"></div>
     <div class="readout">
-      <div>Overlap being searched<b id="b-oseq" class="b-long"></b></div>
+      <div>Overlap<b id="b-oseq" class="b-long"></b></div>
       <div>Places in the genome<b id="b-ocount"></b></div>
     </div>
     <p class="tool-note" id="b-omsg" aria-live="polite"></p>

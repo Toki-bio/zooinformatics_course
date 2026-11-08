@@ -22,3 +22,9 @@
 .b-key .k-ctg{background:var(--accent)}
 .b-key .k-hole{border:1.5px dashed var(--bad);box-sizing:border-box}
 .b-key .k-join{width:3px;height:16px;background:var(--fg);vertical-align:-4px}
+.b-row span.b-rep{background:color-mix(in srgb,var(--bad) 22%,var(--panel))}
+.b-row span.b-ov{background:var(--accent);color:var(--bg)!important}
+.b-row span.b-num{width:3.2em;color:var(--muted);font-weight:400;text-align:right;padding-right:.5em;font-size:12px}
+.b-row.b-ann{height:1.3em;margin-bottom:6px}
+.b-row.b-ann span{font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--bad);text-align:left;white-space:nowrap;overflow:visible}
+@media (max-width:480px){#b-oread{font-size:10.5px}}

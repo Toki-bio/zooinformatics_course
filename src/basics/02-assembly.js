@@ -154,30 +154,50 @@
     el('rect', { x: 10, y: y, width: GL * X, height: 12, style: 'fill:var(--err);opacity:.5' }, svg);
     RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: y, width: RL2 * X, height: 12, style: 'fill:var(--bad)' }, svg); });
   }
-  var omode = 'uni', OSTART = { uni: 60, rep: 160 };
-  function uniqueAt(p) { var k = 1; while (places(GEN.substr(p, k)).length > 1) k++; return k; }
+  // 3. Is the overlap in one place? A small genome of 200 letters, written out, with one repeat in two copies.
+  var G3 = 200, R3 = [40, 130], R3L = 24, g3r = rng(91), S3 = '';
+  for (z = 0; z < G3; z++) S3 += 'ACGT'[Math.floor(g3r() * 4)];
+  S3 = S3.slice(0, R3[1]) + S3.slice(R3[0], R3[0] + R3L) + S3.slice(R3[1] + R3L);
+  if (S3[R3[1] - 1] === S3[R3[0] - 1]) S3 = S3.slice(0, R3[1] - 1) + 'ACGT'[('ACGT'.indexOf(S3[R3[1] - 1]) + 1) % 4] + S3.slice(R3[1]);
+  var omode = 'uni', OEND = { uni: 100, rep: R3[1] + R3L - 4 }, RDL = 24;   // where our read ends (exclusive)
+  function find3(seq) { var o = [], p = S3.indexOf(seq); while (p >= 0) { o.push(p); p = S3.indexOf(seq, p + 1); } return o; }
+  function inRep3(p) { return R3.some(function (s) { return p >= s && p < s + R3L; }); }
   function drawPlaces() {
-    var k = +$('b-ok').value, p0 = OSTART[omode], seq = GEN.substr(p0, k), hits = places(seq), X = 620 / GL;
-    var shown = hits.slice(0, 12), H = 24 + shown.length * 9 + 6;
-    var svg = svgIn('b-places', 640, Math.max(H, 44), 'Genome with every place where the overlap occurs');
-    genomeBar(svg, 4, X);
-    hits.forEach(function (h) { el('rect', { x: 10 + h * X - 0.7, y: 1, width: Math.max(1.6, k * X), height: 18, style: 'fill:var(--accent)' }, svg); });
-    shown.forEach(function (h, i) {
-      var a = Math.max(0, h - 4), w = k + 30;
-      el('rect', { x: 10 + a * X, y: 24 + i * 9, width: Math.min(w, GL - a) * X, height: 6, style: 'fill:' + (hits.length === 1 ? 'var(--good)' : 'var(--het)') }, svg);
-    });
-    $('b-k-out').textContent = k + ' bases';
+    var k = +$('b-ok').value, e = OEND[omode], seq = S3.slice(e - k, e), hits = find3(seq), on = [], q, x;
+    hits.forEach(function (h) { for (x = h; x < h + k; x++) on[x] = true; });
+    var rd = S3.slice(e - RDL, e), html = '<div class="b-row">';
+    for (q = 0; q < RDL; q++) html += '<span class="b-' + rd[q] + (q >= RDL - k ? ' b-ov' : '') + '">' + rd[q] + '</span>';
+    $('b-oread').innerHTML = html + '</div>';
+    var box = $('b-ogen'), per = Math.max(20, Math.min(50, Math.floor(((box.clientWidth || 640) - 60) / 18 / 10) * 10));
+    html = '';
+    for (var r0 = 0; r0 < G3; r0 += per) {
+      html += '<div class="b-row"><span class="b-num">' + (r0 + 1) + '</span>';
+      var ann = '<div class="b-row b-ann"><span class="b-num"></span>';
+      for (x = r0; x < Math.min(G3, r0 + per); x++) {
+        html += '<span class="b-' + S3[x] + (on[x] ? ' b-ov' : (inRep3(x) ? ' b-rep' : '')) + '">' + S3[x] + '</span>';
+        var ci = R3.indexOf(x), lab = '';
+        if (ci >= 0) lab = 'repeat, copy ' + (ci + 1);
+        else if (x === r0 && inRep3(x)) lab = 'repeat, copy ' + (x < R3[1] ? 1 : 2) + ' (continued)';
+        ann += '<span>' + lab + '</span>';
+      }
+      html += '</div>' + ann + '</div>';
+    }
+    box.innerHTML = html;
+    $('b-k-out').textContent = k + ' letters';
     $('b-oseq').textContent = seq;
     $('b-ocount').textContent = hits.length;
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
-    var msg;
-    if (hits.length === 1) msg = 'One place only: a read with this overlap can belong here and nowhere else, so the join is safe.';
-    else if (omode === 'rep') msg = 'The overlap lies inside the repeat, so it occurs in both copies however long it gets. It becomes unique only when it runs past the end of the repeat and the two copies start to differ: here at ' + uniqueAt(p0) + ' bases.';
-    else msg = 'This run of bases occurs in ' + hits.length + ' places by chance' + (hits.length > 12 ? ' (the first 12 are drawn)' : '') + ', so reads from any of them would seem to fit. Make the overlap longer.';
+    var msg, kk = 1;
+    while (find3(S3.slice(e - kk, e)).length > 1) kk++;
+    if (hits.length > 1 && omode === 'rep') msg = 'The overlap lies inside the repeat, and both copies of the repeat have the same letters, so it occurs in both however long it gets. A read starting with these letters could follow ours or come from the other copy. The overlap becomes one place only when it reaches past the start of the repeat, where the two copies differ: here at ' + kk + ' letters.';
+    else if (hits.length > 1) msg = 'These ' + k + ' letters occur in ' + hits.length + ' places. A read that starts with them could come from any of these places, so we cannot tell which read follows ours. Make the overlap longer: here it becomes one place at ' + kk + ' letters.';
+    else if (omode === 'rep') msg = 'The overlap now reaches past the start of the repeat, where the two copies differ. One place only: the read that starts with these letters must follow ours, so the join is safe.';
+    else msg = 'One place only: a read that starts with these letters must come from here, so joining it to ours is safe.';
     $('b-omsg').textContent = msg;
   }
   $('b-ok').addEventListener('input', drawPlaces);
   $('b-omode').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { omode = b.dataset.m; drawPlaces(); } });
+  window.addEventListener('resize', drawPlaces);
   drawPlaces();
 
   var repSeed = 3, MINJ = 12;
