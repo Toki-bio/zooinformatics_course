@@ -51,15 +51,17 @@
   }
   function card(k) {
     if (k < 0 || !placed[k]) return 'No read yet. Press <b>Read one piece</b>.';
-    var d = placed[k], n = nPlaces(d.s), rep = innerRepeat(d.s), dup = null, best = 1e9;
+    var d = placed[k], n = nPlaces(d.s), rep = innerRepeat(d.s), dups = [];
     placed.forEach(function (o, q) {
       if (q === k || o.p !== d.p || o.l !== d.l) return;
-      var dist = Math.round(Math.hypot(o.x - d.x, o.y - d.y));
-      if (dist < best) { best = dist; dup = o; }
+      dups.push({ n: o.n, dist: Math.round(Math.hypot(o.x - d.x, o.y - d.y)) });
     });
+    dups.sort(function (a, b) { return a.dist - b.dist; });
     var t = '<b>Read ' + d.n + '</b> <span class="b-k">· bases ' + (d.p + 1) + '–' + (d.p + d.l) + ' · ' + d.l + ' letters · flow-cell spot ' + d.x + ', ' + d.y + '</span><br>';
     t += '<span class="b-k">Unique?</span> ' + (n === 1 ? 'Yes, it fits one place only: a mapper is sure where it goes (MAPQ 60).' : 'No, it fits ' + n + ' places (both strands counted): a mapper cannot choose (MAPQ 0).') + '<br>';
-    t += '<span class="b-k">Duplicate?</span> ' + (dup ? 'Same start as read ' + dup.n + ', ' + best.toLocaleString('en') + ' px apart on the flow cell: ' + (best <= 100 ? '<b>optical</b> duplicate candidate (one cluster read twice).' : '<b>PCR</b> duplicate candidate (a copy of the same molecule).') : 'No other read starts here.') + '<br>';
+    t += '<span class="b-k">Duplicate?</span> ' + (dups.length ? 'Same start as ' + dups.map(function (o) {
+      return 'read ' + o.n + ' (' + o.dist.toLocaleString('en') + ' px away: <b>' + (o.dist <= 100 ? 'optical' : 'PCR') + '</b>)';
+    }).join(', ') + '. Within 100 px on the flow cell = optical (one cluster read twice); farther = PCR (copies of one molecule).' : 'No other read starts here.') + '<br>';
     t += '<span class="b-k">Internal repeat?</span> ' + (rep ? 'Yes: ' + rep + '.' : 'None.');
     return t;
   }

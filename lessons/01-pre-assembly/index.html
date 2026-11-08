@@ -36,15 +36,15 @@ h1{font-size:clamp(30px,5vw,46px);font-weight:800;letter-spacing:-.01em}
 h2{font-size:26px;font-weight:700;display:flex;gap:12px;align-items:baseline}
 h2 .n{font-family:var(--f-mono);font-size:14px;color:var(--accent);font-weight:600}
 h3{font-size:17px;font-weight:700}
-p{margin:0;max-width:68ch}
+p{margin:0}
 section{display:flex;flex-direction:column;gap:16px}
-.lede{font-size:17px;color:var(--muted);max-width:70ch}
+.lede{font-size:17px;color:var(--muted)}
 .eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
 code,.mono{font-family:var(--f-mono);font-size:.88em}
 p code,li code,td code{background:var(--code-bg);padding:1px 5px;border-radius:3px}
 a{color:var(--accent)}
 /* sequential steps: one column, numbered markers joined by a line */
-.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column;max-width:72ch}
+.steps{list-style:none;margin:0;padding:0;counter-reset:st;display:flex;flex-direction:column}
 .steps>li{counter-increment:st;display:grid;grid-template-columns:28px 1fr;column-gap:14px;padding-bottom:16px;position:relative;margin:0}
 .steps>li::before{content:counter(st);width:26px;height:26px;border:1.5px solid var(--accent);border-radius:50%;display:grid;place-items:center;font:600 12.5px var(--f-mono);color:var(--accent);background:var(--bg);position:relative;z-index:1}
 .steps>li::after{content:"";position:absolute;left:13px;top:28px;bottom:0;border-left:1.5px solid var(--line)}
@@ -55,11 +55,11 @@ a{color:var(--accent)}
 .steps .d{font-size:14.5px}
 .steps .t{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
 .steps a{font-size:13px;margin-left:6px}
-.qlist{font-size:16px;padding-left:22px;max-width:72ch}
+.qlist{font-size:16px;padding-left:22px}
 .qlist li+li{margin-top:6px}
 .defs{display:grid;grid-template-columns:minmax(120px,200px) 1fr;gap:10px 20px;margin:0}
 .defs dt{font-family:var(--f-display);font-weight:700}
-.defs dd{margin:0;max-width:68ch}
+.defs dd{margin:0}
 @media (max-width:600px){.defs{grid-template-columns:1fr;gap:2px}.defs dd{margin-bottom:10px}}
 dfn{font-style:normal;font-weight:600}
 /* figure */
@@ -136,7 +136,7 @@ details.simple .in{display:flex;flex-direction:column;gap:10px;font-size:14.5px}
 .spec-mini{display:grid;grid-template-columns:auto 1fr auto;gap:3px 10px;align-items:center;font-family:var(--f-mono);font-size:12.5px;max-width:520px}
 .spec-mini i{display:block;height:10px;background:var(--accent);opacity:.7;border-radius:2px}
 .warn-text{color:var(--bad);font-size:13px}
-ul{margin:0;padding-left:20px;max-width:70ch}
+ul{margin:0;padding-left:20px}
 li+li{margin-top:4px}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 
@@ -205,7 +205,7 @@ k-mer coverage = 0.2 × (150 − 21 + 1)  = 0.2 × 130 = <span class="a">26×</s
     <section class="tool explain" aria-labelledby="kc2-h">
       <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="kc2-h">Read coverage vs k-mer coverage</h3></div>
       <p style="font-size:14px">They are two different counts, taken at the same place in the genome:</p>
-      <ul style="font-size:14px;margin:0;padding-left:20px;max-width:70ch">
+      <ul style="font-size:14px;margin:0;padding-left:20px">
         <li><b>Read coverage</b> of a base: how many reads contain <i>that one base</i>.</li>
         <li><b>k-mer coverage</b> of a k-mer: how many reads contain <i>all k of its bases</i>. A read that covers the k-mer's first base but ends before its last base does not contain the k-mer, so it does not count.</li>
       </ul>
