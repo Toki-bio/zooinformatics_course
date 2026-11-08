@@ -31,14 +31,14 @@
 </section>
 
 <section aria-labelledby="b3">
-  <h2 id="b3"><span class="n">3</span>An overlap only helps if it occurs in one place</h2>
-  <p>The assembler has only the reads, in a pile, with no places. Two reads belong together when they <dfn>overlap</dfn>: a stretch at the end of one is the same as a stretch at the start of the other. The overlap has no direction; which read comes first follows from where the shared letters sit, not from which read we picked first. Below, we start from read A and look for the read that continues it to the right (looking to the left works the same way). The program looks through the pile for reads that start with A's last letters, lays each one under A with the shared letters on top of each other, and so gets a longer piece. That is how a read is placed: by its letters alone. Step 2 then does what the program cannot do: it holds each joined piece against the real chromosome, to show that only one read is the real next one.</p>
+  <h2 id="b3"><span class="n">3</span>A repeat gives two ways to go on</h2>
+  <p>The assembler joins two reads when the end of one is the same as the start of the other: they <dfn>overlap</dfn>. A <dfn>repeat</dfn> is the same run of letters in two (or many) places of the chromosome. When a read ends inside a repeat, its end is the same in every copy, so the reads from each copy fit after it equally well. The letters give no way to choose.</p>
   <div class="tool">
-    <div class="seg" id="b-omode"><button type="button" data-m="uni">Read A ends in ordinary sequence</button><button type="button" data-m="rep">Read A ends inside repeat 1</button></div>
-    <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
     <div class="b-map" id="b-ov3"></div>
+    <div class="seg" id="b-pick"><button type="button" data-p="B">Program picks B</button><button type="button" data-p="C">Program picks C</button><button type="button" data-p="stop">Program stops</button></div>
+    <div class="b-map" id="b-out3"></div>
     <div class="b-card" id="b-omsg" aria-live="polite"></div>
-    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Every read here matches the chromosome exactly; no read is wrong. The question is only which read continues A. Dark letters: the overlap. Blue: read A. Grey: the reads found in the pile; in step 1 they all look the same to the program. In step 2, green: letters that agree with the chromosome; red: letters that do not, because that read came from another place that only starts with the same letters.</p>
+    <p class="tool-note">Pink, underlined: the two copies of the repeat (8 letters each). Blue: read A. Grey: reads B and C. Dark: the overlap. Green: letters that agree with our chromosome; red: letters that do not; striped: letters lost.</p>
   </div>
 </section>
 

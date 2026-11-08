@@ -207,78 +207,73 @@
     el('rect', { x: 10, y: y, width: GL * X, height: 12, style: 'fill:var(--err);opacity:.5' }, svg);
     RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: y, width: RL2 * X, height: 12, style: 'fill:var(--bad)' }, svg); });
   }
-  // 3. Is the overlap in one place? A chromosome of 50 letters with one 8-letter repeat in two copies.
-  var G3 = 50, R3 = [8, 31], R3L = 8, RL3 = 12, g3r = rng(65), S3 = '', z3;
-  for (z3 = 0; z3 < G3; z3++) S3 += 'ACGT'[Math.floor(g3r() * 4)];
-  S3 = S3.slice(0, R3[1]) + S3.slice(R3[0], R3[0] + R3L) + S3.slice(R3[1] + R3L);
-  if (S3[R3[1] - 1] === S3[R3[0] - 1]) S3 = S3.slice(0, R3[1] - 1) + 'ACGT'[('ACGT'.indexOf(S3[R3[1] - 1]) + 1) % 4] + S3.slice(R3[1]);
-  var omode = 'uni', AEND = { uni: 30, rep: R3[0] + 6 };     // read A ends here (exclusive); A is RL3 letters long
+  // 3. How a repeat complicates assembly. A 40-letter chromosome, written by hand:
+  // 8 unique | repeat (8) | 8 unique (the middle) | the same repeat (8) | 8 unique.
+  // The 5-letter overlap GATCC occurs only in the two repeat copies, so no chance look-alike disturbs the picture.
+  var S3 = 'ACGTTGCA' + 'GATCCAGT' + 'TTACGGCT' + 'GATCCAGT' + 'CCTAGTGA', G3 = S3.length, R3 = [8, 24], R3L = 8;
+  var A0 = 3, RL3 = 10, K3 = 5, AE = A0 + RL3;          // read A = letters 4-13; its last 5 letters lie inside repeat 1
+  var B0 = AE - K3, C0 = R3[1];                          // B comes from repeat 1, C from repeat 2: both start with GATCC
+  var pick3 = '';
   function inRep3(p) { return R3.some(function (s) { return p >= s && p < s + R3L; }); }
-  function drawPlaces() {
-    var k = +$('b-ok').value, e = AEND[omode], a0 = e - RL3, ov = S3.slice(e - k, e), C = [], p, x, html = '';
-    for (p = S3.indexOf(ov); p >= 0; p = S3.indexOf(ov, p + 1)) if (p + RL3 <= G3) C.push(p);   // a read of 12 starting here
-    // one row of letters on the 50-column grid: str starts at column start; cls(x) gives the classes of letter x
-    function row(start, str, cls, lab) {
-      var cells = new Array(G3).fill('<span></span>'), len = str.length;
-      for (x = 0; x < len; x++) cells[start + x] = '<span class="b-' + str[x] + ' b-x ' + cls(x) + (x === 0 ? ' b-s' : '') + (x === len - 1 ? ' b-e' : '') + '">' + str[x] + '</span>';
-      if (lab) {
-        if (G3 - (start + len) >= start) cells[start + len] = '<span class="b-tg"><i>' + lab + '</i></span>';
-        else cells[start - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
-      }
-      return '<div class="b-row b-rd"><div class="b-strip">' + cells.join('') + '</div></div>';
+  // one row on the 40-column grid; cells[] holds the letter (or '') for each column, cls(p) its classes
+  function row3(cells, cls, lab) {
+    var first = -1, last = -1, p, out = [];
+    for (p = 0; p < G3; p++) if (cells[p]) { if (first < 0) first = p; last = p; }
+    for (p = 0; p < G3; p++) {
+      if (!cells[p]) { out.push(p === last + 1 && lab ? '<span class="b-tg"><i>' + lab + '</i></span>' : '<span></span>'); continue; }
+      out.push('<span class="b-' + cells[p] + ' b-x ' + cls(p) + (p === first || !cells[p - 1] ? ' b-s' : '') + (p === last || !cells[p + 1] ? ' b-e' : '') + '">' + cells[p] + '</span>');
     }
-    var NM = 'BCDEFGH', real = '', Aseq = S3.slice(a0, e);
-    function aCls(x) { return 'b-a' + (x >= RL3 - k ? ' b-ov' : ''); }
-    // step 1: what the program does. Each read is laid under A so that its first k letters lie on A's last k letters.
-    html += '<div class="b3-h">Step 1. What the program does</div>';
-    html += '<div class="b-cap">It lays each read that starts with ' + ov + ' under read A, so that the read’s first ' + k + ' letters lie on A’s last ' + k + ' letters</div>';
-    html += row(a0, Aseq, aCls, '<b>A</b>');
-    C.forEach(function (s, q) {
-      if (s === e - k) real = NM[q];
-      html += row(e - k, S3.substr(s, RL3), function (x) { return 'b-c' + (x < k ? ' b-ov' : ''); }, '<b>' + NM[q] + '</b>');
-    });
-    html += '<div class="b-gap"></div><div class="b-cap">Joined: A, then the letters of each read that come after the overlap</div>';
-    C.forEach(function (s, q) {
-      html += row(a0, Aseq + S3.substr(s + k, RL3 - k), function (x) { return x < RL3 ? 'b-a' : 'b-c'; }, '<b>A+' + NM[q] + '</b>');
-    });
-    // step 2: what only we can do: compare each joined piece with the chromosome at A's place.
-    html += '<div class="b3-h">Step 2. What only we can check: the chromosome</div>';
-    var lab = new Array(G3).fill('<span></span>');
-    R3.forEach(function (s, q) { lab[s] = '<span><i>repeat ' + (q + 1) + '</i></span>'; });
-    html += '<div class="b-row b-rl"><div class="b-strip">' + lab.join('') + '</div></div>';
-    html += '<div class="b-cap">Chromosome</div><div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
-      return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
-    }).join('') + '</div></div><div class="b-gap"></div>';
-    html += '<div class="b-cap">Each joined piece under the place where A came from: green letters agree with the chromosome, red letters do not</div>';
-    C.forEach(function (s, q) {
-      var j = Aseq + S3.substr(s + k, RL3 - k), nd = 0, y;
-      for (y = 0; y < j.length; y++) if (j[y] !== S3[a0 + y]) nd++;
-      html += row(a0, j, function (x) { return x < RL3 ? 'b-a' : (j[x] === S3[a0 + x] ? 'b-ok' : 'b-bad'); },
-        '<b>A+' + NM[q] + '</b> ' + (nd ? nd + (nd === 1 ? ' letter differs' : ' letters differ') : 'agrees: ' + NM[q] + ' is the real next read'));
-    });
-    $('b-ov3').innerHTML = html;
-    $('b-k-out').textContent = k + ' letters';
-    Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
-    var kk = 1;
-    while (true) { var o = S3.slice(e - kk, e), n = 0; for (p = S3.indexOf(o); p >= 0; p = S3.indexOf(o, p + 1)) if (p + RL3 <= G3) n++; if (n <= 1 || kk >= RL3) break; kk++; }
-    var names = C.map(function (s, q) { return NM[q]; });
-    var see = '<b>What the program sees:</b> read A, and ' + (C.length === 1 ? 'one read in the pile that starts with ' : C.length + ' reads in the pile that start with ') + ov + ': ' +
-      C.map(function (s, q) { return '<b>' + NM[q] + '</b> <code>' + S3.substr(s, RL3) + '</code>'; }).join(', ') + '. It does not see where they came from.<br>';
-    if (C.length === 1) {
-      see += '<b>So:</b> only ' + real + ' fits, so the program joins ' + real + ' after A, and it is right. ' + (omode === 'rep' ? 'An overlap of ' + k + ' letters reaches back past the start of repeat 1, where the two copies differ, so the read from repeat 2 no longer fits.' : 'A longer overlap means a look-alike has to share more of A\u2019s letters, and none does.');
-    } else {
-      var wrong = C.filter(function (s) { return s !== e - k; })[0], wn = NM[C.indexOf(wrong)];
-      see += '<b>So:</b> ' + names.join(', ').replace(/, ([^,]*)$/, ' and $1') + ' fit equally well, and the letters give no way to choose. The program cannot know that ' + real + ' is right and ' + wn + ' is not. A careful assembler therefore joins nothing here: the contig ends after A. ';
-      var built = Aseq + S3.substr(wrong + k, RL3 - k);
-      see += 'Had it picked ' + wn + ', it would build <code>' + built + '</code>, ' + (S3.indexOf(built) < 0 ? 'which is not in the chromosome. ' : 'which by chance is also in the chromosome, at another place. ');
-      see += omode === 'rep' ? 'Here the cause is the repeat: A ends inside repeat 1, and repeat 2 has exactly the same letters, so a read from each copy starts with ' + ov + '. Making the overlap longer does not help while it stays inside the repeat; it helps only at ' + kk + ' letters, when it reaches back past the start of repeat 1, where the copies differ.'
-        : 'Here the cause is chance: ' + ov + ' is short and occurs in ' + C.length + ' places. A longer overlap leaves fewer reads: at ' + kk + ' letters only ' + real + ' is left.';
-    }
-    $('b-omsg').innerHTML = see;
+    if (lab && last === G3 - 1) out[first - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
+    return '<div class="b-row b-rd"><div class="b-strip">' + out.join('') + '</div></div>';
   }
-  $('b-ok').addEventListener('input', drawPlaces);
-  $('b-omode').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { omode = b.dataset.m; drawPlaces(); } });
-  drawPlaces();
+  function piece(from, to) { var c = new Array(G3).fill(''), p; for (p = from; p < to; p++) c[p] = S3[p]; return c; }
+  function chromRow() {
+    var lab = new Array(G3).fill('<span></span>');
+    R3.forEach(function (s, q) { lab[s] = '<span><i>repeat, copy ' + (q + 1) + '</i></span>'; });
+    return '<div class="b-row b-rl"><div class="b-strip">' + lab.join('') + '</div></div>' +
+      '<div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
+        return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
+      }).join('') + '</div></div>';
+  }
+  function drawRep3() {
+    var html = '', ov = S3.slice(AE - K3, AE);
+    html += '<div class="b-cap">Our chromosome (the program never sees it)</div>' + chromRow() + '<div class="b-gap"></div>';
+    html += '<div class="b-cap">Read A ends inside copy 1 of the repeat. The program looks for reads that start with A’s last ' + K3 + ' letters, ' + ov + ', and lays them under A:</div>';
+    html += row3(piece(A0, AE), function (p) { return 'b-a' + (p >= AE - K3 ? ' b-ov' : ''); }, '<b>A</b>');
+    var b = new Array(G3).fill(''), c = new Array(G3).fill(''), p;
+    for (p = 0; p < RL3; p++) { b[B0 + p] = S3[B0 + p]; c[B0 + p] = S3[C0 + p]; }
+    function candCls(p) { return 'b-c' + (p < AE ? ' b-ov' : ''); }
+    html += row3(b, candCls, '<b>B</b> (really from copy 1)');
+    html += row3(c, candCls, '<b>C</b> (really from copy 2)');
+    html += '<div class="b-cap">B and C both match A perfectly: from the letters alone they are equally good. What happens next?</div>';
+    $('b-ov3').innerHTML = html;
+    var out = '', msg = '';
+    if (pick3) {
+      out += '<div class="b-cap">Our chromosome</div>' + chromRow() + '<div class="b-gap"></div>';
+      if (pick3 === 'B') {
+        out += '<div class="b-cap">The program joins B after A and goes on</div>' + row3(piece(0, G3), function () { return 'b-ok'; }, '');
+        msg = 'Right, but only by luck: nothing in the letters made B better than C.';
+      } else if (pick3 === 'C') {
+        var E1 = R3[0] + R3L, w = piece(0, E1), q, cells;
+        for (q = R3[1] + R3L; q < G3; q++) w[E1 + q - (R3[1] + R3L)] = S3[q];   // what follows copy 2, written right after copy 1
+        cells = row3(w, function (p) { return p < E1 ? 'b-ok' : 'b-bad'; }, '');
+        cells = cells.replace(/<span><\/span>/g, '<span class="b5-miss"></span>');
+        out += '<div class="b-cap">The program joins C after A and goes on</div>' + cells;
+        msg = 'Wrong. After copy 1 the program jumped to what follows copy 2. The middle and copy 2, ' + (R3[1] - R3[0]) + ' letters, are missing (striped), and what follows copy 2 is placed right after copy 1, where it does not belong (red). This is a <dfn>misassembly</dfn>.';
+      } else {
+        out += '<div class="b-cap">A careful program joins neither and stops: the contigs it can be sure of</div>' +
+          row3(piece(0, AE), function () { return 'b-ok'; }, 'contig 1') +
+          row3(piece(R3[0] + R3L, R3[1]), function () { return 'b-ok'; }, 'contig 2') +
+          row3(piece(R3[1] + R3L, G3), function () { return 'b-ok'; }, 'contig 3');
+        msg = 'Nothing is wrong, but the chromosome comes out in three pieces, and their order is unknown: the repeat cut it. This is why real assemblies break at repeats. Block 4 shows the only way across.';
+      }
+    }
+    $('b-out3').innerHTML = out;
+    $('b-omsg').innerHTML = msg;
+    Array.prototype.forEach.call($('b-pick').children, function (x) { x.setAttribute('aria-pressed', String(x.dataset.p === pick3)); });
+  }
+  $('b-pick').addEventListener('click', function (e) { var x = e.target.closest('button'); if (x) { pick3 = x.dataset.p; drawRep3(); } });
+  drawRep3();
 
   var repSeed = 3, MINJ = 12;
   function inRepeat(d) { return RS.some(function (s) { return d.s >= s && d.e <= s + RL2; }); }
