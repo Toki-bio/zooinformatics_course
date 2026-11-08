@@ -65,3 +65,4 @@
 .b5-chips{display:flex;flex-wrap:wrap;gap:4px 8px;font:12px var(--f-mono);margin:2px 0 6px}
 .b5-chips code{background:var(--code-bg);padding:1px 4px;border-radius:4px}
 .b5-chips code.b5-off{background:color-mix(in srgb,var(--het) 35%,var(--bg))}
+.b-mono .b-row.b-rd span.b-x.b-alt{background:color-mix(in srgb,var(--good) 12%,var(--bg));color:var(--muted)}

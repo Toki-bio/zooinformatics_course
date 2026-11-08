@@ -32,13 +32,13 @@
 
 <section aria-labelledby="b3">
   <h2 id="b3"><span class="n">3</span>A repeat gives two ways to go on</h2>
-  <p>The assembler joins two reads when the end of one is the same as the start of the other: they <dfn>overlap</dfn>. A <dfn>repeat</dfn> is the same run of letters in two (or many) places of the chromosome. When a read ends inside a repeat, its end is the same in every copy, so the reads from each copy fit after it equally well. The letters give no way to choose.</p>
+  <p>The assembler joins two reads when the end of one is the same as the start of the other: they <dfn>overlap</dfn>. A <dfn>repeat</dfn> is the same run of letters in two (or many) places of the chromosome. Below, the chromosome has one repeat of 10 letters in two places. Every read is 6 letters long, shorter than the repeat, and the pile holds a read starting at every letter. Two reads are joined when they overlap by 5 letters.</p>
   <div class="tool">
-    <div class="b-map" id="b-ov3"></div>
-    <div class="seg" id="b-pick"><button type="button" data-p="B">Program picks B</button><button type="button" data-p="C">Program picks C</button><button type="button" data-p="stop">Program stops</button></div>
-    <div class="b-map" id="b-out3"></div>
+    <div class="b-map b-mono" id="b-ov3"></div>
+    <div class="seg" id="b-pick"><button type="button" data-p="2">Program takes read 2</button><button type="button" data-p="3">Program takes read 3</button><button type="button" data-p="stop">Program stops</button></div>
+    <div class="b-map b-mono" id="b-out3"></div>
     <div class="b-card" id="b-omsg" aria-live="polite"></div>
-    <p class="tool-note">Pink, underlined: the two copies of the repeat (8 letters each). Blue: read A. Grey: reads B and C. Dark: the overlap. Green: letters that agree with our chromosome; red: letters that do not; striped: letters lost.</p>
+    <p class="tool-note">Pink, underlined: the two copies of the repeat. Dark: the 5 letters two reads share (the overlap). Green: letters in their right place; red: letters in a wrong place; striped: letters lost. Pale: the same contig, which fits here too.</p>
   </div>
 </section>
 

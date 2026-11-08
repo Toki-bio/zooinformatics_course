@@ -207,65 +207,97 @@
     el('rect', { x: 10, y: y, width: GL * X, height: 12, style: 'fill:var(--err);opacity:.5' }, svg);
     RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: y, width: RL2 * X, height: 12, style: 'fill:var(--bad)' }, svg); });
   }
-  // 3. How a repeat complicates assembly. A 40-letter chromosome, written by hand:
-  // 8 unique | repeat (8) | 8 unique (the middle) | the same repeat (8) | 8 unique.
-  // The 5-letter overlap GATCC occurs only in the two repeat copies, so no chance look-alike disturbs the picture.
-  var S3 = 'ACGTTGCA' + 'GATCCAGT' + 'TTACGGCT' + 'GATCCAGT' + 'CCTAGTGA', G3 = S3.length, R3 = [8, 24], R3L = 8;
-  var A0 = 3, RL3 = 10, K3 = 5, AE = A0 + RL3;          // read A = letters 4-13; its last 5 letters lie inside repeat 1
-  var B0 = AE - K3, C0 = R3[1];                          // B comes from repeat 1, C from repeat 2: both start with GATCC
+  // 3. How a repeat complicates assembly. A 44-letter chromosome:
+  // start (8) | repeat copy 1 (10) | middle (8) | repeat copy 2 (10) | end (8).
+  // Reads are 6 letters, one starting at every letter; two reads are joined when they overlap by 5.
+  // The repeat is longer than a read, so reads inside it are the same in both copies.
+  var S3 = 'GACATCCA' + 'CGAAGCTTCG' + 'CGGTGATC' + 'CGAAGCTTCG' + 'TTCGACGA', G3 = S3.length, R3 = [8, 26], R3L = 10, RL3 = 6, K3 = 5;
+  var P1 = [R3[0] + R3L - RL3, R3[1] + R3L - RL3];       // read 1 = last 6 letters of the repeat, in each copy
   var pick3 = '';
   function inRep3(p) { return R3.some(function (s) { return p >= s && p < s + R3L; }); }
-  // one row on the 40-column grid; cells[] holds the letter (or '') for each column, cls(p) its classes
-  function row3(cells, cls, lab) {
-    var first = -1, last = -1, p, out = [];
-    for (p = 0; p < G3; p++) if (cells[p]) { if (first < 0) first = p; last = p; }
+  // contigs as a careful program builds them: join reads only where exactly one read fits, looking right and looking left
+  function unitigs3(S, L) {
+    var set = {}, q, nodes, succ = {}, pred = {}, used = {}, out = [];
+    for (q = 0; q + L <= S.length; q++) set[S.substr(q, L)] = 1;
+    nodes = Object.keys(set);
+    nodes.forEach(function (u) { succ[u] = []; pred[u] = []; });
+    nodes.forEach(function (u) { 'ACGT'.split('').forEach(function (c) { var v = u.slice(1) + c; if (set[v]) { succ[u].push(v); pred[v].push(u); } }); });
+    nodes.forEach(function (u) {
+      if (used[u] || (pred[u].length === 1 && succ[pred[u][0]].length === 1)) return;
+      var s = u, w = u; used[u] = 1;
+      while (succ[w].length === 1 && pred[succ[w][0]].length === 1 && !used[succ[w][0]]) { w = succ[w][0]; used[w] = 1; s += w.slice(-1); }
+      out.push(s);
+    });
+    return out;
+  }
+  function where3(s) { var o = [], p = S3.indexOf(s); while (p >= 0) { o.push(p); p = S3.indexOf(s, p + 1); } return o; }
+  // one row on the 44-column grid; segs: [{at, s, cls(k, p), lab}]; s = '' with n draws a striped (lost) stretch
+  function row3(segs) {
+    var cells = new Array(G3).fill(null), out = [], p;
+    segs.forEach(function (g) {
+      var n = g.s ? g.s.length : g.n, k;
+      for (k = 0; k < n; k++) cells[g.at + k] = { c: g.s ? g.s[k] : '', cls: g.s ? g.cls(k, g.at + k) : 'b5-miss', s: k === 0, e: k === n - 1 };
+    });
+    segs.forEach(function (g) {
+      if (!g.lab) return;
+      var n = g.s ? g.s.length : g.n, e = g.at + n;
+      if (e < G3 && !cells[e]) cells[e] = { tag: '<span class="b-tg"><i>' + g.lab + '</i></span>' };
+      else if (g.at > 0 && !cells[g.at - 1]) cells[g.at - 1] = { tag: '<span class="b-tg b-lf"><i>' + g.lab + '</i></span>' };
+    });
     for (p = 0; p < G3; p++) {
-      if (!cells[p]) { out.push(p === last + 1 && lab ? '<span class="b-tg"><i>' + lab + '</i></span>' : '<span></span>'); continue; }
-      out.push('<span class="b-' + cells[p] + ' b-x ' + cls(p) + (p === first || !cells[p - 1] ? ' b-s' : '') + (p === last || !cells[p + 1] ? ' b-e' : '') + '">' + cells[p] + '</span>');
+      var x = cells[p];
+      if (!x) out.push('<span></span>');
+      else if (x.tag) out.push(x.tag);
+      else if (!x.c) out.push('<span class="' + x.cls + '"></span>');
+      else out.push('<span class="b-x ' + x.cls + (x.s ? ' b-s' : '') + (x.e ? ' b-e' : '') + '">' + x.c + '</span>');
     }
-    if (lab && last === G3 - 1) out[first - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
     return '<div class="b-row b-rd"><div class="b-strip">' + out.join('') + '</div></div>';
   }
-  function piece(from, to) { var c = new Array(G3).fill(''), p; for (p = from; p < to; p++) c[p] = S3[p]; return c; }
   function chromRow() {
     var lab = new Array(G3).fill('<span></span>');
     R3.forEach(function (s, q) { lab[s] = '<span><i>repeat, copy ' + (q + 1) + '</i></span>'; });
     return '<div class="b-row b-rl"><div class="b-strip">' + lab.join('') + '</div></div>' +
       '<div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
-        return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
+        return '<span' + (inRep3(q) ? ' class="b-rp"' : '') + '>' + c + '</span>';
       }).join('') + '</div></div>';
   }
   function drawRep3() {
-    var html = '', ov = S3.slice(AE - K3, AE);
-    html += '<div class="b-cap">Our chromosome (the program never sees it)</div>' + chromRow() + '<div class="b-gap"></div>';
-    html += '<div class="b-cap">Read A ends inside copy 1 of the repeat. The program looks for reads that start with A’s last ' + K3 + ' letters, ' + ov + ', and lays them under A:</div>';
-    html += row3(piece(A0, AE), function (p) { return 'b-a' + (p >= AE - K3 ? ' b-ov' : ''); }, '<b>A</b>');
-    var b = new Array(G3).fill(''), c = new Array(G3).fill(''), p;
-    for (p = 0; p < RL3; p++) { b[B0 + p] = S3[B0 + p]; c[B0 + p] = S3[C0 + p]; }
-    function candCls(p) { return 'b-c' + (p < AE ? ' b-ov' : ''); }
-    html += row3(b, candCls, '<b>B</b> (really from copy 1)');
-    html += row3(c, candCls, '<b>C</b> (really from copy 2)');
-    html += '<div class="b-cap">B and C both match A perfectly: from the letters alone they are equally good. What happens next?</div>';
+    var r1 = S3.substr(P1[0], RL3), ov = r1.slice(RL3 - K3), r2 = S3.substr(P1[0] + 1, RL3), r3 = S3.substr(P1[1] + 1, RL3);
+    var ovEnd = function (k) { return k >= RL3 - K3 ? 'b-ov' : ''; }, ovStart = function (k) { return k < K3 ? 'b-ov' : ''; };
+    var green = function () { return 'b-ok'; };
+    var html = '<div class="b-cap">Our chromosome (the program never sees it)</div>' + chromRow() + '<div class="b-gap"></div>';
+    html += '<div class="b-cap">Read 1 is the last ' + RL3 + ' letters of the repeat. Copy 1 and copy 2 both give this read, letter for letter the same, so the program cannot know which copy it came from:</div>';
+    html += row3([{ at: P1[0], s: r1, cls: ovEnd, lab: 'read 1' }, { at: P1[1], s: r1, cls: ovEnd, lab: 'read 1' }]);
+    html += '<div class="b-cap">Two reads in the pile start with read 1’s last ' + K3 + ' letters, ' + ov + ' (each drawn under the place it came from):</div>';
+    html += row3([{ at: P1[0] + 1, s: r2, cls: ovStart, lab: 'read 2' }, { at: P1[1] + 1, s: r3, cls: ovStart, lab: 'read 3' }]);
+    html += '<div class="b-cap">The program sees only the letters: read 1 ' + r1 + ', read 2 ' + r2 + ', read 3 ' + r3 + '. Read 2 and read 3 both fit after read 1, equally well. What happens next?</div>';
     $('b-ov3').innerHTML = html;
-    var out = '', msg = '';
+    var out = '', msg = '', E1 = R3[0] + R3L, E2 = R3[1] + R3L;
     if (pick3) {
       out += '<div class="b-cap">Our chromosome</div>' + chromRow() + '<div class="b-gap"></div>';
-      if (pick3 === 'B') {
-        out += '<div class="b-cap">The program joins B after A and goes on</div>' + row3(piece(0, G3), function () { return 'b-ok'; }, '');
-        msg = 'Right, but only by luck: nothing in the letters made B better than C.';
-      } else if (pick3 === 'C') {
-        var E1 = R3[0] + R3L, w = piece(0, E1), q, cells;
-        for (q = R3[1] + R3L; q < G3; q++) w[E1 + q - (R3[1] + R3L)] = S3[q];   // what follows copy 2, written right after copy 1
-        cells = row3(w, function (p) { return p < E1 ? 'b-ok' : 'b-bad'; }, '');
-        cells = cells.replace(/<span><\/span>/g, '<span class="b5-miss"></span>');
-        out += '<div class="b-cap">The program joins C after A and goes on</div>' + cells;
-        msg = 'Wrong. After copy 1 the program jumped to what follows copy 2. The middle and copy 2, ' + (R3[1] - R3[0]) + ' letters, are missing (striped), and what follows copy 2 is placed right after copy 1, where it does not belong (red). This is a <dfn>misassembly</dfn>.';
+      if (pick3 === '2') {
+        out += '<div class="b-cap">The program takes read 2 and goes on. At the end of copy 2 it meets read 1 again, with the same two reads after it, and this time takes read 3:</div>' +
+          row3([{ at: 0, s: S3, cls: green }]);
+        msg = 'The whole chromosome, but only by luck, twice: nothing in the letters made read 2 better than read 3 the first time, or read 3 better than read 2 the second time. Had it taken read 2 again, it would have gone round the middle a second time.';
+      } else if (pick3 === '3') {
+        var built = S3.slice(0, E1) + S3.slice(E2);
+        out += '<div class="b-cap">The program takes read 3 and goes on. It builds ' + built + ':</div>' +
+          row3([{ at: 0, s: S3.slice(0, E1), cls: green }, { at: E1, s: S3.slice(E2), cls: function () { return 'b-bad'; } },
+            { at: E1 + G3 - E2, s: '', n: E2 - E1 }]);
+        msg = 'Wrong. After copy 1 the program jumped to what follows copy 2. The middle (' + (R3[1] - E1) + ' letters) and one copy of the repeat (' + R3L + ') are lost, and the end is put right after copy 1. Every read matched, yet the result is not in our chromosome: this is a <dfn>misassembly</dfn>.';
       } else {
-        out += '<div class="b-cap">A careful program joins neither and stops: the contigs it can be sure of</div>' +
-          row3(piece(0, AE), function () { return 'b-ok'; }, 'contig 1') +
-          row3(piece(R3[0] + R3L, R3[1]), function () { return 'b-ok'; }, 'contig 2') +
-          row3(piece(R3[1] + R3L, G3), function () { return 'b-ok'; }, 'contig 3');
-        msg = 'Nothing is wrong, but the chromosome comes out in three pieces, and their order is unknown: the repeat cut it. This is why real assemblies break at repeats. Block 4 shows the only way across.';
+        var U = unitigs3(S3, RL3).map(function (s) { return { s: s, at: where3(s) }; }).sort(function (a, b) { return a.at[0] - b.at[0]; });
+        out += '<div class="b-cap">A careful program joins two reads only where exactly one read fits, looking right and looking left (an overlap has no direction). It gives these contigs, each drawn under the place it fits:</div>';
+        U.forEach(function (u, q) {
+          out += row3(u.at.map(function (a, j) {
+            return { at: a, s: u.s, cls: function () { return 'b-ok' + (j ? ' b-alt' : ''); }, lab: j ? 'or here' : 'contig ' + (q + 1) + (u.at.length > 1 ? ' (the repeat)' : '') };
+          }));
+        });
+        var rep = U.filter(function (u) { return u.at.length > 1; })[0];
+        var f = S3.substr(R3[0], RL3), pa = S3.substr(R3[0] - 1, RL3), pb = S3.substr(R3[1] - 1, RL3);
+        msg = 'Why the contigs end where they do. The first read inside the repeat, ' + f + ', fits after two reads: ' + pa + ' (from the start) and ' + pb + ' (from the middle). The last read inside the repeat, read 1, has two reads after it: read 2 and read 3. At both places the program cannot choose, so it stops. ' +
+          'The reads between these two places are the same in both copies, so they come together as one contig, contig ' + (U.indexOf(rep) + 1) + ': it has twice as many reads as the rest, and the program cannot tell how many copies there are or where they go. The other contigs reach ' + K3 + ' letters into the repeat, as far as reads still lead to one place. ' +
+          'Nothing is wrong, but the chromosome comes out in ' + U.length + ' pieces whose order is unknown. Every repeat longer than the reads cuts the chromosome like this; a genome with thousands of repeats comes out in thousands of contigs. Block 4 shows the way across.';
       }
     }
     $('b-out3').innerHTML = out;
