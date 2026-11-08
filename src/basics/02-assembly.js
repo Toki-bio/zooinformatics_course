@@ -93,6 +93,7 @@
     });
     return out;
   }
+  function pl(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function drawStacks() {
     var box = $('b-stacks'), X = 0.62;
     box.textContent = '';
@@ -102,18 +103,39 @@
       reads.sort(function (a, b) { return a.s - b.s; });
       reads.forEach(function (d) { for (p = d.s; p < d.e; p++) depth[p]++; });
       depth.forEach(function (d) { if (!d) un++; });
-      var rows = pack(reads), C = contigs(reads), RH = 2.6, h = rows * RH + 24;
+      var rows = pack(reads), C = contigs(reads), RH = 2.6, cy = rows * RH + 8, h = cy + 22;
+      // breaks between neighbouring contigs: a hole (no read covers it) or a short overlap (touching, not joined)
+      var holes = [], joins = [];
+      if (C[0][0] > 0) holes.push([0, C[0][0]]);
+      for (k = 0; k + 1 < C.length; k++) {
+        if (C[k + 1][0] >= C[k][1]) holes.push([C[k][1], C[k + 1][0]]);
+        else joins.push((C[k][1] + C[k + 1][0]) / 2);
+      }
+      if (C[C.length - 1][1] < G) holes.push([C[C.length - 1][1], G]);
+      var panel = document.createElement('div');
+      panel.className = 'b-stack';
       var lab = document.createElement('p');
       lab.className = 'b-lab';
-      lab.innerHTML = '<b>' + cov + '×</b> ' + n + ' reads: ' + C.length + (C.length === 1 ? ' contig' : ' contigs') + ', ' + (100 * un / G).toFixed(0) + ' % not covered';
-      box.appendChild(lab);
+      lab.innerHTML = '<b>' + cov + '× coverage</b>, ' + n + ' reads: ' + C.length + (C.length === 1 ? ' contig' : ' contigs') + ', ' + (100 * un / G).toFixed(0) + ' % not covered' +
+        (C.length > 1 ? ' (' + pl(holes.filter(function (o) { return o[0] > 0 && o[1] < G; }).length, 'gap', 'gaps') + ' with no read, ' + pl(joins.length, 'short overlap', 'short overlaps') + ' not joined)' : '');
+      panel.appendChild(lab);
       var div = document.createElement('div');
       div.className = 'svgbox'; div.id = 'b-st' + q;
-      box.appendChild(div);
+      panel.appendChild(div);
+      box.appendChild(panel);
       var svg = svgIn(div.id, 640, h, cov + ' times coverage: stack of reads and the contigs they give');
       reads.forEach(function (d) { el('rect', { x: 10 + d.s * X, y: d.row * RH, width: L * X, height: RH - 0.7, style: 'fill:var(--err)' }, svg); });
-      for (p = 0; p < G; p++) if (!depth[p]) el('rect', { x: 10 + p * X, y: h - 20, width: X + 0.3, height: 5, style: 'fill:var(--bad)' }, svg);
-      C.forEach(function (c, i) { el('rect', { x: 10 + c[0] * X, y: h - 12, width: Math.max(1, (c[1] - c[0]) * X - 1.5), height: 10, style: 'fill:' + (i % 2 ? 'var(--rep)' : 'var(--accent)') }, svg); });
+      var cut = function (p) { return 10 + p * X; };
+      C.forEach(function (c, i) {
+        var a = cut(c[0]), e = cut(c[1]);
+        if (i > 0 && C[i][0] < C[i - 1][1]) a = cut((C[i - 1][1] + C[i][0]) / 2) + 2.5;
+        if (i + 1 < C.length && C[i + 1][0] < c[1]) e = cut((c[1] + C[i + 1][0]) / 2) - 2.5;
+        el('rect', { x: a, y: cy, width: Math.max(1, e - a), height: 12, style: 'fill:var(--accent)' }, svg);
+      });
+      holes.forEach(function (o) {
+        el('rect', { x: cut(o[0]) + 0.75, y: cy + 0.75, width: Math.max(1.5, (o[1] - o[0]) * X - 1.5), height: 10.5, style: 'fill:none;stroke:var(--bad);stroke-width:1.5;stroke-dasharray:3 2' }, svg);
+      });
+      joins.forEach(function (p) { el('rect', { x: cut(p) - 1, y: cy - 3, width: 2, height: 18, style: 'fill:var(--fg)' }, svg); });
     });
   }
   $('b-new').addEventListener('click', function () { covSeed++; drawStacks(); });

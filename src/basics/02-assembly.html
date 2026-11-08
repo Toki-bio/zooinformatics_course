@@ -12,11 +12,12 @@
 
 <section aria-labelledby="b2">
   <h2 id="b2"><span class="n">2</span>More reads cover more</h2>
-  <p>Reads land at random, so some places get many and others none. Each bar below is one read, stacked over the place it came from. Where nothing overlaps the next read, the assembly stops, and a piece built from joined reads is called a <dfn>contig</dfn>. <dfn>Coverage</dfn> says how many times an average place was read. These four stacks are the same genome with more and more reads.</p>
+  <p>Reads land at random, so some places get many and others none. Each bar below is one read, stacked over the place it came from. Where nothing overlaps the next read, the assembly stops, and a piece built from joined reads is called a <dfn>contig</dfn>. <dfn>Coverage</dfn> says how many times an average place was read. The four panels below are the same genome with more and more reads. To keep the picture readable, the genome here is simplified to one chromosome of 1,000 bases; a real genome has many chromosomes, and each is assembled the same way.</p>
   <div class="tool">
+    <div class="b-key" aria-hidden="true"><span><i class="k-read"></i>read</span><span><i class="k-ctg"></i>contig (joined reads)</span><span><i class="k-hole"></i>no read: no sequence</span><span><i class="k-join"></i>reads overlap by fewer than 10 bases: not joined</span></div>
     <div id="b-stacks"></div>
     <button type="button" class="btn" id="b-new">New random reads</button>
-    <p class="tool-note">Grey bars: reads. Blue and purple bars under each stack: the contigs, one colour change for each break. Red: places no read covers. Two reads are joined only if they overlap by at least 10 bases.</p>
+    <p class="tool-note">Two reads are joined only if they overlap by at least 10 bases. A contig ends for one of two reasons: no read covers the next bases at all (red dashed box: we have no sequence there), or the next read does overlap, but by fewer than 10 bases (black mark: the two contigs touch, but the assembler cannot be sure they belong together, so it keeps them apart).</p>
   </div>
 </section>
 

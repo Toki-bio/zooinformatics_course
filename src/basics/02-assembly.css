@@ -14,3 +14,11 @@
 .b-row.b-rd span.b-x{background:var(--code-bg)}
 .b-row.b-rd span.b-on,.b-reads code.b-on{background:var(--accent);color:var(--bg)!important}
 .b-gap{height:6px}
+.b-stack{border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:6px 10px 8px;margin:0 0 14px}
+.b-stack .b-lab{margin:.2em 0 .4em}
+.b-key{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted);margin:0 0 10px}
+.b-key i{display:inline-block;width:22px;height:10px;margin-right:6px;vertical-align:-1px}
+.b-key .k-read{background:var(--err);height:4px;vertical-align:2px}
+.b-key .k-ctg{background:var(--accent)}
+.b-key .k-hole{border:1.5px dashed var(--bad);box-sizing:border-box}
+.b-key .k-join{width:3px;height:16px;background:var(--fg);vertical-align:-4px}

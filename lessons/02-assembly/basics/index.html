@@ -156,6 +156,14 @@ li+li{margin-top:4px}
 .b-row.b-rd span.b-x{background:var(--code-bg)}
 .b-row.b-rd span.b-on,.b-reads code.b-on{background:var(--accent);color:var(--bg)!important}
 .b-gap{height:6px}
+.b-stack{border:1px solid var(--line);border-radius:6px;background:var(--bg);padding:6px 10px 8px;margin:0 0 14px}
+.b-stack .b-lab{margin:.2em 0 .4em}
+.b-key{display:flex;flex-wrap:wrap;gap:4px 18px;font-size:13px;color:var(--muted);margin:0 0 10px}
+.b-key i{display:inline-block;width:22px;height:10px;margin-right:6px;vertical-align:-1px}
+.b-key .k-read{background:var(--err);height:4px;vertical-align:2px}
+.b-key .k-ctg{background:var(--accent)}
+.b-key .k-hole{border:1.5px dashed var(--bad);box-sizing:border-box}
+.b-key .k-join{width:3px;height:16px;background:var(--fg);vertical-align:-4px}
 
 /* ---- course frame (standalone hosting) ---- */
 body{margin:0}
@@ -193,11 +201,12 @@ img{max-width:100%}
 
 <section aria-labelledby="b2">
   <h2 id="b2"><span class="n">2</span>More reads cover more</h2>
-  <p>Reads land at random, so some places get many and others none. Each bar below is one read, stacked over the place it came from. Where nothing overlaps the next read, the assembly stops, and a piece built from joined reads is called a <dfn>contig</dfn>. <dfn>Coverage</dfn> says how many times an average place was read. These four stacks are the same genome with more and more reads.</p>
+  <p>Reads land at random, so some places get many and others none. Each bar below is one read, stacked over the place it came from. Where nothing overlaps the next read, the assembly stops, and a piece built from joined reads is called a <dfn>contig</dfn>. <dfn>Coverage</dfn> says how many times an average place was read. The four panels below are the same genome with more and more reads. To keep the picture readable, the genome here is simplified to one chromosome of 1,000 bases; a real genome has many chromosomes, and each is assembled the same way.</p>
   <div class="tool">
+    <div class="b-key" aria-hidden="true"><span><i class="k-read"></i>read</span><span><i class="k-ctg"></i>contig (joined reads)</span><span><i class="k-hole"></i>no read: no sequence</span><span><i class="k-join"></i>reads overlap by fewer than 10 bases: not joined</span></div>
     <div id="b-stacks"></div>
     <button type="button" class="btn" id="b-new">New random reads</button>
-    <p class="tool-note">Grey bars: reads. Blue and purple bars under each stack: the contigs, one colour change for each break. Red: places no read covers. Two reads are joined only if they overlap by at least 10 bases.</p>
+    <p class="tool-note">Two reads are joined only if they overlap by at least 10 bases. A contig ends for one of two reasons: no read covers the next bases at all (red dashed box: we have no sequence there), or the next read does overlap, but by fewer than 10 bases (black mark: the two contigs touch, but the assembler cannot be sure they belong together, so it keeps them apart).</p>
   </div>
 </section>
 
@@ -356,6 +365,7 @@ img{max-width:100%}
     });
     return out;
   }
+  function pl(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
   function drawStacks() {
     var box = $('b-stacks'), X = 0.62;
     box.textContent = '';
@@ -365,18 +375,39 @@ img{max-width:100%}
       reads.sort(function (a, b) { return a.s - b.s; });
       reads.forEach(function (d) { for (p = d.s; p < d.e; p++) depth[p]++; });
       depth.forEach(function (d) { if (!d) un++; });
-      var rows = pack(reads), C = contigs(reads), RH = 2.6, h = rows * RH + 24;
+      var rows = pack(reads), C = contigs(reads), RH = 2.6, cy = rows * RH + 8, h = cy + 22;
+      // breaks between neighbouring contigs: a hole (no read covers it) or a short overlap (touching, not joined)
+      var holes = [], joins = [];
+      if (C[0][0] > 0) holes.push([0, C[0][0]]);
+      for (k = 0; k + 1 < C.length; k++) {
+        if (C[k + 1][0] >= C[k][1]) holes.push([C[k][1], C[k + 1][0]]);
+        else joins.push((C[k][1] + C[k + 1][0]) / 2);
+      }
+      if (C[C.length - 1][1] < G) holes.push([C[C.length - 1][1], G]);
+      var panel = document.createElement('div');
+      panel.className = 'b-stack';
       var lab = document.createElement('p');
       lab.className = 'b-lab';
-      lab.innerHTML = '<b>' + cov + '×</b> ' + n + ' reads: ' + C.length + (C.length === 1 ? ' contig' : ' contigs') + ', ' + (100 * un / G).toFixed(0) + ' % not covered';
-      box.appendChild(lab);
+      lab.innerHTML = '<b>' + cov + '× coverage</b>, ' + n + ' reads: ' + C.length + (C.length === 1 ? ' contig' : ' contigs') + ', ' + (100 * un / G).toFixed(0) + ' % not covered' +
+        (C.length > 1 ? ' (' + pl(holes.filter(function (o) { return o[0] > 0 && o[1] < G; }).length, 'gap', 'gaps') + ' with no read, ' + pl(joins.length, 'short overlap', 'short overlaps') + ' not joined)' : '');
+      panel.appendChild(lab);
       var div = document.createElement('div');
       div.className = 'svgbox'; div.id = 'b-st' + q;
-      box.appendChild(div);
+      panel.appendChild(div);
+      box.appendChild(panel);
       var svg = svgIn(div.id, 640, h, cov + ' times coverage: stack of reads and the contigs they give');
       reads.forEach(function (d) { el('rect', { x: 10 + d.s * X, y: d.row * RH, width: L * X, height: RH - 0.7, style: 'fill:var(--err)' }, svg); });
-      for (p = 0; p < G; p++) if (!depth[p]) el('rect', { x: 10 + p * X, y: h - 20, width: X + 0.3, height: 5, style: 'fill:var(--bad)' }, svg);
-      C.forEach(function (c, i) { el('rect', { x: 10 + c[0] * X, y: h - 12, width: Math.max(1, (c[1] - c[0]) * X - 1.5), height: 10, style: 'fill:' + (i % 2 ? 'var(--rep)' : 'var(--accent)') }, svg); });
+      var cut = function (p) { return 10 + p * X; };
+      C.forEach(function (c, i) {
+        var a = cut(c[0]), e = cut(c[1]);
+        if (i > 0 && C[i][0] < C[i - 1][1]) a = cut((C[i - 1][1] + C[i][0]) / 2) + 2.5;
+        if (i + 1 < C.length && C[i + 1][0] < c[1]) e = cut((c[1] + C[i + 1][0]) / 2) - 2.5;
+        el('rect', { x: a, y: cy, width: Math.max(1, e - a), height: 12, style: 'fill:var(--accent)' }, svg);
+      });
+      holes.forEach(function (o) {
+        el('rect', { x: cut(o[0]) + 0.75, y: cy + 0.75, width: Math.max(1.5, (o[1] - o[0]) * X - 1.5), height: 10.5, style: 'fill:none;stroke:var(--bad);stroke-width:1.5;stroke-dasharray:3 2' }, svg);
+      });
+      joins.forEach(function (p) { el('rect', { x: cut(p) - 1, y: cy - 3, width: 2, height: 18, style: 'fill:var(--fg)' }, svg); });
     });
   }
   $('b-new').addEventListener('click', function () { covSeed++; drawStacks(); });
