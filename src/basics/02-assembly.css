@@ -6,3 +6,11 @@
 .b-reads{font-size:13px;line-height:1.9;min-height:1.9em}
 .b-lab{font-size:13.5px;margin:.7em 0 .2em}
 .b-long{font-size:13px!important;overflow-wrap:anywhere}
+.b-map{overflow-x:auto;font-family:var(--f-mono);font-size:14px;padding-bottom:4px}
+.b-row{display:flex;gap:1px;margin-bottom:1px;width:max-content}
+.b-row span{width:1.25em;flex:none;text-align:center;font-weight:600;line-height:1.45}
+.b-row.b-ch span{background:var(--panel)}
+.b-row.b-ch span.b-hit{background:var(--code-bg)}
+.b-row.b-rd span.b-x{background:var(--code-bg)}
+.b-row.b-rd span.b-on,.b-reads code.b-on{background:var(--accent);color:var(--bg)!important}
+.b-gap{height:6px}

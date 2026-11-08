@@ -2,10 +2,11 @@
   <h2 id="b1"><span class="n">1</span>A sequencer reads pieces, not whole chromosomes</h2>
   <p>A chromosome is one very long DNA molecule, a chain of four kinds of bases: A, C, G and T. No machine can read it from end to end. We break the DNA of many cells into pieces, and the sequencer reports the order of bases in each piece. One such result is called a <dfn>read</dfn>.</p>
   <div class="tool">
-    <div class="b-seq" id="b-chrom"></div>
+    <div class="b-map" id="b-chrom"></div>
     <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button></div>
+    <p class="b-lab">What the sequencer gives us: the same reads, in random order, with no place attached.</p>
     <div class="b-reads" id="b-reads" aria-live="polite"></div>
-    <p class="tool-note">The chromosome is shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
+    <p class="tool-note">The chromosome, and each read drawn under the bases it was copied from, are shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
   </div>
 </section>
 

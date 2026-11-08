@@ -148,6 +148,14 @@ li+li{margin-top:4px}
 .b-reads{font-size:13px;line-height:1.9;min-height:1.9em}
 .b-lab{font-size:13.5px;margin:.7em 0 .2em}
 .b-long{font-size:13px!important;overflow-wrap:anywhere}
+.b-map{overflow-x:auto;font-family:var(--f-mono);font-size:14px;padding-bottom:4px}
+.b-row{display:flex;gap:1px;margin-bottom:1px;width:max-content}
+.b-row span{width:1.25em;flex:none;text-align:center;font-weight:600;line-height:1.45}
+.b-row.b-ch span{background:var(--panel)}
+.b-row.b-ch span.b-hit{background:var(--code-bg)}
+.b-row.b-rd span.b-x{background:var(--code-bg)}
+.b-row.b-rd span.b-on,.b-reads code.b-on{background:var(--accent);color:var(--bg)!important}
+.b-gap{height:6px}
 
 /* ---- course frame (standalone hosting) ---- */
 body{margin:0}
@@ -175,10 +183,11 @@ img{max-width:100%}
   <h2 id="b1"><span class="n">1</span>A sequencer reads pieces, not whole chromosomes</h2>
   <p>A chromosome is one very long DNA molecule, a chain of four kinds of bases: A, C, G and T. No machine can read it from end to end. We break the DNA of many cells into pieces, and the sequencer reports the order of bases in each piece. One such result is called a <dfn>read</dfn>.</p>
   <div class="tool">
-    <div class="b-seq" id="b-chrom"></div>
+    <div class="b-map" id="b-chrom"></div>
     <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button></div>
+    <p class="b-lab">What the sequencer gives us: the same reads, in random order, with no place attached.</p>
     <div class="b-reads" id="b-reads" aria-live="polite"></div>
-    <p class="tool-note">The chromosome is shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
+    <p class="tool-note">The chromosome, and each read drawn under the bases it was copied from, are shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
   </div>
 </section>
 
@@ -283,25 +292,47 @@ img{max-width:100%}
   // 1. Reads from a chromosome
   var RL = 12, CH = '', i;
   for (i = 0; i < 48; i++) CH += 'ACGT'[Math.floor(rnd() * 4)];
-  var hits = [], reads = [];
-  function drawChrom(last) {
-    $('b-chrom').innerHTML = CH.split('').map(function (c, p) {
-      var on = last !== undefined && p >= last && p < last + RL;
-      return '<span class="b-' + c + (on ? ' b-on' : '') + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
-    }).join('');
+  var hits = [], reads = [], placed = [];   // reads: shuffled list (what we get); placed: {p, s} in order of reading
+  function drawChrom() {
+    var last = placed.length ? placed[placed.length - 1] : null, rows = [], html = '';
+    html += '<div class="b-row b-ch" aria-label="chromosome">' + CH.split('').map(function (c, p) {
+      return '<span class="b-' + c + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
+    }).join('') + '</div><div class="b-gap"></div>';
+    placed.slice().sort(function (x, y) { return x.p - y.p; }).forEach(function (r) {   // stack: a read goes in the first row where it does not touch another
+      var k = 0;
+      while (k < rows.length && rows[k].end >= r.p) k++;
+      if (k === rows.length) rows.push({ end: -2, cells: [] });
+      rows[k].end = r.p + RL; rows[k].cells.push(r);
+    });
+    rows.forEach(function (row) {
+      var cells = new Array(CH.length).fill('<span></span>');
+      row.cells.forEach(function (r) {
+        for (var k = 0; k < RL; k++) {
+          var c = r.s[k];
+          cells[r.p + k] = '<span class="b-' + c + ' b-x' + (r === last ? ' b-on' : '') + '">' + c + '</span>';
+        }
+      });
+      html += '<div class="b-row b-rd">' + cells.join('') + '</div>';
+    });
+    $('b-chrom').innerHTML = html;
   }
   function readOne() {
-    var p = Math.floor(rnd() * (CH.length - RL + 1)), k;
+    var p = Math.floor(rnd() * (CH.length - RL + 1)), k, s = CH.slice(p, p + RL);
     for (k = p; k < p + RL; k++) hits[k] = true;
-    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, CH.slice(p, p + RL));
+    placed.push({ p: p, s: s });
+    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, s);
     return p;
   }
   function showReads() {
-    $('b-reads').innerHTML = reads.length ? reads.map(function (r) { return '<code>' + r + '</code>'; }).join(' ') : 'No reads yet.';
+    var last = placed.length ? placed[placed.length - 1].s : null, done = false;
+    $('b-reads').innerHTML = reads.length ? reads.map(function (r) {
+      var on = !done && r === last; if (on) done = true;
+      return '<code' + (on ? ' class="b-on"' : '') + '>' + r + '</code>';
+    }).join(' ') : 'No reads yet.';
   }
   $('b-read').addEventListener('click', function () { var p = readOne(); drawChrom(p); showReads(); });
   $('b-read10').addEventListener('click', function () { var p, k; for (k = 0; k < 10; k++) p = readOne(); drawChrom(p); showReads(); });
-  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; drawChrom(); showReads(); });
+  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; placed = []; drawChrom(); showReads(); });
   drawChrom(); showReads();
 
   // Shared: stack reads in rows so that they do not touch.

@@ -29,25 +29,47 @@
   // 1. Reads from a chromosome
   var RL = 12, CH = '', i;
   for (i = 0; i < 48; i++) CH += 'ACGT'[Math.floor(rnd() * 4)];
-  var hits = [], reads = [];
-  function drawChrom(last) {
-    $('b-chrom').innerHTML = CH.split('').map(function (c, p) {
-      var on = last !== undefined && p >= last && p < last + RL;
-      return '<span class="b-' + c + (on ? ' b-on' : '') + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
-    }).join('');
+  var hits = [], reads = [], placed = [];   // reads: shuffled list (what we get); placed: {p, s} in order of reading
+  function drawChrom() {
+    var last = placed.length ? placed[placed.length - 1] : null, rows = [], html = '';
+    html += '<div class="b-row b-ch" aria-label="chromosome">' + CH.split('').map(function (c, p) {
+      return '<span class="b-' + c + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
+    }).join('') + '</div><div class="b-gap"></div>';
+    placed.slice().sort(function (x, y) { return x.p - y.p; }).forEach(function (r) {   // stack: a read goes in the first row where it does not touch another
+      var k = 0;
+      while (k < rows.length && rows[k].end >= r.p) k++;
+      if (k === rows.length) rows.push({ end: -2, cells: [] });
+      rows[k].end = r.p + RL; rows[k].cells.push(r);
+    });
+    rows.forEach(function (row) {
+      var cells = new Array(CH.length).fill('<span></span>');
+      row.cells.forEach(function (r) {
+        for (var k = 0; k < RL; k++) {
+          var c = r.s[k];
+          cells[r.p + k] = '<span class="b-' + c + ' b-x' + (r === last ? ' b-on' : '') + '">' + c + '</span>';
+        }
+      });
+      html += '<div class="b-row b-rd">' + cells.join('') + '</div>';
+    });
+    $('b-chrom').innerHTML = html;
   }
   function readOne() {
-    var p = Math.floor(rnd() * (CH.length - RL + 1)), k;
+    var p = Math.floor(rnd() * (CH.length - RL + 1)), k, s = CH.slice(p, p + RL);
     for (k = p; k < p + RL; k++) hits[k] = true;
-    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, CH.slice(p, p + RL));
+    placed.push({ p: p, s: s });
+    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, s);
     return p;
   }
   function showReads() {
-    $('b-reads').innerHTML = reads.length ? reads.map(function (r) { return '<code>' + r + '</code>'; }).join(' ') : 'No reads yet.';
+    var last = placed.length ? placed[placed.length - 1].s : null, done = false;
+    $('b-reads').innerHTML = reads.length ? reads.map(function (r) {
+      var on = !done && r === last; if (on) done = true;
+      return '<code' + (on ? ' class="b-on"' : '') + '>' + r + '</code>';
+    }).join(' ') : 'No reads yet.';
   }
   $('b-read').addEventListener('click', function () { var p = readOne(); drawChrom(p); showReads(); });
   $('b-read10').addEventListener('click', function () { var p, k; for (k = 0; k < 10; k++) p = readOne(); drawChrom(p); showReads(); });
-  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; drawChrom(); showReads(); });
+  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; placed = []; drawChrom(); showReads(); });
   drawChrom(); showReads();
 
   // Shared: stack reads in rows so that they do not touch.
