@@ -52,3 +52,13 @@
 .b-row.b-rd span.b-ok{background:color-mix(in srgb,var(--good) 28%,var(--bg))}
 .b-row.b-rd span.b-no{background:color-mix(in srgb,var(--het) 30%,var(--bg))}
 .b-row.b-rd span.b-x.b-ov{background:var(--accent);color:var(--bg)!important}
+.b5-h{font-size:15px;margin:14px 0 4px}
+.b-row.b-ch .b-strip span.b5-ex{background:color-mix(in srgb,var(--het) 35%,var(--bg))}
+.b-row .b-strip span.b5-snp{box-shadow:inset 0 -3px 0 var(--accent)}
+.b-row .b-strip span.b5-gap{color:var(--muted)!important;font-weight:400}
+.b-row .b-strip span.b5-bad{background:color-mix(in srgb,var(--bad) 35%,var(--bg))}
+.b-row .b-strip span.b5-miss{background:repeating-linear-gradient(45deg,transparent 0 3px,color-mix(in srgb,var(--bad) 30%,transparent) 3px 6px)}
+.b-row.b-res .b-strip{border:2px solid var(--fg);border-radius:7px;background:var(--bg)}
+.b5-chips{display:flex;flex-wrap:wrap;gap:4px 8px;font:12px var(--f-mono);margin:2px 0 6px}
+.b5-chips code{background:var(--code-bg);padding:1px 4px;border-radius:4px}
+.b5-chips code.b5-off{background:color-mix(in srgb,var(--het) 35%,var(--bg))}

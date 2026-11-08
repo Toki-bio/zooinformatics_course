@@ -61,11 +61,18 @@
 
 <section aria-labelledby="b5">
   <h2 id="b5"><span class="n">5</span>Assembling alone, or against a relative</h2>
-  <p>There are two ways to use reads. <dfn>De novo</dfn> assembly joins reads to each other and needs nothing else. <dfn>Reference-based</dfn> work places each read on the finished genome of a related species. The second is easier and cheaper, but it can only show what the relative has too.</p>
+  <p>There are two ways to use reads. <dfn>De novo</dfn> assembly joins reads to each other by their overlaps (block 3) and needs nothing else. <dfn>Reference-based</dfn> work places each read where it matches the finished genome of a related species. Below, the same reads from our animal are used both ways. The relative's chromosome is like ours, except for a few single letters and one stretch that only our animal has.</p>
   <div class="tool">
-    <div class="seg" id="b-way"><button type="button" data-w="ref">Against a relative</button><button type="button" data-w="dn">De novo</button></div>
-    <div class="svgbox" id="b-ways"></div>
-    <p class="tool-note" id="b-waymsg" aria-live="polite"></p>
+    <div class="controls"><button type="button" class="btn" id="b5-new">New reads</button>
+      <label>Reads <output id="b5-n-o"></output><input id="b5-n" type="range" min="10" max="60" step="1" value="30" aria-label="Number of reads"></label></div>
+    <div class="b-map" id="b5-top"></div>
+    <h3 class="b5-h">1. Against the relative</h3>
+    <div class="b-map" id="b5-ref"></div>
+    <p class="tool-note" id="b5-refmsg" aria-live="polite"></p>
+    <h3 class="b5-h">2. De novo: reads joined to each other</h3>
+    <div class="b-map" id="b5-dn"></div>
+    <p class="tool-note" id="b5-dnmsg" aria-live="polite"></p>
+    <p class="tool-note">Gaps (–) in the relative's row only line it up with our chromosome. Against the relative, a read is placed where it matches with at most one different letter; a read that matches nowhere, or equally well in two places, is set aside. De novo, two reads are joined when the end of one equals the start of the other over at least 5 letters, as in block 3. Under each result, letters that differ from our animal's real chromosome are marked.</p>
   </div>
 </section>
 
