@@ -50,5 +50,5 @@
 .b-row.b-rd span.b-tg.b-lf i{left:auto;right:.3em}
 .b-row.b-rd span.b-a{background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
 .b-row.b-rd span.b-ok{background:color-mix(in srgb,var(--good) 28%,var(--bg))}
-.b-row.b-rd span.b-no{background:color-mix(in srgb,var(--bad) 28%,var(--bg))}
+.b-row.b-rd span.b-no{background:color-mix(in srgb,var(--het) 30%,var(--bg))}
 .b-row.b-rd span.b-x.b-ov{background:var(--accent);color:var(--bg)!important}

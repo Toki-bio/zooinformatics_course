@@ -221,7 +221,7 @@
     }).join('') + '</div></div><div class="b-gap"></div>';
     html += '<div class="b-cap">Read A (overlap highlighted)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
     html += '<div class="b-cap">Reads in the pile that start with ' + ov + ', each under the place it came from</div>';
-    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'real next read: starts where A ends' : 'wrong: from bases ' + (s + 1) + '–' + (s + RL3) + ', not after A', function (x) { return x < k; }); });
+    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'the read that continues A' : 'look-alike: same start letters, but its place is bases ' + (s + 1) + '–' + (s + RL3), function (x) { return x < k; }); });
     $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
