@@ -46,7 +46,7 @@
 .b-row span i{font-style:normal;font-family:var(--f-body);font-size:11.5px;font-weight:700;white-space:nowrap}
 .b-row.b-rl span i{color:var(--bad)}
 .b-row.b-rd span.b-tg{overflow:visible;position:relative}
-.b-row.b-rd span.b-tg i{position:absolute;top:0;left:.3em}
+.b-row.b-rd span.b-tg i{position:absolute;top:0;left:.3em;font-size:.82em}
 .b-row.b-rd span.b-tg.b-lf i{left:auto;right:.3em}
 .b-row.b-rd span.b-a{background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
 .b-row.b-rd span.b-ok{background:color-mix(in srgb,var(--good) 28%,var(--bg))}

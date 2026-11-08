@@ -25,6 +25,19 @@
     };
   }
   var rnd = rng(2026);
+  // Letter drawings never scroll sideways: shrink the letters until the drawing fits its box.
+  function fitMaps() {
+    Array.prototype.forEach.call(document.querySelectorAll('.b-map'), function (m) {
+      m.style.fontSize = '';
+      for (var it = 0; it < 4 && m.scrollWidth > m.clientWidth + 1; it++) {
+        var f = parseFloat(getComputedStyle(m).fontSize);
+        m.style.fontSize = Math.max(6, f * (m.clientWidth - 2) / m.scrollWidth) + 'px';
+      }
+    });
+  }
+  var fitT = 0;
+  window.addEventListener('resize', function () { clearTimeout(fitT); fitT = setTimeout(fitMaps, 80); });
+  new MutationObserver(function () { clearTimeout(fitT); fitT = setTimeout(fitMaps, 0); }).observe(document.body, { childList: true, subtree: true });
 
   // 1. Reads from a chromosome. Each read: start p, length l, letters s, flow-cell spot x/y.
   var CH = '', placed = [], sel = -1, hov = -1, i;
@@ -208,7 +221,7 @@
       var cells = new Array(G3).fill('<span></span>');
       for (x = 0; x < len; x++) cells[start + x] = '<span class="b-' + S3[start + x] + ' b-x ' + cls + (x === 0 ? ' b-s' : '') + (x === len - 1 ? ' b-e' : '') + (ovk(x) ? ' b-ov' : '') + '">' + S3[start + x] + '</span>';
       if (lab) {
-        if (start + len < G3 - 9) cells[start + len] = '<span class="b-tg"><i>' + lab + '</i></span>';
+        if (G3 - (start + len) >= start) cells[start + len] = '<span class="b-tg"><i>' + lab + '</i></span>';
         else cells[start - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
       }
       return '<div class="b-row b-rd"><div class="b-strip">' + cells.join('') + '</div></div>';
@@ -221,7 +234,7 @@
     }).join('') + '</div></div><div class="b-gap"></div>';
     html += '<div class="b-cap">Read A (overlap highlighted)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
     html += '<div class="b-cap">Reads in the pile that start with ' + ov + ', each under the place it came from</div>';
-    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'the read that continues A' : 'look-alike: same start letters, but its place is bases ' + (s + 1) + '–' + (s + RL3), function (x) { return x < k; }); });
+    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'continues A' : 'look-alike, from bases ' + (s + 1) + '–' + (s + RL3), function (x) { return x < k; }); });
     $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
@@ -387,24 +400,41 @@
   $('b5-n').addEventListener('input', drawWay);
   drawWay();
 
-  // 6. N50
+  // 6. N50, every number shown on the picture
+  var n50seed = 1;
   function drawN50() {
-    var k = +$('b-nk').value, r = rng(k * 31 + 5), w = [], s = 0, j;
-    for (j = 0; j < k; j++) { w.push(-Math.log(1 - r())); s += w[j]; }
+    var k = +$('b-nk').value, r = rng(k * 31 + n50seed * 977), w = [], s = 0, j6;
+    for (j6 = 0; j6 < k; j6++) { w.push(-Math.log(1 - r())); s += w[j6]; }
     w = w.map(function (v) { return 100 * v / s; }).sort(function (a, b) { return b - a; });
-    var acc = 0, stop = -1;
-    w.forEach(function (v, q) { if (stop < 0) { acc += v; if (acc >= 50) stop = q; } });
-    var svg = svgIn('b-n50', 640, 130, 'Contigs sorted from longest to shortest');
-    var bw = 620 / k, mx = w[0];
+    w = w.map(function (v) { return Math.round(v * 10) / 10; });
+    var tot = w.reduce(function (a, v) { return a + v; }, 0);
+    var acc = 0, stop = -1, run = [];
+    w.forEach(function (v, q) { if (stop < 0) { acc += v; run.push(v); if (acc >= tot / 2) stop = q; } });
+    var W = 640, bw = (W - 20) / k, mx = w[0], H = 150, svg = svgIn('b-n50', W, H + 16, 'Contigs sorted from longest to shortest, each labelled with its length');
     w.forEach(function (v, q) {
-      var h = 104 * v / mx;
-      el('rect', { x: 10 + q * bw, y: 112 - h, width: Math.max(1, bw - 2), height: h, style: 'fill:' + (q <= stop ? 'var(--accent)' : 'var(--err)') + ';opacity:' + (q <= stop ? 1 : 0.55) }, svg);
+      var h = (H - 18) * v / mx, x = 10 + q * bw, blue = q <= stop;
+      el('rect', { x: x, y: H - h, width: Math.max(1, bw - 2), height: h, style: 'fill:' + (blue ? 'var(--accent)' : 'var(--err)') + ';opacity:' + (blue ? 1 : 0.6) }, svg);
+      if (bw >= 18) el('text', { x: x + (bw - 2) / 2, y: H - h - 4, 'text-anchor': 'middle', style: 'font-size:' + (bw >= 34 ? 11 : 9) + 'px;fill:var(--fg)' }, svg, v.toFixed(1));
+      if (bw >= 14) el('text', { x: x + (bw - 2) / 2, y: H + 12, 'text-anchor': 'middle', style: 'font-size:9px;fill:var(--muted)' }, svg, String(q + 1));
     });
-    el('text', { x: 630, y: 126, 'text-anchor': 'end', style: 'font-size:11px;fill:var(--muted)' }, svg, 'contigs, longest first');
+    var svg2 = svgIn('b-n50sum', W, 54, 'The contigs laid end to end with a line at half of the assembly'), X = (W - 20) / tot, x0 = 10;
+    w.forEach(function (v, q) {
+      var blue = q <= stop;
+      el('rect', { x: x0, y: 12, width: Math.max(0.5, v * X - 1.5), height: 22, style: 'fill:' + (blue ? 'var(--accent)' : 'var(--err)') + ';opacity:' + (blue ? 1 : 0.6) }, svg2);
+      if (v * X > 26) el('text', { x: x0 + v * X / 2, y: 27, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--bg)' }, svg2, v.toFixed(1));
+      x0 += v * X;
+    });
+    var hx = 10 + (tot / 2) * X;
+    el('line', { x1: hx, x2: hx, y1: 4, y2: 42, style: 'stroke:var(--bad);stroke-width:2;stroke-dasharray:4 3' }, svg2);
+    el('text', { x: hx, y: 52, 'text-anchor': 'middle', style: 'font-size:10px;fill:var(--bad)' }, svg2, 'half = ' + (tot / 2).toFixed(1) + ' Mb');
+    var sums = [], a6 = 0; run.forEach(function (v) { a6 += v; sums.push(a6.toFixed(1)); });
+    $('b-n50calc').innerHTML = 'Step 3. Add the longest first: ' + run.map(function (v) { return v.toFixed(1); }).join(' + ') + ' = <b>' + a6.toFixed(1) + ' Mb</b>, the first sum to reach half of ' + tot.toFixed(1) + ' Mb (' + (tot / 2).toFixed(1) + ' Mb). The contig that got us there is ' + w[stop].toFixed(1) + ' Mb long: that is the N50.';
     $('b-n50k').textContent = k;
+    $('b-n50tot').textContent = tot.toFixed(1) + ' Mb';
     $('b-n50v').textContent = w[stop].toFixed(1) + ' Mb';
     $('b-n50c').textContent = stop + 1;
   }
   $('b-nk').addEventListener('input', drawN50);
+  $('b-n50new').addEventListener('click', function () { n50seed++; drawN50(); });
   drawN50();
 })();

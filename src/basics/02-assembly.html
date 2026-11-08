@@ -32,7 +32,7 @@
 
 <section aria-labelledby="b3">
   <h2 id="b3"><span class="n">3</span>An overlap only helps if it occurs in one place</h2>
-  <p>The assembler has only the reads, in a pile, with no places. It joins two reads when the <b>end</b> of one has the same letters as the <b>start</b> of the other. These shared letters are the <dfn>overlap</dfn>. Below, read A is one read from the pile. The computer looks through the pile for reads that start with A's last letters. Each read it finds is drawn under the place it really came from, which the computer cannot see: only one of them is the real next read.</p>
+  <p>The assembler has only the reads, in a pile, with no places. Two reads belong together when they <dfn>overlap</dfn>: a stretch at the end of one is the same as a stretch at the start of the other. The overlap has no direction; which read comes first follows from where the shared letters sit, not from which read we picked first. Below, we start from read A and look for the read that continues it to the right (looking to the left works the same way). The computer looks through the pile for reads that start with A's last letters. Each read it finds is drawn under the place it really came from, which the computer cannot see: only one of them is the real next read.</p>
   <div class="tool">
     <div class="seg" id="b-omode"><button type="button" data-m="uni">Read A ends in ordinary sequence</button><button type="button" data-m="rep">Read A ends inside repeat 1</button></div>
     <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
@@ -80,13 +80,17 @@
   <h2 id="b6"><span class="n">6</span>How we judge the result</h2>
   <p>A good assembly has few, long pieces. The usual number is <dfn>N50</dfn>: sort the contigs from longest to shortest, add up their lengths until you reach half of the assembly, and read the length of the contig where you stopped. A larger N50 means longer pieces. Length is not everything, so we also check that the genes every related animal has are present and whole. That check is called <span class="tip" title="BUSCO: a count of how many genes expected in this animal group are found complete in the assembly.">BUSCO</span>.</p>
   <div class="tool">
-    <label>Number of contigs <output id="b-n50k"></output><input id="b-nk" type="range" min="3" max="40" step="1" value="12" aria-label="Number of contigs"></label>
+    <div class="controls"><label>Number of contigs <output id="b-n50k"></output><input id="b-nk" type="range" min="3" max="30" step="1" value="10" aria-label="Number of contigs"></label><button type="button" class="btn" id="b-n50new">New contigs</button></div>
+    <p class="b-lab">Step 1. The contigs, sorted from longest to shortest. The number on each is its length.</p>
     <div class="svgbox" id="b-n50"></div>
+    <p class="b-lab">Step 2. The same contigs laid end to end, adding up to the whole assembly. The dashed line is half of it.</p>
+    <div class="svgbox" id="b-n50sum"></div>
+    <p class="b-lab" id="b-n50calc"></p>
     <div class="readout">
-      <div>Assembly size<b>100 Mb</b></div>
-      <div>N50<b id="b-n50v"></b></div>
+      <div>Assembly size (sum of all contigs)<b id="b-n50tot"></b></div>
+      <div>N50 (length of the contig that crosses half)<b id="b-n50v"></b></div>
       <div>Contigs needed to reach half<b id="b-n50c"></b></div>
     </div>
-    <p class="tool-note">Blue: the longest contigs that together make half of the assembly. The last blue contig gives N50. Mb means a million bases.</p>
+    <p class="tool-note">Blue: the contigs it takes to reach half of the assembly. The last blue contig crosses the dashed line, and its length is the N50. Mb means a million bases. Try many short contigs against a few long ones: the total stays 100 Mb, the N50 changes.</p>
   </div>
 </section>
