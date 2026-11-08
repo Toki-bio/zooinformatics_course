@@ -257,7 +257,7 @@ img{max-width:100%}
     <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
     <div class="b-map" id="b-ov3"></div>
     <p class="tool-note" id="b-omsg" aria-live="polite"></p>
-    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Green: the real next read. Red: a read that starts with the same letters but comes from somewhere else. The computer sees only the letters, so it can join safely only when exactly one read fits.</p>
+    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Green: the real next read. Red: a real read that starts with the same letters by chance, but comes from another part of the chromosome; joined after A, it would build a sequence that does not exist. The computer sees only the letters, so it can join safely only when exactly one read fits.</p>
   </div>
 </section>
 
@@ -529,7 +529,7 @@ img{max-width:100%}
     }).join('') + '</div></div><div class="b-gap"></div>';
     html += '<div class="b-cap">Read A (overlap highlighted)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
     html += '<div class="b-cap">Reads in the pile that start with ' + ov + ', each under the place it came from</div>';
-    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'real next read' : 'wrong place', function (x) { return x < k; }); });
+    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'real next read: starts where A ends' : 'wrong: from bases ' + (s + 1) + '–' + (s + RL3) + ', not after A', function (x) { return x < k; }); });
     $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });

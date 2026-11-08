@@ -38,7 +38,7 @@
     <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
     <div class="b-map" id="b-ov3"></div>
     <p class="tool-note" id="b-omsg" aria-live="polite"></p>
-    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Green: the real next read. Red: a read that starts with the same letters but comes from somewhere else. The computer sees only the letters, so it can join safely only when exactly one read fits.</p>
+    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Green: the real next read. Red: a real read that starts with the same letters by chance, but comes from another part of the chromosome; joined after A, it would build a sequence that does not exist. The computer sees only the letters, so it can join safely only when exactly one read fits.</p>
   </div>
 </section>
 
