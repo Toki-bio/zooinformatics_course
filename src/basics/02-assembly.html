@@ -37,8 +37,8 @@
     <div class="seg" id="b-omode"><button type="button" data-m="uni">Read A ends in ordinary sequence</button><button type="button" data-m="rep">Read A ends inside repeat 1</button></div>
     <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
     <div class="b-map" id="b-ov3"></div>
-    <p class="tool-note" id="b-omsg" aria-live="polite"></p>
-    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Every read here matches the chromosome exactly: no read is wrong. The question is only which read <b>continues</b> read A. Green: the read that does, it starts where A ends. Orange: look-alikes, real reads from other places that happen to start with the same letters. The computer sees only the letters, so it cannot tell them apart; joining a look-alike after A would build a sequence that does not exist. The join is safe only when exactly one read fits.</p>
+    <div class="b-card" id="b-omsg" aria-live="polite"></div>
+    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Every read here matches the chromosome exactly; no read is wrong. The question is only which read continues A. Green: the one that does. Orange: look-alikes, real reads from other places that start with the same letters.</p>
   </div>
 </section>
 

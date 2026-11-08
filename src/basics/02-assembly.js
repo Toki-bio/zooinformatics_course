@@ -232,19 +232,29 @@
     html += '<div class="b-cap">Chromosome</div><div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
       return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
     }).join('') + '</div></div><div class="b-gap"></div>';
-    html += '<div class="b-cap">Read A (overlap highlighted)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
-    html += '<div class="b-cap">Reads in the pile that start with ' + ov + ', each under the place it came from</div>';
-    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'continues A' : 'look-alike, from bases ' + (s + 1) + '–' + (s + RL3), function (x) { return x < k; }); });
+    html += '<div class="b-cap">Read A (its last ' + k + ' letters, highlighted, are the overlap)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
+    html += '<div class="b-cap">What only we can see: the reads that start with ' + ov + ', named B, C, D \u2026 from left to right, each under the place it came from</div>';
+    var NM = 'BCDEFGH', real = '';
+    C.forEach(function (s, q) { if (s === e - k) real = NM[q]; html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', '<b>' + NM[q] + '</b> ' + (s === e - k ? 'continues A' : 'look-alike, from bases ' + (s + 1) + '–' + (s + RL3)), function (x) { return x < k; }); });
     $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
     var kk = 1;
     while (true) { var o = S3.slice(e - kk, e), n = 0; for (p = S3.indexOf(o); p >= 0; p = S3.indexOf(o, p + 1)) if (p + RL3 <= G3) n++; if (n <= 1 || kk >= RL3) break; kk++; }
-    var msg;
-    if (C.length === 1) msg = omode === 'rep' ? 'The overlap now reaches back past the start of repeat 1, where the two copies differ. One read fits: the join is safe.' : 'One read fits: it must be the next one, so the join is safe.';
-    else if (omode === 'rep') msg = C.length + ' reads fit. The overlap lies inside repeat 1, and repeat 2 has the same letters, so a read from repeat 2 fits just as well, however long the overlap. Only an overlap of ' + kk + ' letters, reaching back past the start of the repeat, leaves one.';
-    else msg = C.length + ' reads fit, and the computer cannot tell which is the real next one: ' + ov + ' occurs in ' + C.length + ' places by chance. A longer overlap leaves fewer: here ' + kk + ' letters leave one.';
-    $('b-omsg').textContent = msg;
+    var names = C.map(function (s, q) { return NM[q]; }), Aseq = S3.slice(a0, e);
+    var see = '<b>What the program sees:</b> read A, and ' + (C.length === 1 ? 'one read in the pile that starts with ' : C.length + ' reads in the pile that start with ') + ov + ': ' +
+      C.map(function (s, q) { return '<b>' + NM[q] + '</b> <code>' + S3.substr(s, RL3) + '</code>'; }).join(', ') + '. It does not see where they came from.<br>';
+    if (C.length === 1) {
+      see += '<b>So:</b> only ' + real + ' fits, so the program joins ' + real + ' after A, and it is right. ' + (omode === 'rep' ? 'An overlap of ' + k + ' letters reaches back past the start of repeat 1, where the two copies differ, so the read from repeat 2 no longer fits.' : 'A longer overlap means a look-alike has to share more of A\u2019s letters, and none does.');
+    } else {
+      var wrong = C.filter(function (s) { return s !== e - k; })[0], wn = NM[C.indexOf(wrong)];
+      see += '<b>So:</b> ' + names.join(', ').replace(/, ([^,]*)$/, ' and $1') + ' fit equally well, and the letters give no way to choose. The program cannot know that ' + real + ' is right and ' + wn + ' is not. A careful assembler therefore joins nothing here: the contig ends after A. ';
+      var built = Aseq + S3.substr(wrong + k, RL3 - k);
+      see += 'Had it picked ' + wn + ', it would build <code>' + built + '</code>, ' + (S3.indexOf(built) < 0 ? 'which is not in the chromosome. ' : 'which by chance is also in the chromosome, at another place. ');
+      see += omode === 'rep' ? 'Here the cause is the repeat: A ends inside repeat 1, and repeat 2 has exactly the same letters, so a read from each copy starts with ' + ov + '. Making the overlap longer does not help while it stays inside the repeat; it helps only at ' + kk + ' letters, when it reaches back past the start of repeat 1, where the copies differ.'
+        : 'Here the cause is chance: ' + ov + ' is short and occurs in ' + C.length + ' places. A longer overlap leaves fewer reads: at ' + kk + ' letters only ' + real + ' is left.';
+    }
+    $('b-omsg').innerHTML = see;
   }
   $('b-ok').addEventListener('input', drawPlaces);
   $('b-omode').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { omode = b.dataset.m; drawPlaces(); } });
