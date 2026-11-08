@@ -28,3 +28,16 @@
 .b-row.b-ann{height:1.3em;margin-bottom:6px}
 .b-row.b-ann span{font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--bad);text-align:left;white-space:nowrap;overflow:visible}
 @media (max-width:480px){#b-oread{font-size:10.5px}}
+.b-row span.b-lbl{width:6.4em;flex:none;font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--muted);text-align:right;padding-right:.6em;align-self:center}
+.b-strip{display:flex;gap:1px;padding:3px 4px;border:2px solid transparent;border-radius:7px}
+.b-row.b-ch .b-strip{border-color:var(--fg);background:var(--bg)}
+.b-row.b-ch .b-strip span{background:transparent;font-weight:700}
+.b-row.b-ch .b-strip span.b-unc{background:color-mix(in srgb,var(--bad) 25%,var(--bg))}
+.b-row.b-rd .b-strip{padding-top:0;padding-bottom:0}
+.b-row.b-rd span.b-x{cursor:pointer;font-weight:500}
+.b-row.b-rd span.b-x.b-s{border-radius:5px 0 0 5px}.b-row.b-rd span.b-x.b-e{border-radius:0 5px 5px 0}
+.b-card{font-size:13px;line-height:1.5;border-left:3px solid var(--accent);background:var(--bg);padding:6px 10px;margin:8px 0 10px;min-height:5.6em}
+.b-card b{font-weight:600}.b-card .b-k{color:var(--muted)}
+.b-own{margin-top:10px}.b-seqin{flex:1 1 260px}
+.b-seqin input{font:13px var(--f-mono);padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
+.b-cap{font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 3px}

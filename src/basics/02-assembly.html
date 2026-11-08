@@ -2,11 +2,20 @@
   <h2 id="b1"><span class="n">1</span>A sequencer reads pieces, not whole chromosomes</h2>
   <p>A chromosome is one very long DNA molecule, a chain of four kinds of bases: A, C, G and T. No machine can read it from end to end. We break the DNA of many cells into pieces, and the sequencer reports the order of bases in each piece. One such result is called a <dfn>read</dfn>.</p>
   <div class="tool">
-    <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button></div>
+    <div class="controls"><button type="button" class="btn" id="b-read">Read one piece</button><button type="button" class="btn" id="b-read10">Read 10 pieces</button><button type="button" class="btn" id="b-readclear">Start again</button>
+      <label>Read length <output id="b-rl-o"></output><input id="b-rl" type="range" min="4" max="30" step="1" value="12" aria-label="Read length in bases"></label></div>
     <div class="b-map" id="b-chrom"></div>
-    <p class="b-lab">What the sequencer gives us: the same reads, in random order, with no place attached.</p>
-    <div class="b-reads" id="b-reads" aria-live="polite"></div>
-    <p class="tool-note">The chromosome, and each read drawn under the bases it was copied from, are shown here only so that you can see where each read came from. In real work we never see it: we get the list of reads and nothing else. <b>Assembly</b> means rebuilding the chromosome from that list.</p>
+    <div class="b-card" id="b-card" aria-live="polite"></div>
+    <div class="readout">
+      <div>Reads<b id="b-s-n"></b></div>
+      <div>Average coverage<b id="b-s-mean"></b></div>
+      <div>Maximum coverage<b id="b-s-max"></b></div>
+      <div>Not covered<b id="b-s-un"></b></div>
+    </div>
+    <div class="controls b-own"><button type="button" class="btn" id="b-rand">New random chromosome</button>
+      <label class="b-seqin">Or type your own (A, C, G, T; 20 to 200 letters)<input id="b-seq" type="text" spellcheck="false" autocomplete="off"></label><button type="button" class="btn" id="b-use">Use it</button></div>
+    <p class="tool-note" id="b-seqmsg" aria-live="polite"></p>
+    <p class="tool-note">The chromosome is shown only so that you can see where each read came from. In real work we never see it: we get the reads, in random order, with no place attached. <b>Assembly</b> means rebuilding the chromosome from them. Pink letters on the chromosome: no read covers them yet. Point at a read, or tap it, to see its card. Duplicates are made here on purpose now and then, as in a real library.</p>
   </div>
 </section>
 

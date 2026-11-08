@@ -26,51 +26,89 @@
   }
   var rnd = rng(2026);
 
-  // 1. Reads from a chromosome
-  var RL = 12, CH = '', i;
-  for (i = 0; i < 48; i++) CH += 'ACGT'[Math.floor(rnd() * 4)];
-  var hits = [], reads = [], placed = [];   // reads: shuffled list (what we get); placed: {p, s} in order of reading
-  function drawChrom() {
-    var last = placed.length ? placed[placed.length - 1] : null, rows = [], html = '';
-    html += '<div class="b-row b-ch" aria-label="chromosome">' + CH.split('').map(function (c, p) {
-      return '<span class="b-' + c + (hits[p] ? ' b-hit' : '') + '">' + c + '</span>';
-    }).join('') + '</div><div class="b-gap"></div>';
-    placed.slice().sort(function (x, y) { return x.p - y.p; }).forEach(function (r) {   // stack: a read goes in the first row where it does not touch another
-      var k = 0;
-      while (k < rows.length && rows[k].end >= r.p) k++;
-      if (k === rows.length) rows.push({ end: -2, cells: [] });
-      rows[k].end = r.p + RL; rows[k].cells.push(r);
-    });
-    rows.forEach(function (row) {
-      var cells = new Array(CH.length).fill('<span></span>');
-      row.cells.forEach(function (r) {
-        for (var k = 0; k < RL; k++) {
-          var c = r.s[k];
-          cells[r.p + k] = '<span class="b-' + c + ' b-x' + (r === last ? ' b-on' : '') + '">' + c + '</span>';
-        }
-      });
-      html += '<div class="b-row b-rd">' + cells.join('') + '</div>';
-    });
-    $('b-chrom').innerHTML = html;
+  // 1. Reads from a chromosome. Each read: start p, length l, letters s, flow-cell spot x/y.
+  var CH = '', placed = [], sel = -1, hov = -1, i;
+  function randChrom(n) { var s = ''; for (i = 0; i < n; i++) s += 'ACGT'[Math.floor(rnd() * 4)]; return s; }
+  CH = randChrom(48);
+  function RLen() { return Math.min(+$('b-rl').value, CH.length); }
+  function rc(s) { return s.split('').reverse().map(function (c) { return { A: 'T', C: 'G', G: 'C', T: 'A' }[c]; }).join(''); }
+  function count(s) { var n = 0, p = CH.indexOf(s); while (p >= 0) { n++; p = CH.indexOf(s, p + 1); } return n; }
+  function nPlaces(s) { var r = rc(s); return count(s) + (r === s ? 0 : count(r)); }   // both strands, as a mapper searches
+  function innerRepeat(s) {
+    var m = s.match(/([ACGT])\1{3,}/);
+    if (m) return 'a run of one letter, ' + m[0];
+    m = s.match(/([ACGT]{2,3})\1{2,}/);
+    if (m && !/^(.)\1+$/.test(m[1])) return 'a short unit repeated, ' + m[0] + ' (' + m[1] + ' × ' + (m[0].length / m[1].length) + ')';
+    return '';
   }
   function readOne() {
-    var p = Math.floor(rnd() * (CH.length - RL + 1)), k, s = CH.slice(p, p + RL);
-    for (k = p; k < p + RL; k++) hits[k] = true;
-    placed.push({ p: p, s: s });
-    reads.splice(Math.floor(rnd() * (reads.length + 1)), 0, s);
-    return p;
+    var l = RLen(), r = rnd(), src = placed.length ? placed[Math.floor(rnd() * placed.length)] : null, d;
+    if (src && src.l === l && r < 0.08) d = { p: src.p, x: src.x + 15 + Math.floor(rnd() * 60), y: src.y + 15 + Math.floor(rnd() * 60) };  // optical copy: same molecule, next spot
+    else if (src && src.l === l && r < 0.16) d = { p: src.p, x: Math.floor(rnd() * 20000), y: Math.floor(rnd() * 20000) };              // PCR copy: same molecule, anywhere
+    else d = { p: Math.floor(rnd() * (CH.length - l + 1)), x: Math.floor(rnd() * 20000), y: Math.floor(rnd() * 20000) };
+    d.l = l; d.s = CH.slice(d.p, d.p + l); d.n = placed.length + 1;
+    placed.push(d); sel = placed.length - 1;
   }
-  function showReads() {
-    var last = placed.length ? placed[placed.length - 1].s : null, done = false;
-    $('b-reads').innerHTML = reads.length ? reads.map(function (r) {
-      var on = !done && r === last; if (on) done = true;
-      return '<code' + (on ? ' class="b-on"' : '') + '>' + r + '</code>';
-    }).join(' ') : 'No reads yet.';
+  function card(k) {
+    if (k < 0 || !placed[k]) return 'No read yet. Press <b>Read one piece</b>.';
+    var d = placed[k], n = nPlaces(d.s), rep = innerRepeat(d.s), dup = null, best = 1e9;
+    placed.forEach(function (o, q) {
+      if (q === k || o.p !== d.p || o.l !== d.l) return;
+      var dist = Math.round(Math.hypot(o.x - d.x, o.y - d.y));
+      if (dist < best) { best = dist; dup = o; }
+    });
+    var t = '<b>Read ' + d.n + '</b> <span class="b-k">· bases ' + (d.p + 1) + '–' + (d.p + d.l) + ' · ' + d.l + ' letters · flow-cell spot ' + d.x + ', ' + d.y + '</span><br>';
+    t += '<span class="b-k">Unique?</span> ' + (n === 1 ? 'Yes, it fits one place only: a mapper is sure where it goes (MAPQ 60).' : 'No, it fits ' + n + ' places (both strands counted): a mapper cannot choose (MAPQ 0).') + '<br>';
+    t += '<span class="b-k">Duplicate?</span> ' + (dup ? 'Same start as read ' + dup.n + ', ' + best.toLocaleString('en') + ' px apart on the flow cell: ' + (best <= 100 ? '<b>optical</b> duplicate candidate (one cluster read twice).' : '<b>PCR</b> duplicate candidate (a copy of the same molecule).') : 'No other read starts here.') + '<br>';
+    t += '<span class="b-k">Internal repeat?</span> ' + (rep ? 'Yes: ' + rep + '.' : 'None.');
+    return t;
   }
-  $('b-read').addEventListener('click', function () { var p = readOne(); drawChrom(p); showReads(); });
-  $('b-read10').addEventListener('click', function () { var p, k; for (k = 0; k < 10; k++) p = readOne(); drawChrom(p); showReads(); });
-  $('b-readclear').addEventListener('click', function () { hits = []; reads = []; placed = []; drawChrom(); showReads(); });
-  drawChrom(); showReads();
+  function drawChrom() {
+    var rows = [], html = '', depth = new Array(CH.length).fill(0), show = hov >= 0 ? hov : sel;
+    placed.forEach(function (d) { for (var q = d.p; q < d.p + d.l; q++) depth[q]++; });
+    html += '<div class="b-cap">Chromosome</div><div class="b-row b-ch"><div class="b-strip">' + CH.split('').map(function (c, p) {
+      return '<span class="b-' + c + (placed.length && !depth[p] ? ' b-unc' : '') + '">' + c + '</span>';
+    }).join('') + '</div></div><div class="b-gap"></div>';
+    placed.map(function (d, q) { return q; }).sort(function (x, y) { return placed[x].p - placed[y].p || x - y; }).forEach(function (q) {
+      var d = placed[q], k = 0;
+      while (k < rows.length && rows[k].end >= d.p) k++;
+      if (k === rows.length) rows.push({ end: -2, cells: [] });
+      rows[k].end = d.p + d.l; rows[k].cells.push(q);
+    });
+    rows.forEach(function (row, ri) {
+      var cells = new Array(CH.length).fill('<span></span>');
+      row.cells.forEach(function (q) {
+        var d = placed[q];
+        for (var k = 0; k < d.l; k++) cells[d.p + k] = '<span data-i="' + q + '" class="b-' + d.s[k] + ' b-x' + (k === 0 ? ' b-s' : '') + (k === d.l - 1 ? ' b-e' : '') + (q === show ? ' b-on' : '') + '">' + d.s[k] + '</span>';
+      });
+      html += (ri === 0 ? '<div class="b-cap">Reads, each under the bases it was copied from</div>' : '') + '<div class="b-row b-rd"><div class="b-strip">' + cells.join('') + '</div></div>';
+    });
+    $('b-chrom').innerHTML = html;
+    $('b-card').innerHTML = card(show);
+    var sum = depth.reduce(function (a, v) { return a + v; }, 0), un = depth.filter(function (v) { return !v; }).length;
+    $('b-s-n').textContent = placed.length;
+    $('b-s-mean').textContent = (sum / CH.length).toFixed(1) + '×';
+    $('b-s-max').textContent = Math.max.apply(null, depth) + '×';
+    $('b-s-un').textContent = un + ' of ' + CH.length + ' bases (' + Math.round(100 * un / CH.length) + ' %)';
+    $('b-rl-o').textContent = RLen() + ' bases';
+  }
+  function restart() { placed = []; sel = -1; hov = -1; drawChrom(); }
+  $('b-read').addEventListener('click', function () { readOne(); hov = -1; drawChrom(); });
+  $('b-read10').addEventListener('click', function () { for (var k = 0; k < 10; k++) readOne(); hov = -1; drawChrom(); });
+  $('b-readclear').addEventListener('click', restart);
+  $('b-rl').addEventListener('input', function () { $('b-rl-o').textContent = RLen() + ' bases'; });
+  $('b-chrom').addEventListener('mouseover', function (e) { var t = e.target.closest('[data-i]'); if (t && +t.dataset.i !== hov) { hov = +t.dataset.i; drawChrom(); } });
+  $('b-chrom').addEventListener('mouseleave', function () { if (hov >= 0) { hov = -1; drawChrom(); } });
+  $('b-chrom').addEventListener('click', function (e) { var t = e.target.closest('[data-i]'); if (t) { sel = +t.dataset.i; hov = -1; drawChrom(); } });
+  $('b-rand').addEventListener('click', function () { CH = randChrom(48); $('b-seqmsg').textContent = 'A new random chromosome of 48 bases.'; restart(); });
+  $('b-use').addEventListener('click', function () {
+    var raw = $('b-seq').value.toUpperCase().replace(/[\s0-9]/g, '');
+    if (/[^ACGT]/.test(raw)) { $('b-seqmsg').textContent = 'Only the letters A, C, G and T, please (spaces and numbers are ignored).'; return; }
+    if (raw.length < 20 || raw.length > 200) { $('b-seqmsg').textContent = 'Please give 20 to 200 letters; this has ' + raw.length + '.'; return; }
+    CH = raw; $('b-seqmsg').textContent = 'Using your sequence of ' + raw.length + ' bases.'; restart();
+  });
+  $('b-seq').addEventListener('keydown', function (e) { if (e.key === 'Enter') $('b-use').click(); });
+  drawChrom();
 
   // Shared: stack reads in rows so that they do not touch.
   function pack(reads) {                   // reads: [{s, e}] sorted by s; sets r.row, returns the number of rows
