@@ -217,31 +217,51 @@
   function drawPlaces() {
     var k = +$('b-ok').value, e = AEND[omode], a0 = e - RL3, ov = S3.slice(e - k, e), C = [], p, x, html = '';
     for (p = S3.indexOf(ov); p >= 0; p = S3.indexOf(ov, p + 1)) if (p + RL3 <= G3) C.push(p);   // a read of 12 starting here
-    function row(start, len, cls, lab, ovk) {
-      var cells = new Array(G3).fill('<span></span>');
-      for (x = 0; x < len; x++) cells[start + x] = '<span class="b-' + S3[start + x] + ' b-x ' + cls + (x === 0 ? ' b-s' : '') + (x === len - 1 ? ' b-e' : '') + (ovk(x) ? ' b-ov' : '') + '">' + S3[start + x] + '</span>';
+    // one row of letters on the 50-column grid: str starts at column start; cls(x) gives the classes of letter x
+    function row(start, str, cls, lab) {
+      var cells = new Array(G3).fill('<span></span>'), len = str.length;
+      for (x = 0; x < len; x++) cells[start + x] = '<span class="b-' + str[x] + ' b-x ' + cls(x) + (x === 0 ? ' b-s' : '') + (x === len - 1 ? ' b-e' : '') + '">' + str[x] + '</span>';
       if (lab) {
         if (G3 - (start + len) >= start) cells[start + len] = '<span class="b-tg"><i>' + lab + '</i></span>';
         else cells[start - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
       }
       return '<div class="b-row b-rd"><div class="b-strip">' + cells.join('') + '</div></div>';
     }
+    var NM = 'BCDEFGH', real = '', Aseq = S3.slice(a0, e);
+    function aCls(x) { return 'b-a' + (x >= RL3 - k ? ' b-ov' : ''); }
+    // step 1: what the program does. Each read is laid under A so that its first k letters lie on A's last k letters.
+    html += '<div class="b3-h">Step 1. What the program does</div>';
+    html += '<div class="b-cap">It lays each read that starts with ' + ov + ' under read A, so that the read’s first ' + k + ' letters lie on A’s last ' + k + ' letters</div>';
+    html += row(a0, Aseq, aCls, '<b>A</b>');
+    C.forEach(function (s, q) {
+      if (s === e - k) real = NM[q];
+      html += row(e - k, S3.substr(s, RL3), function (x) { return 'b-c' + (x < k ? ' b-ov' : ''); }, '<b>' + NM[q] + '</b>');
+    });
+    html += '<div class="b-gap"></div><div class="b-cap">Joined: A, then the letters of each read that come after the overlap</div>';
+    C.forEach(function (s, q) {
+      html += row(a0, Aseq + S3.substr(s + k, RL3 - k), function (x) { return x < RL3 ? 'b-a' : 'b-c'; }, '<b>A+' + NM[q] + '</b>');
+    });
+    // step 2: what only we can do: compare each joined piece with the chromosome at A's place.
+    html += '<div class="b3-h">Step 2. What only we can check: the chromosome</div>';
     var lab = new Array(G3).fill('<span></span>');
     R3.forEach(function (s, q) { lab[s] = '<span><i>repeat ' + (q + 1) + '</i></span>'; });
     html += '<div class="b-row b-rl"><div class="b-strip">' + lab.join('') + '</div></div>';
     html += '<div class="b-cap">Chromosome</div><div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
       return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
     }).join('') + '</div></div><div class="b-gap"></div>';
-    html += '<div class="b-cap">Read A (its last ' + k + ' letters, highlighted, are the overlap)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
-    html += '<div class="b-cap">What only we can see: the reads that start with ' + ov + ', named B, C, D \u2026 from left to right, each under the place it came from</div>';
-    var NM = 'BCDEFGH', real = '';
-    C.forEach(function (s, q) { if (s === e - k) real = NM[q]; html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', '<b>' + NM[q] + '</b> ' + (s === e - k ? 'continues A' : 'look-alike, from bases ' + (s + 1) + '–' + (s + RL3)), function (x) { return x < k; }); });
+    html += '<div class="b-cap">Each joined piece under the place where A came from: green letters agree with the chromosome, red letters do not</div>';
+    C.forEach(function (s, q) {
+      var j = Aseq + S3.substr(s + k, RL3 - k), nd = 0, y;
+      for (y = 0; y < j.length; y++) if (j[y] !== S3[a0 + y]) nd++;
+      html += row(a0, j, function (x) { return x < RL3 ? 'b-a' : (j[x] === S3[a0 + x] ? 'b-ok' : 'b-bad'); },
+        '<b>A+' + NM[q] + '</b> ' + (nd ? nd + (nd === 1 ? ' letter differs' : ' letters differ') : 'agrees: ' + NM[q] + ' is the real next read'));
+    });
     $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
     var kk = 1;
     while (true) { var o = S3.slice(e - kk, e), n = 0; for (p = S3.indexOf(o); p >= 0; p = S3.indexOf(o, p + 1)) if (p + RL3 <= G3) n++; if (n <= 1 || kk >= RL3) break; kk++; }
-    var names = C.map(function (s, q) { return NM[q]; }), Aseq = S3.slice(a0, e);
+    var names = C.map(function (s, q) { return NM[q]; });
     var see = '<b>What the program sees:</b> read A, and ' + (C.length === 1 ? 'one read in the pile that starts with ' : C.length + ' reads in the pile that start with ') + ov + ': ' +
       C.map(function (s, q) { return '<b>' + NM[q] + '</b> <code>' + S3.substr(s, RL3) + '</code>'; }).join(', ') + '. It does not see where they came from.<br>';
     if (C.length === 1) {
