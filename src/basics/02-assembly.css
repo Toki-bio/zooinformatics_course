@@ -41,3 +41,14 @@
 .b-own{margin-top:10px}.b-seqin{flex:1 1 260px}
 .b-seqin input{font:13px var(--f-mono);padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
 .b-cap{font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 3px}
+.b-row.b-ch .b-strip span.b-rp{background:color-mix(in srgb,var(--bad) 22%,var(--bg));box-shadow:inset 0 -2px 0 var(--bad)}
+.b-row.b-rl span{overflow:visible;white-space:nowrap;text-align:left}
+.b-row span i{font-style:normal;font-family:var(--f-body);font-size:11.5px;font-weight:700;white-space:nowrap}
+.b-row.b-rl span i{color:var(--bad)}
+.b-row.b-rd span.b-tg{overflow:visible;position:relative}
+.b-row.b-rd span.b-tg i{position:absolute;top:0;left:.3em}
+.b-row.b-rd span.b-tg.b-lf i{left:auto;right:.3em}
+.b-row.b-rd span.b-a{background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
+.b-row.b-rd span.b-ok{background:color-mix(in srgb,var(--good) 28%,var(--bg))}
+.b-row.b-rd span.b-no{background:color-mix(in srgb,var(--bad) 28%,var(--bg))}
+.b-row.b-rd span.b-x.b-ov{background:var(--accent);color:var(--bg)!important}

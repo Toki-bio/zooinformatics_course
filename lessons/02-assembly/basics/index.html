@@ -183,6 +183,17 @@ li+li{margin-top:4px}
 .b-own{margin-top:10px}.b-seqin{flex:1 1 260px}
 .b-seqin input{font:13px var(--f-mono);padding:5px 7px;border:1px solid var(--line);border-radius:4px;background:var(--bg);color:var(--fg);width:100%;box-sizing:border-box}
 .b-cap{font-family:var(--f-body);font-size:12px;font-weight:600;color:var(--muted);margin:2px 0 3px}
+.b-row.b-ch .b-strip span.b-rp{background:color-mix(in srgb,var(--bad) 22%,var(--bg));box-shadow:inset 0 -2px 0 var(--bad)}
+.b-row.b-rl span{overflow:visible;white-space:nowrap;text-align:left}
+.b-row span i{font-style:normal;font-family:var(--f-body);font-size:11.5px;font-weight:700;white-space:nowrap}
+.b-row.b-rl span i{color:var(--bad)}
+.b-row.b-rd span.b-tg{overflow:visible;position:relative}
+.b-row.b-rd span.b-tg i{position:absolute;top:0;left:.3em}
+.b-row.b-rd span.b-tg.b-lf i{left:auto;right:.3em}
+.b-row.b-rd span.b-a{background:color-mix(in srgb,var(--accent) 18%,var(--bg))}
+.b-row.b-rd span.b-ok{background:color-mix(in srgb,var(--good) 28%,var(--bg))}
+.b-row.b-rd span.b-no{background:color-mix(in srgb,var(--bad) 28%,var(--bg))}
+.b-row.b-rd span.b-x.b-ov{background:var(--accent);color:var(--bg)!important}
 
 /* ---- course frame (standalone hosting) ---- */
 body{margin:0}
@@ -240,19 +251,13 @@ img{max-width:100%}
 
 <section aria-labelledby="b3">
   <h2 id="b3"><span class="n">3</span>An overlap only helps if it occurs in one place</h2>
-  <p>The assembler has only the reads. It decides that one read follows another when the <b>end</b> of the first has the same letters as the <b>start</b> of the second. These shared letters are the <dfn>overlap</dfn>. Two or three letters occur in many places of a genome by chance, so a read starting with them could come from any of those places, and joining it would be a guess. A longer overlap usually occurs in one place only, and then the join is safe. Below, the computer really searches a small genome of 200 letters for the overlap.</p>
+  <p>The assembler has only the reads, in a pile, with no places. It joins two reads when the <b>end</b> of one has the same letters as the <b>start</b> of the other. These shared letters are the <dfn>overlap</dfn>. Below, read A is one read from the pile. The computer looks through the pile for reads that start with A's last letters. Each read it finds is drawn under the place it really came from, which the computer cannot see: only one of them is the real next read.</p>
   <div class="tool">
-    <div class="seg" id="b-omode"><button type="button" data-m="uni">Our read ends in ordinary sequence</button><button type="button" data-m="rep">Our read ends inside a repeat</button></div>
-    <label>Length of the overlap <output id="b-k-out"></output><input id="b-ok" type="range" min="2" max="24" step="1" value="3" aria-label="Length of the overlap in letters"></label>
-    <p class="b-lab">Our read. Its last letters (highlighted) are the overlap: the next read must start with them.</p>
-    <div class="b-map" id="b-oread"></div>
-    <p class="b-lab">The genome, searched for the overlap. Every place it occurs is highlighted.</p>
-    <div class="b-map" id="b-ogen"></div>
-    <div class="readout">
-      <div>Overlap<b id="b-oseq" class="b-long"></b></div>
-      <div>Places in the genome<b id="b-ocount"></b></div>
-    </div>
+    <div class="seg" id="b-omode"><button type="button" data-m="uni">Read A ends in ordinary sequence</button><button type="button" data-m="rep">Read A ends inside repeat 1</button></div>
+    <label>Overlap: the last <output id="b-k-out"></output> of read A<input id="b-ok" type="range" min="2" max="10" step="1" value="3" aria-label="Length of the overlap in letters"></label>
+    <div class="b-map" id="b-ov3"></div>
     <p class="tool-note" id="b-omsg" aria-live="polite"></p>
+    <p class="tool-note">A repeat is the same run of letters in two places of the chromosome (pink, underlined). Green: the real next read. Red: a read that starts with the same letters but comes from somewhere else. The computer sees only the letters, so it can join safely only when exactly one read fits.</p>
   </div>
 </section>
 
@@ -495,50 +500,47 @@ img{max-width:100%}
     el('rect', { x: 10, y: y, width: GL * X, height: 12, style: 'fill:var(--err);opacity:.5' }, svg);
     RS.forEach(function (s) { el('rect', { x: 10 + s * X, y: y, width: RL2 * X, height: 12, style: 'fill:var(--bad)' }, svg); });
   }
-  // 3. Is the overlap in one place? A small genome of 200 letters, written out, with one repeat in two copies.
-  var G3 = 200, R3 = [40, 130], R3L = 24, g3r = rng(91), S3 = '';
-  for (z = 0; z < G3; z++) S3 += 'ACGT'[Math.floor(g3r() * 4)];
+  // 3. Is the overlap in one place? A chromosome of 50 letters with one 8-letter repeat in two copies.
+  var G3 = 50, R3 = [8, 31], R3L = 8, RL3 = 12, g3r = rng(65), S3 = '', z3;
+  for (z3 = 0; z3 < G3; z3++) S3 += 'ACGT'[Math.floor(g3r() * 4)];
   S3 = S3.slice(0, R3[1]) + S3.slice(R3[0], R3[0] + R3L) + S3.slice(R3[1] + R3L);
   if (S3[R3[1] - 1] === S3[R3[0] - 1]) S3 = S3.slice(0, R3[1] - 1) + 'ACGT'[('ACGT'.indexOf(S3[R3[1] - 1]) + 1) % 4] + S3.slice(R3[1]);
-  var omode = 'uni', OEND = { uni: 100, rep: R3[1] + R3L - 4 }, RDL = 24;   // where our read ends (exclusive)
-  function find3(seq) { var o = [], p = S3.indexOf(seq); while (p >= 0) { o.push(p); p = S3.indexOf(seq, p + 1); } return o; }
+  var omode = 'uni', AEND = { uni: 30, rep: R3[0] + 6 };     // read A ends here (exclusive); A is RL3 letters long
   function inRep3(p) { return R3.some(function (s) { return p >= s && p < s + R3L; }); }
   function drawPlaces() {
-    var k = +$('b-ok').value, e = OEND[omode], seq = S3.slice(e - k, e), hits = find3(seq), on = [], q, x;
-    hits.forEach(function (h) { for (x = h; x < h + k; x++) on[x] = true; });
-    var rd = S3.slice(e - RDL, e), html = '<div class="b-row">';
-    for (q = 0; q < RDL; q++) html += '<span class="b-' + rd[q] + (q >= RDL - k ? ' b-ov' : '') + '">' + rd[q] + '</span>';
-    $('b-oread').innerHTML = html + '</div>';
-    var box = $('b-ogen'), per = Math.max(20, Math.min(50, Math.floor(((box.clientWidth || 640) - 60) / 18 / 10) * 10));
-    html = '';
-    for (var r0 = 0; r0 < G3; r0 += per) {
-      html += '<div class="b-row"><span class="b-num">' + (r0 + 1) + '</span>';
-      var ann = '<div class="b-row b-ann"><span class="b-num"></span>';
-      for (x = r0; x < Math.min(G3, r0 + per); x++) {
-        html += '<span class="b-' + S3[x] + (on[x] ? ' b-ov' : (inRep3(x) ? ' b-rep' : '')) + '">' + S3[x] + '</span>';
-        var ci = R3.indexOf(x), lab = '';
-        if (ci >= 0) lab = 'repeat, copy ' + (ci + 1);
-        else if (x === r0 && inRep3(x)) lab = 'repeat, copy ' + (x < R3[1] ? 1 : 2) + ' (continued)';
-        ann += '<span>' + lab + '</span>';
+    var k = +$('b-ok').value, e = AEND[omode], a0 = e - RL3, ov = S3.slice(e - k, e), C = [], p, x, html = '';
+    for (p = S3.indexOf(ov); p >= 0; p = S3.indexOf(ov, p + 1)) if (p + RL3 <= G3) C.push(p);   // a read of 12 starting here
+    function row(start, len, cls, lab, ovk) {
+      var cells = new Array(G3).fill('<span></span>');
+      for (x = 0; x < len; x++) cells[start + x] = '<span class="b-' + S3[start + x] + ' b-x ' + cls + (x === 0 ? ' b-s' : '') + (x === len - 1 ? ' b-e' : '') + (ovk(x) ? ' b-ov' : '') + '">' + S3[start + x] + '</span>';
+      if (lab) {
+        if (start + len < G3 - 9) cells[start + len] = '<span class="b-tg"><i>' + lab + '</i></span>';
+        else cells[start - 1] = '<span class="b-tg b-lf"><i>' + lab + '</i></span>';
       }
-      html += '</div>' + ann + '</div>';
+      return '<div class="b-row b-rd"><div class="b-strip">' + cells.join('') + '</div></div>';
     }
-    box.innerHTML = html;
+    var lab = new Array(G3).fill('<span></span>');
+    R3.forEach(function (s, q) { lab[s] = '<span><i>repeat ' + (q + 1) + '</i></span>'; });
+    html += '<div class="b-row b-rl"><div class="b-strip">' + lab.join('') + '</div></div>';
+    html += '<div class="b-cap">Chromosome</div><div class="b-row b-ch"><div class="b-strip">' + S3.split('').map(function (c, q) {
+      return '<span class="b-' + c + (inRep3(q) ? ' b-rp' : '') + '">' + c + '</span>';
+    }).join('') + '</div></div><div class="b-gap"></div>';
+    html += '<div class="b-cap">Read A (overlap highlighted)</div>' + row(a0, RL3, 'b-a', '', function (x) { return x >= RL3 - k; });
+    html += '<div class="b-cap">Reads in the pile that start with ' + ov + ', each under the place it came from</div>';
+    C.forEach(function (s) { html += row(s, RL3, s === e - k ? 'b-ok' : 'b-no', s === e - k ? 'real next read' : 'wrong place', function (x) { return x < k; }); });
+    $('b-ov3').innerHTML = html;
     $('b-k-out').textContent = k + ' letters';
-    $('b-oseq').textContent = seq;
-    $('b-ocount').textContent = hits.length;
     Array.prototype.forEach.call($('b-omode').children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.m === omode)); });
-    var msg, kk = 1;
-    while (find3(S3.slice(e - kk, e)).length > 1) kk++;
-    if (hits.length > 1 && omode === 'rep') msg = 'The overlap lies inside the repeat, and both copies of the repeat have the same letters, so it occurs in both however long it gets. A read starting with these letters could follow ours or come from the other copy. The overlap becomes one place only when it reaches past the start of the repeat, where the two copies differ: here at ' + kk + ' letters.';
-    else if (hits.length > 1) msg = 'These ' + k + ' letters occur in ' + hits.length + ' places. A read that starts with them could come from any of these places, so we cannot tell which read follows ours. Make the overlap longer: here it becomes one place at ' + kk + ' letters.';
-    else if (omode === 'rep') msg = 'The overlap now reaches past the start of the repeat, where the two copies differ. One place only: the read that starts with these letters must follow ours, so the join is safe.';
-    else msg = 'One place only: a read that starts with these letters must come from here, so joining it to ours is safe.';
+    var kk = 1;
+    while (true) { var o = S3.slice(e - kk, e), n = 0; for (p = S3.indexOf(o); p >= 0; p = S3.indexOf(o, p + 1)) if (p + RL3 <= G3) n++; if (n <= 1 || kk >= RL3) break; kk++; }
+    var msg;
+    if (C.length === 1) msg = omode === 'rep' ? 'The overlap now reaches back past the start of repeat 1, where the two copies differ. One read fits: the join is safe.' : 'One read fits: it must be the next one, so the join is safe.';
+    else if (omode === 'rep') msg = C.length + ' reads fit. The overlap lies inside repeat 1, and repeat 2 has the same letters, so a read from repeat 2 fits just as well, however long the overlap. Only an overlap of ' + kk + ' letters, reaching back past the start of the repeat, leaves one.';
+    else msg = C.length + ' reads fit, and the computer cannot tell which is the real next one: ' + ov + ' occurs in ' + C.length + ' places by chance. A longer overlap leaves fewer: here ' + kk + ' letters leave one.';
     $('b-omsg').textContent = msg;
   }
   $('b-ok').addEventListener('input', drawPlaces);
   $('b-omode').addEventListener('click', function (e) { var b = e.target.closest('button'); if (b) { omode = b.dataset.m; drawPlaces(); } });
-  window.addEventListener('resize', drawPlaces);
   drawPlaces();
 
   var repSeed = 3, MINJ = 12;
