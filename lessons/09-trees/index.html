@@ -285,6 +285,23 @@ li+li{margin-top:4px}
 #s12-wrap .s12-bar i{display:block;height:100%;background:var(--accent);opacity:.45}
 #s12-wrap .s12-bar i.s12-ref{opacity:.95}
 
+#s13-wrap .controls input[type=text]{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:5px 8px;width:34ch;max-width:100%;letter-spacing:.02em}
+#s13-wrap .controls label{min-width:140px;max-width:100%}
+#s13-wrap .s13-btns{display:flex;flex-wrap:wrap;gap:8px}
+#s13-wrap .s13-m{font-family:var(--f-mono);white-space:nowrap}
+#s13-wrap .s13-sub{font-size:11px;color:var(--muted)}
+#s13-wrap .s13-path{font:11px var(--f-mono);color:var(--muted);margin-top:4px;white-space:normal}
+#s13-wrap tr.s13-dif td{border-left:0;background:color-mix(in srgb,var(--accent) 8%,transparent)}
+#s13-wrap tr.s13-tot td{font-weight:600;border-top:2px solid var(--line)}
+#s13-wrap .formula{white-space:pre-wrap;line-height:1.7}
+#s13-wrap .s13-mk2 input{font:14px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:4px 6px;width:6ch}
+#s13-wrap .s13-mk2 th{text-align:left;font-weight:600}
+#s13-wrap .s13-mk2 td{white-space:nowrap}
+#s13-wrap .s13-mk2 .s13-cell{font:600 12px var(--f-mono);color:var(--muted);margin-right:6px}
+#s13-wrap .toy .s13-s{color:var(--good);font-weight:600}
+#s13-wrap .s13-ok{color:var(--good);font-weight:600}
+#s13-wrap .s13-no{color:var(--bad);font-weight:600}
+
 
 /* ---- course frame (standalone hosting) ---- */
 body{margin:0}
@@ -308,7 +325,7 @@ img{max-width:100%}
   <div class="eyebrow">Lesson 9 · from an alignment to a dated species tree</div>
   <h1>Building Phylogenetic Trees</h1>
   <p class="lede"><a href="basics/">New here? Start with the basics of this lesson</a>: a few short blocks with things to try.</p>
-  <p class="lede">A tree is the shape behind most of the earlier lessons: the relative whose genome was used to polish ours, the gene copies that TOGA2 matched across species, the SINE insertions shared by some animals and not others, the split time between two genomes. This lesson builds trees from the ground up. It starts with how to read one (root, clade, branch length, Newick), then turns an alignment into characters, corrects distances for multiple hits with substitution models, and builds trees by the four families of methods in the order they were invented: distance (UPGMA, neighbour joining), parsimony, maximum likelihood (IQ-TREE, RAxML-NG) and Bayesian inference (MrBayes). It then asks how much a branch can be trusted (bootstrap, UFBoot, SH-aLRT, posterior probability), puts time on the tree (clocks, calibrations, BEAST2), and explains why gene trees disagree with the species tree (incomplete lineage sorting, the ABBA-BABA test for gene flow, ASTRAL). It then gives a helper for choosing a method and a checklist for the methods paragraph, and ends with a workbench that follows one small alignment through every method and every kind of support.</p>
+  <p class="lede">A tree is the shape behind most of the earlier lessons: the relative whose genome was used to polish ours, the gene copies that TOGA2 matched across species, the SINE insertions shared by some animals and not others, the split time between two genomes, and the signs of selection on a gene. This lesson builds trees from the ground up. It starts with how to read one (root, clade, branch length, Newick), then turns an alignment into characters, corrects distances for multiple hits with substitution models, and builds trees by the four families of methods in the order they were invented: distance (UPGMA, neighbour joining), parsimony, maximum likelihood (IQ-TREE, RAxML-NG) and Bayesian inference (MrBayes). It then asks how much a branch can be trusted (bootstrap, UFBoot, SH-aLRT, posterior probability), puts time on the tree (clocks, calibrations, BEAST2), and explains why gene trees disagree with the species tree (incomplete lineage sorting, the ABBA-BABA test for gene flow, ASTRAL). It then gives a helper for choosing a method and a checklist for the methods paragraph, and ends with a workbench that follows one small alignment through every method and every kind of support.</p>
   <p class="lede">Every section has a toy to try: the animals, sequences and branch lengths in the figures are invented so that each idea can be followed by hand, and no result from the lab's own projects is used. Commands and defaults were read from each tool's own manual and source code at the versions named in each section. Hover over a dotted term to see what it means.</p>
 </header>
 
@@ -327,6 +344,7 @@ img{max-width:100%}
     <li><div><b>Gene trees and species trees</b><a href="#s10">section 10</a><div class="d">Incomplete lineage sorting from the coalescent, gene flow and paralogy as other causes of discord; the ABBA-BABA test; concatenation against summary methods; counting quartets with ASTRAL.</div><div class="t">multispecies coalescent · D statistic · Dsuite · ASTRAL · IQ-TREE concordance factors · SNaQ</div></div></li>
     <li><div><b>Choosing and reporting</b><a href="#s11">section 11</a><div class="d">A decision helper by data, goal and size; what a methods paragraph must state; common mistakes; Newick and Nexus files.</div><div class="t">decision helper · Newick · Nexus</div></div></li>
     <li><div><b>One alignment, every method</b><a href="#s12">section 12</a><div class="d">A small editable alignment followed number by number through UPGMA, neighbour joining, parsimony, maximum likelihood and Bayesian inference, then how bootstrap, RELL, SH-aLRT and posterior support are calculated.</div><div class="t">tree workbench</div></div></li>
+    <li><div><b>dN/dS and the McDonald–Kreitman test</b><a href="#s13">section 13</a><div class="d">Synonymous and non-synonymous sites counted by hand on worked examples; dN, dS and omega and how to read them; codon models (codeml, HyPhy) in outline; the McDonald–Kreitman table, neutrality index and alpha; pitfalls such as dS near zero, saturation, paralogs and small counts.</div><div class="t">codon counter · McDonald–Kreitman table · codeml · HyPhy</div></div></li>
   </ol>
 </section>
 
@@ -2098,6 +2116,197 @@ END;</pre></div>
     <li>IQ-TREE re-fits the five branches around a rearrangement in one pass by default, while this toy repeats until they settle. SH-aLRT values can therefore differ somewhat on data like these. With the pass count raised, IQ-TREE and this toy gave the same values, apart from resampling noise, wherever their likelihoods matched.</li>
     <li>The Bayesian prior here is one simple choice. With so few columns it matters: an exponential prior with mean 0.1 pulls against long branches.</li>
   </ul>
+</section>
+
+<!-- ============ 13-dnds ============ -->
+<section aria-labelledby="s13" id="s13-wrap">
+  <h2 id="s13"><span class="n">13</span>Selection on protein-coding genes: dN/dS and the McDonald–Kreitman test</h2>
+  <p class="lede">A tree tells us how species are related. It does not tell us why a gene changed. Most changes in a gene are neutral or harmful; a few help. This section shows two ways to tell them apart in a protein-coding gene. The first compares changes that alter the protein with changes that do not (dN/dS). The second compares differences <em>between</em> species with variation <em>within</em> a species (the McDonald–Kreitman test). Both work by counting, and both can be done by hand on a few codons.</p>
+
+  <h3>Why a neutral yardstick is needed</h3>
+  <p>A gene that changed a lot between two species may have been under selection. Or it may sit in a part of the genome that mutates fast. Or the two species may have split long ago. Counting changes alone cannot separate these. We need something in the same gene that is affected by the same mutation rate and the same time, but not by selection on the protein.</p>
+  <p>A <span class="tip" title="A codon is a group of three DNA letters that codes for one amino acid (or a stop signal). A coding sequence is read as a series of codons.">codon</span> has three letters. Because several codons code for the same amino acid, some changes do not alter the protein. A <span class="tip" title="Synonymous change: a change in a codon that leaves the amino acid the same, for example ACT to ACG, both threonine.">synonymous</span> change leaves the amino acid the same. A <span class="tip" title="Non-synonymous change: a change in a codon that gives a different amino acid, for example CCG (proline) to CTG (leucine).">non-synonymous</span> change gives a different amino acid. If synonymous changes are neutral (an assumption, not a fact), their rate shows how fast the gene mutates. The non-synonymous rate is then compared with it. A gene in a mutation-rich region has both rates high, so the ratio stays meaningful.</p>
+
+  <h3>Sites and changes: dN, dS and why they are per site</h3>
+  <p>A synonymous change cannot happen at every position. The third position of ACT is synonymous for every change: ACA, ACC and ACG are all threonine. The first and second positions are not: any change gives another amino acid. So a codon has fewer synonymous <em>opportunities</em> than non-synonymous ones. If we compared raw counts, non-synonymous changes would look more common simply because there are more places for them. We therefore count per site.</p>
+  <ul class="qlist">
+    <li><b>Synonymous sites (S)</b> and <b>non-synonymous sites (N)</b>: how many positions, counted as fractions, could change without or with changing the amino acid.</li>
+    <li><b>Sd</b> and <b>Nd</b>: how many synonymous and non-synonymous changes are actually seen between the two sequences.</li>
+    <li><b>dS = Sd / S</b>, <b>dN = Nd / N</b>, and <b>&omega; = dN / dS</b>.</li>
+  </ul>
+  <p>Some positions are only partly synonymous. Take the third position of TTT. TTC is phenylalanine, the same. TTA and TTG are leucine, different. One of the three changes is synonymous, so this site counts as 1/3 S and 2/3 N. The third position of TTG is also 1/3 S (only TTA is leucine). The first position of CTT is 0 S: all three changes (ATT, GTT, TTT) give another amino acid. The first position of CTA or CTG is 1/3 S, because TTA and TTG are leucine.</p>
+
+  <p><b>Worked example 1: human against chimpanzee, four codons.</b> This is the worked example of the lecture. Below, each position is marked 1 if it counts as a synonymous (S) or non-synonymous (N) site. For these codons every position is wholly one or the other, and the answer is the same counted from the chimpanzee sequence.</p>
+  <div class="toy">         codon 1   codon 2   codon 3   codon 4
+human    A C T     C C G     G G G     C C C      Thr Pro Gly Pro
+chimp    A C <span class="x">G</span>     C C G     G G <span class="x">C</span>     C <span class="x">T</span> C      Thr Pro Gly Leu
+
+S site   0 0 1     0 0 1     0 0 1     0 0 1      S sites = 4
+N site   1 1 0     1 1 0     1 1 0     1 1 0      N sites = 8
+
+S change 0 0 1     0 0 0     0 0 1     0 0 0      Sd = 2  (ACT/ACG, GGG/GGC)
+N change 0 0 0     0 0 0     0 0 0     0 1 0      Nd = 1  (CCC/CTC, Pro to Leu)
+
+dS = 2/4 = 0.5      dN = 1/8 = 0.125      &omega; = 0.125/0.5 = 0.25</div>
+  <p>Notice that there are twice as many N sites as S sites. The raw counts (2 synonymous, 1 non-synonymous) would suggest that synonymous changes are twice as common. Per site, they are four times as common (0.5 against 0.125).</p>
+
+  <p><b>Worked example 2: a short stretch of <i>ASPM</i>, five codons.</b> This is the quiz of the lecture. Codon 2 differs at two positions (GGC to CGT), so we need to know the order of change. There are two orders. GGC to CGC (glycine to arginine, non-synonymous) and then CGC to CGT (arginine, synonymous). Or GGC to GGT (glycine, synonymous) and then GGT to CGT (arginine, non-synonymous). Both orders give one non-synonymous and one synonymous change, so codon 2 counts as 1 N and 1 S.</p>
+  <div class="toy">         codon 1   codon 2   codon 3   codon 4   codon 5
+human    C G T     G G C     G C A     C T T     G T A
+chimp    C G T     <span class="x">C</span> G <span class="x">T</span>     <span class="x">C</span> C A     C T T     G T A
+
+S site   0 0 1     0 0 1     0 0 1     0 0 1     0 0 1      S sites = 5
+N site   1 1 0     1 1 0     1 1 0     1 1 0     1 1 0      N sites = 10
+
+S change 0 0 0     0 0 1     0 0 0     0 0 0     0 0 0      Sd = 1
+N change 0 0 0     1 0 0     1 0 0     0 0 0     0 0 0      Nd = 2  (Gly to Arg, Ala to Pro)
+
+dS = 1/5 = 0.2      dN = 2/10 = 0.2      &omega; = 1</div>
+  <p>One detail that is easy to get wrong: the first position of CTT is not partly synonymous. CTT to TTT gives phenylalanine, a different amino acid. That would be partly synonymous only for CTA or CTG, where TTA and TTG are leucine.</p>
+
+  <figure id="s13-cc">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Count synonymous and non-synonymous sites and differences codon by codon, then compute dN, dS and ω. Type your own coding sequences or start from an example.</span></div>
+    <div class="controls">
+      <label>Sequence 1<input id="s13-cc-s1" type="text" spellcheck="false" autocomplete="off" value="ACT CCG GGG CCC"></label>
+      <label>Sequence 2<input id="s13-cc-s2" type="text" spellcheck="false" autocomplete="off" value="ACG CCG GGC CTC"></label>
+      <div class="s13-btns">
+        <button type="button" class="btn" id="s13-cc-p1">Lecture example 1 (human–chimp)</button>
+        <button type="button" class="btn" id="s13-cc-p2">ASPM quiz</button>
+        <button type="button" class="btn" id="s13-cc-p3">Fractional sites (TTT vs TTC…)</button>
+      </div>
+    </div>
+    <p class="tool-note" id="s13-cc-src" aria-live="polite"></p>
+    <p class="tool-note" id="s13-cc-msg" aria-live="polite"></p>
+    <div class="tbl" id="s13-cc-tbl" aria-live="polite"></div>
+    <p class="tool-note">Under each codon: the synonymous share of its first, second and third position. Rules of this toy: standard genetic code; a change that would make a stop codon is left out when sites are counted; when a codon differs at two or three places, every order of change is counted and averaged, and orders that pass through a stop codon are left out. Sites are averaged over the two sequences. Tools differ in these details. No correction for multiple hits is made.</p>
+    <div class="formula toy" id="s13-cc-steps" aria-live="polite"></div>
+    <p class="tool-note" id="s13-cc-read" aria-live="polite"></p>
+    <p class="tool-note" id="s13-cc-control"></p>
+  </figure>
+
+  <h3>Reading &omega;</h3>
+  <ul class="qlist">
+    <li><b>&omega; &lt; 1:</b> protein-changing differences are rarer than the neutral yardstick. Changes to the protein have mostly been removed by selection. This is called purifying (negative) selection, and it is the usual case.</li>
+    <li><b>&omega; = 1:</b> the data are consistent with neutral evolution of the protein. This is "cannot reject neutrality", not "is neutral".</li>
+    <li><b>&omega; &gt; 1:</b> protein-changing differences are more common than the yardstick. This suggests positive selection, if synonymous changes are neutral. The Chimpanzee Sequencing and Analysis Consortium (2005) put it this way: "Under the assumption that synonymous substitutions are neutral, KA/KS &gt; 1 implies, but is not a necessary condition for, adaptive or positive selection." (KA/KS is their name for dN/dS.)</li>
+  </ul>
+  <p>For human against chimpanzee over the whole genome, the same paper gives "the KA/KS ratio for the human–chimpanzee lineage" as 0.23. So across genes the typical value is far below 1, as purifying selection predicts.</p>
+  <p>A gene-by-gene look is harder. Two species that diverged recently have few synonymous changes in a typical gene, and often none, so dS is zero or very noisy. The consortium therefore compared the non-synonymous rate with the local rate of change in introns and intergenic DNA (KI), not with dS. With that measure, "a total of 585 of the 13,454 human–chimpanzee orthologues (4.4%) have observed KA/KI &gt; 1". The same paper estimates that a ratio above 1 "would be expected to occur simply by chance in at least 263 cases". So a ratio above 1 in one gene is a lead, not a proof. Nearly half of those 585 (263 of 585) are expected from chance alone (our arithmetic on the paper's two numbers).</p>
+  <p>The second worked example shows another limit. According to the lecture, the real value of &omega; for the whole <i>ASPM</i> gene is about 0.9. A value near 1 does not mean that nothing acts on the gene. It is one number for the average over all codons. Some codons may be held back by purifying selection, others may have been pushed by positive selection, and the average of the two can sit near 1.</p>
+
+  <h3>From hand counting to real tools</h3>
+  <p>The count above is the method of Nei and Gojobori (1986): count sites, count changes, divide. Real programs add two things.</p>
+  <p><b>Multiple hits.</b> As in <a href="#s03">section 03</a>, a site can change more than once, so the observed proportions of non-synonymous and synonymous differences (pN and pS) fall short of the true amounts. A correction such as Jukes–Cantor can be applied to each. The effect is largest for dS: synonymous changes are under little selection, so they pile up faster than non-synonymous ones and saturate first.</p>
+  <p><b>Codon models.</b> Instead of counting, a codon model fits &omega; on a tree by maximum likelihood (<a href="#s06">section 06</a>), using a model of codon change rather than of single letters. The best-known program is PAML <b>codeml</b> (Yang 2007). It offers, by name:</p>
+  <ul class="qlist">
+    <li><b>M0:</b> one &omega; for the whole gene and all branches.</li>
+    <li><b>Site models, M1a against M2a, and M7 against M8:</b> &omega; differs between codons. The pair M1a/M2a asks whether a class of codons has &omega; &gt; 1; so does M7/M8.</li>
+    <li><b>Branch-site model A:</b> &omega; differs between codons and also between chosen branches ("foreground" against "background"). It asks whether some codons were under positive selection on one branch.</li>
+  </ul>
+  <p>Each pair is compared with a <b>likelihood-ratio test</b>, using the likelihood scores of <a href="#s06">section 06</a>: a model with more freedom is accepted only if its fit is better by more than chance would give. <b>HyPhy</b> (Kosakovsky Pond and colleagues) is another package. It offers <b>aBSREL</b> (does selection act on a branch), <b>BUSTED</b> (does selection act on some codon on some branch of the gene), <b>MEME</b> (episodic selection at single codons) and <b>FEL</b> (pervasive selection at single codons). Command lines and options change between versions. Check them against the manual of the version you have installed. This lesson does not give them.</p>
+  <p>All of these start from a codon alignment of orthologous genes and a tree. The tree usually comes from the methods of this lesson, and the gene tree and species tree can differ (<a href="#s10">section 10</a>). Where the orthologous copies come from matters; see the pitfalls below.</p>
+
+  <h3>The McDonald–Kreitman test: the idea</h3>
+  <p>dN/dS uses one sequence per species. The McDonald–Kreitman test (McDonald and Kreitman 1991) adds the variation <em>inside</em> a species. Its idea is simple. Under neutrality, the proportion of protein-changing changes should be the same among fixed differences between species and among <span class="tip" title="Polymorphism: a position where individuals of the same species carry different letters, so that more than one version is present in the population.">polymorphisms</span> within a species. Both come from the same mutation process on the same gene. Selection breaks this equality in a known direction.</p>
+  <p>Count positions in the gene and sort each into one of four boxes. A <span class="tip" title="Fixed difference: a position where every sampled individual of one species has one letter, and the other species has a different letter.">fixed difference</span> is the same in all individuals of a species and different in the other. A site that varies within one species and is fixed in the other counts as polymorphic.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Fixed between species</th><th>Polymorphic within a species</th></tr></thead>
+    <tbody>
+      <tr><td><b>Non-synonymous</b></td><td>A</td><td>B</td></tr>
+      <tr><td><b>Synonymous</b></td><td>C</td><td>D</td></tr>
+    </tbody></table></div>
+  <ul class="qlist">
+    <li><b>A/C = B/D:</b> neutrality cannot be rejected.</li>
+    <li><b>A/C &gt; B/D:</b> too many amino-acid differences between species. Positive selection fixed beneficial changes.</li>
+    <li><b>A/C &lt; B/D:</b> too many amino-acid polymorphisms. This points to slightly harmful variants (often recessive) that persist for a while in the population but seldom spread to fixation, that is, negative selection. Balancing selection, such as overdominance, can also produce it.</li>
+  </ul>
+  <p>The significance of a table is usually tested with Fisher's exact test.</p>
+
+  <p><b>Worked example: the alignment of the lecture.</b> Four sequences of species 1 and one of species 2, five codons each. Differences are marked.</p>
+  <div class="toy">          codon 1   codon 2   codon 3   codon 4   codon 5
+species 1 CTT       ACT       TAT       ACC       CGT
+          CTG       ACT       TAT       ACC       CGT
+          CTG       ACT       TCT       ACC       CGT
+          CTG       ACT       TCT       ACA       CGT
+species 2 ATG       ACC       TCT       ACC       CGT
+
+codon 1, position 1: C in all of species 1, A in species 2         fixed,       non-synonymous (Leu/Met)   A
+codon 1, position 3: T or G in species 1, G in species 2            polymorphic, synonymous (both Leu)      D
+codon 2, position 3: T in all of species 1, C in species 2          fixed,       synonymous (Thr)           C
+codon 3, position 2: A or C in species 1, C in species 2            polymorphic, non-synonymous (Tyr/Ser)   B
+codon 4, position 3: C or A in species 1, C in species 2            polymorphic, synonymous (Thr)           D
+
+             fixed   polymorphic
+non-syn        A = 1    B = 1
+syn            C = 1    D = 2</div>
+  <p>Here A/C = 1 and B/D = 1/2. The numbers are far too small for any test. The example only shows how the counting goes.</p>
+
+  <h3>The three genes of the lecture, and what the table gives</h3>
+  <p>The lecture gives three gene tables (it does not state their source here, so treat them as the lecture's examples). Two summaries are used with them. The neutrality index is NI = (B/D) / (A/C). The quantity &alpha; = 1 &minus; NI (Smith and Eyre-Walker 2002) is the share of amino-acid substitutions fixed by positive selection. A negative &alpha; means an excess of slightly harmful polymorphism. Both are undefined when a cell is zero.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Gene</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Fisher, two-sided P</th><th>&alpha;</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td><i>SENP1</i></td><td>4</td><td>1</td><td>1</td><td>5</td><td>37/462 = 0.080</td><td>0.95</td><td>A/C &gt; B/D: positive selection suggested; P is above 0.05</td></tr>
+      <tr><td><i>CIAS1</i> (<i>NLRP3</i>)</td><td>5</td><td>1</td><td>10</td><td>2</td><td>1</td><td>0 (NI = 1)</td><td>A/C = B/D: neutrality not rejected</td></tr>
+      <tr><td><i>AGT</i></td><td>1</td><td>3</td><td>13</td><td>1</td><td>57/3060 = 0.0186</td><td>&minus;38</td><td>A/C &lt; B/D: excess of amino-acid polymorphism</td></tr>
+    </tbody></table></div>
+  <p>The lecture gives only the four counts; the P values and the &alpha; column are our arithmetic from them. Notice that the <i>SENP1</i> &alpha; of 0.95 rests on a single polymorphism in one cell. The test, not &alpha;, tells how much weight the table can bear.</p>
+  <p>Genome-wide, Bustamante and colleagues (2005) applied the test to 39 humans and more than 11,000 genes. In their abstract, "304 (9.0%) out of 3,377 potentially informative loci" show "evidence of rapid amino acid evolution", while "813 (13.5%) out of 6,033" show "a paucity of amino acid differences between humans and chimpanzees, indicating weak negative selection and/or balancing selection". Transcription factors had an excess of rapidly evolving genes and cytoskeletal proteins an excess of polymorphism. The lecture adds that immunity, gamete formation and sensory perception genes appear among the positive ones.</p>
+
+  <figure id="s13-mk">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Fill the McDonald–Kreitman table, or load a lecture example. The alignment examples show how each variable column is counted.</span></div>
+    <div class="controls">
+      <div class="s13-btns">
+        <button type="button" class="btn" id="s13-mk-p-lec">Lecture alignment</button>
+        <button type="button" class="btn" id="s13-mk-p-senp1">SENP1</button>
+        <button type="button" class="btn" id="s13-mk-p-cias1">CIAS1 (NLRP3)</button>
+        <button type="button" class="btn" id="s13-mk-p-agt">AGT</button>
+        <button type="button" class="btn" id="s13-mk-p-arsd">arsD quiz</button>
+      </div>
+    </div>
+    <p class="tool-note" id="s13-mk-src" aria-live="polite"></p>
+    <div class="toy" id="s13-mk-aln" aria-live="polite" hidden></div>
+    <p class="tool-note" id="s13-mk-rule" hidden>How this toy counts a column. Fixed: all sequences of the first species share one base, all sequences of the second species share another. Any other variable column is polymorphic, including a column that varies in one species only. S or N: the toy takes the most common codon at that place as the background (on a tie, the one listed first). It puts each other base of the column into that codon. If any of them changes the amino acid, the site is N; if none does, it is S. Each variable column counts once, however many bases it has.</p>
+    <div class="tbl s13-mk2"><table>
+      <thead><tr><th></th><th>Fixed between species</th><th>Polymorphic within species</th></tr></thead>
+      <tbody>
+        <tr><th>Non-synonymous</th><td><span class="s13-cell">A</span><input id="s13-mk-a" type="text" inputmode="numeric" aria-label="A, non-synonymous fixed"></td><td><span class="s13-cell">B</span><input id="s13-mk-b" type="text" inputmode="numeric" aria-label="B, non-synonymous polymorphic"></td></tr>
+        <tr><th>Synonymous</th><td><span class="s13-cell">C</span><input id="s13-mk-c" type="text" inputmode="numeric" aria-label="C, synonymous fixed"></td><td><span class="s13-cell">D</span><input id="s13-mk-d" type="text" inputmode="numeric" aria-label="D, synonymous polymorphic"></td></tr>
+      </tbody>
+    </table></div>
+    <div class="readout" aria-live="polite">
+      <div>A/C, between species<b id="s13-mk-r-ac"></b></div>
+      <div>B/D, within species<b id="s13-mk-r-bd"></b></div>
+      <div><span class="tip" title="Fisher's exact test, two-sided: the chance of a table at least this uneven, given the row and column totals, if A/C and B/D were truly equal.">Fisher's exact test, P</span><b id="s13-mk-r-p"></b></div>
+      <div><span class="tip" title="Neutrality index NI = (B/D)/(A/C). Undefined when A, C or D is 0.">Neutrality index NI</span><b id="s13-mk-r-ni"></b></div>
+      <div><span class="tip" title="alpha = 1 - NI: the share of amino-acid differences between species fixed by positive selection. A negative value means an excess of amino-acid polymorphism. Undefined when A, C or D is 0.">α = 1 − NI</span><b id="s13-mk-r-al"></b></div>
+    </div>
+    <p class="tool-note" id="s13-mk-verdict" aria-live="polite"></p>
+    <p class="tool-note" id="s13-mk-control"></p>
+  </figure>
+
+  <h3>Pitfalls</h3>
+  <ul class="qlist">
+    <li><b>dS close to zero.</b> If dS is zero, &omega; is undefined; if it is tiny, &omega; is huge and noisy. Between close species a single gene has too few synonymous changes. The human–chimpanzee comparison above used the local intron rate instead of dS for this reason.</li>
+    <li><b>dS saturation.</b> In old splits the synonymous sites have been hit many times. The corrected dS is then uncertain, and so is &omega; (see <a href="#s03">section 03</a>).</li>
+    <li><b>Alignment errors, frameshifts and paralogs.</b> A misaligned stretch looks like many non-synonymous changes, and a frameshift ruins every codon after it. Comparing a gene with a paralog, not its ortholog, measures the wrong split (<a href="../03-annotation/#s07">TOGA2, lesson 3, section 07</a> shows how orthologous copies are chosen). Inspect the codon alignment before trusting &omega;.</li>
+    <li><b>One &omega; for a whole gene and all branches hides the interesting cases.</b> Selection can act on a few codons, or on one branch for a short time. The average over a gene (as for <i>ASPM</i>) or over a tree can be below 1 while a few codons are under positive selection. That is why the site, branch and branch-site models exist.</li>
+    <li><b>McDonald–Kreitman with small counts.</b> With cells of 0 to 5, as in the examples above, the test has little power, and a non-significant result does not support neutrality.</li>
+    <li><b>Slightly harmful polymorphisms bias &alpha; downwards.</b> They add to B but are not fixed, so the table looks less positive than the truth. A common remedy is to leave out rare variants.</li>
+    <li><b>Changes in population size</b> alter how long slightly harmful variants persist, and so change B. The test assumes a stable population.</li>
+  </ul>
+
+  <h3>Sources</h3>
+  <ul class="qlist">
+    <li>Nei M, Gojobori T (1986) Mol Biol Evol 3:418–426.</li>
+    <li>Yang Z (2007) PAML 4. Mol Biol Evol 24:1586.</li>
+    <li>Kosakovsky Pond SL and colleagues: HyPhy (aBSREL, BUSTED, MEME, FEL).</li>
+    <li>Chimpanzee Sequencing and Analysis Consortium (2005) Nature 437:69–87, doi:10.1038/nature04072.</li>
+    <li>McDonald JH, Kreitman M (1991) Nature 351:652–654.</li>
+    <li>Smith NGC, Eyre-Walker A (2002) Nature 415:1022.</li>
+    <li>Bustamante CD and colleagues (2005) Nature 437:1153–1157.</li>
+  </ul>
+  <p>This section follows the worked examples of the lectures "Searching for natural selection: dN/dS" and "McDonald-Kreitman test" (Introduction to Genetics and Evolution, Duke University, Coursera, week 8; re-uploaded at <a href="https://youtu.be/vwmuvcDh9ZM">https://youtu.be/vwmuvcDh9ZM</a>); the slides of the dN/dS example are credited there to M. Rausher. The figures and tables here are redrawn, not copied.</p>
 </section>
 
 <footer style="display:flex;flex-direction:column;gap:8px;font-size:13px;color:var(--muted)">
@@ -7013,6 +7222,353 @@ END;</pre></div>
     load(PRESETS[0]);
   }
   init();
+})();
+/* ==== 13-dnds ==== */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+
+  // ENGINE-BEGIN
+  // Exact fractions, so that sites show as 1/3 and 2/3, not as decimals.
+  function gcd(a, b) { a = Math.abs(a); b = Math.abs(b); while (b) { var t = a % b; a = b; b = t; } return a || 1; }
+  function F(n, d) { if (d === undefined) d = 1; if (d < 0) { n = -n; d = -d; } var g = gcd(n, d); return { n: n / g, d: d / g }; }
+  function fadd(x, y) { return F(x.n * y.d + y.n * x.d, x.d * y.d); }
+  function fsub(x, y) { return F(x.n * y.d - y.n * x.d, x.d * y.d); }
+  function fmul(x, y) { return F(x.n * y.n, x.d * y.d); }
+  function fdiv(x, y) { return F(x.n * y.d, x.d * y.n); }
+  function fval(x) { return x.n / x.d; }
+  function feq(x, y) { return x.n * y.d === y.n * x.d; }
+  function fstr(x) { // 4/3 -> "1 1/3"
+    if (x.d === 1) return String(x.n);
+    var w = Math.floor(x.n / x.d), r = x.n - w * x.d;
+    return (w ? w + ' ' : '') + r + '/' + x.d;
+  }
+
+  // Standard genetic code. Order TCAG at each position; '*' = stop.
+  var BASES = 'TCAG';
+  var AAS = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG';
+  var THREE = { F: 'Phe', L: 'Leu', S: 'Ser', Y: 'Tyr', C: 'Cys', W: 'Trp', P: 'Pro', H: 'His', Q: 'Gln', R: 'Arg', I: 'Ile', M: 'Met', T: 'Thr', N: 'Asn', K: 'Lys', V: 'Val', A: 'Ala', D: 'Asp', E: 'Glu', G: 'Gly', '*': 'stop' };
+  function aa(codon) {
+    return AAS[BASES.indexOf(codon[0]) * 16 + BASES.indexOf(codon[1]) * 4 + BASES.indexOf(codon[2])];
+  }
+  function isStop(codon) { return aa(codon) === '*'; }
+
+  // Synonymous share of each position of one codon (Nei-Gojobori 1986).
+  // Convention of this toy: a change that would make a stop codon is left out,
+  // so the share is taken over the non-stop alternatives only.
+  function sitesOf(codon) {
+    var out = [], p, b, syn, ok, alt, a0 = aa(codon);
+    for (p = 0; p < 3; p++) {
+      syn = 0; ok = 0;
+      for (b = 0; b < 4; b++) {
+        if (BASES[b] === codon[p]) continue;
+        alt = codon.slice(0, p) + BASES[b] + codon.slice(p + 1);
+        if (isStop(alt)) continue;
+        ok++; if (aa(alt) === a0) syn++;
+      }
+      out.push(ok ? F(syn, ok) : F(0));
+    }
+    return out;
+  }
+  function sumF(arr) { return arr.reduce(fadd, F(0)); }
+
+  // Differences between two codons. With 2 or 3 differences, every order of change is a path;
+  // paths that pass through a stop codon are left out; the rest are averaged.
+  function permutations(a) {
+    if (a.length <= 1) return [a.slice()];
+    var out = [];
+    a.forEach(function (x, i) {
+      permutations(a.slice(0, i).concat(a.slice(i + 1))).forEach(function (r) { out.push([x].concat(r)); });
+    });
+    return out;
+  }
+  function codonDiffs(c1, c2) {
+    var pos = [], p;
+    for (p = 0; p < 3; p++) if (c1[p] !== c2[p]) pos.push(p);
+    if (!pos.length) return { s: F(0), n: F(0), paths: [], k: 0 };
+    var paths = [], used = 0, sTot = 0, nTot = 0;
+    permutations(pos).forEach(function (order) {
+      var cur = c1, s = 0, n = 0, steps = [c1], bad = false;
+      order.forEach(function (q, i) {
+        var nxt = cur.slice(0, q) + c2[q] + cur.slice(q + 1);
+        if (i < order.length - 1 && isStop(nxt)) bad = true;
+        if (aa(nxt) === aa(cur)) s++; else n++;
+        steps.push(nxt); cur = nxt;
+      });
+      paths.push({ steps: steps, s: s, n: n, stop: bad });
+      if (!bad) { used++; sTot += s; nTot += n; }
+    });
+    if (!used) { // every path passes a stop: fall back to all paths
+      paths.forEach(function (x) { used++; sTot += x.s; nTot += x.n; });
+    }
+    return { s: F(sTot, used), n: F(nTot, used), paths: paths, k: pos.length };
+  }
+
+  function clean(s) { return String(s).toUpperCase().replace(/U/g, 'T').replace(/[\s\-]/g, ''); }
+  function checkCoding(s, name) {
+    if (!s.length) return name + ' is empty.';
+    if (/[^ACGT]/.test(s)) return name + ' has a letter that is not A, C, G or T.';
+    if (s.length % 3) return name + ' has ' + s.length + ' bases. That is not a whole number of codons.';
+    for (var i = 0; i < s.length; i += 3) if (isStop(s.slice(i, i + 3))) return name + ' has a stop codon (' + s.slice(i, i + 3) + ') at codon ' + (i / 3 + 1) + '. Use coding sequence without stops.';
+    return '';
+  }
+
+  // Whole comparison: sites averaged over the two sequences, differences per codon.
+  function countCodons(a, b) {
+    a = clean(a); b = clean(b);
+    var e = checkCoding(a, 'Sequence 1') || checkCoding(b, 'Sequence 2');
+    if (!e && a.length !== b.length) e = 'The two sequences differ in length (' + a.length + ' and ' + b.length + ' bases). They must be aligned codon by codon.';
+    if (e) return { error: e };
+    var rows = [], S = F(0), N = F(0), Sd = F(0), Nd = F(0), i, c1, c2, s1, s2, sS, sN, d;
+    for (i = 0; i < a.length; i += 3) {
+      c1 = a.slice(i, i + 3); c2 = b.slice(i, i + 3);
+      s1 = sitesOf(c1); s2 = sitesOf(c2);
+      sS = fmul(fadd(sumF(s1), sumF(s2)), F(1, 2));
+      sN = fsub(F(3), sS);
+      d = codonDiffs(c1, c2);
+      rows.push({ c1: c1, c2: c2, a1: aa(c1), a2: aa(c2), s1: s1, s2: s2, S: sS, N: sN, Sd: d.s, Nd: d.n, diff: d });
+      S = fadd(S, sS); N = fadd(N, sN); Sd = fadd(Sd, d.s); Nd = fadd(Nd, d.n);
+    }
+    var dN = N.n ? fdiv(Nd, N) : null, dS = S.n ? fdiv(Sd, S) : null;
+    var omega = dN && dS && dS.n ? fdiv(dN, dS) : null;
+    return { rows: rows, S: S, N: N, Sd: Sd, Nd: Nd, dN: dN, dS: dS, omega: omega,
+      dNv: dN ? fval(dN) : NaN, dSv: dS ? fval(dS) : NaN, omegaV: omega ? fval(omega) : NaN };
+  }
+
+  // McDonald-Kreitman counting.
+  // Fixed: every species-1 sequence has one base, every species-2 sequence has one base, and they differ.
+  // Polymorphic: any other variable column (variable within species 1, species 2, or both).
+  // S or N (the rule of this toy): take the most common codon at that place over all sequences as the
+  // background (ties: the one that appears first). Put every other base seen in the column into the
+  // background codon. If any of them changes the amino acid, the site is N; otherwise S.
+  // Each variable column counts once, however many bases it has and however many other columns of the
+  // same codon vary.
+  function mkClassify(sp1, sp2) {
+    sp1 = sp1.map(clean); sp2 = sp2.map(clean);
+    var all = sp1.concat(sp2), L = all[0].length, i, e = '';
+    for (i = 0; i < all.length; i++) {
+      if (all[i].length !== L) { e = 'All sequences must have the same length.'; break; }
+      e = checkCoding(all[i], 'Sequence ' + (i + 1)); if (e) break;
+    }
+    if (e) return { error: e };
+    var cols = [], A = 0, B = 0, C = 0, D = 0, j;
+    for (j = 0; j < L; j++) {
+      var b1 = {}, b2 = {}, k;
+      sp1.forEach(function (s) { b1[s[j]] = 1; });
+      sp2.forEach(function (s) { b2[s[j]] = 1; });
+      var k1 = Object.keys(b1), k2 = Object.keys(b2), bases = Object.keys(Object.assign({}, b1, b2));
+      if (bases.length === 1) { cols.push(null); continue; }
+      var kind = (k1.length === 1 && k2.length === 1) ? 'F' : 'P';
+      var st = j - j % 3, p = j % 3, tally = {}, order = [];
+      all.forEach(function (s) { var c = s.slice(st, st + 3); if (!tally[c]) { tally[c] = 0; order.push(c); } tally[c]++; });
+      var bg = order[0];
+      order.forEach(function (c) { if (tally[c] > tally[bg]) bg = c; });
+      var nonsyn = false;
+      for (k = 0; k < bases.length; k++) {
+        if (bases[k] === bg[p]) continue;
+        var alt = bg.slice(0, p) + bases[k] + bg.slice(p + 1);
+        if (aa(alt) !== aa(bg)) nonsyn = true;
+      }
+      var cls = nonsyn ? 'N' : 'S';
+      cols.push({ kind: kind, cls: cls, bg: bg });
+      if (kind === 'F') { if (nonsyn) A++; else C++; } else { if (nonsyn) B++; else D++; }
+    }
+    return { cols: cols, A: A, B: B, C: C, D: D, sp1: sp1, sp2: sp2 };
+  }
+
+  // Fisher's exact test on [[A, B], [C, D]], two-sided: the sum of the probabilities of all tables
+  // with the same margins that are no more probable than the observed one (relative tolerance 1e-7).
+  function lfact(n) { var s = 0; for (var i = 2; i <= n; i++) s += Math.log(i); return s; }
+  function fisher(A, B, C, D) {
+    var r1 = A + B, r2 = C + D, c1 = A + C, n = r1 + r2;
+    if (!n) return NaN;
+    var base = lfact(r1) + lfact(r2) + lfact(c1) + lfact(n - c1) - lfact(n);
+    function pr(a) { return Math.exp(base - lfact(a) - lfact(r1 - a) - lfact(c1 - a) - lfact(r2 - c1 + a)); }
+    var lo = Math.max(0, c1 - r2), hi = Math.min(r1, c1), po = pr(A), P = 0, a, q;
+    for (a = lo; a <= hi; a++) { q = pr(a); if (q <= po * (1 + 1e-7)) P += q; }
+    return Math.min(1, P);
+  }
+  // NI = (B/D)/(A/C); alpha = 1 - NI. Undefined when A, C or D is 0.
+  function mkStats(A, B, C, D) {
+    var ni = (A > 0 && C > 0 && D > 0) ? (B * C) / (A * D) : null;
+    var dir = A * D > B * C ? 'pos' : A * D < B * C ? 'neg' : 'none';
+    return { p: fisher(A, B, C, D), ni: ni, alpha: ni === null ? null : 1 - ni, dir: dir };
+  }
+
+  var CC_PRESETS = {
+    ex1: { s1: 'ACT CCG GGG CCC', s2: 'ACG CCG GGC CTC', note: 'Human and chimpanzee, four codons, from the lecture.' },
+    aspm: { s1: 'CGT GGC GCA CTT GTA', s2: 'CGT CGT CCA CTT GTA', note: 'ASPM quiz from the lecture: human (1) and chimpanzee (2). Codon 2 differs at two places.' },
+    frac: { s1: 'TTT CTG CCC GGG ACT', s2: 'TTC TTG CAA GGG ACT', note: 'Invented example. TTT and TTC differ at a third position that is only 1/3 synonymous. CTG and TTG differ at a first position that is 1/3 synonymous. CCC and CAA differ at two places, and the two orders of change do not agree, so each counts half.' }
+  };
+  var MK_PRESETS = {
+    lec: { kind: 'aln', names1: ['sp. 1, seq 1', 'sp. 1, seq 2', 'sp. 1, seq 3', 'sp. 1, seq 4'], names2: ['sp. 2'],
+      sp1: ['CTTACTTATACCCGT', 'CTGACTTATACCCGT', 'CTGACTTCTACCCGT', 'CTGACTTCTACACGT'], sp2: ['ATGACCTCTACCCGT'],
+      note: 'The alignment from the lecture: four sequences of species 1, one of species 2.' },
+    senp1: { kind: 'tbl', A: 4, B: 1, C: 1, D: 5, note: 'SENP1, counts as given in the lecture.' },
+    cias1: { kind: 'tbl', A: 5, B: 1, C: 10, D: 2, note: 'CIAS1 (now called NLRP3), counts as given in the lecture.' },
+    agt: { kind: 'tbl', A: 1, B: 3, C: 13, D: 1, note: 'AGT, counts as given in the lecture.' },
+    arsd: { kind: 'aln', names1: ['human 1', 'human 2', 'human 3', 'human 4', 'human 5', 'human 6'], names2: ['chimp'],
+      sp1: ['TCTCCTACAGGGCGTCTAGTT', 'TCTCCTACAGGGCGTCTAGTT', 'TCTCCTACTGGGCGTCTAATT', 'TCTCCTACTGGGCGTCTAGTT', 'TCTCCTACAGGGCGTCTAGTT', 'TCTCATACAGGGCGTCTAGTT'],
+      sp2: ['TATCCTACAGGCCGTCTTGTT'], note: 'The arsD quiz from the lecture: six humans, one chimpanzee.' }
+  };
+  // ENGINE-END
+
+  var NAME = { pos: 'positive selection', neg: 'negative selection', none: 'none' };
+  function num(x, k) { return x === null || !isFinite(x) ? 'undefined' : (Math.round(x * Math.pow(10, k)) / Math.pow(10, k)).toString(); }
+  function pstr(p) { return p >= 0.1 ? p.toFixed(2) : p >= 0.001 ? p.toFixed(4) : p.toExponential(2); }
+
+  // ---------- Toy 1: codon counter ----------
+  var s1El = $('s13-cc-s1'), s2El = $('s13-cc-s2');
+  function spaced(s) { return clean(s).replace(/(...)(?=.)/g, '$1 '); }
+  function ccRun() {
+    var r = countCodons(s1El.value, s2El.value), msg = $('s13-cc-msg');
+    if (r.error) {
+      msg.textContent = r.error; msg.className = 'tool-note s13-no';
+      $('s13-cc-tbl').innerHTML = ''; $('s13-cc-steps').textContent = ''; $('s13-cc-read').textContent = '';
+      return;
+    }
+    msg.textContent = ''; msg.className = 'tool-note';
+    var h = '<table><thead><tr><th>Codon</th><th>Sequence 1</th><th>Sequence 2</th><th>Amino acids</th>' +
+      '<th><span class="tip" title="Synonymous sites of this codon: for each position, the share of the possible single changes that keep the amino acid. Averaged over the two sequences.">S sites</span></th>' +
+      '<th><span class="tip" title="Non-synonymous sites: 3 minus the S sites.">N sites</span></th>' +
+      '<th>S differences</th><th>N differences</th></tr></thead><tbody>';
+    r.rows.forEach(function (w, i) {
+      var cls = w.diff.k ? ' class="s13-dif"' : '';
+      var pathNote = '';
+      if (w.diff.k > 1) {
+        pathNote = '<div class="s13-path">' + w.diff.paths.map(function (p) {
+          return p.steps.map(function (c) { return c + ' (' + THREE[aa(c)] + ')'; }).join(' → ') +
+            (p.stop ? ': passes a stop, left out' : ': ' + p.s + ' S, ' + p.n + ' N');
+        }).join('<br>') + '</div>';
+      }
+      h += '<tr' + cls + '><td>' + (i + 1) + '</td><td class="s13-m">' + w.c1 + '<br><span class="s13-sub">' + w.s1.map(fstr).join(' + ') + '</span></td>' +
+        '<td class="s13-m">' + w.c2 + '<br><span class="s13-sub">' + w.s2.map(fstr).join(' + ') + '</span></td>' +
+        '<td>' + THREE[w.a1] + (w.a1 === w.a2 ? '' : ' → ' + THREE[w.a2]) + '</td>' +
+        '<td class="s13-m">' + fstr(w.S) + '</td><td class="s13-m">' + fstr(w.N) + '</td>' +
+        '<td class="s13-m">' + fstr(w.Sd) + '</td><td class="s13-m">' + fstr(w.Nd) + pathNote + '</td></tr>';
+    });
+    h += '<tr class="s13-tot"><td colspan="4">Total</td><td class="s13-m">S = ' + fstr(r.S) + '</td><td class="s13-m">N = ' + fstr(r.N) +
+      '</td><td class="s13-m">Sd = ' + fstr(r.Sd) + '</td><td class="s13-m">Nd = ' + fstr(r.Nd) + '</td></tr></tbody></table>';
+    $('s13-cc-tbl').innerHTML = h;
+    var t = 'dN = Nd / N = ' + fstr(r.Nd) + ' / ' + fstr(r.N) + ' = ' + num(r.dNv, 4) + '\n' +
+      'dS = Sd / S = ' + fstr(r.Sd) + ' / ' + fstr(r.S) + ' = ' + num(r.dSv, 4) + '\n';
+    var read;
+    if (!r.omega) {
+      t += 'ω = dN / dS: undefined, because dS = 0';
+      read = 'There is no synonymous difference, so there is no yardstick. ω cannot be computed.';
+    } else {
+      t += 'ω = dN / dS = ' + num(r.dNv, 4) + ' / ' + num(r.dSv, 4) + ' = ' + num(r.omegaV, 3);
+      var w = r.omegaV;
+      read = w < 1 ? 'ω is below 1. Per site, amino-acid changes are rarer than silent ones. This is what negative selection leaves.'
+        : w > 1 ? 'ω is above 1. Per site, amino-acid changes are more common than silent ones. This is a sign of positive selection, if the counts are large enough to trust.'
+        : 'ω is 1. Amino-acid changes are as common as silent ones. This cannot reject neutrality. It does not prove it.';
+      read += ' With this few codons, the number is an exercise, not a result.';
+    }
+    $('s13-cc-steps').textContent = t;
+    $('s13-cc-read').textContent = read;
+  }
+  function ccPreset(k) {
+    s1El.value = CC_PRESETS[k].s1; s2El.value = CC_PRESETS[k].s2;
+    $('s13-cc-src').textContent = CC_PRESETS[k].note;
+    ccRun();
+  }
+  s1El.addEventListener('input', function () { $('s13-cc-src').textContent = 'Your own sequences.'; ccRun(); });
+  s2El.addEventListener('input', function () { $('s13-cc-src').textContent = 'Your own sequences.'; ccRun(); });
+  $('s13-cc-p1').addEventListener('click', function () { ccPreset('ex1'); });
+  $('s13-cc-p2').addEventListener('click', function () { ccPreset('aspm'); });
+  $('s13-cc-p3').addEventListener('click', function () { ccPreset('frac'); });
+  ccPreset('ex1');
+
+  // ---------- Toy 2: McDonald-Kreitman ----------
+  var cell = { A: $('s13-mk-a'), B: $('s13-mk-b'), C: $('s13-mk-c'), D: $('s13-mk-d') };
+  function showAln(P, m) {
+    var names = P.names1.concat(P.names2), seqs = m.sp1.concat(m.sp2), w = 0, h = '', j;
+    names.forEach(function (n) { w = Math.max(w, n.length); });
+    function pad(s) { while (s.length < w + 2) s += ' '; return s; }
+    seqs.forEach(function (s, i) {
+      h += pad(names[i]) + s.replace(/(...)(?=.)/g, '$1 ') + '\n';
+      if (i === m.sp1.length - 1) h += pad('') + s.replace(/./g, '-').replace(/(...)(?=.)/g, '$1 ') + '\n';
+    });
+    var l1 = pad('fixed/poly'), l2 = pad('S or N');
+    for (j = 0; j < m.cols.length; j++) {
+      if (j && j % 3 === 0) { l1 += ' '; l2 += ' '; }
+      var c = m.cols[j];
+      if (!c) { l1 += '.'; l2 += '.'; continue; }
+      l1 += c.kind === 'F' ? '<span class="a">F</span>' : '<span class="h">P</span>';
+      l2 += c.cls === 'N' ? '<span class="x">N</span>' : '<span class="s13-s">S</span>';
+    }
+    $('s13-mk-aln').innerHTML = h.replace(/&/g, '&amp;').replace(/</g, '&lt;') + l1 + '\n' + l2 +
+      '\n\nF = fixed difference, P = polymorphic, . = no variation. A = ' + m.A + ', B = ' + m.B + ', C = ' + m.C + ', D = ' + m.D + '.';
+    $('s13-mk-aln').hidden = false;
+    $('s13-mk-rule').hidden = false;
+  }
+  function mkRun() {
+    var v = {}, k, bad = '';
+    for (k in cell) {
+      var x = cell[k].value.trim();
+      if (!/^\d+$/.test(x)) bad = 'Every cell needs a whole number, 0 or more.';
+      v[k] = parseInt(x, 10);
+    }
+    if (!bad && v.A + v.B + v.C + v.D === 0) bad = 'All four cells are 0. Enter some counts.';
+    if (bad) {
+      ['ac', 'bd', 'p', 'ni', 'al'].forEach(function (id) { $('s13-mk-r-' + id).textContent = '–'; });
+      $('s13-mk-verdict').textContent = bad; return;
+    }
+    var s = mkStats(v.A, v.B, v.C, v.D);
+    function ratio(x, y, nx, ny) { return y ? x + ' / ' + y + ' = ' + num(x / y, 3) : x ? 'undefined (' + ny + ' = 0)' : 'undefined (' + nx + ' and ' + ny + ' are 0)'; }
+    $('s13-mk-r-ac').textContent = ratio(v.A, v.C, 'A', 'C');
+    $('s13-mk-r-bd').textContent = ratio(v.B, v.D, 'B', 'D');
+    $('s13-mk-r-p').textContent = pstr(s.p);
+    var zero = ['A', 'C', 'D'].filter(function (q) { return !v[q]; }).join(', ');
+    $('s13-mk-r-ni').textContent = s.ni === null ? 'undefined (' + zero + ' = 0)' : num(s.ni, 3);
+    $('s13-mk-r-al').textContent = s.alpha === null ? 'undefined (' + zero + ' = 0)' : num(s.alpha, 3);
+    var d = s.dir === 'pos' ? 'positive selection: A/C is larger than B/D, so there is more amino-acid change between species than the polymorphism predicts'
+      : s.dir === 'neg' ? 'negative selection (or balancing selection): A/C is smaller than B/D, so there is more amino-acid polymorphism within species than between them'
+      : 'none: A/C equals B/D';
+    $('s13-mk-verdict').innerHTML = 'The direction is ' + d + '. With these counts the test ' +
+      (s.p < 0.05 ? '<b class="s13-ok">can reject</b>' : '<b class="s13-no">cannot reject</b>') + ' neutrality at 0.05 (P = ' + pstr(s.p) + ').' +
+      (s.p >= 0.05 && s.dir !== 'none' ? ' The direction alone is not evidence.' : '');
+  }
+  function mkPreset(k) {
+    var P = MK_PRESETS[k];
+    $('s13-mk-src').textContent = P.note;
+    if (P.kind === 'aln') {
+      var m = mkClassify(P.sp1, P.sp2);
+      cell.A.value = m.A; cell.B.value = m.B; cell.C.value = m.C; cell.D.value = m.D;
+      showAln(P, m);
+    } else {
+      cell.A.value = P.A; cell.B.value = P.B; cell.C.value = P.C; cell.D.value = P.D;
+      $('s13-mk-aln').hidden = true; $('s13-mk-rule').hidden = true;
+    }
+    mkRun();
+  }
+  Object.keys(cell).forEach(function (k) {
+    cell[k].addEventListener('input', function () {
+      $('s13-mk-aln').hidden = true; $('s13-mk-rule').hidden = true;
+      $('s13-mk-src').textContent = 'Your own counts.';
+      mkRun();
+    });
+  });
+  ['lec', 'senp1', 'cias1', 'agt', 'arsd'].forEach(function (k) {
+    $('s13-mk-p-' + k).addEventListener('click', function () { mkPreset(k); });
+  });
+  mkPreset('lec');
+
+  // ---------- Code controls, run at load against numbers counted by hand ----------
+  (function () {
+    var e1 = countCodons(CC_PRESETS.ex1.s1, CC_PRESETS.ex1.s2), e2 = countCodons(CC_PRESETS.aspm.s1, CC_PRESETS.aspm.s2);
+    var ok = feq(e1.S, F(4)) && feq(e1.N, F(8)) && feq(e1.Sd, F(2)) && feq(e1.Nd, F(1)) && feq(e1.omega, F(1, 4)) &&
+      feq(e2.S, F(5)) && feq(e2.N, F(10)) && feq(e2.Sd, F(1)) && feq(e2.Nd, F(2)) && feq(e2.omega, F(1)) &&
+      feq(sitesOf('TTT')[2], F(1, 3)) && feq(sitesOf('CTT')[0], F(0)) && feq(sitesOf('CTA')[0], F(1, 3));
+    $('s13-cc-control').innerHTML = 'Code control (run when this page loaded): lecture example 1 must give S 4, N 8, Sd 2, Nd 1, ω 1/4; the ASPM quiz S 5, N 10, Sd 1, Nd 2, ω 1; TTT third position 1/3 S; CTT first position 0 S; CTA first position 1/3 S. Result: ' +
+      (ok ? '<span class="s13-ok">PASS</span>' : '<span class="s13-no">FAIL</span>');
+    var m1 = mkClassify(MK_PRESETS.lec.sp1, MK_PRESETS.lec.sp2), m2 = mkClassify(MK_PRESETS.arsd.sp1, MK_PRESETS.arsd.sp2);
+    var ok2 = m1.A === 1 && m1.B === 1 && m1.C === 1 && m1.D === 2 && m2.A === 1 && m2.B === 2 && m2.C === 2 && m2.D === 1 &&
+      Math.abs(fisher(4, 1, 1, 5) - 37 / 462) < 1e-12 && Math.abs(fisher(1, 3, 13, 1) - 57 / 3060) < 1e-12 &&
+      Math.abs(fisher(5, 1, 10, 2) - 1) < 1e-12 && Math.abs(fisher(1, 2, 2, 1) - 1) < 1e-12;
+    $('s13-mk-control').innerHTML = 'Code control (run when this page loaded): the lecture alignment must give A 1, B 1, C 1, D 2; arsD A 1, B 2, C 2, D 1; Fisher P must be 37/462 for SENP1, 57/3060 for AGT, 1 for CIAS1 and arsD. Result: ' +
+      (ok2 ? '<span class="s13-ok">PASS</span>' : '<span class="s13-no">FAIL</span>');
+  })();
 })();
 /* ---- copy buttons ---- */
 (function(){function sel(el){const r=document.createRange();r.selectNodeContents(el);const s=getSelection();s.removeAllRanges();s.addRange(r)}

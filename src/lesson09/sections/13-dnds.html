@@ -1,0 +1,189 @@
+<section aria-labelledby="s13" id="s13-wrap">
+  <h2 id="s13"><span class="n">13</span>Selection on protein-coding genes: dN/dS and the McDonald–Kreitman test</h2>
+  <p class="lede">A tree tells us how species are related. It does not tell us why a gene changed. Most changes in a gene are neutral or harmful; a few help. This section shows two ways to tell them apart in a protein-coding gene. The first compares changes that alter the protein with changes that do not (dN/dS). The second compares differences <em>between</em> species with variation <em>within</em> a species (the McDonald–Kreitman test). Both work by counting, and both can be done by hand on a few codons.</p>
+
+  <h3>Why a neutral yardstick is needed</h3>
+  <p>A gene that changed a lot between two species may have been under selection. Or it may sit in a part of the genome that mutates fast. Or the two species may have split long ago. Counting changes alone cannot separate these. We need something in the same gene that is affected by the same mutation rate and the same time, but not by selection on the protein.</p>
+  <p>A <span class="tip" title="A codon is a group of three DNA letters that codes for one amino acid (or a stop signal). A coding sequence is read as a series of codons.">codon</span> has three letters. Because several codons code for the same amino acid, some changes do not alter the protein. A <span class="tip" title="Synonymous change: a change in a codon that leaves the amino acid the same, for example ACT to ACG, both threonine.">synonymous</span> change leaves the amino acid the same. A <span class="tip" title="Non-synonymous change: a change in a codon that gives a different amino acid, for example CCG (proline) to CTG (leucine).">non-synonymous</span> change gives a different amino acid. If synonymous changes are neutral (an assumption, not a fact), their rate shows how fast the gene mutates. The non-synonymous rate is then compared with it. A gene in a mutation-rich region has both rates high, so the ratio stays meaningful.</p>
+
+  <h3>Sites and changes: dN, dS and why they are per site</h3>
+  <p>A synonymous change cannot happen at every position. The third position of ACT is synonymous for every change: ACA, ACC and ACG are all threonine. The first and second positions are not: any change gives another amino acid. So a codon has fewer synonymous <em>opportunities</em> than non-synonymous ones. If we compared raw counts, non-synonymous changes would look more common simply because there are more places for them. We therefore count per site.</p>
+  <ul class="qlist">
+    <li><b>Synonymous sites (S)</b> and <b>non-synonymous sites (N)</b>: how many positions, counted as fractions, could change without or with changing the amino acid.</li>
+    <li><b>Sd</b> and <b>Nd</b>: how many synonymous and non-synonymous changes are actually seen between the two sequences.</li>
+    <li><b>dS = Sd / S</b>, <b>dN = Nd / N</b>, and <b>&omega; = dN / dS</b>.</li>
+  </ul>
+  <p>Some positions are only partly synonymous. Take the third position of TTT. TTC is phenylalanine, the same. TTA and TTG are leucine, different. One of the three changes is synonymous, so this site counts as 1/3 S and 2/3 N. The third position of TTG is also 1/3 S (only TTA is leucine). The first position of CTT is 0 S: all three changes (ATT, GTT, TTT) give another amino acid. The first position of CTA or CTG is 1/3 S, because TTA and TTG are leucine.</p>
+
+  <p><b>Worked example 1: human against chimpanzee, four codons.</b> This is the worked example of the lecture. Below, each position is marked 1 if it counts as a synonymous (S) or non-synonymous (N) site. For these codons every position is wholly one or the other, and the answer is the same counted from the chimpanzee sequence.</p>
+  <div class="toy">         codon 1   codon 2   codon 3   codon 4
+human    A C T     C C G     G G G     C C C      Thr Pro Gly Pro
+chimp    A C <span class="x">G</span>     C C G     G G <span class="x">C</span>     C <span class="x">T</span> C      Thr Pro Gly Leu
+
+S site   0 0 1     0 0 1     0 0 1     0 0 1      S sites = 4
+N site   1 1 0     1 1 0     1 1 0     1 1 0      N sites = 8
+
+S change 0 0 1     0 0 0     0 0 1     0 0 0      Sd = 2  (ACT/ACG, GGG/GGC)
+N change 0 0 0     0 0 0     0 0 0     0 1 0      Nd = 1  (CCC/CTC, Pro to Leu)
+
+dS = 2/4 = 0.5      dN = 1/8 = 0.125      &omega; = 0.125/0.5 = 0.25</div>
+  <p>Notice that there are twice as many N sites as S sites. The raw counts (2 synonymous, 1 non-synonymous) would suggest that synonymous changes are twice as common. Per site, they are four times as common (0.5 against 0.125).</p>
+
+  <p><b>Worked example 2: a short stretch of <i>ASPM</i>, five codons.</b> This is the quiz of the lecture. Codon 2 differs at two positions (GGC to CGT), so we need to know the order of change. There are two orders. GGC to CGC (glycine to arginine, non-synonymous) and then CGC to CGT (arginine, synonymous). Or GGC to GGT (glycine, synonymous) and then GGT to CGT (arginine, non-synonymous). Both orders give one non-synonymous and one synonymous change, so codon 2 counts as 1 N and 1 S.</p>
+  <div class="toy">         codon 1   codon 2   codon 3   codon 4   codon 5
+human    C G T     G G C     G C A     C T T     G T A
+chimp    C G T     <span class="x">C</span> G <span class="x">T</span>     <span class="x">C</span> C A     C T T     G T A
+
+S site   0 0 1     0 0 1     0 0 1     0 0 1     0 0 1      S sites = 5
+N site   1 1 0     1 1 0     1 1 0     1 1 0     1 1 0      N sites = 10
+
+S change 0 0 0     0 0 1     0 0 0     0 0 0     0 0 0      Sd = 1
+N change 0 0 0     1 0 0     1 0 0     0 0 0     0 0 0      Nd = 2  (Gly to Arg, Ala to Pro)
+
+dS = 1/5 = 0.2      dN = 2/10 = 0.2      &omega; = 1</div>
+  <p>One detail that is easy to get wrong: the first position of CTT is not partly synonymous. CTT to TTT gives phenylalanine, a different amino acid. That would be partly synonymous only for CTA or CTG, where TTA and TTG are leucine.</p>
+
+  <figure id="s13-cc">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Count synonymous and non-synonymous sites and differences codon by codon, then compute dN, dS and ω. Type your own coding sequences or start from an example.</span></div>
+    <div class="controls">
+      <label>Sequence 1<input id="s13-cc-s1" type="text" spellcheck="false" autocomplete="off" value="ACT CCG GGG CCC"></label>
+      <label>Sequence 2<input id="s13-cc-s2" type="text" spellcheck="false" autocomplete="off" value="ACG CCG GGC CTC"></label>
+      <div class="s13-btns">
+        <button type="button" class="btn" id="s13-cc-p1">Lecture example 1 (human–chimp)</button>
+        <button type="button" class="btn" id="s13-cc-p2">ASPM quiz</button>
+        <button type="button" class="btn" id="s13-cc-p3">Fractional sites (TTT vs TTC…)</button>
+      </div>
+    </div>
+    <p class="tool-note" id="s13-cc-src" aria-live="polite"></p>
+    <p class="tool-note" id="s13-cc-msg" aria-live="polite"></p>
+    <div class="tbl" id="s13-cc-tbl" aria-live="polite"></div>
+    <p class="tool-note">Under each codon: the synonymous share of its first, second and third position. Rules of this toy: standard genetic code; a change that would make a stop codon is left out when sites are counted; when a codon differs at two or three places, every order of change is counted and averaged, and orders that pass through a stop codon are left out. Sites are averaged over the two sequences. Tools differ in these details. No correction for multiple hits is made.</p>
+    <div class="formula toy" id="s13-cc-steps" aria-live="polite"></div>
+    <p class="tool-note" id="s13-cc-read" aria-live="polite"></p>
+    <p class="tool-note" id="s13-cc-control"></p>
+  </figure>
+
+  <h3>Reading &omega;</h3>
+  <ul class="qlist">
+    <li><b>&omega; &lt; 1:</b> protein-changing differences are rarer than the neutral yardstick. Changes to the protein have mostly been removed by selection. This is called purifying (negative) selection, and it is the usual case.</li>
+    <li><b>&omega; = 1:</b> the data are consistent with neutral evolution of the protein. This is "cannot reject neutrality", not "is neutral".</li>
+    <li><b>&omega; &gt; 1:</b> protein-changing differences are more common than the yardstick. This suggests positive selection, if synonymous changes are neutral. The Chimpanzee Sequencing and Analysis Consortium (2005) put it this way: "Under the assumption that synonymous substitutions are neutral, KA/KS &gt; 1 implies, but is not a necessary condition for, adaptive or positive selection." (KA/KS is their name for dN/dS.)</li>
+  </ul>
+  <p>For human against chimpanzee over the whole genome, the same paper gives "the KA/KS ratio for the human–chimpanzee lineage" as 0.23. So across genes the typical value is far below 1, as purifying selection predicts.</p>
+  <p>A gene-by-gene look is harder. Two species that diverged recently have few synonymous changes in a typical gene, and often none, so dS is zero or very noisy. The consortium therefore compared the non-synonymous rate with the local rate of change in introns and intergenic DNA (KI), not with dS. With that measure, "a total of 585 of the 13,454 human–chimpanzee orthologues (4.4%) have observed KA/KI &gt; 1". The same paper estimates that a ratio above 1 "would be expected to occur simply by chance in at least 263 cases". So a ratio above 1 in one gene is a lead, not a proof. Nearly half of those 585 (263 of 585) are expected from chance alone (our arithmetic on the paper's two numbers).</p>
+  <p>The second worked example shows another limit. According to the lecture, the real value of &omega; for the whole <i>ASPM</i> gene is about 0.9. A value near 1 does not mean that nothing acts on the gene. It is one number for the average over all codons. Some codons may be held back by purifying selection, others may have been pushed by positive selection, and the average of the two can sit near 1.</p>
+
+  <h3>From hand counting to real tools</h3>
+  <p>The count above is the method of Nei and Gojobori (1986): count sites, count changes, divide. Real programs add two things.</p>
+  <p><b>Multiple hits.</b> As in <a href="#s03">section 03</a>, a site can change more than once, so the observed proportions of non-synonymous and synonymous differences (pN and pS) fall short of the true amounts. A correction such as Jukes–Cantor can be applied to each. The effect is largest for dS: synonymous changes are under little selection, so they pile up faster than non-synonymous ones and saturate first.</p>
+  <p><b>Codon models.</b> Instead of counting, a codon model fits &omega; on a tree by maximum likelihood (<a href="#s06">section 06</a>), using a model of codon change rather than of single letters. The best-known program is PAML <b>codeml</b> (Yang 2007). It offers, by name:</p>
+  <ul class="qlist">
+    <li><b>M0:</b> one &omega; for the whole gene and all branches.</li>
+    <li><b>Site models, M1a against M2a, and M7 against M8:</b> &omega; differs between codons. The pair M1a/M2a asks whether a class of codons has &omega; &gt; 1; so does M7/M8.</li>
+    <li><b>Branch-site model A:</b> &omega; differs between codons and also between chosen branches ("foreground" against "background"). It asks whether some codons were under positive selection on one branch.</li>
+  </ul>
+  <p>Each pair is compared with a <b>likelihood-ratio test</b>, using the likelihood scores of <a href="#s06">section 06</a>: a model with more freedom is accepted only if its fit is better by more than chance would give. <b>HyPhy</b> (Kosakovsky Pond and colleagues) is another package. It offers <b>aBSREL</b> (does selection act on a branch), <b>BUSTED</b> (does selection act on some codon on some branch of the gene), <b>MEME</b> (episodic selection at single codons) and <b>FEL</b> (pervasive selection at single codons). Command lines and options change between versions. Check them against the manual of the version you have installed. This lesson does not give them.</p>
+  <p>All of these start from a codon alignment of orthologous genes and a tree. The tree usually comes from the methods of this lesson, and the gene tree and species tree can differ (<a href="#s10">section 10</a>). Where the orthologous copies come from matters; see the pitfalls below.</p>
+
+  <h3>The McDonald–Kreitman test: the idea</h3>
+  <p>dN/dS uses one sequence per species. The McDonald–Kreitman test (McDonald and Kreitman 1991) adds the variation <em>inside</em> a species. Its idea is simple. Under neutrality, the proportion of protein-changing changes should be the same among fixed differences between species and among <span class="tip" title="Polymorphism: a position where individuals of the same species carry different letters, so that more than one version is present in the population.">polymorphisms</span> within a species. Both come from the same mutation process on the same gene. Selection breaks this equality in a known direction.</p>
+  <p>Count positions in the gene and sort each into one of four boxes. A <span class="tip" title="Fixed difference: a position where every sampled individual of one species has one letter, and the other species has a different letter.">fixed difference</span> is the same in all individuals of a species and different in the other. A site that varies within one species and is fixed in the other counts as polymorphic.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Fixed between species</th><th>Polymorphic within a species</th></tr></thead>
+    <tbody>
+      <tr><td><b>Non-synonymous</b></td><td>A</td><td>B</td></tr>
+      <tr><td><b>Synonymous</b></td><td>C</td><td>D</td></tr>
+    </tbody></table></div>
+  <ul class="qlist">
+    <li><b>A/C = B/D:</b> neutrality cannot be rejected.</li>
+    <li><b>A/C &gt; B/D:</b> too many amino-acid differences between species. Positive selection fixed beneficial changes.</li>
+    <li><b>A/C &lt; B/D:</b> too many amino-acid polymorphisms. This points to slightly harmful variants (often recessive) that persist for a while in the population but seldom spread to fixation, that is, negative selection. Balancing selection, such as overdominance, can also produce it.</li>
+  </ul>
+  <p>The significance of a table is usually tested with Fisher's exact test.</p>
+
+  <p><b>Worked example: the alignment of the lecture.</b> Four sequences of species 1 and one of species 2, five codons each. Differences are marked.</p>
+  <div class="toy">          codon 1   codon 2   codon 3   codon 4   codon 5
+species 1 CTT       ACT       TAT       ACC       CGT
+          CTG       ACT       TAT       ACC       CGT
+          CTG       ACT       TCT       ACC       CGT
+          CTG       ACT       TCT       ACA       CGT
+species 2 ATG       ACC       TCT       ACC       CGT
+
+codon 1, position 1: C in all of species 1, A in species 2         fixed,       non-synonymous (Leu/Met)   A
+codon 1, position 3: T or G in species 1, G in species 2            polymorphic, synonymous (both Leu)      D
+codon 2, position 3: T in all of species 1, C in species 2          fixed,       synonymous (Thr)           C
+codon 3, position 2: A or C in species 1, C in species 2            polymorphic, non-synonymous (Tyr/Ser)   B
+codon 4, position 3: C or A in species 1, C in species 2            polymorphic, synonymous (Thr)           D
+
+             fixed   polymorphic
+non-syn        A = 1    B = 1
+syn            C = 1    D = 2</div>
+  <p>Here A/C = 1 and B/D = 1/2. The numbers are far too small for any test. The example only shows how the counting goes.</p>
+
+  <h3>The three genes of the lecture, and what the table gives</h3>
+  <p>The lecture gives three gene tables (it does not state their source here, so treat them as the lecture's examples). Two summaries are used with them. The neutrality index is NI = (B/D) / (A/C). The quantity &alpha; = 1 &minus; NI (Smith and Eyre-Walker 2002) is the share of amino-acid substitutions fixed by positive selection. A negative &alpha; means an excess of slightly harmful polymorphism. Both are undefined when a cell is zero.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Gene</th><th>A</th><th>B</th><th>C</th><th>D</th><th>Fisher, two-sided P</th><th>&alpha;</th><th>Reading</th></tr></thead>
+    <tbody>
+      <tr><td><i>SENP1</i></td><td>4</td><td>1</td><td>1</td><td>5</td><td>37/462 = 0.080</td><td>0.95</td><td>A/C &gt; B/D: positive selection suggested; P is above 0.05</td></tr>
+      <tr><td><i>CIAS1</i> (<i>NLRP3</i>)</td><td>5</td><td>1</td><td>10</td><td>2</td><td>1</td><td>0 (NI = 1)</td><td>A/C = B/D: neutrality not rejected</td></tr>
+      <tr><td><i>AGT</i></td><td>1</td><td>3</td><td>13</td><td>1</td><td>57/3060 = 0.0186</td><td>&minus;38</td><td>A/C &lt; B/D: excess of amino-acid polymorphism</td></tr>
+    </tbody></table></div>
+  <p>The lecture gives only the four counts; the P values and the &alpha; column are our arithmetic from them. Notice that the <i>SENP1</i> &alpha; of 0.95 rests on a single polymorphism in one cell. The test, not &alpha;, tells how much weight the table can bear.</p>
+  <p>Genome-wide, Bustamante and colleagues (2005) applied the test to 39 humans and more than 11,000 genes. In their abstract, "304 (9.0%) out of 3,377 potentially informative loci" show "evidence of rapid amino acid evolution", while "813 (13.5%) out of 6,033" show "a paucity of amino acid differences between humans and chimpanzees, indicating weak negative selection and/or balancing selection". Transcription factors had an excess of rapidly evolving genes and cytoskeletal proteins an excess of polymorphism. The lecture adds that immunity, gamete formation and sensory perception genes appear among the positive ones.</p>
+
+  <figure id="s13-mk">
+    <div class="tool-head"><span class="tool-tag">Try it</span><span class="tool-note">Fill the McDonald–Kreitman table, or load a lecture example. The alignment examples show how each variable column is counted.</span></div>
+    <div class="controls">
+      <div class="s13-btns">
+        <button type="button" class="btn" id="s13-mk-p-lec">Lecture alignment</button>
+        <button type="button" class="btn" id="s13-mk-p-senp1">SENP1</button>
+        <button type="button" class="btn" id="s13-mk-p-cias1">CIAS1 (NLRP3)</button>
+        <button type="button" class="btn" id="s13-mk-p-agt">AGT</button>
+        <button type="button" class="btn" id="s13-mk-p-arsd">arsD quiz</button>
+      </div>
+    </div>
+    <p class="tool-note" id="s13-mk-src" aria-live="polite"></p>
+    <div class="toy" id="s13-mk-aln" aria-live="polite" hidden></div>
+    <p class="tool-note" id="s13-mk-rule" hidden>How this toy counts a column. Fixed: all sequences of the first species share one base, all sequences of the second species share another. Any other variable column is polymorphic, including a column that varies in one species only. S or N: the toy takes the most common codon at that place as the background (on a tie, the one listed first). It puts each other base of the column into that codon. If any of them changes the amino acid, the site is N; if none does, it is S. Each variable column counts once, however many bases it has.</p>
+    <div class="tbl s13-mk2"><table>
+      <thead><tr><th></th><th>Fixed between species</th><th>Polymorphic within species</th></tr></thead>
+      <tbody>
+        <tr><th>Non-synonymous</th><td><span class="s13-cell">A</span><input id="s13-mk-a" type="text" inputmode="numeric" aria-label="A, non-synonymous fixed"></td><td><span class="s13-cell">B</span><input id="s13-mk-b" type="text" inputmode="numeric" aria-label="B, non-synonymous polymorphic"></td></tr>
+        <tr><th>Synonymous</th><td><span class="s13-cell">C</span><input id="s13-mk-c" type="text" inputmode="numeric" aria-label="C, synonymous fixed"></td><td><span class="s13-cell">D</span><input id="s13-mk-d" type="text" inputmode="numeric" aria-label="D, synonymous polymorphic"></td></tr>
+      </tbody>
+    </table></div>
+    <div class="readout" aria-live="polite">
+      <div>A/C, between species<b id="s13-mk-r-ac"></b></div>
+      <div>B/D, within species<b id="s13-mk-r-bd"></b></div>
+      <div><span class="tip" title="Fisher's exact test, two-sided: the chance of a table at least this uneven, given the row and column totals, if A/C and B/D were truly equal.">Fisher's exact test, P</span><b id="s13-mk-r-p"></b></div>
+      <div><span class="tip" title="Neutrality index NI = (B/D)/(A/C). Undefined when A, C or D is 0.">Neutrality index NI</span><b id="s13-mk-r-ni"></b></div>
+      <div><span class="tip" title="alpha = 1 - NI: the share of amino-acid differences between species fixed by positive selection. A negative value means an excess of amino-acid polymorphism. Undefined when A, C or D is 0.">α = 1 − NI</span><b id="s13-mk-r-al"></b></div>
+    </div>
+    <p class="tool-note" id="s13-mk-verdict" aria-live="polite"></p>
+    <p class="tool-note" id="s13-mk-control"></p>
+  </figure>
+
+  <h3>Pitfalls</h3>
+  <ul class="qlist">
+    <li><b>dS close to zero.</b> If dS is zero, &omega; is undefined; if it is tiny, &omega; is huge and noisy. Between close species a single gene has too few synonymous changes. The human–chimpanzee comparison above used the local intron rate instead of dS for this reason.</li>
+    <li><b>dS saturation.</b> In old splits the synonymous sites have been hit many times. The corrected dS is then uncertain, and so is &omega; (see <a href="#s03">section 03</a>).</li>
+    <li><b>Alignment errors, frameshifts and paralogs.</b> A misaligned stretch looks like many non-synonymous changes, and a frameshift ruins every codon after it. Comparing a gene with a paralog, not its ortholog, measures the wrong split (<a href="../03-annotation/#s07">TOGA2, lesson 3, section 07</a> shows how orthologous copies are chosen). Inspect the codon alignment before trusting &omega;.</li>
+    <li><b>One &omega; for a whole gene and all branches hides the interesting cases.</b> Selection can act on a few codons, or on one branch for a short time. The average over a gene (as for <i>ASPM</i>) or over a tree can be below 1 while a few codons are under positive selection. That is why the site, branch and branch-site models exist.</li>
+    <li><b>McDonald–Kreitman with small counts.</b> With cells of 0 to 5, as in the examples above, the test has little power, and a non-significant result does not support neutrality.</li>
+    <li><b>Slightly harmful polymorphisms bias &alpha; downwards.</b> They add to B but are not fixed, so the table looks less positive than the truth. A common remedy is to leave out rare variants.</li>
+    <li><b>Changes in population size</b> alter how long slightly harmful variants persist, and so change B. The test assumes a stable population.</li>
+  </ul>
+
+  <h3>Sources</h3>
+  <ul class="qlist">
+    <li>Nei M, Gojobori T (1986) Mol Biol Evol 3:418–426.</li>
+    <li>Yang Z (2007) PAML 4. Mol Biol Evol 24:1586.</li>
+    <li>Kosakovsky Pond SL and colleagues: HyPhy (aBSREL, BUSTED, MEME, FEL).</li>
+    <li>Chimpanzee Sequencing and Analysis Consortium (2005) Nature 437:69–87, doi:10.1038/nature04072.</li>
+    <li>McDonald JH, Kreitman M (1991) Nature 351:652–654.</li>
+    <li>Smith NGC, Eyre-Walker A (2002) Nature 415:1022.</li>
+    <li>Bustamante CD and colleagues (2005) Nature 437:1153–1157.</li>
+  </ul>
+  <p>This section follows the worked examples of the lectures "Searching for natural selection: dN/dS" and "McDonald-Kreitman test" (Introduction to Genetics and Evolution, Duke University, Coursera, week 8; re-uploaded at <a href="https://youtu.be/vwmuvcDh9ZM">https://youtu.be/vwmuvcDh9ZM</a>); the slides of the dN/dS example are credited there to M. Rausher. The figures and tables here are redrawn, not copied.</p>
+</section>
