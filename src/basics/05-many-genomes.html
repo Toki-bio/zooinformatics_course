@@ -55,3 +55,15 @@
     <p class="tool-note">Grey: all sites, as sequencing sees them. Coloured: sites an array keeps at a minimum MAF. Rare variants are mostly missed.</p>
   </div>
 </section>
+
+<section aria-labelledby="b7">
+  <h2 id="b7"><span class="n">7</span>Two ways of counting diversity can disagree</h2>
+  <p>In a sample of sequences you can count diversity in two ways: how many positions vary (<dfn>S</dfn>), or how many differences two sequences have on average (<dfn>π</dfn>). With no selection and a constant population size, both give the same estimate. A variant carried by one sequence adds a full position to S but only a few differences to π, so the two disagree when rare variants are too many or too few. <dfn>Tajima's D</dfn> compares them: negative with too many rare variants (after population growth or a selective sweep), positive with too many variants at middle frequency (after a bottleneck, or with balancing selection) (<a href="../#s06">section 06</a>).</p>
+  <div class="tool">
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Sample" id="b-taj-seg"></div>
+    </div>
+    <div class="b-aln" id="b-taj" role="img" aria-label="Six sequences with the varying positions coloured"></div>
+    <p class="tool-note" id="b-tajmsg" aria-live="polite"></p>
+  </div>
+</section>

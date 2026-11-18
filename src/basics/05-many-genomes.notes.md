@@ -10,3 +10,6 @@ Checked at widths 1100 and 420: no script errors, no horizontal overflow, all bu
 Trimmed 2026-11-06: formulas (n(n-1)/2, 50/g cM, 1/k+1/(100-k)), 3,000 cM toy genome, 400 generations, invisible recombinations and the idealised-Ne definition moved out of the page; toys unchanged.
 
 GLM audit 2026-11-06: Y chromosome wording and the definition of Ne corrected against the lesson.
+
+7. Tajima's D (added 2026-11-18): s06 "Diversity from a sample". Formula (a1, a2, b1, b2, c1, c2, e1, e2) copied from s06; sources and their limits (Tajima 1989 only as abstract, formulas from Wikipedia, checked by two computations) are in lesson05/sections/06-tajima.notes.md. Signs and causes as stated there: growth and sweep negative, bottleneck and balancing selection positive; the sweep and balancing-selection directions are standard interpretations, not quoted from an opened source.
+   Toy: 6 sequences, 24 bp. Checked in Node against s06 tajimaD: many rare S 6, pi 2.000, D -1.367; neutral mix (minor counts 1,1,1,2,2,3) S 6, pi 2.667, D +0.085; middle frequency (five sites carried by 3) S 5, pi 3.000, D +2.071. Control D(4,3,1.5) = -0.7545, D(10,10,3) = -0.6707, same as s06. Headless Chrome 1100/420 px: all three buttons clicked, no script errors, no overflow; check.js all ok.

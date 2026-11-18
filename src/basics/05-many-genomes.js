@@ -259,3 +259,60 @@
     });
   })();
 })();
+
+/* block 7: S and pi in six sequences, and the sign of Tajima's D (formula as in section 06) */
+(function () {
+  'use strict';
+  var N = 6, BASE = 'ATGCCAGTTACGGATCTAGCATTG', NEXT = { A: 'G', G: 'A', C: 'T', T: 'C' };
+  /* each preset: [position, sequences carrying the new base] */
+  var P = {
+    rare: { name: 'many rare', sites: [[2, [0]], [6, [1]], [10, [2]], [14, [3]], [18, [4]], [22, [5]]] },
+    mix: { name: 'neutral mix', sites: [[2, [0]], [6, [3]], [10, [5]], [14, [1, 2]], [18, [3, 4]], [22, [0, 1, 2]]] },
+    mid: { name: 'middle frequency', sites: [[3, [0, 1, 2]], [8, [0, 3, 4]], [12, [1, 3, 5]], [17, [2, 4, 5]], [21, [0, 2, 4]]] }
+  };
+  function tajima(n, S, k) {
+    var a1 = 0, a2 = 0, i;
+    for (i = 1; i < n; i++) { a1 += 1 / i; a2 += 1 / (i * i); }
+    var b1 = (n + 1) / (3 * (n - 1)), b2 = 2 * (n * n + n + 3) / (9 * n * (n - 1)), c1 = b1 - 1 / a1, c2 = b2 - (n + 2) / (a1 * n) + a2 / (a1 * a1);
+    var e1 = c1 / a1, e2 = c2 / (a1 * a1 + a2);
+    return { thW: S / a1, D: (k - S / a1) / Math.sqrt(e1 * S + e2 * S * (S - 1)) };
+  }
+  function count(p) {
+    var S = p.sites.length, sum = 0;
+    p.sites.forEach(function (s) { var m = s[1].length; sum += m * (N - m); });
+    var k = sum / (N * (N - 1) / 2), t = tajima(N, S, k);
+    return { S: S, k: k, thW: t.thW, D: t.D };
+  }
+  if (typeof document === 'undefined') { if (typeof module !== 'undefined') module.exports = { tajima: tajima, count: count, P: P }; return; }
+  var $ = function (id) { return document.getElementById(id); }, cur = 'rare';
+  function draw() {
+    var seg = $('b-taj-seg'); seg.textContent = '';
+    Object.keys(P).forEach(function (key) {
+      var b = document.createElement('button'); b.type = 'button'; b.textContent = P[key].name; b.setAttribute('aria-pressed', key === cur ? 'true' : 'false');
+      b.addEventListener('click', function () { cur = key; draw(); }); seg.appendChild(b);
+    });
+    var p = P[cur], at = {}, box = $('b-taj'), r = count(p), i, j;
+    p.sites.forEach(function (s) { at[s[0]] = s[1]; });
+    box.textContent = '';
+    for (i = 0; i < N; i++) {
+      var row = document.createElement('div'); row.appendChild(document.createTextNode('seq ' + (i + 1) + '  '));
+      for (j = 0; j < BASE.length; j++) {
+        var sp = document.createElement('span'), carry = at[j] && at[j].indexOf(i) >= 0;
+        sp.textContent = carry ? NEXT[BASE[j]] : BASE[j];
+        sp.className = carry ? 'c' + at[j].length : at[j] ? '' : 'dim';
+        row.appendChild(sp);
+      }
+      box.appendChild(row);
+    }
+    var cr = document.createElement('div'); cr.className = 'cnt'; var line = 'carry  ';
+    for (j = 0; j < BASE.length; j++) line += at[j] ? at[j].length : ' ';
+    cr.textContent = line; box.appendChild(cr);
+    box.setAttribute('aria-label', 'Six sequences, ' + r.S + ' varying positions, preset ' + p.name);
+    var sign = r.D < -0.5 ? 'negative: too many rare variants, as after population growth or a sweep' :
+      r.D > 0.5 ? 'positive: too many variants at middle frequency, as after a bottleneck or with balancing selection' :
+      'close to 0: the two estimates agree, as expected with no selection and a constant size';
+    $('b-tajmsg').innerHTML = 'Varying positions <b>S = ' + r.S + '</b>, estimate from S = ' + r.thW.toFixed(2) + '; average differences per pair <b>π = ' + r.k.toFixed(2) + '</b>. ' +
+      'Tajima\'s D = <b>' + (r.D > 0 ? '+' : '') + r.D.toFixed(2) + '</b>, ' + sign + '. The number under each coloured column is how many of the six sequences carry the new base.';
+  }
+  draw();
+})();

@@ -3,3 +3,9 @@
 .b-lab{font-size:13.5px;margin:.4em 0 .2em}
 .b-cell{min-width:0}
 .b-cell .svgbox{overflow-x:auto}
+.b-aln{font-family:var(--f-mono,monospace);font-size:14px;line-height:1.5;overflow-x:auto;margin:.5em 0;white-space:pre}
+.b-aln .c1{background:var(--het);color:#fff;font-weight:700}
+.b-aln .c2{background:var(--rep);color:#fff;font-weight:700}
+.b-aln .c3{background:var(--accent);color:#fff;font-weight:700}
+.b-aln .dim{opacity:.5}
+.b-aln .cnt{color:var(--muted)}
