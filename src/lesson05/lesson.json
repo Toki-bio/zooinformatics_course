@@ -34,6 +34,11 @@
    "tools": "IBD segments · IBDNe"
   },
   {
+   "title": "Diversity and Tajima's D",
+   "what": "Two ways to count diversity (π and Watterson's θ), Tajima's D step by step, and how population history moves it.",
+   "tools": "vcftools · pixy · ANGSD · scikit-allel"
+  },
+  {
    "title": "Selection from genealogies",
    "what": "Reading selection from trees, and how candidates turn out to be artefacts.",
    "tools": "genealogy-based selection tests"

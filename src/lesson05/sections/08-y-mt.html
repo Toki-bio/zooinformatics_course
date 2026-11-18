@@ -1,5 +1,5 @@
-<section aria-labelledby="s07" id="s07-wrap">
-  <h2 id="s07"><span class="n">07</span>Y chromosome and mitochondrial DNA as records</h2>
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">07</span>Y chromosome and mitochondrial DNA as records</h2>
   <p class="lede">Two pieces of the genome are not shuffled between generations. The mitochondrial genome travels from mother to child, and the Y chromosome from father to son. Each therefore carries a single family tree of the whole population, and a view of the past that belongs to one sex only. Comparing the two, or either with the rest of the genome, is the classical way to ask whether females and males had different histories.</p>
 
   <h3>One block, one tree</h3>
@@ -15,15 +15,15 @@
   </dl>
 
   <!-- ============ pedigree toy ============ -->
-  <section class="tool" aria-labelledby="s07-ped-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ped-h">Who carries your mtDNA or Y?</h3></div>
+  <section class="tool" aria-labelledby="s08-ped-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-ped-h">Who carries your mtDNA or Y?</h3></div>
     <p style="font-size:14px">Circles are females, squares are males. A pair joined by a short line are partners, with children hanging below. Choose a marker, then click anyone to make that person the first carrier. Carriers are filled. Partners marry in from outside, so they never carry the chosen lineage unless you click them.</p>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Which marker is followed"><button type="button" id="s07-ped-mt" aria-pressed="true">mtDNA (through mothers)</button><button type="button" id="s07-ped-y" aria-pressed="false">Y chromosome (through fathers)</button></div>
-      <button type="button" class="btn" id="s07-ped-reset" style="align-self:center">reset</button>
+      <div class="seg" role="group" aria-label="Which marker is followed"><button type="button" id="s08-ped-mt" aria-pressed="true">mtDNA (through mothers)</button><button type="button" id="s08-ped-y" aria-pressed="false">Y chromosome (through fathers)</button></div>
+      <button type="button" class="btn" id="s08-ped-reset" style="align-self:center">reset</button>
     </div>
-    <div class="svgbox" id="s07-ped-fig"></div>
-    <div class="readout" id="s07-ped-out" aria-live="polite"></div>
+    <div class="svgbox" id="s08-ped-fig"></div>
+    <div class="readout" id="s08-ped-out" aria-live="polite"></div>
     <p class="tool-note"><b>Toy rules.</b> Rule for mtDNA: a child carries it if its mother does. Rule for Y: a child carries it if it is a son and its father does. Nothing else: no mutation, no recombination, no paternal leakage of mtDNA. The page checks every click against an independent test (is there an unbroken all-female, or all-male, chain from the first carrier?).</p>
     <p style="font-size:14px"><b>What to take away.</b> (1) The two markers follow opposite sides of the family: click the same woman under both markers and see who changes. (2) A line can end: a woman with only sons ends her mtDNA line, a man with only daughters ends his Y line, even though both have children. Over many generations most lines end this way, and the survivors all descend from a few people. That loss is why the effective size of each marker is small, as the next part counts.</p>
   </section>
@@ -44,16 +44,16 @@
   <p>With equal numbers this gives N<sub>m</sub> + N<sub>f</sub>, the total. With one male and many females N<sub>e</sub> approaches 4, however many females there are. Here N<sub>m</sub> and N<sub>f</sub> are the numbers that actually leave offspring, not the census counts; unequal success among breeders of the same sex lowers them further. The same lecture derives the formula assuming a Poisson-like spread of offspring within each sex; it does not attribute it to Wright (1931), whose paper we did not open.</p>
   <p>Our derivation, which is not from a source: count gene copies. An autosome has two copies per individual, so 2N<sub>e</sub> in the autosomal units above. mtDNA has one copy per breeding female (N<sub>f</sub>), and the Y one copy per breeding male (N<sub>m</sub>). Then diversity of Y or mtDNA relative to the autosomes is the ratio of these counts. For equal sexes it gives the cited one-quarter. We checked the algebra by a simulation (below).</p>
 
-  <section class="tool explain" aria-labelledby="s07-ne-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ne-h">Relative N<sub>e</sub> with unequal breeding males and females</h3></div>
+  <section class="tool explain" aria-labelledby="s08-ne-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-ne-h">Relative N<sub>e</sub> with unequal breeding males and females</h3></div>
     <p style="font-size:14px">Enter the numbers of males and females that leave offspring, or pick a preset.</p>
     <div class="controls">
-      <label for="s07-ne-m"><span>Breeding males N<sub>m</sub></span> <output id="s07-ne-mo">50</output><input type="range" id="s07-ne-m" min="1" max="500" step="1" value="50"></label>
-      <label for="s07-ne-f"><span>Breeding females N<sub>f</sub></span> <output id="s07-ne-fo">50</output><input type="range" id="s07-ne-f" min="1" max="500" step="1" value="50"></label>
-      <div class="seg" role="group" aria-label="Presets"><button type="button" id="s07-ne-p1" aria-pressed="false">1 : 1</button><button type="button" id="s07-ne-p2" aria-pressed="false">1 male : 3 females</button><button type="button" id="s07-ne-p3" aria-pressed="false">1 : 10</button><button type="button" id="s07-ne-p4" aria-pressed="false">10 : 1</button></div>
+      <label for="s08-ne-m"><span>Breeding males N<sub>m</sub></span> <output id="s08-ne-mo">50</output><input type="range" id="s08-ne-m" min="1" max="500" step="1" value="50"></label>
+      <label for="s08-ne-f"><span>Breeding females N<sub>f</sub></span> <output id="s08-ne-fo">50</output><input type="range" id="s08-ne-f" min="1" max="500" step="1" value="50"></label>
+      <div class="seg" role="group" aria-label="Presets"><button type="button" id="s08-ne-p1" aria-pressed="false">1 : 1</button><button type="button" id="s08-ne-p2" aria-pressed="false">1 male : 3 females</button><button type="button" id="s08-ne-p3" aria-pressed="false">1 : 10</button><button type="button" id="s08-ne-p4" aria-pressed="false">10 : 1</button></div>
     </div>
-    <div class="svgbox" id="s07-ne-fig"></div>
-    <div class="readout" id="s07-ne-out" aria-live="polite"></div>
+    <div class="svgbox" id="s08-ne-fig"></div>
+    <div class="readout" id="s08-ne-out" aria-live="polite"></div>
     <p class="tool-note"><b>Toy rules.</b> Autosomal N<sub>e</sub> = 4N<sub>m</sub>N<sub>f</sub>/(N<sub>m</sub>+N<sub>f</sub>) (cited above). Copies: autosome 2N<sub>e</sub>, mtDNA N<sub>f</sub>, Y N<sub>m</sub> (our derivation). Bars show copies relative to the autosomes; the dashed line is the equal-sex value of one-quarter. Assumptions: constant size, random mating, no selection, no migration, Poisson-like offspring numbers. Real sex ratios, selection and population structure all shift real data away from this.</p>
     <p style="font-size:14px"><b>What to take away.</b> A skew in breeding numbers does not shrink both markers: it helps one and hurts the other. Few breeding males shrink the Y, while mtDNA relative to the autosomes rises above one-quarter. This is the logic behind using Y and mtDNA together: a Y-to-mtDNA diversity ratio far from one fits unequal numbers of breeding males and females, but selection on the Y can produce a similar pattern (below).</p>
   </section>

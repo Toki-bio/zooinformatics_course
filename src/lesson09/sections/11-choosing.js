@@ -111,7 +111,7 @@
         o.steps.push('If they disagree, read <a href="#s10">s10</a> before you choose a species tree.');
         R('The gene concordance factor is the percentage of decisive gene trees that contain a branch. The site concordance factor is the percentage of decisive sites that support it.', 'CF');
         R('With only a few loci the percentages are coarse. Show the individual gene trees too.', 'advice');
-        R('Mitochondrial genes are inherited together as one unit, so they count as one locus, as <a href="../05-many-genomes/#s07">lesson 5, s07</a> explains.', 'advice');
+        R('Mitochondrial genes are inherited together as one unit, so they count as one locus, as <a href="../05-many-genomes/#s08">lesson 5, s08</a> explains.', 'advice');
         if (big) R('Thousands of sequences per locus: look at a sample of species first.', 'advice');
       }
     } else {

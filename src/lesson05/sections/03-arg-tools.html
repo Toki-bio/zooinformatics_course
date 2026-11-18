@@ -36,7 +36,7 @@
   </div></details>
 
   <h3>Relate</h3>
-  <p>Relate (Speidel et al. 2019) first builds a tree at each position from the copying probabilities, then maps mutations onto the branches and estimates branch lengths with MCMC. Its add-on script alternates between estimating population size and re-estimating branch lengths, so size history comes out of the same run. Averaging coalescence rates within and between groups gives each population's size and cross-coalescence rate (the same idea as in <a href="../04-demography/#s05">lesson 4</a>), and a further module tests for selection (<a href="#s06">s06</a>). The authors expect it to "work equally well in other recombining species". Ancestral alleles must be set before the run, but a wrong one is not fatal: if a SNP fits the tree only with its alleles swapped, Relate flips it and records this in the <code>is_flipped</code> column of <code>.mut</code>.</p>
+  <p>Relate (Speidel et al. 2019) first builds a tree at each position from the copying probabilities, then maps mutations onto the branches and estimates branch lengths with MCMC. Its add-on script alternates between estimating population size and re-estimating branch lengths, so size history comes out of the same run. Averaging coalescence rates within and between groups gives each population's size and cross-coalescence rate (the same idea as in <a href="../04-demography/#s05">lesson 4</a>), and a further module tests for selection (<a href="#s07">s07</a>). The authors expect it to "work equally well in other recombining species". Ancestral alleles must be set before the run, but a wrong one is not fatal: if a SNP fits the tree only with its alleles swapped, Relate flips it and records this in the <code>is_flipped</code> column of <code>.mut</code>.</p>
   <div class="code"><button type="button">copy</button><pre><span class="c"># Relate v1.2.4. Filenames are given without extensions where the docs say so.</span>
 PATH_TO_RELATE/bin/RelateFileFormats --mode ConvertFromVcf \
     --haps data.haps --sample data.sample -i data_phased
@@ -178,5 +178,5 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
     <li><b>Very large samples, or one compact file for many analyses:</b> tsinfer + tsdate.</li>
     <li><b>Array data or biobank scale, with at least 300 haplotypes:</b> ARG-Needle, after reading <a href="#s04">s04</a>.</li>
   </ul>
-  <p>One or two genomes per species belong with the methods of <a href="../04-demography/">lesson 4</a>. What these tools then give you is the subject of the next sections: <a href="#s05">s05</a> for recent shared segments, <a href="#s06">s06</a> for selection, and <a href="#s08">s08</a> for what happened when a real cohort was run through this kind of pipeline.</p>
+  <p>One or two genomes per species belong with the methods of <a href="../04-demography/">lesson 4</a>. What these tools then give you is the subject of the next sections: <a href="#s05">s05</a> for recent shared segments, <a href="#s07">s07</a> for selection, and <a href="#s09">s09</a> for what happened when a real cohort was run through this kind of pipeline.</p>
 </section>

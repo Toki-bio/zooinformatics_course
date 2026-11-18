@@ -24,7 +24,7 @@
 
   /* ================= 1. pedigree ================= */
   (function pedigree() {
-    var fig = $('s07-ped-fig'), out = $('s07-ped-out');
+    var fig = $('s08-ped-fig'), out = $('s08-ped-out');
     if (!fig || !out) return;
     var P = [
       { id: 'a1', s: 'M', g: 0, x: 335, mo: null, fa: null, nm: 'founding man' },
@@ -114,24 +114,24 @@
       else msg = g2tx + ' of the ' + g2 + ' carrier grandchild' + (g2 > 1 ? 'ren' : '') + ' can pass it on.';
       out.innerHTML = '<div>first carrier<b>' + who.nm + '</b></div><div>carriers in the three generations<b>' + (noY ? 0 : total) + ' of ' + P.length + '</b></div><div style="grid-column:1/-1">' + msg + (bad ? ' <span class="warn-text">Check failed on ' + bad + ' people.</span>' : '') + '</div>';
     }
-    seg2('s07-ped-mt', 's07-ped-y', function (v) { marker = v ? 'mt' : 'y'; draw(); });
-    $('s07-ped-reset').addEventListener('click', function () { founder = marker === 'mt' ? 'a2' : 'a1'; draw(); });
+    seg2('s08-ped-mt', 's08-ped-y', function (v) { marker = v ? 'mt' : 'y'; draw(); });
+    $('s08-ped-reset').addEventListener('click', function () { founder = marker === 'mt' ? 'a2' : 'a1'; draw(); });
     draw();
   })();
 
   /* ================= 2. relative Ne calculator ================= */
   (function nec() {
-    var fig = $('s07-ne-fig'), out = $('s07-ne-out');
+    var fig = $('s08-ne-fig'), out = $('s08-ne-out');
     if (!fig || !out) return;
-    var sm = $('s07-ne-m'), sf = $('s07-ne-f');
-    var presets = { 's07-ne-p1': [50, 50], 's07-ne-p2': [50, 150], 's07-ne-p3': [20, 200], 's07-ne-p4': [200, 20] };
+    var sm = $('s08-ne-m'), sf = $('s08-ne-f');
+    var presets = { 's08-ne-p1': [50, 50], 's08-ne-p2': [50, 150], 's08-ne-p3': [20, 200], 's08-ne-p4': [200, 20] };
     function calc(nm, nf) {
       var ne = 4 * nm * nf / (nm + nf);
       return { ne: ne, auto: 2 * ne, mt: nf, y: nm, ry: nm / (2 * ne), rmt: nf / (2 * ne) };
     }
     function draw() {
       var nm = +sm.value, nf = +sf.value, r = calc(nm, nf);
-      $('s07-ne-mo').textContent = nm; $('s07-ne-fo').textContent = nf;
+      $('s08-ne-mo').textContent = nm; $('s08-ne-fo').textContent = nf;
       Object.keys(presets).forEach(function (id) { var p = presets[id]; $(id).setAttribute('aria-pressed', (p[0] === nm && p[1] === nf) ? 'true' : 'false'); });
       var W = 620, H = 190, L = 90, R = 44, lo = Math.log10(0.1), hi = Math.log10(100);
       function x(v) { return L + (Math.log10(Math.max(v, 0.1)) - lo) / (hi - lo) * (W - L - R); }

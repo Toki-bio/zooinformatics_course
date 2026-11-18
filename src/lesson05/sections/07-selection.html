@@ -1,5 +1,5 @@
-<section aria-labelledby="s06" id="s06-wrap">
-  <h2 id="s06"><span class="n">06</span>Selection from genealogies</h2>
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">06</span>Selection from genealogies</h2>
   <p class="lede">A genealogy along the chromosome (<a href="#s02">s02</a>) is also a record of selection. Where a favoured variant spread quickly, the local trees of that population are unusually shallow: its copies found a common ancestor recently. This section shows how to read that shape, how one published scan turns it into a number, how a per-mutation test works, and why a peak in such a scan is a place to look and not yet a finding.</p>
 
   <h3>What a sweep does to a local tree</h3>
@@ -38,39 +38,39 @@
   <p>Among the peaks they highlight <i>MITF</i> (reduced diversity in GWD; related to skin), <i>SPCS3</i> (reduced in YRI; an immune-related protein believed to affect flavivirus production) and <i>SCN9A</i> (a sodium channel involved in pain perception). Then comes the sentence to keep:</p>
   <div class="note warn"><b>The authors' own caution.</b> "These examples illustrate the utility of SINGER for exploratory evolutionary analysis, but additional studies are needed to investigate if, and how, selection is acting in these loci."</div>
 
-  <section class="tool explain" aria-labelledby="s06-toy-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">Run the scan on a toy chromosome</h3></div>
+  <section class="tool explain" aria-labelledby="s07-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-toy-h">Run the scan on a toy chromosome</h3></div>
     <p class="tool-note">Three populations split 4,000 generations ago (each N = 5,000; ancestor N = 10,000), 12 sampled chromosomes each. A 2-Mb chromosome is cut into 400 windows of 5 kb, and each window gets one <span class="tip" title="Coalescent tree: a random tree drawn from the model in which lineages join at a rate set by the population size.">coalescent tree</span> drawn on the page. The sweep sits in the middle, in population 1 only, and uses the coin rule above. Simplifications: the page knows the true trees (real ones are inferred); windows are drawn independently (real neighbours are correlated, so real peaks are smoother); the sweep is instantaneous. The threshold comes from 20,000 neutral windows standing for the rest of the genome. Click a track, or move the last slider, to see the tree of that window.</p>
     <div class="controls" role="group" aria-label="Scenario">
       <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">What happened in the middle
-        <div class="seg" role="group" aria-label="Scenario" id="s06-sc"><button type="button" data-v="sweep" aria-pressed="true">sweep in population 1</button><button type="button" data-v="none" aria-pressed="false">nothing</button><button type="button" data-v="low" aria-pressed="false">small size in all</button></div></div>
-      <button type="button" class="btn" id="s06-new" style="align-self:center">new chromosome</button>
+        <div class="seg" role="group" aria-label="Scenario" id="s07-sc"><button type="button" data-v="sweep" aria-pressed="true">sweep in population 1</button><button type="button" data-v="none" aria-pressed="false">nothing</button><button type="button" data-v="low" aria-pressed="false">small size in all</button></div></div>
+      <button type="button" class="btn" id="s07-new" style="align-self:center">new chromosome</button>
     </div>
     <div class="controls" role="group" aria-label="Sweep and threshold">
-      <label for="s06-s">Selection coefficient s <output id="s06-s-o">0.02</output><input type="range" id="s06-s" min="0" max="4" step="1" value="2"></label>
-      <label for="s06-tau">Sweep ended <output id="s06-tau-o">300 generations ago</output><input type="range" id="s06-tau" min="100" max="3500" step="100" value="300"></label>
-      <label for="s06-q">Threshold quantile <output id="s06-q-o">99.99 %</output><input type="range" id="s06-q" min="99" max="99.99" step="0.01" value="99.99"></label>
-      <label for="s06-win">Window to inspect <output id="s06-win-o">1.00 Mb</output><input type="range" id="s06-win" min="0" max="399" step="1" value="200"></label>
+      <label for="s07-s">Selection coefficient s <output id="s07-s-o">0.02</output><input type="range" id="s07-s" min="0" max="4" step="1" value="2"></label>
+      <label for="s07-tau">Sweep ended <output id="s07-tau-o">300 generations ago</output><input type="range" id="s07-tau" min="100" max="3500" step="100" value="300"></label>
+      <label for="s07-q">Threshold quantile <output id="s07-q-o">99.99 %</output><input type="range" id="s07-q" min="99" max="99.99" step="0.01" value="99.99"></label>
+      <label for="s07-win">Window to inspect <output id="s07-win-o">1.00 Mb</output><input type="range" id="s07-win" min="0" max="399" step="1" value="200"></label>
     </div>
     <figure>
-      <div class="svgbox" id="s06-tracks"></div>
+      <div class="svgbox" id="s07-tracks"></div>
       <div class="legend"><span><i style="background:var(--accent)"></i>population 1</span><span><i style="background:var(--het)"></i>population 2</span><span><i style="background:var(--rep)"></i>population 3</span><span><i style="background:var(--fg)"></i>pooled (top track)</span><span><i style="background:var(--bad)"></i>threshold, windows above it</span></div>
       <figcaption><b>Top:</b> depth of the local trees along the chromosome. <b>Below:</b> one scan track per population, as the published figure has one plot per population.</figcaption>
     </figure>
     <div class="readout">
-      <div><b id="s06-r-flag"></b>windows above the line, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-exp"></b>windows per population expected by chance alone</div>
-      <div><b id="s06-r-thr"></b>ratio at the threshold</div>
-      <div><b id="s06-r-mid"></b>median ratio in the middle 200 kb, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-far"></b>median ratio in the rest of the chromosome</div>
-      <div><b id="s06-r-half"></b>distance at which half of the lineages are caught</div>
-      <div><b id="s06-r-win"></b>ratio at the inspected window, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-t"></b>T<sub>within</sub> of population 1 / T<sub>pooled</sub> at the inspected window</div>
+      <div><b id="s07-r-flag"></b>windows above the line, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-exp"></b>windows per population expected by chance alone</div>
+      <div><b id="s07-r-thr"></b>ratio at the threshold</div>
+      <div><b id="s07-r-mid"></b>median ratio in the middle 200 kb, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-far"></b>median ratio in the rest of the chromosome</div>
+      <div><b id="s07-r-half"></b>distance at which half of the lineages are caught</div>
+      <div><b id="s07-r-win"></b>ratio at the inspected window, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-t"></b>T<sub>within</sub> of population 1 / T<sub>pooled</sub> at the inspected window</div>
     </div>
-    <p class="note" id="s06-verdict" aria-live="polite"></p>
+    <p class="note" id="s07-verdict" aria-live="polite"></p>
     <div class="grid2">
-      <figure><div class="svgbox" id="s06-tree-a"></div></figure>
-      <figure><div class="svgbox" id="s06-tree-b"></div></figure>
+      <figure><div class="svgbox" id="s07-tree-a"></div></figure>
+      <figure><div class="svgbox" id="s07-tree-b"></div></figure>
     </div>
     <p class="tool-note">Tree height is in generations on a log scale; dots are the sampled chromosomes, coloured by population. Under a recent sweep the leaves of population 1 collapse into one comb at the sweep date, while the other populations keep their usual depth. Things to try: set the sweep age to 1,500 and then 3,500 generations; set s to 0.1 and see how far the plateau reaches; choose "nothing" and pull the threshold down to 99 %; choose "small size in all" and do the same.</p>
   </section>
@@ -119,5 +119,5 @@
 
   <p>For a zoologist the hard part comes before all of this. SINGER "requires phased, contemporary genomes" and whole-genome data, and the authors add that "high-quality phasing is often challenging, especially for ancient DNA and non-model organisms" (see <a href="#s03">s03</a> and <a href="#s04">s04</a>).</p>
 
-  <div class="note"><b>In our projects.</b> A genealogy study of selection in an Asian human cohort was planned around candidate regions from a differentiation scan. The candidates did not survive a comparison with an independent call set, so nothing was left to test; <a href="#s08">s08</a> tells that story. A genealogy can only sharpen a question about a locus that is real in the first place.</div>
+  <div class="note"><b>In our projects.</b> A genealogy study of selection in an Asian human cohort was planned around candidate regions from a differentiation scan. The candidates did not survive a comparison with an independent call set, so nothing was left to test; <a href="#s09">s09</a> tells that story. A genealogy can only sharpen a question about a locus that is real in the first place.</div>
 </section>

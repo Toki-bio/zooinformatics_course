@@ -87,7 +87,7 @@
   function quant(sorted, q){ return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]; }
   /* CORE-END */
 
-  var host = document.getElementById('s06-tracks');
+  var host = document.getElementById('s07-tracks');
   if (!host) return;
   var NS = 'http://www.w3.org/2000/svg';
   var el = function(id){ return document.getElementById(id); };
@@ -95,7 +95,7 @@
   var COL = ['var(--accent)', 'var(--het)', 'var(--rep)'];
   var SV = [0.005, 0.01, 0.02, 0.05, 0.1];
   var state = { seed: 20261105, sc: 'sweep', chrom: null, back: null, win: 200 };
-  var sS = el('s06-s'), sT = el('s06-tau'), sQ = el('s06-q'), sW = el('s06-win');
+  var sS = el('s07-s'), sT = el('s07-tau'), sQ = el('s07-q'), sW = el('s07-win');
   var fmt = function(v){ return Math.round(v).toLocaleString('en-US'); };
   var f2 = function(v){ return v < 10 ? v.toFixed(2) : v.toFixed(1); };
   function qVal(){ return +sQ.value / 100; }
@@ -207,28 +207,28 @@
     } else {
       txt = 'No population had a sweep, yet the ratio rises in the middle in all three, because all three are shallow there. Windows above the line now: ' + f.join(' / ') + '. Lower the threshold and they appear at the same place in every population. The scan alone would call them candidates; the depth track shows every population shallow together.';
     }
-    el('s06-verdict').textContent = txt;
+    el('s07-verdict').textContent = txt;
   }
 
   function update(){
     drawTracks();
     var r = state.chrom[state.win], s = SV[+sS.value], tau = +sT.value;
-    el('s06-s-o').textContent = s;
-    el('s06-tau-o').textContent = fmt(tau) + ' generations ago';
-    el('s06-q-o').textContent = (+sQ.value).toFixed(2) + ' %';
-    el('s06-win-o').textContent = posMb(state.win) + ' Mb';
+    el('s07-s-o').textContent = s;
+    el('s07-tau-o').textContent = fmt(tau) + ' generations ago';
+    el('s07-q-o').textContent = (+sQ.value).toFixed(2) + ' %';
+    el('s07-win-o').textContent = posMb(state.win) + ' Mb';
     var half = Math.LN2 * s / (CH.rho * Math.log(2 * CH.N)) / 1000;
-    el('s06-r-half').textContent = state.sc === 'sweep' ? fmt(half) + ' kb' : 'no sweep';
-    el('s06-r-flag').textContent = state.flag.join(' / ');
-    el('s06-r-exp').textContent = ((1 - qVal()) * CH.nWin).toFixed(2);
-    el('s06-r-thr').textContent = f2(state.thr);
+    el('s07-r-half').textContent = state.sc === 'sweep' ? fmt(half) + ' kb' : 'no sweep';
+    el('s07-r-flag').textContent = state.flag.join(' / ');
+    el('s07-r-exp').textContent = ((1 - qVal()) * CH.nWin).toFixed(2);
+    el('s07-r-thr').textContent = f2(state.thr);
     var mf = midFar(state.chrom);
-    el('s06-r-mid').textContent = mf.map(function(x){ return x[0].toFixed(1); }).join(' / ');
-    el('s06-r-far').textContent = mf.map(function(x){ return x[1].toFixed(1); }).join(' / ');
-    el('s06-r-win').textContent = r.ratio.map(f2).join(' / ');
-    el('s06-r-t').textContent = fmt(r.within[0]) + ' / ' + fmt(r.pooled);
-    drawTree('s06-tree-a', simWindow(state.seed, state.win, state.sc, s, tau), 'Local tree at ' + posMb(state.win) + ' Mb');
-    drawTree('s06-tree-b', simWindow(state.seed, 10, state.sc, s, tau), 'Local tree at ' + posMb(10) + ' Mb, far from the middle');
+    el('s07-r-mid').textContent = mf.map(function(x){ return x[0].toFixed(1); }).join(' / ');
+    el('s07-r-far').textContent = mf.map(function(x){ return x[1].toFixed(1); }).join(' / ');
+    el('s07-r-win').textContent = r.ratio.map(f2).join(' / ');
+    el('s07-r-t').textContent = fmt(r.within[0]) + ' / ' + fmt(r.pooled);
+    drawTree('s07-tree-a', simWindow(state.seed, state.win, state.sc, s, tau), 'Local tree at ' + posMb(state.win) + ' Mb');
+    drawTree('s07-tree-b', simWindow(state.seed, 10, state.sc, s, tau), 'Local tree at ' + posMb(10) + ' Mb, far from the middle');
     verdict();
   }
   function run(){
@@ -236,17 +236,17 @@
     update();
   }
   function dis(){ var off = state.sc !== 'sweep'; sS.disabled = off; sT.disabled = off; }
-  el('s06-sc').addEventListener('click', function(e){
+  el('s07-sc').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
     state.sc = b.getAttribute('data-v');
-    Array.prototype.forEach.call(el('s06-sc').querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    Array.prototype.forEach.call(el('s07-sc').querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
     dis(); run();
   });
   sS.addEventListener('input', run);
   sT.addEventListener('input', run);
   sQ.addEventListener('input', update);
   sW.addEventListener('input', function(){ state.win = +sW.value; update(); });
-  el('s06-new').addEventListener('click', function(){ state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff; run(); });
+  el('s07-new').addEventListener('click', function(){ state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff; run(); });
   state.back = simBack(977, CH.nBack);
   dis(); run();
 })();

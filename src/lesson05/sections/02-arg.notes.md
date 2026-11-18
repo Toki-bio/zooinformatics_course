@@ -76,6 +76,6 @@ Behaviour behind the wording: N read from one 100 kb history at true N = 1,000 h
 
 ## Open doubts
 
-- Links `#s03`, `#s06`, `#s07` assume the section numbers in the lesson plan.
+- Links `#s03`, `#s07`, `#s08` assume the section numbers in the lesson plan.
 - The lesson's number is not final; links to lesson 4 use `../04-demography/`.
 - Histogram figure scrolls sideways on phones; the walking figure stacks instead.

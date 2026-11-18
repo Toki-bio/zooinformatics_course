@@ -1,0 +1,97 @@
+<section aria-labelledby="s06" id="s06-wrap">
+  <h2 id="s06"><span class="n">06</span>Diversity from a sample: &pi;, &theta;<sub>W</sub> and Tajima's D</h2>
+  <p class="lede">With sequences from several animals of one population you can measure diversity in two ways: by counting differences between pairs, and by counting the variable sites. In a population of constant size with no selection the two measures agree. <dfn>Tajima's D</dfn> (Tajima 1989) is the scaled difference between them. It is the standard first summary of a population sample, and the baseline for the selection scans in <a href="#s07">s07</a>. It is also easy to misread, because changes in population size move it just as selection does.</p>
+
+  <h3>1. Two ways to count diversity</h3>
+  <p>Take <i>n</i> sequences of the same region, one per chromosome copy (a diploid animal gives two, once phased). A site where they do not all agree is a <dfn>segregating site</dfn>; let <i>S</i> be their number.</p>
+  <dl class="defs">
+    <dt>&pi; (or <i>k</i>)</dt><dd>The average number of differences between two sequences, over all <i>n</i>(<i>n</i>&minus;1)/2 pairs. Per base, divide by the region length. Each variable site adds to &pi; in proportion to how many pairs it separates: a site where one sequence differs separates only <i>n</i>&minus;1 pairs, a site split half and half separates the most.</dd>
+    <dt>&theta;<sub>W</sub> (Watterson's estimator)</dt><dd><i>S</i> / <i>a</i><sub>1</sub>, with <i>a</i><sub>1</sub> = 1 + 1/2 + &hellip; + 1/(<i>n</i>&minus;1). Every variable site counts once, whatever its frequency. The divisor corrects for the fact that more sequences reveal more sites.</dd>
+  </dl>
+  <p>Both estimate the same quantity, &theta; = 4<i>N</i><sub>e</sub>&mu; (lesson 4 uses the same &theta;), but they weight sites differently: &theta;<sub>W</sub> counts rare and common variants equally, &pi; counts mostly the common ones. Comparing them is therefore a comparison of the <b>site frequency spectrum</b> (<a href="../04-demography/#s05">lesson 4, s05</a>): how many variants sit in 1, 2, 3 &hellip; of the <i>n</i> sequences.</p>
+  <div class="formula">D = (k &minus; S/a<sub>1</sub>) / &radic;(e<sub>1</sub>S + e<sub>2</sub>S(S&minus;1))<br>a<sub>1</sub> = &Sigma;<sub>i=1..n&minus;1</sub> 1/i &nbsp;&nbsp; a<sub>2</sub> = &Sigma;<sub>i=1..n&minus;1</sub> 1/i&sup2;<br>b<sub>1</sub> = (n+1) / (3(n&minus;1)) &nbsp;&nbsp; b<sub>2</sub> = 2(n&sup2;+n+3) / (9n(n&minus;1))<br>c<sub>1</sub> = b<sub>1</sub> &minus; 1/a<sub>1</sub> &nbsp;&nbsp; c<sub>2</sub> = b<sub>2</sub> &minus; (n+2)/(a<sub>1</sub>n) + a<sub>2</sub>/a<sub>1</sub>&sup2;<br>e<sub>1</sub> = c<sub>1</sub>/a<sub>1</sub> &nbsp;&nbsp; e<sub>2</sub> = c<sub>2</sub>/(a<sub>1</sub>&sup2;+a<sub>2</sub>)</div>
+  <p>The numerator is &pi; minus &theta;<sub>W</sub>, both for the whole region (not per base). The denominator is the expected spread of that difference under neutrality, so under neutrality D stays near 0 and values beyond about &plusmn;2 are unusual. That &plusmn;2 is only a rough rule of thumb, not a test threshold: even under neutrality the mean of D is not exactly 0 (the toy below shows it slightly negative), and a real test needs a null distribution (part 4).</p>
+
+  <h3>2. Reading the sign</h3>
+  <ul>
+    <li><b>D near 0.</b> Rare and common variants in the proportions a steady neutral population gives.</li>
+    <li><b>D negative.</b> More rare variants than expected: many sites carried by one or two sequences. &theta;<sub>W</sub> counts them fully, &pi; hardly at all. A recent expansion makes this: a large population collects many new, still rare mutations. So does a recent selective sweep in its genomic neighbourhood (the shallow trees of <a href="#s07">s07</a>).</li>
+    <li><b>D positive.</b> Too few rare variants, many at middle frequency. A recent bottleneck does this (rare variants are lost first), as does balancing selection, which keeps two alleles at intermediate frequency for a long time.</li>
+  </ul>
+
+  <figure id="s06-fig1">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-a-h">Count it yourself: eight sequences</h3></div>
+    <p class="tool-note">Eight sequences of 30 bases. Variable sites are coloured (red: the new base, blue: the old base); the bottom line gives how many sequences carry the new base. The three alignments have about the same number of variable sites, but the variants sit at different frequencies.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Example alignment">
+        <button type="button" id="s06-p-rare">Many rare variants</button>
+        <button type="button" id="s06-p-neutral">A neutral-looking mix</button>
+        <button type="button" id="s06-p-middle">Variants at middle frequency</button>
+      </div>
+    </div>
+    <div class="toy" id="s06-aln" role="img" aria-label="Eight aligned sequences with the variable sites marked"></div>
+    <div class="readout" id="s06-steps" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> With seven singletons, S is the largest but &pi; is small, so D is clearly negative. With the same kind of S spread over middle frequencies, &pi; is larger than &theta;<sub>W</sub> and D is positive. Real data use thousands of sites, and a single short region like this one is very noisy.</p>
+    <p class="tool-note" id="s06-ctl"></p>
+  </figure>
+
+  <h3>3. Demography moves D too</h3>
+  <p>Selection acts on one locus and its neighbours. A change in population size acts on <b>every</b> locus of the genome at once. Simonsen et al., as summarised by Nielsen (2005), showed that Tajima's test "would reject a neutral model very frequently in the presence of population growth", and population subdivision can do the same. The toy below simulates genealogies for 500 independent loci under three histories and shows the frequency spectrum and the D of each locus.</p>
+
+  <figure id="s06-fig2">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-b-h">A population history, and what it does to D</h3></div>
+    <p class="tool-note">Coalescent simulation: 10 sequences per locus, 500 loci, &theta; = 10 per locus, no selection anywhere. <b>Expansion</b>: the population grew tenfold 0.2 &times; 2<i>N</i> generations ago (<i>N</i> = today's size). <b>Bottleneck</b>: the population shrank to 5 % of its size for 0.01 &times; 2<i>N</i> generations, at the age you choose. Left: share of variable sites with the new allele in 1 &hellip; 9 copies (dashed line: the neutral, constant-size expectation, proportional to 1/<i>i</i>). Right: one D per locus, and their mean.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Population history">
+        <button type="button" id="s06-h-constant">Constant size</button>
+        <button type="button" id="s06-h-growth">Expansion</button>
+        <button type="button" id="s06-h-bottleneck">Bottleneck</button>
+      </div>
+      <label id="s06-age-row">Bottleneck age<input id="s06-age" type="range" min="0" max="100" step="1" value="30"><output id="s06-age-o"></output></label>
+    </div>
+    <div class="svgbox"><svg id="s06-sfs" viewBox="0 0 640 210" width="100%" style="min-width:520px" role="img" aria-label="Site frequency spectrum and distribution of Tajima's D"></svg></div>
+    <div class="readout" id="s06-sim-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> Constant size: the bars follow the dashed line, and D scatters around 0 (its mean is slightly below 0, and a few loci pass &plusmn;2 by chance). Expansion: the first bar towers, and most loci have negative D, with no selection at all. Bottleneck: shortly after it, rare variants are missing and D is positive; move the bottleneck further back and new mutations refill the rare classes, so D falls below 0 and then back towards 0.</p>
+  </figure>
+
+  <h3>4. Using D on real genomes</h3>
+  <p>Because demography shifts D everywhere and selection only in places, the usual approach is to compute D in windows along the genome and treat the genome-wide distribution as the background. A single window far out in the tail is a candidate, not a finding. Nielsen (2005) puts the logic this way: if strong departures "are seen only on one or a few outlier loci, this may be interpreted as evidence for selection on these loci", but population subdivision "may increase the variance". Four practical rules:</p>
+  <ul>
+    <li><b>The genome-wide mean is a statement about history,</b> not about selection. A mean clearly away from 0 points to a change in population size or to population structure; the toy shows growth pulling it down and a recent bottleneck pushing it up.</li>
+    <li><b>Sample from one population.</b> Pooling animals from separate populations changes the frequency spectrum.</li>
+    <li><b>Use sequencing data, not array SNPs.</b> Array SNPs were chosen because they were common in a discovery panel, so rare variants are missing and D is pushed up (<a href="#s04">s04</a> shows this on a toy).</li>
+    <li><b>Count the sites you could have seen.</b> &pi; per base needs the number of bases that were well covered in all samples, including invariant ones; a VCF of variant sites alone does not hold it (tools, below).</li>
+  </ul>
+  <h3>5. Tools</h3>
+  <p>All four tools compute D in windows along the genome. They differ in what they need as input and, above all, in how they count the bases that could have been variable. Versions are those whose documentation and source we read (notes file).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool (version read)</th><th>Input</th><th>What to watch</th></tr></thead>
+    <tbody>
+      <tr><td><b>pixy</b><br><span class="tag">2.2.5</span></td><td>An <b>all-sites VCF</b>: invariant sites included, plus a file listing which sample belongs to which population</td><td>Its documentation: with variant-only VCFs "there is often no way to distinguish missing sites from invariant sites", and treating missing sites as invariant "results in a deflated estimate of &pi;". pixy leaves missing genotypes out of both counts. Use 2.2.2 or later: versions 2.1.0 to 2.2.1 shrank |D| when genotypes were missing.</td></tr>
+      <tr><td><b>vcftools</b><br><span class="tag">0.1.17</span></td><td>A VCF</td><td>D in fixed bins (<code>--TajimaD</code>), from biallelic, fully diploid sites, with <i>n</i> = twice the number of animals. For &pi; in windows (<code>--window-pi</code>) the source divides by the whole window length, counting every position without a variant record as a well-sampled invariant site, unless a <code>--mask</code> says which positions were callable.</td></tr>
+      <tr><td><b>ANGSD</b><br><span class="tag">0.942</span></td><td>BAM files (genotype likelihoods, no genotype calls)</td><td>Made for low and uneven coverage: it estimates the frequency spectrum first, then &theta; per site, then sums over windows. Window values are sums; the last column, <code>nSites</code>, is the number of sites with data, the divisor for per-base values. Without an ancestral genome use the folded spectrum, where only &theta;<sub>W</sub>, &theta;<sub>&pi;</sub> and D are meaningful (the wiki says so).</td></tr>
+      <tr><td><b>scikit-allel</b><br><span class="tag">1.3.13</span></td><td>Genotype arrays in Python (from a VCF)</td><td><code>tajima_d</code> needs at least 3 segregating sites (<code>min_sites=3</code>) and takes <i>n</i> from the best-covered site. For &pi; and &theta;<sub>W</sub> per base, pass <code>is_accessible</code> or start and stop, otherwise the region length is guessed from the first and last variant.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># pixy: all-sites VCF (invariant sites kept); pops.txt = sample&lt;TAB&gt;population</span>
+pixy --stats pi watterson_theta tajima_d --vcf allsites.vcf.gz \
+     --populations pops.txt --window_size 10000 --n_cores 4
+
+<span class="c"># vcftools: D in 10-kb bins -&gt; out.Tajima.D (CHROM BIN_START N_SNPS TajimaD)</span>
+vcftools --gzvcf calls.vcf.gz --TajimaD 10000 --out out
+
+<span class="c"># ANGSD, low coverage, no ancestral genome: folded spectrum (-anc = the reference you mapped to)</span>
+angsd -bam bam.filelist -doSaf 1 -anc ref.fa -GL 1 -P 24 -out out
+realSFS out.saf.idx -P 24 -fold 1 &gt; out.sfs
+realSFS saf2theta out.saf.idx -outname out -sfs out.sfs -fold 1
+thetaStat do_stat out.thetas.idx -win 50000 -step 10000 -outnames out.win</pre></div>
+  <p>Two warnings from the pixy documentation hold for every tool. D "is sound for comparing windows, populations, or groups computed the same way on the same data", but it "is not a p-value": "under neutrality its expectation is not 0 and its standard deviation is not 1". So compare D between windows or populations processed identically, and do not read one window's value as a test. Values from different tools, window sizes or sample sizes are not directly comparable.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what Tajima's D compares</summary><div class="in">
+    <p>Line up the same gene from eight animals. You can count diversity in two ways. One: count the positions where anyone differs (S). Two: take every pair of animals and count their differences, then average (&pi;). A new mutation that only one animal carries adds a whole position to S, but makes only that animal different from the others, so it adds little to the average over pairs. A variant carried by half the animals adds the same one position to S, but separates many pairs, so it adds a lot to &pi;.</p>
+    <div class="toy">8 animals, one variable site each:
+carried by 1 animal   S +1   pairs differing  7 of 28   (adds 0.25 to &pi;)
+carried by 4 animals  S +1   pairs differing 16 of 28   (adds 0.57 to &pi;)</div>
+    <p>Tajima's D asks whether S and &pi; tell the same story. Many rare variants (lots of S, little &pi;) give a negative D; variants at middle frequency (little S for its &pi;) give a positive D. Both a change in population size and selection can make either happen, which is why D is a first look, not a verdict.</p>
+  </div></details>
+</section>

@@ -1,4 +1,4 @@
-# s06 Selection from genealogies: notes and sources (2026-11-05)
+# s07 Selection from genealogies: notes and sources (2026-11-05)
 
 ## Sources (URL, version, what was read, supporting sentences)
 - Deng Y, Nielsen R, Song YS 2025. Robust and accurate Bayesian inference of genome-wide genealogies for hundreds of genomes.
@@ -76,7 +76,7 @@ Three populations, 12 chromosomes each; N = 5,000, ancestor 10,000, split 4,000 
 window, 400 windows; sweep = coin rule of Theorem 1.1 applied in population 1 at the sweep date, instantaneous; true trees used.
 Threshold = quantile of 60,000 neutral ratios (20,000 windows x 3 populations).
 
-## Code controls (run on the text between CORE-START and CORE-END of 06-selection.js)
+## Code controls (run on the text between CORE-START and CORE-END of 07-selection.js)
 Pair expectations from the model: within = 2N(1-e) + 2Na e with e = exp(-Ts/2N); between = Ts + 2Na.
 | Control | Simulated | Expected |
 |---|---|---|
@@ -102,4 +102,4 @@ windows per run within 150 kb of the middle against 0.6 by chance. Median distan
 - The Stephan excerpts (see above).
 - Whether "small size in all" produces ratio peaks of this kind in real data was not checked against any source; the page marks it as our reading.
 - The coin rule is the less accurate of the two approximations of Schweinsberg & Durrett; the page says so.
-- The project note uses only what s08 of this lesson states; no PROJECT_FACTS file for this lesson was given.
+- The project note uses only what s09 of this lesson states; no PROJECT_FACTS file for this lesson was given.

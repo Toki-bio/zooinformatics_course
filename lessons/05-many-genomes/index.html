@@ -172,6 +172,7 @@ li+li{margin-top:4px}
 
 
 
+
 /* ---- course frame (standalone hosting) ---- */
 body{margin:0}
 img{max-width:100%}
@@ -206,9 +207,10 @@ img{max-width:100%}
     <li><div><b>ARG tools</b><a href="#s03">section 3</a><div class="d">What each program infers, what it needs and where it breaks.</div><div class="t">Relate · tsinfer · ARG-Needle · SINGER · ARGweaver</div></div></li>
     <li><div><b>SNP arrays</b><a href="#s04">section 4</a><div class="d">What array data can and cannot support, and what imputation changes.</div><div class="t">GONE · imputation</div></div></li>
     <li><div><b>Recent history from IBD</b><a href="#s05">section 5</a><div class="d">Shared segments, their lengths, and the recent population size they imply.</div><div class="t">IBD segments · IBDNe</div></div></li>
-    <li><div><b>Selection from genealogies</b><a href="#s06">section 6</a><div class="d">Reading selection from trees, and how candidates turn out to be artefacts.</div><div class="t">genealogy-based selection tests</div></div></li>
-    <li><div><b>Y chromosome and mitochondrial DNA</b><a href="#s07">section 7</a><div class="d">Two single-line records of ancestry, and reading a skyline.</div><div class="t">Bayesian skyline plots · BEAST2</div></div></li>
-    <li><div><b>What failed in a real cohort</b><a href="#s08">section 8</a><div class="d">Three outputs that could not support a claim, and why.</div><div class="t">ARG-Needle · IBDNe · checks</div></div></li>
+    <li><div><b>Diversity and Tajima's D</b><a href="#s06">section 6</a><div class="d">Two ways to count diversity (π and Watterson's θ), Tajima's D step by step, and how population history moves it.</div><div class="t">vcftools · pixy · ANGSD · scikit-allel</div></div></li>
+    <li><div><b>Selection from genealogies</b><a href="#s07">section 7</a><div class="d">Reading selection from trees, and how candidates turn out to be artefacts.</div><div class="t">genealogy-based selection tests</div></div></li>
+    <li><div><b>Y chromosome and mitochondrial DNA</b><a href="#s08">section 8</a><div class="d">Two single-line records of ancestry, and reading a skyline.</div><div class="t">Bayesian skyline plots · BEAST2</div></div></li>
+    <li><div><b>What failed in a real cohort</b><a href="#s09">section 9</a><div class="d">Three outputs that could not support a claim, and why.</div><div class="t">ARG-Needle · IBDNe · checks</div></div></li>
   </ol>
 </section>
 
@@ -247,7 +249,7 @@ img{max-width:100%}
     <thead><tr><th>Family</th><th>Reads</th><th>Typical answer</th><th>Named tools</th><th>Where</th></tr></thead>
     <tbody>
       <tr><td><b>Pairwise coalescent</b></td><td>Where heterozygous sites lie along the genome, for pairs of copies. The tools do not build the tree.</td><td>Size history; with two populations, a split time</td><td>PSMC, MSMC2, SMC++, cobraa</td><td><a href="../04-demography/#s03">lesson 4, s03</a> and <a href="../04-demography/#s05">s05</a>; not repeated here</td></tr>
-      <tr><td><b>Full ARG</b></td><td>The sequence data of all copies; the tools rebuild the trees along the genome.</td><td>Any question about the genealogy: size history, split times, selection, relatedness</td><td>Relate, tsinfer+tsdate, ARG-Needle, SINGER, ARGweaver</td><td><a href="#s02">s02</a>, <a href="#s03">s03</a>, <a href="#s06">s06</a></td></tr>
+      <tr><td><b>Full ARG</b></td><td>The sequence data of all copies; the tools rebuild the trees along the genome.</td><td>Any question about the genealogy: size history, split times, selection, relatedness</td><td>Relate, tsinfer+tsdate, ARG-Needle, SINGER, ARGweaver</td><td><a href="#s02">s02</a>, <a href="#s03">s03</a>, <a href="#s07">s07</a></td></tr>
       <tr><td><b>LD</b></td><td>How association between pairs of nearby sites falls with distance.</td><td>Recent size history (GONE: the last 100 generations)</td><td>GONE</td><td>this section; array limits in <a href="#s04">s04</a></td></tr>
       <tr><td><b>IBD</b></td><td>Long stretches shared by two animals.</td><td>Recent size history, relatedness</td><td>hap-ibd, IBDNe; ASMC (pairwise coalescence times)</td><td><a href="#s05">s05</a></td></tr>
     </tbody>
@@ -274,7 +276,7 @@ img{max-width:100%}
     <div class="tool-note" id="s01-src"></div>
   </div>
 
-  <div class="note warn"><b>What the helper cannot tell you.</b> It only checks the input format and the reported size range. It does not know how many sites your data have, how good the phasing is, how diverged your animals are, or whether the animals are one random-mating population. GONE's own README warns that recent migrants from another population bias its estimate and produce an artefactual very recent drop; assumptions of this kind sit behind the other families too and return in <a href="#s08">section 08</a>.</div>
+  <div class="note warn"><b>What the helper cannot tell you.</b> It only checks the input format and the reported size range. It does not know how many sites your data have, how good the phasing is, how diverged your animals are, or whether the animals are one random-mating population. GONE's own README warns that recent migrants from another population bias its estimate and produce an artefactual very recent drop; assumptions of this kind sit behind the other families too and return in <a href="#s09">section 09</a>.</div>
 </section>
 
 <!-- ============ 02-arg ============ -->
@@ -341,7 +343,7 @@ img{max-width:100%}
 h1 closest   h2       h2       h5
 h3 closest   h4       h6       h6</div>
     <p>Each column is one local tree, seen from two tips (these rows are an illustration, not output of the simulation). Reading a table like this as "one tree for the species" would throw away most of what the genome records. Every local tree is a separate, though not independent, sample of the population's history. That is why many positions together say more than one gene tree.</p>
-    <p>Markers that do not recombine, such as mitochondrial DNA, are the exception: they have a single tree (<a href="#s07">s07</a>).</p>
+    <p>Markers that do not recombine, such as mitochondrial DNA, are the exception: they have a single tree (<a href="#s08">s08</a>).</p>
   </div></details>
 
   <h3>From many trees to one graph</h3>
@@ -417,7 +419,7 @@ for tree in ts.trees():                           <span class="c"># walk along t
   <dl class="defs">
     <dt>Population size through time</dt><dd>The rate of coalescence at a time is inversely proportional to <span class="tip" title="Effective population size, see lesson 4.">N<sub>e</sub></span> at that time. So the density of coalescences in the ARG, slice by slice through time, gives N<sub>e</sub>(t). A pair of haplotypes along the genome is the view PSMC has (<a href="../04-demography/#s03">lesson 4</a>); an ARG holds this for every pair at once.</dd>
     <dt>Split times</dt><dd>Compare coalescence within groups and between groups. Two populations separated at some time, with no gene flow since, cannot have a between-group ancestor younger than that time. Relate estimates split times this way, with cross-coalescence rates.</dd>
-    <dt>Selection</dt><dd>Lineages carrying a favoured allele coalesce unusually quickly, so the tree around that allele has a dense burst of young coalescences. Balancing selection works the other way and leaves unusually old ancestors. <a href="#s06">s06</a> covers these tests.</dd>
+    <dt>Selection</dt><dd>Lineages carrying a favoured allele coalesce unusually quickly, so the tree around that allele has a dense burst of young coalescences. Balancing selection works the other way and leaves unusually old ancestors. <a href="#s07">s07</a> covers these tests.</dd>
   </dl>
 
   <div class="tool explain">
@@ -478,7 +480,7 @@ for tree in ts.trees():                           <span class="c"># walk along t
   </div></details>
 
   <h3>Relate</h3>
-  <p>Relate (Speidel et al. 2019) first builds a tree at each position from the copying probabilities, then maps mutations onto the branches and estimates branch lengths with MCMC. Its add-on script alternates between estimating population size and re-estimating branch lengths, so size history comes out of the same run. Averaging coalescence rates within and between groups gives each population's size and cross-coalescence rate (the same idea as in <a href="../04-demography/#s05">lesson 4</a>), and a further module tests for selection (<a href="#s06">s06</a>). The authors expect it to "work equally well in other recombining species". Ancestral alleles must be set before the run, but a wrong one is not fatal: if a SNP fits the tree only with its alleles swapped, Relate flips it and records this in the <code>is_flipped</code> column of <code>.mut</code>.</p>
+  <p>Relate (Speidel et al. 2019) first builds a tree at each position from the copying probabilities, then maps mutations onto the branches and estimates branch lengths with MCMC. Its add-on script alternates between estimating population size and re-estimating branch lengths, so size history comes out of the same run. Averaging coalescence rates within and between groups gives each population's size and cross-coalescence rate (the same idea as in <a href="../04-demography/#s05">lesson 4</a>), and a further module tests for selection (<a href="#s07">s07</a>). The authors expect it to "work equally well in other recombining species". Ancestral alleles must be set before the run, but a wrong one is not fatal: if a SNP fits the tree only with its alleles swapped, Relate flips it and records this in the <code>is_flipped</code> column of <code>.mut</code>.</p>
   <div class="code"><button type="button">copy</button><pre><span class="c"># Relate v1.2.4. Filenames are given without extensions where the docs say so.</span>
 PATH_TO_RELATE/bin/RelateFileFormats --mode ConvertFromVcf \
     --haps data.haps --sample data.sample -i data_phased
@@ -620,7 +622,7 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
     <li><b>Very large samples, or one compact file for many analyses:</b> tsinfer + tsdate.</li>
     <li><b>Array data or biobank scale, with at least 300 haplotypes:</b> ARG-Needle, after reading <a href="#s04">s04</a>.</li>
   </ul>
-  <p>One or two genomes per species belong with the methods of <a href="../04-demography/">lesson 4</a>. What these tools then give you is the subject of the next sections: <a href="#s05">s05</a> for recent shared segments, <a href="#s06">s06</a> for selection, and <a href="#s08">s08</a> for what happened when a real cohort was run through this kind of pipeline.</p>
+  <p>One or two genomes per species belong with the methods of <a href="../04-demography/">lesson 4</a>. What these tools then give you is the subject of the next sections: <a href="#s05">s05</a> for recent shared segments, <a href="#s07">s07</a> for selection, and <a href="#s09">s09</a> for what happened when a real cohort was run through this kind of pipeline.</p>
 </section>
 
 <!-- ============ 04-arrays ============ -->
@@ -687,9 +689,9 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
     <li><b>Heterozygosity, nucleotide diversity, Tajima's D and the frequency spectrum</b> computed straight from array genotypes describe the chip as much as the population (the toy above).</li>
     <li><b>Rare variants.</b> They are not on the list. Only methods that infer them from linkage (ARG-Needle) bring some back.</li>
     <li><b>Variants private to a population</b> that the discovery panel did not include.</li>
-    <li><b>Dating from branch lengths of Y chromosome or mitochondrial DNA</b> from chip probes alone; see <a href="#s07">s07</a>.</li>
+    <li><b>Dating from branch lengths of Y chromosome or mitochondrial DNA</b> from chip probes alone; see <a href="#s08">s08</a>.</li>
   </ul>
-  <div class="note">In one of our projects, data from an Asian human cohort came from an array, so only these methods were options at first; the questions about population size and split times wait for whole genomes (<a href="#s08">s08</a>).</div>
+  <div class="note">In one of our projects, data from an Asian human cohort came from an array, so only these methods were options at first; the questions about population size and split times wait for whole genomes (<a href="#s09">s09</a>).</div>
 </section>
 
 <!-- ============ 05-ibd ============ -->
@@ -809,9 +811,108 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
   </div></details>
 </section>
 
-<!-- ============ 06-selection ============ -->
+<!-- ============ 06-tajima ============ -->
 <section aria-labelledby="s06" id="s06-wrap">
-  <h2 id="s06"><span class="n">06</span>Selection from genealogies</h2>
+  <h2 id="s06"><span class="n">06</span>Diversity from a sample: &pi;, &theta;<sub>W</sub> and Tajima's D</h2>
+  <p class="lede">With sequences from several animals of one population you can measure diversity in two ways: by counting differences between pairs, and by counting the variable sites. In a population of constant size with no selection the two measures agree. <dfn>Tajima's D</dfn> (Tajima 1989) is the scaled difference between them. It is the standard first summary of a population sample, and the baseline for the selection scans in <a href="#s07">s07</a>. It is also easy to misread, because changes in population size move it just as selection does.</p>
+
+  <h3>1. Two ways to count diversity</h3>
+  <p>Take <i>n</i> sequences of the same region, one per chromosome copy (a diploid animal gives two, once phased). A site where they do not all agree is a <dfn>segregating site</dfn>; let <i>S</i> be their number.</p>
+  <dl class="defs">
+    <dt>&pi; (or <i>k</i>)</dt><dd>The average number of differences between two sequences, over all <i>n</i>(<i>n</i>&minus;1)/2 pairs. Per base, divide by the region length. Each variable site adds to &pi; in proportion to how many pairs it separates: a site where one sequence differs separates only <i>n</i>&minus;1 pairs, a site split half and half separates the most.</dd>
+    <dt>&theta;<sub>W</sub> (Watterson's estimator)</dt><dd><i>S</i> / <i>a</i><sub>1</sub>, with <i>a</i><sub>1</sub> = 1 + 1/2 + &hellip; + 1/(<i>n</i>&minus;1). Every variable site counts once, whatever its frequency. The divisor corrects for the fact that more sequences reveal more sites.</dd>
+  </dl>
+  <p>Both estimate the same quantity, &theta; = 4<i>N</i><sub>e</sub>&mu; (lesson 4 uses the same &theta;), but they weight sites differently: &theta;<sub>W</sub> counts rare and common variants equally, &pi; counts mostly the common ones. Comparing them is therefore a comparison of the <b>site frequency spectrum</b> (<a href="../04-demography/#s05">lesson 4, s05</a>): how many variants sit in 1, 2, 3 &hellip; of the <i>n</i> sequences.</p>
+  <div class="formula">D = (k &minus; S/a<sub>1</sub>) / &radic;(e<sub>1</sub>S + e<sub>2</sub>S(S&minus;1))<br>a<sub>1</sub> = &Sigma;<sub>i=1..n&minus;1</sub> 1/i &nbsp;&nbsp; a<sub>2</sub> = &Sigma;<sub>i=1..n&minus;1</sub> 1/i&sup2;<br>b<sub>1</sub> = (n+1) / (3(n&minus;1)) &nbsp;&nbsp; b<sub>2</sub> = 2(n&sup2;+n+3) / (9n(n&minus;1))<br>c<sub>1</sub> = b<sub>1</sub> &minus; 1/a<sub>1</sub> &nbsp;&nbsp; c<sub>2</sub> = b<sub>2</sub> &minus; (n+2)/(a<sub>1</sub>n) + a<sub>2</sub>/a<sub>1</sub>&sup2;<br>e<sub>1</sub> = c<sub>1</sub>/a<sub>1</sub> &nbsp;&nbsp; e<sub>2</sub> = c<sub>2</sub>/(a<sub>1</sub>&sup2;+a<sub>2</sub>)</div>
+  <p>The numerator is &pi; minus &theta;<sub>W</sub>, both for the whole region (not per base). The denominator is the expected spread of that difference under neutrality, so under neutrality D stays near 0 and values beyond about &plusmn;2 are unusual. That &plusmn;2 is only a rough rule of thumb, not a test threshold: even under neutrality the mean of D is not exactly 0 (the toy below shows it slightly negative), and a real test needs a null distribution (part 4).</p>
+
+  <h3>2. Reading the sign</h3>
+  <ul>
+    <li><b>D near 0.</b> Rare and common variants in the proportions a steady neutral population gives.</li>
+    <li><b>D negative.</b> More rare variants than expected: many sites carried by one or two sequences. &theta;<sub>W</sub> counts them fully, &pi; hardly at all. A recent expansion makes this: a large population collects many new, still rare mutations. So does a recent selective sweep in its genomic neighbourhood (the shallow trees of <a href="#s07">s07</a>).</li>
+    <li><b>D positive.</b> Too few rare variants, many at middle frequency. A recent bottleneck does this (rare variants are lost first), as does balancing selection, which keeps two alleles at intermediate frequency for a long time.</li>
+  </ul>
+
+  <figure id="s06-fig1">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-a-h">Count it yourself: eight sequences</h3></div>
+    <p class="tool-note">Eight sequences of 30 bases. Variable sites are coloured (red: the new base, blue: the old base); the bottom line gives how many sequences carry the new base. The three alignments have about the same number of variable sites, but the variants sit at different frequencies.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Example alignment">
+        <button type="button" id="s06-p-rare">Many rare variants</button>
+        <button type="button" id="s06-p-neutral">A neutral-looking mix</button>
+        <button type="button" id="s06-p-middle">Variants at middle frequency</button>
+      </div>
+    </div>
+    <div class="toy" id="s06-aln" role="img" aria-label="Eight aligned sequences with the variable sites marked"></div>
+    <div class="readout" id="s06-steps" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> With seven singletons, S is the largest but &pi; is small, so D is clearly negative. With the same kind of S spread over middle frequencies, &pi; is larger than &theta;<sub>W</sub> and D is positive. Real data use thousands of sites, and a single short region like this one is very noisy.</p>
+    <p class="tool-note" id="s06-ctl"></p>
+  </figure>
+
+  <h3>3. Demography moves D too</h3>
+  <p>Selection acts on one locus and its neighbours. A change in population size acts on <b>every</b> locus of the genome at once. Simonsen et al., as summarised by Nielsen (2005), showed that Tajima's test "would reject a neutral model very frequently in the presence of population growth", and population subdivision can do the same. The toy below simulates genealogies for 500 independent loci under three histories and shows the frequency spectrum and the D of each locus.</p>
+
+  <figure id="s06-fig2">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-b-h">A population history, and what it does to D</h3></div>
+    <p class="tool-note">Coalescent simulation: 10 sequences per locus, 500 loci, &theta; = 10 per locus, no selection anywhere. <b>Expansion</b>: the population grew tenfold 0.2 &times; 2<i>N</i> generations ago (<i>N</i> = today's size). <b>Bottleneck</b>: the population shrank to 5 % of its size for 0.01 &times; 2<i>N</i> generations, at the age you choose. Left: share of variable sites with the new allele in 1 &hellip; 9 copies (dashed line: the neutral, constant-size expectation, proportional to 1/<i>i</i>). Right: one D per locus, and their mean.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Population history">
+        <button type="button" id="s06-h-constant">Constant size</button>
+        <button type="button" id="s06-h-growth">Expansion</button>
+        <button type="button" id="s06-h-bottleneck">Bottleneck</button>
+      </div>
+      <label id="s06-age-row">Bottleneck age<input id="s06-age" type="range" min="0" max="100" step="1" value="30"><output id="s06-age-o"></output></label>
+    </div>
+    <div class="svgbox"><svg id="s06-sfs" viewBox="0 0 640 210" width="100%" style="min-width:520px" role="img" aria-label="Site frequency spectrum and distribution of Tajima's D"></svg></div>
+    <div class="readout" id="s06-sim-out" aria-live="polite"></div>
+    <p class="tool-note"><b>What to notice.</b> Constant size: the bars follow the dashed line, and D scatters around 0 (its mean is slightly below 0, and a few loci pass &plusmn;2 by chance). Expansion: the first bar towers, and most loci have negative D, with no selection at all. Bottleneck: shortly after it, rare variants are missing and D is positive; move the bottleneck further back and new mutations refill the rare classes, so D falls below 0 and then back towards 0.</p>
+  </figure>
+
+  <h3>4. Using D on real genomes</h3>
+  <p>Because demography shifts D everywhere and selection only in places, the usual approach is to compute D in windows along the genome and treat the genome-wide distribution as the background. A single window far out in the tail is a candidate, not a finding. Nielsen (2005) puts the logic this way: if strong departures "are seen only on one or a few outlier loci, this may be interpreted as evidence for selection on these loci", but population subdivision "may increase the variance". Four practical rules:</p>
+  <ul>
+    <li><b>The genome-wide mean is a statement about history,</b> not about selection. A mean clearly away from 0 points to a change in population size or to population structure; the toy shows growth pulling it down and a recent bottleneck pushing it up.</li>
+    <li><b>Sample from one population.</b> Pooling animals from separate populations changes the frequency spectrum.</li>
+    <li><b>Use sequencing data, not array SNPs.</b> Array SNPs were chosen because they were common in a discovery panel, so rare variants are missing and D is pushed up (<a href="#s04">s04</a> shows this on a toy).</li>
+    <li><b>Count the sites you could have seen.</b> &pi; per base needs the number of bases that were well covered in all samples, including invariant ones; a VCF of variant sites alone does not hold it (tools, below).</li>
+  </ul>
+  <h3>5. Tools</h3>
+  <p>All four tools compute D in windows along the genome. They differ in what they need as input and, above all, in how they count the bases that could have been variable. Versions are those whose documentation and source we read (notes file).</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Tool (version read)</th><th>Input</th><th>What to watch</th></tr></thead>
+    <tbody>
+      <tr><td><b>pixy</b><br><span class="tag">2.2.5</span></td><td>An <b>all-sites VCF</b>: invariant sites included, plus a file listing which sample belongs to which population</td><td>Its documentation: with variant-only VCFs "there is often no way to distinguish missing sites from invariant sites", and treating missing sites as invariant "results in a deflated estimate of &pi;". pixy leaves missing genotypes out of both counts. Use 2.2.2 or later: versions 2.1.0 to 2.2.1 shrank |D| when genotypes were missing.</td></tr>
+      <tr><td><b>vcftools</b><br><span class="tag">0.1.17</span></td><td>A VCF</td><td>D in fixed bins (<code>--TajimaD</code>), from biallelic, fully diploid sites, with <i>n</i> = twice the number of animals. For &pi; in windows (<code>--window-pi</code>) the source divides by the whole window length, counting every position without a variant record as a well-sampled invariant site, unless a <code>--mask</code> says which positions were callable.</td></tr>
+      <tr><td><b>ANGSD</b><br><span class="tag">0.942</span></td><td>BAM files (genotype likelihoods, no genotype calls)</td><td>Made for low and uneven coverage: it estimates the frequency spectrum first, then &theta; per site, then sums over windows. Window values are sums; the last column, <code>nSites</code>, is the number of sites with data, the divisor for per-base values. Without an ancestral genome use the folded spectrum, where only &theta;<sub>W</sub>, &theta;<sub>&pi;</sub> and D are meaningful (the wiki says so).</td></tr>
+      <tr><td><b>scikit-allel</b><br><span class="tag">1.3.13</span></td><td>Genotype arrays in Python (from a VCF)</td><td><code>tajima_d</code> needs at least 3 segregating sites (<code>min_sites=3</code>) and takes <i>n</i> from the best-covered site. For &pi; and &theta;<sub>W</sub> per base, pass <code>is_accessible</code> or start and stop, otherwise the region length is guessed from the first and last variant.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># pixy: all-sites VCF (invariant sites kept); pops.txt = sample&lt;TAB&gt;population</span>
+pixy --stats pi watterson_theta tajima_d --vcf allsites.vcf.gz \
+     --populations pops.txt --window_size 10000 --n_cores 4
+
+<span class="c"># vcftools: D in 10-kb bins -&gt; out.Tajima.D (CHROM BIN_START N_SNPS TajimaD)</span>
+vcftools --gzvcf calls.vcf.gz --TajimaD 10000 --out out
+
+<span class="c"># ANGSD, low coverage, no ancestral genome: folded spectrum (-anc = the reference you mapped to)</span>
+angsd -bam bam.filelist -doSaf 1 -anc ref.fa -GL 1 -P 24 -out out
+realSFS out.saf.idx -P 24 -fold 1 &gt; out.sfs
+realSFS saf2theta out.saf.idx -outname out -sfs out.sfs -fold 1
+thetaStat do_stat out.thetas.idx -win 50000 -step 10000 -outnames out.win</pre></div>
+  <p>Two warnings from the pixy documentation hold for every tool. D "is sound for comparing windows, populations, or groups computed the same way on the same data", but it "is not a p-value": "under neutrality its expectation is not 0 and its standard deviation is not 1". So compare D between windows or populations processed identically, and do not read one window's value as a test. Values from different tools, window sizes or sample sizes are not directly comparable.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: what Tajima's D compares</summary><div class="in">
+    <p>Line up the same gene from eight animals. You can count diversity in two ways. One: count the positions where anyone differs (S). Two: take every pair of animals and count their differences, then average (&pi;). A new mutation that only one animal carries adds a whole position to S, but makes only that animal different from the others, so it adds little to the average over pairs. A variant carried by half the animals adds the same one position to S, but separates many pairs, so it adds a lot to &pi;.</p>
+    <div class="toy">8 animals, one variable site each:
+carried by 1 animal   S +1   pairs differing  7 of 28   (adds 0.25 to &pi;)
+carried by 4 animals  S +1   pairs differing 16 of 28   (adds 0.57 to &pi;)</div>
+    <p>Tajima's D asks whether S and &pi; tell the same story. Many rare variants (lots of S, little &pi;) give a negative D; variants at middle frequency (little S for its &pi;) give a positive D. Both a change in population size and selection can make either happen, which is why D is a first look, not a verdict.</p>
+  </div></details>
+</section>
+
+<!-- ============ 07-selection ============ -->
+<section aria-labelledby="s07" id="s07-wrap">
+  <h2 id="s07"><span class="n">06</span>Selection from genealogies</h2>
   <p class="lede">A genealogy along the chromosome (<a href="#s02">s02</a>) is also a record of selection. Where a favoured variant spread quickly, the local trees of that population are unusually shallow: its copies found a common ancestor recently. This section shows how to read that shape, how one published scan turns it into a number, how a per-mutation test works, and why a peak in such a scan is a place to look and not yet a finding.</p>
 
   <h3>What a sweep does to a local tree</h3>
@@ -850,39 +951,39 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
   <p>Among the peaks they highlight <i>MITF</i> (reduced diversity in GWD; related to skin), <i>SPCS3</i> (reduced in YRI; an immune-related protein believed to affect flavivirus production) and <i>SCN9A</i> (a sodium channel involved in pain perception). Then comes the sentence to keep:</p>
   <div class="note warn"><b>The authors' own caution.</b> "These examples illustrate the utility of SINGER for exploratory evolutionary analysis, but additional studies are needed to investigate if, and how, selection is acting in these loci."</div>
 
-  <section class="tool explain" aria-labelledby="s06-toy-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s06-toy-h">Run the scan on a toy chromosome</h3></div>
+  <section class="tool explain" aria-labelledby="s07-toy-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-toy-h">Run the scan on a toy chromosome</h3></div>
     <p class="tool-note">Three populations split 4,000 generations ago (each N = 5,000; ancestor N = 10,000), 12 sampled chromosomes each. A 2-Mb chromosome is cut into 400 windows of 5 kb, and each window gets one <span class="tip" title="Coalescent tree: a random tree drawn from the model in which lineages join at a rate set by the population size.">coalescent tree</span> drawn on the page. The sweep sits in the middle, in population 1 only, and uses the coin rule above. Simplifications: the page knows the true trees (real ones are inferred); windows are drawn independently (real neighbours are correlated, so real peaks are smoother); the sweep is instantaneous. The threshold comes from 20,000 neutral windows standing for the rest of the genome. Click a track, or move the last slider, to see the tree of that window.</p>
     <div class="controls" role="group" aria-label="Scenario">
       <div style="display:flex;flex-direction:column;gap:3px;font-size:12.5px;color:var(--muted)">What happened in the middle
-        <div class="seg" role="group" aria-label="Scenario" id="s06-sc"><button type="button" data-v="sweep" aria-pressed="true">sweep in population 1</button><button type="button" data-v="none" aria-pressed="false">nothing</button><button type="button" data-v="low" aria-pressed="false">small size in all</button></div></div>
-      <button type="button" class="btn" id="s06-new" style="align-self:center">new chromosome</button>
+        <div class="seg" role="group" aria-label="Scenario" id="s07-sc"><button type="button" data-v="sweep" aria-pressed="true">sweep in population 1</button><button type="button" data-v="none" aria-pressed="false">nothing</button><button type="button" data-v="low" aria-pressed="false">small size in all</button></div></div>
+      <button type="button" class="btn" id="s07-new" style="align-self:center">new chromosome</button>
     </div>
     <div class="controls" role="group" aria-label="Sweep and threshold">
-      <label for="s06-s">Selection coefficient s <output id="s06-s-o">0.02</output><input type="range" id="s06-s" min="0" max="4" step="1" value="2"></label>
-      <label for="s06-tau">Sweep ended <output id="s06-tau-o">300 generations ago</output><input type="range" id="s06-tau" min="100" max="3500" step="100" value="300"></label>
-      <label for="s06-q">Threshold quantile <output id="s06-q-o">99.99 %</output><input type="range" id="s06-q" min="99" max="99.99" step="0.01" value="99.99"></label>
-      <label for="s06-win">Window to inspect <output id="s06-win-o">1.00 Mb</output><input type="range" id="s06-win" min="0" max="399" step="1" value="200"></label>
+      <label for="s07-s">Selection coefficient s <output id="s07-s-o">0.02</output><input type="range" id="s07-s" min="0" max="4" step="1" value="2"></label>
+      <label for="s07-tau">Sweep ended <output id="s07-tau-o">300 generations ago</output><input type="range" id="s07-tau" min="100" max="3500" step="100" value="300"></label>
+      <label for="s07-q">Threshold quantile <output id="s07-q-o">99.99 %</output><input type="range" id="s07-q" min="99" max="99.99" step="0.01" value="99.99"></label>
+      <label for="s07-win">Window to inspect <output id="s07-win-o">1.00 Mb</output><input type="range" id="s07-win" min="0" max="399" step="1" value="200"></label>
     </div>
     <figure>
-      <div class="svgbox" id="s06-tracks"></div>
+      <div class="svgbox" id="s07-tracks"></div>
       <div class="legend"><span><i style="background:var(--accent)"></i>population 1</span><span><i style="background:var(--het)"></i>population 2</span><span><i style="background:var(--rep)"></i>population 3</span><span><i style="background:var(--fg)"></i>pooled (top track)</span><span><i style="background:var(--bad)"></i>threshold, windows above it</span></div>
       <figcaption><b>Top:</b> depth of the local trees along the chromosome. <b>Below:</b> one scan track per population, as the published figure has one plot per population.</figcaption>
     </figure>
     <div class="readout">
-      <div><b id="s06-r-flag"></b>windows above the line, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-exp"></b>windows per population expected by chance alone</div>
-      <div><b id="s06-r-thr"></b>ratio at the threshold</div>
-      <div><b id="s06-r-mid"></b>median ratio in the middle 200 kb, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-far"></b>median ratio in the rest of the chromosome</div>
-      <div><b id="s06-r-half"></b>distance at which half of the lineages are caught</div>
-      <div><b id="s06-r-win"></b>ratio at the inspected window, populations 1 / 2 / 3</div>
-      <div><b id="s06-r-t"></b>T<sub>within</sub> of population 1 / T<sub>pooled</sub> at the inspected window</div>
+      <div><b id="s07-r-flag"></b>windows above the line, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-exp"></b>windows per population expected by chance alone</div>
+      <div><b id="s07-r-thr"></b>ratio at the threshold</div>
+      <div><b id="s07-r-mid"></b>median ratio in the middle 200 kb, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-far"></b>median ratio in the rest of the chromosome</div>
+      <div><b id="s07-r-half"></b>distance at which half of the lineages are caught</div>
+      <div><b id="s07-r-win"></b>ratio at the inspected window, populations 1 / 2 / 3</div>
+      <div><b id="s07-r-t"></b>T<sub>within</sub> of population 1 / T<sub>pooled</sub> at the inspected window</div>
     </div>
-    <p class="note" id="s06-verdict" aria-live="polite"></p>
+    <p class="note" id="s07-verdict" aria-live="polite"></p>
     <div class="grid2">
-      <figure><div class="svgbox" id="s06-tree-a"></div></figure>
-      <figure><div class="svgbox" id="s06-tree-b"></div></figure>
+      <figure><div class="svgbox" id="s07-tree-a"></div></figure>
+      <figure><div class="svgbox" id="s07-tree-b"></div></figure>
     </div>
     <p class="tool-note">Tree height is in generations on a log scale; dots are the sampled chromosomes, coloured by population. Under a recent sweep the leaves of population 1 collapse into one comb at the sweep date, while the other populations keep their usual depth. Things to try: set the sweep age to 1,500 and then 3,500 generations; set s to 0.1 and see how far the plateau reaches; choose "nothing" and pull the threshold down to 99 %; choose "small size in all" and do the same.</p>
   </section>
@@ -931,12 +1032,12 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
 
   <p>For a zoologist the hard part comes before all of this. SINGER "requires phased, contemporary genomes" and whole-genome data, and the authors add that "high-quality phasing is often challenging, especially for ancient DNA and non-model organisms" (see <a href="#s03">s03</a> and <a href="#s04">s04</a>).</p>
 
-  <div class="note"><b>In our projects.</b> A genealogy study of selection in an Asian human cohort was planned around candidate regions from a differentiation scan. The candidates did not survive a comparison with an independent call set, so nothing was left to test; <a href="#s08">s08</a> tells that story. A genealogy can only sharpen a question about a locus that is real in the first place.</div>
+  <div class="note"><b>In our projects.</b> A genealogy study of selection in an Asian human cohort was planned around candidate regions from a differentiation scan. The candidates did not survive a comparison with an independent call set, so nothing was left to test; <a href="#s09">s09</a> tells that story. A genealogy can only sharpen a question about a locus that is real in the first place.</div>
 </section>
 
-<!-- ============ 07-y-mt ============ -->
-<section aria-labelledby="s07" id="s07-wrap">
-  <h2 id="s07"><span class="n">07</span>Y chromosome and mitochondrial DNA as records</h2>
+<!-- ============ 08-y-mt ============ -->
+<section aria-labelledby="s08" id="s08-wrap">
+  <h2 id="s08"><span class="n">07</span>Y chromosome and mitochondrial DNA as records</h2>
   <p class="lede">Two pieces of the genome are not shuffled between generations. The mitochondrial genome travels from mother to child, and the Y chromosome from father to son. Each therefore carries a single family tree of the whole population, and a view of the past that belongs to one sex only. Comparing the two, or either with the rest of the genome, is the classical way to ask whether females and males had different histories.</p>
 
   <h3>One block, one tree</h3>
@@ -952,15 +1053,15 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
   </dl>
 
   <!-- ============ pedigree toy ============ -->
-  <section class="tool" aria-labelledby="s07-ped-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ped-h">Who carries your mtDNA or Y?</h3></div>
+  <section class="tool" aria-labelledby="s08-ped-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-ped-h">Who carries your mtDNA or Y?</h3></div>
     <p style="font-size:14px">Circles are females, squares are males. A pair joined by a short line are partners, with children hanging below. Choose a marker, then click anyone to make that person the first carrier. Carriers are filled. Partners marry in from outside, so they never carry the chosen lineage unless you click them.</p>
     <div class="controls">
-      <div class="seg" role="group" aria-label="Which marker is followed"><button type="button" id="s07-ped-mt" aria-pressed="true">mtDNA (through mothers)</button><button type="button" id="s07-ped-y" aria-pressed="false">Y chromosome (through fathers)</button></div>
-      <button type="button" class="btn" id="s07-ped-reset" style="align-self:center">reset</button>
+      <div class="seg" role="group" aria-label="Which marker is followed"><button type="button" id="s08-ped-mt" aria-pressed="true">mtDNA (through mothers)</button><button type="button" id="s08-ped-y" aria-pressed="false">Y chromosome (through fathers)</button></div>
+      <button type="button" class="btn" id="s08-ped-reset" style="align-self:center">reset</button>
     </div>
-    <div class="svgbox" id="s07-ped-fig"></div>
-    <div class="readout" id="s07-ped-out" aria-live="polite"></div>
+    <div class="svgbox" id="s08-ped-fig"></div>
+    <div class="readout" id="s08-ped-out" aria-live="polite"></div>
     <p class="tool-note"><b>Toy rules.</b> Rule for mtDNA: a child carries it if its mother does. Rule for Y: a child carries it if it is a son and its father does. Nothing else: no mutation, no recombination, no paternal leakage of mtDNA. The page checks every click against an independent test (is there an unbroken all-female, or all-male, chain from the first carrier?).</p>
     <p style="font-size:14px"><b>What to take away.</b> (1) The two markers follow opposite sides of the family: click the same woman under both markers and see who changes. (2) A line can end: a woman with only sons ends her mtDNA line, a man with only daughters ends his Y line, even though both have children. Over many generations most lines end this way, and the survivors all descend from a few people. That loss is why the effective size of each marker is small, as the next part counts.</p>
   </section>
@@ -981,16 +1082,16 @@ arg-extract-tmrca run/out.%d.smc.gz > run.tmrca.txt</pre></div>
   <p>With equal numbers this gives N<sub>m</sub> + N<sub>f</sub>, the total. With one male and many females N<sub>e</sub> approaches 4, however many females there are. Here N<sub>m</sub> and N<sub>f</sub> are the numbers that actually leave offspring, not the census counts; unequal success among breeders of the same sex lowers them further. The same lecture derives the formula assuming a Poisson-like spread of offspring within each sex; it does not attribute it to Wright (1931), whose paper we did not open.</p>
   <p>Our derivation, which is not from a source: count gene copies. An autosome has two copies per individual, so 2N<sub>e</sub> in the autosomal units above. mtDNA has one copy per breeding female (N<sub>f</sub>), and the Y one copy per breeding male (N<sub>m</sub>). Then diversity of Y or mtDNA relative to the autosomes is the ratio of these counts. For equal sexes it gives the cited one-quarter. We checked the algebra by a simulation (below).</p>
 
-  <section class="tool explain" aria-labelledby="s07-ne-h">
-    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s07-ne-h">Relative N<sub>e</sub> with unequal breeding males and females</h3></div>
+  <section class="tool explain" aria-labelledby="s08-ne-h">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s08-ne-h">Relative N<sub>e</sub> with unequal breeding males and females</h3></div>
     <p style="font-size:14px">Enter the numbers of males and females that leave offspring, or pick a preset.</p>
     <div class="controls">
-      <label for="s07-ne-m"><span>Breeding males N<sub>m</sub></span> <output id="s07-ne-mo">50</output><input type="range" id="s07-ne-m" min="1" max="500" step="1" value="50"></label>
-      <label for="s07-ne-f"><span>Breeding females N<sub>f</sub></span> <output id="s07-ne-fo">50</output><input type="range" id="s07-ne-f" min="1" max="500" step="1" value="50"></label>
-      <div class="seg" role="group" aria-label="Presets"><button type="button" id="s07-ne-p1" aria-pressed="false">1 : 1</button><button type="button" id="s07-ne-p2" aria-pressed="false">1 male : 3 females</button><button type="button" id="s07-ne-p3" aria-pressed="false">1 : 10</button><button type="button" id="s07-ne-p4" aria-pressed="false">10 : 1</button></div>
+      <label for="s08-ne-m"><span>Breeding males N<sub>m</sub></span> <output id="s08-ne-mo">50</output><input type="range" id="s08-ne-m" min="1" max="500" step="1" value="50"></label>
+      <label for="s08-ne-f"><span>Breeding females N<sub>f</sub></span> <output id="s08-ne-fo">50</output><input type="range" id="s08-ne-f" min="1" max="500" step="1" value="50"></label>
+      <div class="seg" role="group" aria-label="Presets"><button type="button" id="s08-ne-p1" aria-pressed="false">1 : 1</button><button type="button" id="s08-ne-p2" aria-pressed="false">1 male : 3 females</button><button type="button" id="s08-ne-p3" aria-pressed="false">1 : 10</button><button type="button" id="s08-ne-p4" aria-pressed="false">10 : 1</button></div>
     </div>
-    <div class="svgbox" id="s07-ne-fig"></div>
-    <div class="readout" id="s07-ne-out" aria-live="polite"></div>
+    <div class="svgbox" id="s08-ne-fig"></div>
+    <div class="readout" id="s08-ne-out" aria-live="polite"></div>
     <p class="tool-note"><b>Toy rules.</b> Autosomal N<sub>e</sub> = 4N<sub>m</sub>N<sub>f</sub>/(N<sub>m</sub>+N<sub>f</sub>) (cited above). Copies: autosome 2N<sub>e</sub>, mtDNA N<sub>f</sub>, Y N<sub>m</sub> (our derivation). Bars show copies relative to the autosomes; the dashed line is the equal-sex value of one-quarter. Assumptions: constant size, random mating, no selection, no migration, Poisson-like offspring numbers. Real sex ratios, selection and population structure all shift real data away from this.</p>
     <p style="font-size:14px"><b>What to take away.</b> A skew in breeding numbers does not shrink both markers: it helps one and hurts the other. Few breeding males shrink the Y, while mtDNA relative to the autosomes rises above one-quarter. This is the logic behind using Y and mtDNA together: a Y-to-mtDNA diversity ratio far from one fits unequal numbers of breeding males and females, but selection on the Y can produce a similar pattern (below).</p>
   </section>
@@ -1049,10 +1150,10 @@ Y      8.8e6  bp   × 0.74e-9 = 6.5e-3 per year  <span class="h">→ 1 per ~150 
   <p class="note warn"><b>Check before using.</b> The 1/4 ratios, the formula and the calculator are neutral-model baselines. Real data are often far from them for reasons other than breeding sex ratio (selection on the Y, population structure, one noisy tree). Treat a result as a pointer to a hypothesis.</p>
 </section>
 
-<!-- ============ 08-what-failed ============ -->
-<section aria-labelledby="s08" id="s08-wrap">
-  <h2 id="s08"><span class="n">08</span>What failed in a real cohort, and why</h2>
-  <p class="lede">The earlier sections of this lesson say what each method needs. This one shows what happens when a real data set does not give it that. We worked on genotype data from an Asian human cohort (the population is not named here) and tried three things: a genealogy (an ARG, <a href="#s02">s02</a>), a recent population-size curve from shared segments (<a href="#s05">s05</a>), and a scan for selection (<a href="#s06">s06</a>). Each one produced output. None of the output was a statement about population history, and each time a specific check showed why. The checks are the useful part, so the figure below turns them into a checklist you can click through before you believe a curve of your own.</p>
+<!-- ============ 09-what-failed ============ -->
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">08</span>What failed in a real cohort, and why</h2>
+  <p class="lede">The earlier sections of this lesson say what each method needs. This one shows what happens when a real data set does not give it that. We worked on genotype data from an Asian human cohort (the population is not named here) and tried three things: a genealogy (an ARG, <a href="#s02">s02</a>), a recent population-size curve from shared segments (<a href="#s05">s05</a>), and a scan for selection (<a href="#s07">s07</a>). Each one produced output. None of the output was a statement about population history, and each time a specific check showed why. The checks are the useful part, so the figure below turns them into a checklist you can click through before you believe a curve of your own.</p>
 
   <h3>Words used in this section</h3>
   <dl class="defs">
@@ -1090,24 +1191,24 @@ reference has holes program runs  →  strong "selection"     →  the holes, no
   <p>What we could say: nothing about the cohort's population size or split times. What would change that: a sample from one region and one ancestry group (the IBDNe page describes ancestry-specific input), and whole-genome data, which the paper says reach over 200 generations back.</p>
 
   <h3>Story 3. Selection candidates that came from a reference file</h3>
-  <p>A scan of population differentiation produced strong candidate regions, and a genealogy study of selection was planned around them (<a href="#s06">s06</a>). The candidates were then compared with an independent call set: a newer, high-coverage whole-genome resequencing of the same reference samples (Byrska-Bishop et al. 2022). The strong candidates came from the older reference file and did not replicate in the newer call set. We concluded they were artefacts of the older file, not signals in the people. We do not know the exact mechanism for each region, and the page does not claim one.</p>
+  <p>A scan of population differentiation produced strong candidate regions, and a genealogy study of selection was planned around them (<a href="#s07">s07</a>). The candidates were then compared with an independent call set: a newer, high-coverage whole-genome resequencing of the same reference samples (Byrska-Bishop et al. 2022). The strong candidates came from the older reference file and did not replicate in the newer call set. We concluded they were artefacts of the older file, not signals in the people. We do not know the exact mechanism for each region, and the page does not claim one.</p>
   <p>The lesson is a rule. A signal that appears in one data set and one call set is a hypothesis. Differentiation scores are built from allele frequencies, and allele frequencies depend on every upstream step: the reference build, the mapping, the caller and the filters (<a href="../04-demography/#s06">lesson 4</a> shows the same chain for heterozygosity). A genealogy-based test of selection inherits whatever was wrong with the list of loci you gave it.</p>
 
   <h3>The checks, as a checklist</h3>
   <p class="tool-note">Click a check to cycle it: not run, passed, failed. The buttons load what happened in our three stories (our own judgement, qualitative). The verdict follows one rule: a single failed check blocks any statement about history; unrun checks mean you are not done; only all passed allows a statement, and then only with the checks quoted next to it. Checks that did not apply to a story stay "not run".</p>
-  <div id="s08-fig">
+  <div id="s09-fig">
     <div class="controls" role="group" aria-label="Stories">
-      <div class="seg" role="group" aria-label="Load a story" id="s08-pre">
+      <div class="seg" role="group" aria-label="Load a story" id="s09-pre">
         <button type="button" data-v="clear" aria-pressed="true">blank</button>
         <button type="button" data-v="a" aria-pressed="false">1 genealogy pilot</button>
         <button type="button" data-v="b1" aria-pressed="false">2 imputed IBD</button>
         <button type="button" data-v="b2" aria-pressed="false">2 typed IBDNe</button>
         <button type="button" data-v="c" aria-pressed="false">3 selection scan</button>
       </div>
-      <button type="button" class="btn" id="s08-allok">mark every check passed</button>
+      <button type="button" class="btn" id="s09-allok">mark every check passed</button>
     </div>
-    <ul id="s08-list" style="list-style:none;padding:0;margin:10px 0"></ul>
-    <div class="readout" id="s08-out" aria-live="polite"></div>
+    <ul id="s09-list" style="list-style:none;padding:0;margin:10px 0"></ul>
+    <div class="readout" id="s09-out" aria-live="polite"></div>
   </div>
 
   <details class="simple"><summary>Simple explanation with examples: how to use the checklist on your own data</summary><div class="in">
@@ -2365,7 +2466,240 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
 
   drawA(); drawB(); drawC(); setTimeout(controls, 30);
 })();
-/* ==== 06-selection ==== */
+/* ==== 06-tajima ==== */
+(function () {
+  /* s06 Tajima's D. Two toys.
+     (1) a worked alignment: S, k (pi), theta_W, D step by step (Tajima 1989 formulas).
+     (2) coalescent simulation (Kingman, piecewise-constant population size, infinite sites):
+         many loci, n sequences; mean site frequency spectrum and the distribution of D.
+     Time in units of 2N0 generations (N0 = present size), theta = 4 N0 mu per locus;
+     a branch of length t carries Poisson(theta * t / 2) mutations. */
+  'use strict';
+
+  /* ---------- Tajima 1989 ---------- */
+  function consts(n) {
+    var a1 = 0, a2 = 0;
+    for (var i = 1; i < n; i++) { a1 += 1 / i; a2 += 1 / (i * i); }
+    var b1 = (n + 1) / (3 * (n - 1));
+    var b2 = 2 * (n * n + n + 3) / (9 * n * (n - 1));
+    var c1 = b1 - 1 / a1;
+    var c2 = b2 - (n + 2) / (a1 * n) + a2 / (a1 * a1);
+    var e1 = c1 / a1, e2 = c2 / (a1 * a1 + a2);
+    return { a1: a1, a2: a2, b1: b1, b2: b2, c1: c1, c2: c2, e1: e1, e2: e2 };
+  }
+  function tajimaD(n, S, k) {
+    if (S === 0) return null;
+    var c = consts(n);
+    return (k - S / c.a1) / Math.sqrt(c.e1 * S + c.e2 * S * (S - 1));
+  }
+  /* from an alignment of equal-length strings (no gaps): S, k, unfolded counts of the minor allele */
+  function fromAlignment(seqs) {
+    var n = seqs.length, L = seqs[0].length, S = 0, diffSum = 0, sites = [];
+    for (var j = 0; j < L; j++) {
+      var cnt = {};
+      for (var i = 0; i < n; i++) cnt[seqs[i][j]] = (cnt[seqs[i][j]] || 0) + 1;
+      var keys = Object.keys(cnt);
+      if (keys.length < 2) continue;
+      S++;
+      var pairsSame = 0;
+      keys.forEach(function (b) { pairsSame += cnt[b] * (cnt[b] - 1) / 2; });
+      var pairsDiff = n * (n - 1) / 2 - pairsSame;
+      diffSum += pairsDiff;
+      var minor = Math.min.apply(null, keys.map(function (b) { return cnt[b]; }));
+      sites.push({ pos: j, minor: minor, alleles: keys.length, pairsDiff: pairsDiff });
+    }
+    var k = diffSum / (n * (n - 1) / 2);
+    return { n: n, L: L, S: S, k: k, sites: sites };
+  }
+
+  /* ---------- coalescent ---------- */
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function poisson(lam, R) {   // Knuth for small lambda, normal approximation above 30
+    if (lam > 30) { var u = R() || 1e-12, v = R(); return Math.max(0, Math.round(lam + Math.sqrt(lam) * Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v))); }
+    var L = Math.exp(-lam), p = 1, k = 0;
+    do { k++; p *= R(); } while (p > L);
+    return k - 1;
+  }
+  /* history: [{t: start time (back in time), size: relative size}] sorted by t, first t = 0 */
+  function simulateLocus(n, theta, hist, R) {
+    var sfs = new Array(n).fill(0);           // sfs[i] = sites where the derived allele is in i copies (1..n-1)
+    var lin = []; for (var i = 0; i < n; i++) lin.push(1);
+    var t = 0, ep = 0;
+    while (lin.length > 1) {
+      var k = lin.length, size = hist[ep].size;
+      var rate = k * (k - 1) / 2 / size;
+      var dt = -Math.log(R() || 1e-12) / rate;
+      var end = ep + 1 < hist.length ? hist[ep + 1].t : Infinity;
+      if (t + dt > end) {                     // epoch ends first: lineages grow to the boundary, redraw (memoryless)
+        addMut(lin, end - t); t = end; ep++; continue;
+      }
+      addMut(lin, dt); t += dt;
+      var a = Math.floor(R() * k), b = Math.floor(R() * (k - 1)); if (b >= a) b++;
+      var merged = lin[a] + lin[b];
+      lin = lin.filter(function (_, j) { return j !== a && j !== b; }); lin.push(merged);
+    }
+    return sfs;
+    function addMut(ls, len) {
+      ls.forEach(function (m) { var x = poisson(theta * len / 2, R); if (x) sfs[m] += x; });
+    }
+  }
+  function dFromSfs(n, sfs) {
+    var S = 0, k = 0;
+    for (var i = 1; i < n; i++) { S += sfs[i]; k += sfs[i] * i * (n - i); }
+    k /= n * (n - 1) / 2;
+    return { S: S, k: k, D: tajimaD(n, S, k) };
+  }
+  var HIST = {
+    constant: [{ t: 0, size: 1 }],
+    growth: [{ t: 0, size: 1 }, { t: 0.1, size: 0.05 }],                       // 20-fold expansion 0.1 x 2N0 generations ago
+    bottleneck: [{ t: 0, size: 1 }, { t: 0.02, size: 0.02 }, { t: 0.04, size: 1 }]  // short severe bottleneck, recent
+  };
+  function runScenario(name, n, theta, loci, seed) {
+    var R = rng(seed), mean = new Array(n).fill(0), Ds = [], skipped = 0;
+    for (var l = 0; l < loci; l++) {
+      var s = simulateLocus(n, theta, HIST[name], R);
+      for (var i = 1; i < n; i++) mean[i] += s[i] / loci;
+      var d = dFromSfs(n, s);
+      if (d.D === null) skipped++; else Ds.push(d.D);
+    }
+    var mD = Ds.reduce(function (a, b) { return a + b; }, 0) / Ds.length;
+    return { mean: mean, Ds: Ds, meanD: mD, skipped: skipped };
+  }
+
+  var API = { consts: consts, tajimaD: tajimaD, fromAlignment: fromAlignment, simulateLocus: simulateLocus, dFromSfs: dFromSfs, runScenario: runScenario, rng: rng, HIST: HIST };
+  /* presets for the worked alignment: n = 8; each site lists which sequences carry the derived base */
+  var BASE = 'ATGCCTAGGATCCAGTTACGGATCAATGCA';
+  var NEXTB = { A: 'G', G: 'A', C: 'T', T: 'C' };
+  var PRESETS = {
+    rare: { label: 'Many rare variants', sites: [[2, [0]], [6, [3]], [11, [5]], [15, [7]], [19, [1]], [24, [6]], [27, [2]]] },
+    neutral: { label: 'A neutral-looking mix', sites: [[3, [0]], [8, [4]], [13, [6]], [17, [1, 2]], [21, [3, 5, 7]], [26, [0, 1, 2, 3]]] },
+    middle: { label: 'Variants at middle frequency', sites: [[4, [0, 1, 2, 3]], [10, [4, 5, 6]], [16, [0, 1, 4, 5]], [22, [2, 3, 6, 7]], [28, [1, 3, 5]]] }
+  };
+  function presetSeqs(p) {
+    var seqs = []; for (var i = 0; i < 8; i++) seqs.push(BASE.split(''));
+    p.sites.forEach(function (s) { s[1].forEach(function (i) { seqs[i][s[0]] = NEXTB[BASE[s[0]]]; }); });
+    return seqs.map(function (a) { return a.join(''); });
+  }
+  API.presetSeqs = presetSeqs; API.PRESETS = PRESETS;
+  if (typeof document === 'undefined') { if (typeof module !== 'undefined') module.exports = API; return; }
+
+  /* ---------- page ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, a, p, t) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; if (p) p.appendChild(e); return e; }
+  function f(x, d) { return x.toFixed(d == null ? 3 : d); }
+
+  /* toy 1: count it yourself */
+  var cur = 'rare';
+  function render1() {
+    var seqs = presetSeqs(PRESETS[cur]), r = fromAlignment(seqs), c = consts(r.n), thW = r.S / c.a1, D = tajimaD(r.n, r.S, r.k);
+    var box = $('s06-aln'); box.textContent = '';
+    var vs = {}; r.sites.forEach(function (s) { vs[s.pos] = s; });
+    seqs.forEach(function (s, i) {
+      var d = document.createElement('div');
+      d.appendChild(document.createTextNode('seq ' + (i + 1) + '  '));
+      for (var j = 0; j < s.length; j++) {
+        var sp = document.createElement('span'); sp.textContent = s[j];
+        if (vs[j]) sp.className = s[j] !== BASE[j] ? 'x' : 'a'; else sp.style.opacity = '.55';
+        d.appendChild(sp);
+      }
+      box.appendChild(d);
+    });
+    var cnt = document.createElement('div'); var line = 'copies  ';
+    for (var j = 0; j < BASE.length; j++) line += vs[j] ? String(vs[j].minor) : ' ';
+    cnt.textContent = line; box.appendChild(cnt);
+    var steps = [
+      ['n (sequences)', r.n],
+      ['S (variable sites)', r.S],
+      ['a<sub>1</sub> = 1 + 1/2 + &hellip; + 1/' + (r.n - 1), f(c.a1, 4)],
+      ['&theta;<sub>W</sub> = S / a<sub>1</sub>', f(thW)],
+      ['k = &pi; (mean differences per pair)', f(r.k)],
+      ['k &minus; &theta;<sub>W</sub>', f(r.k - thW)],
+      ['&radic;(e<sub>1</sub>S + e<sub>2</sub>S(S&minus;1))', f(Math.sqrt(c.e1 * r.S + c.e2 * r.S * (r.S - 1)))],
+      ['<b>Tajima\'s D</b>', D === null ? 'undefined (S = 0)' : '<b>' + f(D, 2) + '</b>']
+    ];
+    $('s06-steps').innerHTML = steps.map(function (s) { return '<div>' + s[0] + '<b>' + s[1] + '</b></div>'; }).join('');
+    ['rare', 'neutral', 'middle'].forEach(function (k) { $('s06-p-' + k).setAttribute('aria-pressed', k === cur ? 'true' : 'false'); });
+  }
+  ['rare', 'neutral', 'middle'].forEach(function (k) { $('s06-p-' + k).addEventListener('click', function () { cur = k; render1(); }); });
+
+  /* toy 2: history -> SFS and D */
+  var N = 10, THETA = 10, LOCI = 500, scen = 'constant';
+  function ageFromSlider() { return Math.pow(10, -2.7 + 3.0 * $('s06-age').value / 100); }   // 0.002 .. 2 (x 2N0 generations)
+  function hist() {
+    if (scen === 'constant') return [{ t: 0, size: 1 }];
+    if (scen === 'growth') return [{ t: 0, size: 1 }, { t: 0.2, size: 0.1 }];
+    var a = ageFromSlider(); return [{ t: 0, size: 1 }, { t: a, size: 0.05 }, { t: a + 0.01, size: 1 }];
+  }
+  function render2() {
+    HIST.toy = hist();
+    var res = runScenario('toy', N, THETA, LOCI, 2026);
+    $('s06-age-row').style.display = scen === 'bottleneck' ? '' : 'none';
+    $('s06-age-o').textContent = f(ageFromSlider(), 3) + ' × 2N gen.';
+    var svg = $('s06-sfs'); svg.textContent = '';
+    var tot = res.mean.reduce(function (a, b) { return a + b; }, 0), H = 0;
+    for (var i = 1; i < N; i++) H += 1 / i;
+    var X0 = 40, W = 250, Y0 = 170, Hh = 140, bw = W / (N - 1);
+    for (var q = 0; q <= 0.81; q += 0.2) {
+      el('line', { x1: X0, x2: X0 + W, y1: Y0 - Hh * q / 0.8, y2: Y0 - Hh * q / 0.8, 'class': 'grid' }, svg);
+      el('text', { x: X0 - 4, y: Y0 - Hh * q / 0.8 + 4, 'text-anchor': 'end' }, svg, q.toFixed(1));
+    }
+    var pts = [];
+    for (i = 1; i < N; i++) {
+      var p = tot ? res.mean[i] / tot : 0, x = X0 + (i - 1) * bw;
+      el('rect', { x: x + 2, y: Y0 - Hh * Math.min(p, 0.8) / 0.8, width: bw - 4, height: Hh * Math.min(p, 0.8) / 0.8, fill: 'var(--accent)' }, svg)
+        .appendChild(el('title', {}, null, i + ' of ' + N + ' copies: ' + (100 * p).toFixed(1) + ' % of variable sites'));
+      el('text', { x: x + bw / 2, y: Y0 + 14, 'text-anchor': 'middle' }, svg, i);
+      pts.push((x + bw / 2) + ',' + (Y0 - Hh * (1 / i / H) / 0.8));
+    }
+    el('polyline', { points: pts.join(' '), fill: 'none', stroke: 'var(--het)', 'stroke-width': 2, 'stroke-dasharray': '4 3' }, svg);
+    el('text', { x: X0 + W / 2, y: Y0 + 30, 'text-anchor': 'middle' }, svg, 'copies of the new allele (of ' + N + ')');
+    el('text', { x: X0, y: 16 }, svg, 'share of variable sites');
+    /* D histogram */
+    var X1 = 350, W2 = 270, lo = -3, hi = 3, nb = 24, bins = new Array(nb).fill(0);
+    res.Ds.forEach(function (d) { var b = Math.floor((Math.max(lo, Math.min(hi - 1e-9, d)) - lo) / (hi - lo) * nb); bins[b]++; });
+    var mx = Math.max.apply(null, bins) || 1, sxD = function (d) { return X1 + W2 * (d - lo) / (hi - lo); };
+    bins.forEach(function (b, j) { el('rect', { x: X1 + j * W2 / nb + 1, y: Y0 - Hh * b / mx, width: W2 / nb - 2, height: Hh * b / mx, fill: 'var(--rep)' }, svg); });
+    [-3, -2, -1, 0, 1, 2, 3].forEach(function (d) { el('text', { x: sxD(d), y: Y0 + 14, 'text-anchor': 'middle' }, svg, d); });
+    el('line', { x1: sxD(0), x2: sxD(0), y1: Y0, y2: Y0 - Hh - 6, 'class': 'grid' }, svg);
+    el('line', { x1: sxD(res.meanD), x2: sxD(res.meanD), y1: Y0, y2: Y0 - Hh - 6, stroke: 'var(--bad)', 'stroke-width': 2 }, svg);
+    el('text', { x: X1 + W2 / 2, y: Y0 + 30, 'text-anchor': 'middle' }, svg, 'Tajima\'s D, one value per locus');
+    el('text', { x: sxD(res.meanD), y: 16, 'text-anchor': 'middle', fill: 'var(--bad)' }, svg, 'mean ' + f(res.meanD, 2));
+    var neg = res.Ds.filter(function (d) { return d < -2; }).length, pos = res.Ds.filter(function (d) { return d > 2; }).length;
+    $('s06-sim-out').innerHTML =
+      '<div>mean D over ' + res.Ds.length + ' loci<b>' + f(res.meanD, 2) + '</b></div>' +
+      '<div>loci with D below &minus;2<b>' + neg + '</b></div>' +
+      '<div>loci with D above +2<b>' + pos + '</b></div>' +
+      '<div>loci with no variable site (D undefined)<b>' + res.skipped + '</b></div>';
+    $('s06-sfs').setAttribute('aria-label', 'Simulated history ' + scen + ': mean Tajima\'s D ' + f(res.meanD, 2));
+    ['constant', 'growth', 'bottleneck'].forEach(function (k) { $('s06-h-' + k).setAttribute('aria-pressed', k === scen ? 'true' : 'false'); });
+  }
+  ['constant', 'growth', 'bottleneck'].forEach(function (k) { $('s06-h-' + k).addEventListener('click', function () { scen = k; render2(); }); });
+  $('s06-age').addEventListener('input', render2);
+  /* code control: values computed independently (Python, standard formulas) */
+  (function () {
+    var checks = [
+      ['D(n=4, S=3, k=1.5)', tajimaD(4, 3, 1.5), -0.7545],
+      ['D(n=10, S=10, k=3)', tajimaD(10, 10, 3), -0.6707],
+      ['a1(n=10)', consts(10).a1, 2.8290]
+    ];
+    var ok = checks.every(function (c) { return Math.abs(c[1] - c[2]) < 5e-5; });
+    var al = fromAlignment(presetSeqs(PRESETS.middle));
+    ok = ok && al.S === 5 && Math.abs(al.k - 39 / 14) < 1e-9;
+    $('s06-ctl').textContent = 'Code control: ' + checks.map(function (c) { return c[0] + ' = ' + c[1].toFixed(4) + ' (expected ' + c[2].toFixed(4) + ')'; }).join('; ') +
+      '; middle-frequency alignment S = 5, k = 39/14. Result: ' + (ok ? 'PASS' : 'FAIL');
+  })();
+  render1();
+  render2();
+})();
+/* ==== 07-selection ==== */
 (function(){
   /* CORE-START: simulator. Pure functions, no page access; the control script runs this same text. */
   var CH = { nPop: 3, nLeaf: 12, N: 5000, Na: 10000, Ts: 4000, rho: 1e-8, nWin: 400, winBp: 5000, nBack: 20000 };
@@ -2455,7 +2789,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
   function quant(sorted, q){ return sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))]; }
   /* CORE-END */
 
-  var host = document.getElementById('s06-tracks');
+  var host = document.getElementById('s07-tracks');
   if (!host) return;
   var NS = 'http://www.w3.org/2000/svg';
   var el = function(id){ return document.getElementById(id); };
@@ -2463,7 +2797,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
   var COL = ['var(--accent)', 'var(--het)', 'var(--rep)'];
   var SV = [0.005, 0.01, 0.02, 0.05, 0.1];
   var state = { seed: 20261105, sc: 'sweep', chrom: null, back: null, win: 200 };
-  var sS = el('s06-s'), sT = el('s06-tau'), sQ = el('s06-q'), sW = el('s06-win');
+  var sS = el('s07-s'), sT = el('s07-tau'), sQ = el('s07-q'), sW = el('s07-win');
   var fmt = function(v){ return Math.round(v).toLocaleString('en-US'); };
   var f2 = function(v){ return v < 10 ? v.toFixed(2) : v.toFixed(1); };
   function qVal(){ return +sQ.value / 100; }
@@ -2575,28 +2909,28 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
     } else {
       txt = 'No population had a sweep, yet the ratio rises in the middle in all three, because all three are shallow there. Windows above the line now: ' + f.join(' / ') + '. Lower the threshold and they appear at the same place in every population. The scan alone would call them candidates; the depth track shows every population shallow together.';
     }
-    el('s06-verdict').textContent = txt;
+    el('s07-verdict').textContent = txt;
   }
 
   function update(){
     drawTracks();
     var r = state.chrom[state.win], s = SV[+sS.value], tau = +sT.value;
-    el('s06-s-o').textContent = s;
-    el('s06-tau-o').textContent = fmt(tau) + ' generations ago';
-    el('s06-q-o').textContent = (+sQ.value).toFixed(2) + ' %';
-    el('s06-win-o').textContent = posMb(state.win) + ' Mb';
+    el('s07-s-o').textContent = s;
+    el('s07-tau-o').textContent = fmt(tau) + ' generations ago';
+    el('s07-q-o').textContent = (+sQ.value).toFixed(2) + ' %';
+    el('s07-win-o').textContent = posMb(state.win) + ' Mb';
     var half = Math.LN2 * s / (CH.rho * Math.log(2 * CH.N)) / 1000;
-    el('s06-r-half').textContent = state.sc === 'sweep' ? fmt(half) + ' kb' : 'no sweep';
-    el('s06-r-flag').textContent = state.flag.join(' / ');
-    el('s06-r-exp').textContent = ((1 - qVal()) * CH.nWin).toFixed(2);
-    el('s06-r-thr').textContent = f2(state.thr);
+    el('s07-r-half').textContent = state.sc === 'sweep' ? fmt(half) + ' kb' : 'no sweep';
+    el('s07-r-flag').textContent = state.flag.join(' / ');
+    el('s07-r-exp').textContent = ((1 - qVal()) * CH.nWin).toFixed(2);
+    el('s07-r-thr').textContent = f2(state.thr);
     var mf = midFar(state.chrom);
-    el('s06-r-mid').textContent = mf.map(function(x){ return x[0].toFixed(1); }).join(' / ');
-    el('s06-r-far').textContent = mf.map(function(x){ return x[1].toFixed(1); }).join(' / ');
-    el('s06-r-win').textContent = r.ratio.map(f2).join(' / ');
-    el('s06-r-t').textContent = fmt(r.within[0]) + ' / ' + fmt(r.pooled);
-    drawTree('s06-tree-a', simWindow(state.seed, state.win, state.sc, s, tau), 'Local tree at ' + posMb(state.win) + ' Mb');
-    drawTree('s06-tree-b', simWindow(state.seed, 10, state.sc, s, tau), 'Local tree at ' + posMb(10) + ' Mb, far from the middle');
+    el('s07-r-mid').textContent = mf.map(function(x){ return x[0].toFixed(1); }).join(' / ');
+    el('s07-r-far').textContent = mf.map(function(x){ return x[1].toFixed(1); }).join(' / ');
+    el('s07-r-win').textContent = r.ratio.map(f2).join(' / ');
+    el('s07-r-t').textContent = fmt(r.within[0]) + ' / ' + fmt(r.pooled);
+    drawTree('s07-tree-a', simWindow(state.seed, state.win, state.sc, s, tau), 'Local tree at ' + posMb(state.win) + ' Mb');
+    drawTree('s07-tree-b', simWindow(state.seed, 10, state.sc, s, tau), 'Local tree at ' + posMb(10) + ' Mb, far from the middle');
     verdict();
   }
   function run(){
@@ -2604,21 +2938,21 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
     update();
   }
   function dis(){ var off = state.sc !== 'sweep'; sS.disabled = off; sT.disabled = off; }
-  el('s06-sc').addEventListener('click', function(e){
+  el('s07-sc').addEventListener('click', function(e){
     var b = e.target.closest('button'); if (!b) return;
     state.sc = b.getAttribute('data-v');
-    Array.prototype.forEach.call(el('s06-sc').querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+    Array.prototype.forEach.call(el('s07-sc').querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
     dis(); run();
   });
   sS.addEventListener('input', run);
   sT.addEventListener('input', run);
   sQ.addEventListener('input', update);
   sW.addEventListener('input', function(){ state.win = +sW.value; update(); });
-  el('s06-new').addEventListener('click', function(){ state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff; run(); });
+  el('s07-new').addEventListener('click', function(){ state.seed = (state.seed * 1103515245 + 12345) & 0x7fffffff; run(); });
   state.back = simBack(977, CH.nBack);
   dis(); run();
 })();
-/* ==== 07-y-mt ==== */
+/* ==== 08-y-mt ==== */
 (function () {
   'use strict';
   var NS = 'http://www.w3.org/2000/svg';
@@ -2645,7 +2979,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
 
   /* ================= 1. pedigree ================= */
   (function pedigree() {
-    var fig = $('s07-ped-fig'), out = $('s07-ped-out');
+    var fig = $('s08-ped-fig'), out = $('s08-ped-out');
     if (!fig || !out) return;
     var P = [
       { id: 'a1', s: 'M', g: 0, x: 335, mo: null, fa: null, nm: 'founding man' },
@@ -2735,24 +3069,24 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
       else msg = g2tx + ' of the ' + g2 + ' carrier grandchild' + (g2 > 1 ? 'ren' : '') + ' can pass it on.';
       out.innerHTML = '<div>first carrier<b>' + who.nm + '</b></div><div>carriers in the three generations<b>' + (noY ? 0 : total) + ' of ' + P.length + '</b></div><div style="grid-column:1/-1">' + msg + (bad ? ' <span class="warn-text">Check failed on ' + bad + ' people.</span>' : '') + '</div>';
     }
-    seg2('s07-ped-mt', 's07-ped-y', function (v) { marker = v ? 'mt' : 'y'; draw(); });
-    $('s07-ped-reset').addEventListener('click', function () { founder = marker === 'mt' ? 'a2' : 'a1'; draw(); });
+    seg2('s08-ped-mt', 's08-ped-y', function (v) { marker = v ? 'mt' : 'y'; draw(); });
+    $('s08-ped-reset').addEventListener('click', function () { founder = marker === 'mt' ? 'a2' : 'a1'; draw(); });
     draw();
   })();
 
   /* ================= 2. relative Ne calculator ================= */
   (function nec() {
-    var fig = $('s07-ne-fig'), out = $('s07-ne-out');
+    var fig = $('s08-ne-fig'), out = $('s08-ne-out');
     if (!fig || !out) return;
-    var sm = $('s07-ne-m'), sf = $('s07-ne-f');
-    var presets = { 's07-ne-p1': [50, 50], 's07-ne-p2': [50, 150], 's07-ne-p3': [20, 200], 's07-ne-p4': [200, 20] };
+    var sm = $('s08-ne-m'), sf = $('s08-ne-f');
+    var presets = { 's08-ne-p1': [50, 50], 's08-ne-p2': [50, 150], 's08-ne-p3': [20, 200], 's08-ne-p4': [200, 20] };
     function calc(nm, nf) {
       var ne = 4 * nm * nf / (nm + nf);
       return { ne: ne, auto: 2 * ne, mt: nf, y: nm, ry: nm / (2 * ne), rmt: nf / (2 * ne) };
     }
     function draw() {
       var nm = +sm.value, nf = +sf.value, r = calc(nm, nf);
-      $('s07-ne-mo').textContent = nm; $('s07-ne-fo').textContent = nf;
+      $('s08-ne-mo').textContent = nm; $('s08-ne-fo').textContent = nf;
       Object.keys(presets).forEach(function (id) { var p = presets[id]; $(id).setAttribute('aria-pressed', (p[0] === nm && p[1] === nf) ? 'true' : 'false'); });
       var W = 620, H = 190, L = 90, R = 44, lo = Math.log10(0.1), hi = Math.log10(100);
       function x(v) { return L + (Math.log10(Math.max(v, 0.1)) - lo) / (hi - lo) * (W - L - R); }
@@ -2790,12 +3124,12 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
     draw();
   })();
 })();
-/* ==== 08-what-failed ==== */
+/* ==== 09-what-failed ==== */
 (function(){
-  var list = document.getElementById('s08-list');
+  var list = document.getElementById('s09-list');
   if (!list) return;
-  var out = document.getElementById('s08-out');
-  var pre = document.getElementById('s08-pre');
+  var out = document.getElementById('s09-out');
+  var pre = document.getElementById('s09-pre');
   // state: 0 not run, 1 passed, 2 failed
   var C = [
     ['Input is the kind the tool was built for','Array tools take array genotypes; sequence-level tools need dense sequence data; imputed genotypes are a special case (s04).'],
@@ -2829,7 +3163,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
       var li = document.createElement('li');
       li.style.cssText = 'border-bottom:1px solid var(--line);padding:6px 0';
       var b = document.createElement('button');
-      b.type = 'button'; b.id = 's08-c' + i;
+      b.type = 'button'; b.id = 's09-c' + i;
       b.setAttribute('aria-label', (i + 1) + '. ' + c[0] + ': ' + NAMES[st[i]] + '. Click to change.');
       var col = st[i] === 1 ? 'var(--good)' : st[i] === 2 ? 'var(--bad)' : 'var(--muted)';
       b.style.cssText = 'font:inherit;background:transparent;border:1px solid ' + col + ';border-radius:4px;padding:3px 8px;margin-right:8px;cursor:pointer;min-width:74px;color:' + col;
@@ -2842,7 +3176,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
     var v = verdict(st);
     var cnt = [0,0,0]; st.forEach(function(x){ cnt[x]++; });
     out.innerHTML = '';
-    var p = document.createElement('div'); p.id = 's08-verdict'; p.setAttribute('data-k', v.k);
+    var p = document.createElement('div'); p.id = 's09-verdict'; p.setAttribute('data-k', v.k);
     var bb = document.createElement('b'); bb.textContent = v.t;
     bb.style.color = v.k === 'ok' ? 'var(--good)' : v.k === 'blocked' ? 'var(--bad)' : 'var(--fg)';
     p.appendChild(bb);
@@ -2856,7 +3190,7 @@ for candidates:  7 replicates in an independent call set?   8 tied to a referenc
       render();
     };
   });
-  document.getElementById('s08-allok').onclick = function(){
+  document.getElementById('s09-allok').onclick = function(){
     st = st.map(function(){ return 1; });
     pre.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); });
     render();

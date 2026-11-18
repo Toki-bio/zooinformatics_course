@@ -1,8 +1,8 @@
 (function(){
-  var list = document.getElementById('s08-list');
+  var list = document.getElementById('s09-list');
   if (!list) return;
-  var out = document.getElementById('s08-out');
-  var pre = document.getElementById('s08-pre');
+  var out = document.getElementById('s09-out');
+  var pre = document.getElementById('s09-pre');
   // state: 0 not run, 1 passed, 2 failed
   var C = [
     ['Input is the kind the tool was built for','Array tools take array genotypes; sequence-level tools need dense sequence data; imputed genotypes are a special case (s04).'],
@@ -36,7 +36,7 @@
       var li = document.createElement('li');
       li.style.cssText = 'border-bottom:1px solid var(--line);padding:6px 0';
       var b = document.createElement('button');
-      b.type = 'button'; b.id = 's08-c' + i;
+      b.type = 'button'; b.id = 's09-c' + i;
       b.setAttribute('aria-label', (i + 1) + '. ' + c[0] + ': ' + NAMES[st[i]] + '. Click to change.');
       var col = st[i] === 1 ? 'var(--good)' : st[i] === 2 ? 'var(--bad)' : 'var(--muted)';
       b.style.cssText = 'font:inherit;background:transparent;border:1px solid ' + col + ';border-radius:4px;padding:3px 8px;margin-right:8px;cursor:pointer;min-width:74px;color:' + col;
@@ -49,7 +49,7 @@
     var v = verdict(st);
     var cnt = [0,0,0]; st.forEach(function(x){ cnt[x]++; });
     out.innerHTML = '';
-    var p = document.createElement('div'); p.id = 's08-verdict'; p.setAttribute('data-k', v.k);
+    var p = document.createElement('div'); p.id = 's09-verdict'; p.setAttribute('data-k', v.k);
     var bb = document.createElement('b'); bb.textContent = v.t;
     bb.style.color = v.k === 'ok' ? 'var(--good)' : v.k === 'blocked' ? 'var(--bad)' : 'var(--fg)';
     p.appendChild(bb);
@@ -63,7 +63,7 @@
       render();
     };
   });
-  document.getElementById('s08-allok').onclick = function(){
+  document.getElementById('s09-allok').onclick = function(){
     st = st.map(function(){ return 1; });
     pre.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); });
     render();

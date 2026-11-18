@@ -18,5 +18,5 @@ Controls: (1) in page on load: MAF 0 and no panel returns the full spectrum; Taj
 
 ## Doubts
 - Ascertainment shape is chip-specific; the toy is a cartoon of the direction, not of any real chip.
-- Page links to sibling sections by #sNN (s02, s03, s07, s08 of this lesson); check when assembled.
+- Page links to sibling sections by #sNN (s02, s03, s08, s09 of this lesson); check when assembled.
 - The GONE statement "rare-variant loss matters less" is our inference.

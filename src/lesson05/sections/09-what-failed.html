@@ -1,6 +1,6 @@
-<section aria-labelledby="s08" id="s08-wrap">
-  <h2 id="s08"><span class="n">08</span>What failed in a real cohort, and why</h2>
-  <p class="lede">The earlier sections of this lesson say what each method needs. This one shows what happens when a real data set does not give it that. We worked on genotype data from an Asian human cohort (the population is not named here) and tried three things: a genealogy (an ARG, <a href="#s02">s02</a>), a recent population-size curve from shared segments (<a href="#s05">s05</a>), and a scan for selection (<a href="#s06">s06</a>). Each one produced output. None of the output was a statement about population history, and each time a specific check showed why. The checks are the useful part, so the figure below turns them into a checklist you can click through before you believe a curve of your own.</p>
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">08</span>What failed in a real cohort, and why</h2>
+  <p class="lede">The earlier sections of this lesson say what each method needs. This one shows what happens when a real data set does not give it that. We worked on genotype data from an Asian human cohort (the population is not named here) and tried three things: a genealogy (an ARG, <a href="#s02">s02</a>), a recent population-size curve from shared segments (<a href="#s05">s05</a>), and a scan for selection (<a href="#s07">s07</a>). Each one produced output. None of the output was a statement about population history, and each time a specific check showed why. The checks are the useful part, so the figure below turns them into a checklist you can click through before you believe a curve of your own.</p>
 
   <h3>Words used in this section</h3>
   <dl class="defs">
@@ -38,24 +38,24 @@ reference has holes program runs  →  strong "selection"     →  the holes, no
   <p>What we could say: nothing about the cohort's population size or split times. What would change that: a sample from one region and one ancestry group (the IBDNe page describes ancestry-specific input), and whole-genome data, which the paper says reach over 200 generations back.</p>
 
   <h3>Story 3. Selection candidates that came from a reference file</h3>
-  <p>A scan of population differentiation produced strong candidate regions, and a genealogy study of selection was planned around them (<a href="#s06">s06</a>). The candidates were then compared with an independent call set: a newer, high-coverage whole-genome resequencing of the same reference samples (Byrska-Bishop et al. 2022). The strong candidates came from the older reference file and did not replicate in the newer call set. We concluded they were artefacts of the older file, not signals in the people. We do not know the exact mechanism for each region, and the page does not claim one.</p>
+  <p>A scan of population differentiation produced strong candidate regions, and a genealogy study of selection was planned around them (<a href="#s07">s07</a>). The candidates were then compared with an independent call set: a newer, high-coverage whole-genome resequencing of the same reference samples (Byrska-Bishop et al. 2022). The strong candidates came from the older reference file and did not replicate in the newer call set. We concluded they were artefacts of the older file, not signals in the people. We do not know the exact mechanism for each region, and the page does not claim one.</p>
   <p>The lesson is a rule. A signal that appears in one data set and one call set is a hypothesis. Differentiation scores are built from allele frequencies, and allele frequencies depend on every upstream step: the reference build, the mapping, the caller and the filters (<a href="../04-demography/#s06">lesson 4</a> shows the same chain for heterozygosity). A genealogy-based test of selection inherits whatever was wrong with the list of loci you gave it.</p>
 
   <h3>The checks, as a checklist</h3>
   <p class="tool-note">Click a check to cycle it: not run, passed, failed. The buttons load what happened in our three stories (our own judgement, qualitative). The verdict follows one rule: a single failed check blocks any statement about history; unrun checks mean you are not done; only all passed allows a statement, and then only with the checks quoted next to it. Checks that did not apply to a story stay "not run".</p>
-  <div id="s08-fig">
+  <div id="s09-fig">
     <div class="controls" role="group" aria-label="Stories">
-      <div class="seg" role="group" aria-label="Load a story" id="s08-pre">
+      <div class="seg" role="group" aria-label="Load a story" id="s09-pre">
         <button type="button" data-v="clear" aria-pressed="true">blank</button>
         <button type="button" data-v="a" aria-pressed="false">1 genealogy pilot</button>
         <button type="button" data-v="b1" aria-pressed="false">2 imputed IBD</button>
         <button type="button" data-v="b2" aria-pressed="false">2 typed IBDNe</button>
         <button type="button" data-v="c" aria-pressed="false">3 selection scan</button>
       </div>
-      <button type="button" class="btn" id="s08-allok">mark every check passed</button>
+      <button type="button" class="btn" id="s09-allok">mark every check passed</button>
     </div>
-    <ul id="s08-list" style="list-style:none;padding:0;margin:10px 0"></ul>
-    <div class="readout" id="s08-out" aria-live="polite"></div>
+    <ul id="s09-list" style="list-style:none;padding:0;margin:10px 0"></ul>
+    <div class="readout" id="s09-out" aria-live="polite"></div>
   </div>
 
   <details class="simple"><summary>Simple explanation with examples: how to use the checklist on your own data</summary><div class="in">

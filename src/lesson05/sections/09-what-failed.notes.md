@@ -1,4 +1,4 @@
-# s08 What failed in a real cohort, and why: sources and notes
+# s09 What failed in a real cohort, and why: sources and notes
 
 ## Sources opened (supporting sentences)
 - ARG-Needle user manual, https://palamaralab.github.io/software/argneedle/manual/ (fetched 2026-11-05, no version shown on the page):
@@ -27,4 +27,4 @@ The checklist verdict was exercised in headless Chrome: blank gives "not finishe
 
 ## Doubts
 - Story presets are the author's qualitative judgement of the lab log, not computed.
-- Links to lesson 4 (`../04-demography/#s06`) and to s02-s06 of this lesson assume those ids.
+- Links to lesson 4 (`../04-demography/#s06`) and to s02-s07 of this lesson assume those ids.

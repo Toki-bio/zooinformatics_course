@@ -1,4 +1,4 @@
-# s07 Y chromosome and mitochondrial DNA as records: sources and checks
+# s08 Y chromosome and mitochondrial DNA as records: sources and checks
 
 Read date 2026-11-05. "Opened" = full text or the tool's own page read; "abstract only" says so.
 
