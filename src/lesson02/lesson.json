@@ -29,8 +29,8 @@
    "tools": "hifiasm · Flye · Verkko · NextDenovo"
   },
   {
-   "title": "Hi-C scaffolding",
-   "what": "Order and orient contigs into chromosomes; check the contact map.",
+   "title": "Long-range data and scaffolding",
+   "what": "What each long-range method links and how far (linked reads, optical maps, Hi-C, Pore-C); order and orient contigs into chromosomes; check the contact map.",
    "tools": "YaHS · Juicebox · PretextView"
   },
   {

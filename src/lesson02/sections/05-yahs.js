@@ -372,3 +372,52 @@
   shuffle();
   draw();
 })();
+
+/* ================= 0. Long-range methods: reach on a log scale ================= */
+(function () {
+  'use strict';
+  var svg = document.getElementById('s05-lr-svg'), gap = document.getElementById('s05-lr-gap');
+  if (!svg || !gap) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, a, p, t) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; if (p) p.appendChild(e); return e; }
+  /* rough maximum reach in bp (orders of magnitude from the sources in the table and notes) */
+  var M = [
+    { n: 'Mate pairs', r: 4e4, why: 'tens of kb at most' },
+    { n: 'Linked reads', r: 3e5, why: 'one molecule, about 50 kb in 10x, up to 300 kb in stLFR' },
+    { n: 'Chicago', r: 5e5, why: 'up to 150-500 kb: the length of the extracted DNA' },
+    { n: 'Optical maps', r: 1e6, why: 'molecules of hundreds of kb; maps assembled from them reach further' },
+    { n: 'Hi-C, Pore-C, CiFi', r: 2e8, why: 'the whole chromosome' }
+  ];
+  var LO = 2, HI = 8.4, X0 = 150, X1 = 620, Y0 = 30, RH = 30;
+  function sx(lg) { return X0 + (X1 - X0) * (lg - LO) / (HI - LO); }
+  function fmt(bp) { return bp >= 1e6 ? (bp / 1e6).toFixed(bp < 1e7 ? 1 : 0) + ' Mb' : bp >= 1e3 ? (bp / 1e3).toFixed(bp < 1e4 ? 1 : 0) + ' kb' : Math.round(bp) + ' bp'; }
+  function render() {
+    var lg = LO + (HI - LO) * gap.value / 100, g = Math.pow(10, lg);
+    document.getElementById('s05-lr-gap-o').textContent = fmt(g);
+    svg.textContent = '';
+    [2, 3, 4, 5, 6, 7, 8].forEach(function (e) {
+      el('line', { x1: sx(e), x2: sx(e), y1: Y0 - 8, y2: Y0 + M.length * RH, 'class': 'grid' }, svg);
+      el('text', { x: sx(e), y: Y0 + M.length * RH + 16, 'text-anchor': 'middle' }, svg, fmt(Math.pow(10, e)));
+    });
+    var yes = [], no = [];
+    M.forEach(function (m, i) {
+      var y = Y0 + i * RH, ok = m.r >= g;
+      (ok ? yes : no).push(m.n);
+      el('text', { x: X0 - 8, y: y + 15, 'text-anchor': 'end' }, svg, m.n);
+      el('rect', { x: X0, y: y + 4, width: sx(Math.log10(m.r)) - X0, height: RH - 12, rx: 3,
+        fill: ok ? 'var(--accent)' : 'var(--line)' }, svg).appendChild(el('title', {}, null, m.n + ': ' + m.why));
+    });
+    el('line', { x1: sx(lg), x2: sx(lg), y1: Y0 - 12, y2: Y0 + M.length * RH + 2, stroke: 'var(--bad)', 'stroke-width': 2 }, svg);
+    el('text', { x: sx(lg), y: Y0 - 16, 'text-anchor': 'middle', fill: 'var(--bad)' }, svg, 'gap ' + fmt(g));
+    el('text', { x: (X0 + X1) / 2, y: Y0 + M.length * RH + 34, 'text-anchor': 'middle' }, svg, 'distance between the two places linked (log scale)');
+    document.getElementById('s05-lr-out').innerHTML =
+      '<div>can join across ' + fmt(g) + '<b>' + (yes.join(', ') || 'none') + '</b></div>' +
+      '<div>cannot<b>' + (no.join(', ') || 'none') + '</b></div>' +
+      '<div style="grid-column:1/-1">' + (g > 1e6 ? 'Only contacts inside the nucleus reach this far: this is why Hi-C gives whole chromosomes.' :
+        g > 3e5 ? 'Beyond the length of single DNA molecules: only methods that use whole molecules of hundreds of kb, or nuclear contacts, still link.' :
+        'Many methods link this distance; a long read may even cross it and remove the gap.') + '</div>';
+    svg.setAttribute('aria-label', 'Gap ' + fmt(g) + '. Methods that can join it: ' + (yes.join(', ') || 'none') + '.');
+  }
+  gap.addEventListener('input', render);
+  render();
+})();

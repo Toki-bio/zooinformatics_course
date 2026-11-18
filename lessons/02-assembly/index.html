@@ -218,7 +218,7 @@ img{max-width:100%}
     <li><div><b>System requirements</b><a href="#s02">section 2</a><div class="d">Estimate RAM, threads, disk and time; set limits on a shared server.</div><div class="t">RAM · disk · threads · checkpoints</div></div></li>
     <li><div><b>Short-read assembly</b><a href="#s03">section 3</a><div class="d">de Bruijn graphs, error correction, choice of k, Bloom filters.</div><div class="t">SPAdes · ABySS · MEGAHIT · MaSuRCA</div></div></li>
     <li><div><b>Long-read assembly</b><a href="#s04">section 4</a><div class="d">Pick the assembler by read type and check which output file is which.</div><div class="t">hifiasm · Flye · Verkko · NextDenovo</div></div></li>
-    <li><div><b>Hi-C scaffolding</b><a href="#s05">section 5</a><div class="d">Order and orient contigs into chromosomes; check the contact map.</div><div class="t">YaHS · Juicebox · PretextView</div></div></li>
+    <li><div><b>Long-range data and scaffolding</b><a href="#s05">section 5</a><div class="d">What each long-range method links and how far (linked reads, optical maps, Hi-C, Pore-C); order and orient contigs into chromosomes; check the contact map.</div><div class="t">YaHS · Juicebox · PretextView</div></div></li>
     <li><div><b>Polish, purge, close gaps</b><a href="#s06">section 6</a><div class="d">Fix remaining base errors, remove duplicated haplotigs, fill gaps; measure before and after.</div><div class="t">Medaka · NextPolish · purge_dups · TGS-GapCloser</div></div></li>
     <li><div><b>Assembly products</b><a href="#s07">section 7</a><div class="d">Collapsed, primary/alternate, hap1/hap2, Hi-C- or trio-phased.</div><div class="t">hifiasm outputs · phasing</div></div></li>
     <li><div><b>Quality metrics</b><a href="#s08">section 8</a><div class="d">Contiguity, base accuracy, k-mer completeness, reads mapped back, the EBP standard.</div><div class="t">QUAST · gfastats · Merqury</div></div></li>
@@ -1076,7 +1076,7 @@ grep -m 3 '&gt;' sp.asm.p_ctg.fa            <span class="c"># ptg… = primary; 
 
 <!-- ============ 05-yahs ============ -->
 <section aria-labelledby="s05" id="s05-wrap">
-  <h2 id="s05"><span class="n">05</span>Chromosome-level scaffolding with Hi-C and YaHS</h2>
+  <h2 id="s05"><span class="n">05</span>Long-range data and chromosome-level scaffolding</h2>
   <p class="lede">An assembler gives you <dfn>contigs</dfn>: stretches of sequence with no gaps. It cannot tell you which contig lies next to which on a chromosome, or which way round it goes. Hi-C reads can. A Hi-C scaffolder such as YaHS uses them to put contigs in order, turn them the right way, and join them with runs of N into <dfn>scaffolds</dfn>. When it works well, each scaffold is one whole chromosome.</p>
 
   <dl class="defs">
@@ -1084,6 +1084,36 @@ grep -m 3 '&gt;' sp.asm.p_ctg.fa            <span class="c"># ptg… = primary; 
     <dt>Orientation</dt><dd>DNA has two strands. A contig can be written as read on one strand (<code>+</code>, forward) or on the other (<code>−</code>, its <span class="tip" title="The other strand read in its own 5'→3' direction: the order of letters is reversed and each letter is swapped A↔T, C↔G.">reverse complement</span>). A scaffolder must pick one for every contig.</dd>
     <dt>Chromosome-level</dt><dd>Most of the assembly (the EBP target is at least 90 %) sits in scaffolds that each match one chromosome. The "C" in the quality code 6.C.Q40 from <a href="../01-pre-assembly/#vgp">lesson 1</a>.</dd>
   </dl>
+
+  <h3 id="s05-lr">Long-range data: what each method links, and how far</h3>
+  <p>Contigs end where the reads could not get through, usually at a long repeat. To put contigs in order you need data that tells you <b>two places in the genome lie near each other</b>, even though no read covers the stretch between them. Assembly papers name many such methods, and the names mix up three different things: what is physically measured, the company that sells the kit, and the software that uses the data. All of them answer the same question; they differ in <b>what</b> holds the two places together and <b>how far apart</b> those places can be.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Method (names you meet)</th><th>What holds two places together</th><th>How far it reaches</th><th>Used for</th><th>Status</th></tr></thead>
+    <tbody>
+      <tr><td><b>Mate pairs</b></td><td>The two ends of one DNA fragment of known size, read as a pair</td><td>"thousands to tens of thousands of base pairs" (Ghurye and Pop 2019)</td><td>Scaffolding short-read contigs (<a href="#s03">section 03</a>)</td><td>Older method</td></tr>
+      <tr><td><b>Linked reads</b> (10x Genomics Chromium; stLFR, TELL-Seq, haplotagging)</td><td>One long DNA molecule: all short reads made from it carry the same <span class="tip" title="Barcode: a short artificial sequence added to every read made from one droplet or bead, so the reads can later be grouped by it.">barcode</span>. In 10x, about 1 million droplets with about 10 molecules each (Weisenfeld et al. 2017)</td><td>The length of the molecules: about 50 kb in 10x; stLFR reports 20 to 300 kb fragments</td><td>Scaffolding (Scaff10x, ARCS), phasing, short-read polishing</td><td>10x kits discontinued in February 2020; bead-based successors exist</td></tr>
+      <tr><td><b>Optical maps</b> (Bionano; chemistries NLRS and DLS, "Direct Label and Stain")</td><td>One very long DNA molecule, stretched in a nanochannel and photographed with fluorescent labels at a short sequence motif. Gives the positions of labels, <b>not the sequence</b></td><td>Molecules of hundreds of kb (one project filtered at 150 kb, average about 225 kb in a review); molecules are assembled into maps of many Mb</td><td>Scaffolding, <b>measuring gap sizes</b>, cutting contigs that disagree with the map</td><td>Optional in the VGP pipeline</td></tr>
+      <tr><td><b>Chicago</b> (Dovetail)</td><td>Extracted DNA is wrapped onto histones in a tube and cross-linked, then treated like Hi-C</td><td>"up to 150 kbp" for standard and up to 500 kbp for very long DNA (Putnam et al. 2016)</td><td>Scaffolding with Dovetail's HiRise software</td><td>Published 2016; Dovetail now sells Omni-C</td></tr>
+      <tr><td><b>Hi-C</b> (classic Hi-C; Arima-HiC; Dovetail Hi-C and Omni-C)</td><td>Two pieces of DNA that touch inside the nucleus are cross-linked and joined, then read as a pair</td><td>The whole chromosome: contacts fall with distance but stay far more frequent within a chromosome than between chromosomes</td><td><b>Chromosome-level scaffolding</b> (YaHS, below), <b>phasing</b> (hifiasm), checking joins on the contact map</td><td>The current standard</td></tr>
+      <tr><td><b>Pore-C</b> (Oxford Nanopore) and <b>CiFi</b> (PacBio, 2025)</td><td>The same nuclear contacts, but the joined pieces are read whole on long reads, so one read holds several contacts</td><td>The whole chromosome</td><td>CiFi: chromosome-scale, phased assemblies from few cells (60,000); Pore-C was published for chromatin studies</td><td>New</td></tr>
+    </tbody>
+  </table></div>
+  <p>Brand names to translate: <b>Dovetail</b> (now part of Cantata Bio) and <b>Arima</b> are companies that sell Hi-C kits; <b>Omni-C</b> is Dovetail's Hi-C kit that cuts with a "sequence-independent endonuclease" instead of a restriction enzyme (see the library table below). <b>10x</b> is the company whose linked reads are meant. <b>Bionano</b> is the optical-map company and <b>DLS</b> its labelling chemistry: an enzyme, DLE-1, attaches the label directly, and "The DLS chemistry does not nick DNA, which eliminates the site-specific breaking" of the older nicking chemistry (NLRS), so the molecules and maps are longer. <b>HiRise</b>, <b>Scaff10x</b>, <b>Bionano Solve</b>, <b>SALSA2</b> and <b>YaHS</b> are software.</p>
+
+  <h3>Why papers stack several of them</h3>
+  <p>Each method fills the gaps the shorter ones leave. The first pipeline of the Vertebrate Genomes Project (Rhie et al. 2021) made contigs from noisy long reads and then scaffolded three times: "generate scaffolds with linked reads using Scaff10x; break mis-joins and further scaffold with optical maps using Solve; generate chromosome-scale scaffolds with Hi-C reads using Salsa2". Scaffolds made with all three were "approximately 50% to 150% longer" than with one or two, and curators did not accept a Hi-C join "unless supported by BioNano maps, long-read data, or gene alignments".</p>
+  <p>Accurate long reads changed this. With HiFi, contigs are already many Mb long, so the medium-range methods have little left to do. The VGP's version 2.0 uses HiFi for contigs; its Galaxy tutorial calls HiFi "The minimum requirement", adds Hi-C for scaffolding and phasing, and lists Bionano as optional. Darwin Tree of Life genome notes use HiFi plus Arima Hi-C, scaffolded with YaHS. The Earth BioGenome Project's assembly standards (version 7, 2026) speak only of long reads and Hi-C. The telomere-to-telomere human genome was built from HiFi and ultra-long nanopore reads; Hi-C and Strand-seq were used to check it.</p>
+  <p>So for a new animal genome today the choice is short: <b>long reads + Hi-C</b> (or a newer long-read version of Hi-C). Optical maps are worth it when exact gap sizes or large structural variants matter and very long DNA is available. Linked reads and mate pairs appear in older assemblies you may download, and it helps to know what they could and could not do. Every one of these methods needs good DNA or fresh tissue: optical maps need ultra-long DNA, Hi-C needs intact nuclei (one facility asks for "20 to 40 mg of non-fatty soft tissue").</p>
+
+  <figure id="s05-fig-lr">
+    <div class="tool-head"><span class="tool-tag">Try it</span><b>Which method can join two contigs this far apart?</b></div>
+    <p class="tool-note">Two contig ends are separated by a gap you cannot read through (usually a repeat). Set the size of the gap. A method can join the contigs only if it links places at least that far apart. The bars show the typical reach of each method on a logarithmic scale; their ends are rough orders of magnitude from the sources in the table, not exact limits.</p>
+    <div class="controls">
+      <label>Gap between the contig ends<input id="s05-lr-gap" type="range" min="0" max="100" step="1" value="40"><output id="s05-lr-gap-o"></output></label>
+    </div>
+    <div class="svgbox"><svg id="s05-lr-svg" viewBox="0 0 640 230" width="100%" style="min-width:520px" role="img" aria-label="Reach of each long-range method on a logarithmic distance scale"></svg></div>
+    <div class="readout" id="s05-lr-out" aria-live="polite"></div>
+  </figure>
 
   <h3>How Hi-C works</h3>
   <p>Inside the nucleus each chromosome is folded into its own region, a <dfn>chromosome territory</dfn>. Hi-C (Lieberman-Aiden et al. 2009) freezes this folding and turns "these two pieces of DNA were touching" into a pair of sequencing reads. Step through the protocol:</p>
@@ -4475,6 +4505,55 @@ datasets download genome accession GCA_003774525.2 --preview      <span class="c
 
   shuffle();
   draw();
+})();
+
+/* ================= 0. Long-range methods: reach on a log scale ================= */
+(function () {
+  'use strict';
+  var svg = document.getElementById('s05-lr-svg'), gap = document.getElementById('s05-lr-gap');
+  if (!svg || !gap) return;
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, a, p, t) { var e = document.createElementNS(NS, tag); for (var k in a) e.setAttribute(k, a[k]); if (t != null) e.textContent = t; if (p) p.appendChild(e); return e; }
+  /* rough maximum reach in bp (orders of magnitude from the sources in the table and notes) */
+  var M = [
+    { n: 'Mate pairs', r: 4e4, why: 'tens of kb at most' },
+    { n: 'Linked reads', r: 3e5, why: 'one molecule, about 50 kb in 10x, up to 300 kb in stLFR' },
+    { n: 'Chicago', r: 5e5, why: 'up to 150-500 kb: the length of the extracted DNA' },
+    { n: 'Optical maps', r: 1e6, why: 'molecules of hundreds of kb; maps assembled from them reach further' },
+    { n: 'Hi-C, Pore-C, CiFi', r: 2e8, why: 'the whole chromosome' }
+  ];
+  var LO = 2, HI = 8.4, X0 = 150, X1 = 620, Y0 = 30, RH = 30;
+  function sx(lg) { return X0 + (X1 - X0) * (lg - LO) / (HI - LO); }
+  function fmt(bp) { return bp >= 1e6 ? (bp / 1e6).toFixed(bp < 1e7 ? 1 : 0) + ' Mb' : bp >= 1e3 ? (bp / 1e3).toFixed(bp < 1e4 ? 1 : 0) + ' kb' : Math.round(bp) + ' bp'; }
+  function render() {
+    var lg = LO + (HI - LO) * gap.value / 100, g = Math.pow(10, lg);
+    document.getElementById('s05-lr-gap-o').textContent = fmt(g);
+    svg.textContent = '';
+    [2, 3, 4, 5, 6, 7, 8].forEach(function (e) {
+      el('line', { x1: sx(e), x2: sx(e), y1: Y0 - 8, y2: Y0 + M.length * RH, 'class': 'grid' }, svg);
+      el('text', { x: sx(e), y: Y0 + M.length * RH + 16, 'text-anchor': 'middle' }, svg, fmt(Math.pow(10, e)));
+    });
+    var yes = [], no = [];
+    M.forEach(function (m, i) {
+      var y = Y0 + i * RH, ok = m.r >= g;
+      (ok ? yes : no).push(m.n);
+      el('text', { x: X0 - 8, y: y + 15, 'text-anchor': 'end' }, svg, m.n);
+      el('rect', { x: X0, y: y + 4, width: sx(Math.log10(m.r)) - X0, height: RH - 12, rx: 3,
+        fill: ok ? 'var(--accent)' : 'var(--line)' }, svg).appendChild(el('title', {}, null, m.n + ': ' + m.why));
+    });
+    el('line', { x1: sx(lg), x2: sx(lg), y1: Y0 - 12, y2: Y0 + M.length * RH + 2, stroke: 'var(--bad)', 'stroke-width': 2 }, svg);
+    el('text', { x: sx(lg), y: Y0 - 16, 'text-anchor': 'middle', fill: 'var(--bad)' }, svg, 'gap ' + fmt(g));
+    el('text', { x: (X0 + X1) / 2, y: Y0 + M.length * RH + 34, 'text-anchor': 'middle' }, svg, 'distance between the two places linked (log scale)');
+    document.getElementById('s05-lr-out').innerHTML =
+      '<div>can join across ' + fmt(g) + '<b>' + (yes.join(', ') || 'none') + '</b></div>' +
+      '<div>cannot<b>' + (no.join(', ') || 'none') + '</b></div>' +
+      '<div style="grid-column:1/-1">' + (g > 1e6 ? 'Only contacts inside the nucleus reach this far: this is why Hi-C gives whole chromosomes.' :
+        g > 3e5 ? 'Beyond the length of single DNA molecules: only methods that use whole molecules of hundreds of kb, or nuclear contacts, still link.' :
+        'Many methods link this distance; a long read may even cross it and remove the gap.') + '</div>';
+    svg.setAttribute('aria-label', 'Gap ' + fmt(g) + '. Methods that can join it: ' + (yes.join(', ') || 'none') + '.');
+  }
+  gap.addEventListener('input', render);
+  render();
 })();
 /* ==== 06-polish-purge-gaps ==== */
 (function () {
