@@ -16,7 +16,7 @@
   {"title": "Alignment as scoring", "what": "Dot plots, Needleman-Wunsch, Smith-Waterman, affine gaps, log-odds scores, E-values and bit scores, with ssearch36 as the exhaustive reference.", "tools": "ssearch36 · ggsearch36 · EMBOSS dotmatcher"},
   {"title": "Seed and extend: FASTA and BLAST", "what": "ktup and diagonals, BLAST words and X-drop, the blastn tasks and their defaults, spaced seeds, and which copies a heuristic loses.", "tools": "fasta36 · blastn · megablast · dc-megablast"},
   {"title": "Indexing a genome", "what": "Suffix array, Burrows-Wheeler transform and backward search, the FM-index of bwa and bowtie2, minimizers and chaining in minimap2, and what each index costs.", "tools": "bwa index · bowtie2-build · minimap2 -d"},
-  {"title": "Mappers in practice", "what": "bwa mem, bwa-mem2, bowtie2 and minimap2 presets; SAM, BAM and PAF; mapping quality and its formula; secondary and supplementary alignments; what repeats do.", "tools": "bwa mem · bwa-mem2 · bowtie2 · minimap2 · samtools"},
+  {"title": "Mappers in practice", "what": "bwa mem, bwa-mem2, bowtie2 and minimap2 presets; SAM, BAM and PAF; mapping quality and its formula; secondary and supplementary alignments; what repeats do; reading the reads in IGV.", "tools": "bwa mem · bwa-mem2 · bowtie2 · minimap2 · samtools · IGV"},
   {"title": "Comparing whole data sets", "what": "k-mer databases, BBDuk screening, Kraken2 classification, Mash sketches and the Mash distance, sourmash.", "tools": "Meryl · KMC · BBDuk · Kraken2 · Mash · sourmash"},
   {"title": "Choosing the tool", "what": "Three questions before running anything, a decision helper by question, target size and frequency, and the common mistakes.", "tools": "decision helper · samtools view · blastn-short"}
  ],

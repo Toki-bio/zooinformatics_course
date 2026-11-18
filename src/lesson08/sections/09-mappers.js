@@ -226,3 +226,188 @@
   render();
   render2();
 })();
+
+(function () {
+  /* s09 IGV toy: a 60-bp window of short reads drawn by the rules of IGV desktop 2.19.8
+     (checked in its source: preferences.tab, AlignmentRenderer.java, BaseRenderer.getShadedColor,
+     BaseAlignmentCounts.isConsensusMismatch). Toy data: invented, seeded. */
+  'use strict';
+  var W = 60, RL = 24, BP = 44, QREF = 35;           // window, read length, breakpoint, quality of matching bases
+  var NEXT = { A: 'C', C: 'G', G: 'T', T: 'A' };
+  var BASECOL = { A: [0, 150, 0], C: [0, 0, 255], G: [209, 113, 5], T: [255, 0, 0] };  // IGV COLOR.A/C/G/T
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  function randBase(R) { return 'ACGT'[Math.floor(R() * 4)]; }
+  var REF = (function () { var R = rng(4242), s = ''; for (var i = 0; i < W; i++) s += randBase(R); return s; })();
+
+  /* IGV BaseRenderer.getShadedColor: opacity of a base of quality q (min 5, max 20), rounded to 0.1 */
+  function shade(q, minQ, maxQ) {
+    minQ = minQ == null ? 5 : minQ; maxQ = maxQ == null ? 20 : maxQ;
+    if (q >= maxQ) return 1;
+    var a = q < minQ ? 0.2 : Math.max(0.2, Math.min(1, 0.1 + 0.9 * (q - minQ) / (maxQ - minQ)));
+    return Math.floor(a * 10 + 0.5) / 10;
+  }
+
+  /* reads: s = first aligned ref position, e = end (exclusive), strand '+'/'-', mapq,
+     mm = {refpos: {b, q}}, clip = [{b, q}] soft-clipped bases after e, big = mate far away */
+  function scenario(name) {
+    var R = rng({ het: 11, err: 23, rep: 37, del: 53 }[name]);
+    var reads = [];
+    for (var st = -12; st <= W - 4; st += 3) {
+      reads.push({ s: st, e: st + RL, strand: R() < 0.5 ? '+' : '-', mapq: 60, mm: {}, clip: [], big: false });
+    }
+    function covers(r, p) { return p >= r.s && p < r.e; }
+    if (name === 'het') {
+      var site = 27, alt = NEXT[REF[site]], k = 0;
+      reads.forEach(function (r) { if (covers(r, site)) { if (k % 2 === 0) r.mm[site] = { b: alt, q: 30 + Math.floor(R() * 9) }; k++; } });
+    }
+    if (name === 'err') {
+      var used = { 41: 1 };                        // one error per position; 41 is the two-read place
+      for (var n = 0; n < 7; n++) {
+        var r = reads[Math.floor(R() * reads.length)], p = r.s + Math.floor(R() * RL);
+        if (p >= 0 && p < W && !used[p]) { r.mm[p] = { b: NEXT[REF[p]], q: 3 + Math.floor(R() * 10) }; used[p] = 1; }
+      }
+      var two = 0;
+      reads.forEach(function (r) { if (covers(r, 41) && two < 2) { r.mm[41] = { b: NEXT[REF[41]], q: 10 }; two++; } });
+    }
+    if (name === 'rep') {
+      reads.forEach(function (r) { if (r.s >= 30) r.mapq = 0; });
+    }
+    if (name === 'del') {
+      reads = reads.filter(function (r) { return r.s < BP; });
+      reads.forEach(function (r) {
+        if (r.e > BP) { for (var i = BP; i < r.e; i++) r.clip.push({ b: randBase(R), q: QREF }); r.e = BP; }
+        if (r.strand === '+') r.big = true;        // its mate lies beyond the missing stretch
+      });
+    }
+    // pack into rows by start, 2 bp apart, using the full read length (clips included)
+    var rowsEnd = [];
+    reads.forEach(function (r) {
+      var full = r.e + r.clip.length, row = 0;
+      while (row < rowsEnd.length && rowsEnd[row] + 2 > r.s) row++;
+      rowsEnd[row] = full; r.row = row;
+    });
+    return { reads: reads, nrows: rowsEnd.length };
+  }
+
+  /* coverage column at p: counts and quality sums per base (aligned bases only, never soft clips) */
+  function column(reads, p) {
+    var c = { A: 0, C: 0, G: 0, T: 0 }, q = { A: 0, C: 0, G: 0, T: 0 };
+    reads.forEach(function (r) {
+      if (p < r.s || p >= r.e) return;
+      var m = r.mm[p], b = m ? m.b : REF[p], qq = m ? m.q : QREF;
+      c[b]++; q[b] += qq;
+    });
+    return { c: c, q: q };
+  }
+  /* IGV BaseAlignmentCounts.isConsensusMismatch, quality-weighted (the default) */
+  function coloured(col, ref, thr) {
+    var tot = 0, mis = 0;
+    'ACGT'.split('').forEach(function (b) { tot += col.q[b]; if (b !== ref) mis += col.q[b]; });
+    var t = thr * tot;
+    return { on: mis >= t && t > 0, mis: mis, tot: tot };
+  }
+  function readColour(r, mode) {   // 'large' or null; the orientation of every toy pair is normal
+    if (!r.big) return null;
+    return (mode === 'unexpected' || mode === 'insert') ? 'large' : null;
+  }
+
+  var API = { REF: REF, shade: shade, scenario: scenario, column: column, coloured: coloured, readColour: readColour, BP: BP, W: W };
+  if (typeof document === 'undefined') { if (typeof module !== 'undefined') module.exports.igv = API; return; }
+
+  /* ---------- page ---------- */
+  var $ = function (id) { return document.getElementById(id); };
+  var NS = 'http://www.w3.org/2000/svg';
+  function el(tag, attrs, parent, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var k in attrs) e.setAttribute(k, attrs[k]);
+    if (text != null) e.textContent = text;
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function tip(node, text) { el('title', {}, node, text); return node; }
+  function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+  var svg = $('s09-igv'); if (!svg) return;
+  var state = { sc: 'het', thr: 0.2, clips: false, mode: 'unexpected' };
+  var X0 = 14, BW = 10, REFY = 14, COVY = 22, COVH = 40, ROWY = 74, RH = 10, RG = 3, MAXC = 10;
+  var NOTES = {
+    het: 'A heterozygous site: about half the reads over it carry the other base, all at good quality, so its coverage bar turns coloured.',
+    err: 'Sequencing errors: single faint bases (low quality) at different places. At one place two reads agree on the same wrong base; whether its bar is coloured depends on the threshold.',
+    rep: 'The right half of the window is one copy of a repeat. Reads that lie wholly inside it fit the other copy as well, so they have MAPQ 0 and are drawn hollow. Reads that reach the unique left part are placed with confidence.',
+    del: 'The sample lacks about 1.5 kb starting at position ' + (BP + 1) + '. Reads that run into the breakpoint are soft-clipped there, coverage drops to zero, and the forward reads are red: their mates lie beyond the missing stretch, so each pair looks about 1.9 kb apart instead of the usual 310 to 520 bp (toy values).'
+  };
+  function render() {
+    var d = scenario(state.sc), reads = d.reads, i, p;
+    var WID = X0 * 2 + W * BW, H = ROWY + d.nrows * (RH + RG) + 6;
+    svg.setAttribute('viewBox', '0 0 ' + WID + ' ' + H);
+    svg.textContent = '';
+    el('rect', { x: 0, y: 0, width: WID, height: H, fill: '#fff' }, svg);
+    var g = el('g', { 'font-family': 'monospace', 'font-size': 9, 'text-anchor': 'middle' }, svg);
+    for (i = 0; i < W; i++) el('text', { x: X0 + i * BW + BW / 2, y: REFY - 3, fill: rgba(BASECOL[REF[i]], 1) }, g, REF[i]);
+    var colouredList = [];
+    for (p = 0; p < W; p++) {
+      var col = column(reads, p), n = col.c.A + col.c.C + col.c.G + col.c.T;
+      if (!n) continue;
+      var cv = coloured(col, REF[p], state.thr), x = X0 + p * BW, y = COVY + COVH;
+      var t = 'position ' + (p + 1) + ': ' + 'ACGT'.split('').map(function (bb) { return bb + ' ' + col.c[bb]; }).join(', ') +
+        '; non-reference quality ' + cv.mis + ' of ' + cv.tot + ' = ' + (cv.mis / cv.tot).toFixed(2);
+      if (cv.on) {
+        colouredList.push({ p: p, cv: cv });
+        'ACGT'.split('').forEach(function (bb) {
+          if (!col.c[bb]) return;
+          var h = COVH * col.c[bb] / MAXC; y -= h;
+          tip(el('rect', { x: x, y: y, width: BW - 1, height: h, fill: rgba(BASECOL[bb], 1) }, svg), t);
+        });
+      } else {
+        var h0 = COVH * n / MAXC;
+        tip(el('rect', { x: x, y: y - h0, width: BW - 1, height: h0, fill: '#b4b4b4' }, svg), t);
+      }
+    }
+    el('line', { x1: X0, x2: X0 + W * BW, y1: ROWY - 6, y2: ROWY - 6, stroke: '#ddd' }, svg);
+    var nClip = 0;
+    reads.forEach(function (r) {
+      if (r.e <= 0 || r.s >= W) return;
+      var y = ROWY + r.row * (RH + RG);
+      var xs = X0 + Math.max(r.s, 0) * BW - (r.s < 0 ? X0 : 0), xe = X0 + Math.min(r.e, W) * BW + (r.e > W ? X0 : 0);
+      var c = readColour(r, state.mode);
+      var fill = r.mapq === 0 ? '#fff' : (c === 'large' ? 'rgb(200,0,0)' : '#b9b9b9');
+      var pts = r.strand === '+' ?
+        [[xs, y], [xe - 4, y], [xe, y + RH / 2], [xe - 4, y + RH], [xs, y + RH]] :
+        [[xs + 4, y], [xe, y], [xe, y + RH], [xs + 4, y + RH], [xs, y + RH / 2]];
+      tip(el('polygon', { points: pts.map(function (q) { return q.join(','); }).join(' '), fill: fill, stroke: r.mapq === 0 ? '#999' : 'none', 'stroke-width': 1 }, svg),
+        'read on the ' + r.strand + ' strand, MAPQ ' + r.mapq + (r.big ? ', mate about 1.9 kb away' : '') + (r.clip.length ? ', ' + r.clip.length + ' soft-clipped bases' : ''));
+      Object.keys(r.mm).forEach(function (k) {
+        var pp = +k, m = r.mm[k];
+        if (pp < 0 || pp >= W) return;
+        tip(el('rect', { x: X0 + pp * BW, y: y, width: BW, height: RH, fill: rgba(BASECOL[m.b], shade(m.q)) }, svg),
+          'position ' + (pp + 1) + ': read ' + m.b + ', reference ' + REF[pp] + ', base quality ' + m.q + ', drawn at opacity ' + shade(m.q));
+      });
+      if (r.clip.length) {
+        nClip++;
+        if (state.clips) r.clip.forEach(function (cb, j) {
+          var pp = r.e + j; if (pp >= W) return;
+          tip(el('rect', { x: X0 + pp * BW, y: y, width: BW, height: RH, fill: rgba(BASECOL[cb.b], shade(cb.q)) }, svg), 'soft-clipped base ' + cb.b);
+        });
+      }
+    });
+    var out = '<div style="grid-column:1/-1">' + NOTES[state.sc] + '</div>';
+    out += '<div>coloured coverage bars (position, non-reference share)<b>' + (colouredList.length ? colouredList.map(function (o) { return (o.p + 1) + ' (' + (o.cv.mis / o.cv.tot).toFixed(2) + ')'; }).join(', ') : 'none') + '</b></div>';
+    out += '<div>allele-fraction threshold<b>' + state.thr.toFixed(2) + '</b></div>';
+    if (state.sc === 'del') out += '<div>reads clipped at the breakpoint<b>' + nClip + (state.clips ? ' (clipped bases shown)' : ' (clipped bases hidden)') + '</b></div>';
+    if (state.sc === 'rep') out += '<div>reads with MAPQ 0<b>' + reads.filter(function (r) { return r.mapq === 0; }).length + ' of ' + reads.length + '</b></div>';
+    $('s09-igv-out').innerHTML = out;
+    svg.setAttribute('aria-label', 'Toy IGV view. ' + NOTES[state.sc]);
+    ['het', 'err', 'rep', 'del'].forEach(function (k) { $('s09-igv-' + k).setAttribute('aria-pressed', state.sc === k ? 'true' : 'false'); });
+  }
+  ['het', 'err', 'rep', 'del'].forEach(function (k) { $('s09-igv-' + k).addEventListener('click', function () { state.sc = k; render(); }); });
+  $('s09-igv-thr').addEventListener('input', function (e) { state.thr = +e.target.value; $('s09-igv-thr-o').textContent = state.thr.toFixed(2); render(); });
+  $('s09-igv-clip').addEventListener('change', function (e) { state.clips = e.target.checked; render(); });
+  $('s09-igv-mode').addEventListener('change', function (e) { state.mode = e.target.value; render(); });
+  render();
+})();

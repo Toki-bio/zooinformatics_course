@@ -157,4 +157,55 @@ read B  ..GTTGCA<span class="h">T</span>GG        fits locus 1 only: gap &gt; 0,
       <p>The mapper does what you did: it compares the best fit with the second-best fit. A big gap means &ldquo;I am sure&rdquo;, no gap means &ldquo;it is a coin toss&rdquo;. MAPQ is that confidence written as one number, where every 10 points mean ten times less chance of being wrong. A sequencing error can move a read from one shop to the other, which is why even a high MAPQ is only an estimate.</p>
     </div>
   </details>
+
+  <h3>Looking at the reads: IGV</h3>
+  <p>MAPQ and coverage are summaries. Before you trust a variant, a deletion or a repeat count, look at the reads themselves in a genome browser. This course uses <dfn>IGV</dfn> (Integrative Genomics Viewer, desktop version 2.19.8; <a href="../06-methylation/#s07">lesson 6, section 07</a> uses it for methylation). Its user guide says that "IGV requires that both SAM and BAM files be sorted by position and indexed". The index is a separate small file with the same name as the BAM and the extension <code>.bai</code>.</p>
+  <div class="code"><button type="button">copy</button><pre>samtools sort -@ 8 -o aln.sorted.bam aln.sam
+samtools index aln.sorted.bam        <span class="c"># writes aln.sorted.bam.bai next to it</span>
+<span class="c"># in IGV: load ref.fa as the genome, then load aln.sorted.bam</span></pre></div>
+  <p>IGV draws the reads only when you are zoomed in far enough: by default the window must be 30 kb or smaller for ordinary reads (300 kb for RNA, 1,000 kb for long reads). Above the reads is the <b>coverage track</b>, one bar per position. The table lists what you see and what it means. The defaults were checked in the user guide and in the IGV 2.19.8 source code; you can change each one under <b>View &gt; Preferences &gt; Alignments</b>.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>What you see</th><th>What it means</th></tr></thead>
+    <tbody>
+      <tr><td>Grey bar with a point at one end</td><td>One read. The point shows the strand: on the right for the forward strand, on the left for the reverse strand.</td></tr>
+      <tr><td>Hollow bar (white inside, thin outline)</td><td><b>MAPQ 0</b>: the mapper found another place where the read fits just as well (the toy above). Such reads are shown, not hidden: the "Mapping quality threshold" is 0 by default.</td></tr>
+      <tr><td>A coloured base inside a read</td><td>A <b>mismatch</b> with the reference. Matching bases are not drawn. A is green, C blue, G orange (the guide calls it yellow), T red. The colour fades with low <span class="tip" title="Base quality: the sequencer's own estimate of how likely the base call is wrong, on the same -10 log10 scale as MAPQ (Q20 = 1 in 100, Q30 = 1 in 1,000).">base quality</span>: faintest at quality 5 or below, solid at 20 or above.</td></tr>
+      <tr><td>A coloured coverage bar</td><td>At this position the bases that differ from the reference make up at least 20 % of the column, counted by summed base quality (the default "Coverage allele-fraction threshold" 0.2, quality-weighted). The bar is then split into the colours of the bases, in proportion to their read counts. Otherwise the bar is grey.</td></tr>
+      <tr><td>Black line across a read; purple <code>I</code></td><td>A <b>deletion</b> (the length of the line is its size) and an <b>insertion</b> (click it to see the inserted bases). Indels longer than one base are labelled with their size.</td></tr>
+      <tr><td>Red or blue read</td><td>The two reads of a pair lie farther apart (red) or closer together (blue) than expected. By default IGV takes the expected range from the file itself: the 0.5th to the 99.5th percentile of its insert sizes. A read whose mate maps to another chromosome takes that chromosome's colour.</td></tr>
+      <tr><td>Green, blue or teal read</td><td>The pair is in an unexpected orientation, for example after an inversion or a tandem duplication. The default colouring ("unexpected pair") checks the orientation first and the insert size second.</td></tr>
+      <tr><td>Read that seems to stop early</td><td>Maybe a <b>soft-clipped</b> end (see clipping in the table of secondary and supplementary alignments above). IGV hides clipped bases by default ("Show soft-clipped bases" is off). Switched on, every clipped base is drawn in colour, because it is not compared with the reference.</td></tr>
+      <tr><td>Black rectangle under the coverage track</td><td>IGV kept only some of the reads here (by default at most 100 per 50-base window) to save memory. The coverage track still counts all reads.</td></tr>
+    </tbody>
+  </table></div>
+  <p>Three patterns cover most of what you will check.</p>
+  <ul>
+    <li><b>A real heterozygous site or an error?</b> In a diploid, a heterozygous site shows the other base in roughly half the reads, at good quality, and its coverage bar is coloured. Errors are single, often faint bases at different places. Two or three reads that agree on the same faint base are still not a variant.</li>
+    <li><b>A repeat.</b> Many hollow reads in one place, often with coverage above that of the neighbourhood. Variants called there are doubtful.</li>
+    <li><b>A deletion or another rearrangement.</b> Coverage drops, many reads are clipped at the same base, and pairs that cross the place are red (too far apart) or have an odd orientation.</li>
+  </ul>
+
+  <figure id="s09-fig3">
+    <div class="tool-head"><span class="tool-tag">Try it</span><b>A pile of reads, drawn by IGV's rules</b></div>
+    <p class="tool-note">A 60-bp window with 24-bp toy reads. The reference is on top, then the coverage track, then the reads. The drawing follows IGV's defaults: hollow reads for MAPQ 0, mismatches coloured and faded by base quality, coverage bars coloured above the allele-fraction threshold. The data are invented. Hover a coverage bar or a base for its numbers.</p>
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Examples">
+        <button type="button" id="s09-igv-het">Heterozygous</button>
+        <button type="button" id="s09-igv-err">Errors</button>
+        <button type="button" id="s09-igv-rep">Repeat</button>
+        <button type="button" id="s09-igv-del">Deletion</button>
+      </div>
+      <label>Allele-fraction threshold<input id="s09-igv-thr" type="range" min="0.05" max="0.5" step="0.01" value="0.2"><output id="s09-igv-thr-o">0.20</output></label>
+      <label><input type="checkbox" id="s09-igv-clip"> Show soft-clipped bases</label>
+      <label>Colour reads by <select id="s09-igv-mode">
+        <option value="unexpected" selected>unexpected pair (default)</option>
+        <option value="insert">insert size</option>
+        <option value="orientation">pair orientation</option>
+        <option value="none">no colour</option>
+      </select></label>
+    </div>
+    <div class="svgbox"><svg id="s09-igv" viewBox="0 0 628 200" width="100%" style="min-width:520px" role="img" aria-label="Toy IGV view"></svg></div>
+    <div class="readout" id="s09-igv-out" aria-live="polite"></div>
+    <figcaption>Things to try. In the error example, lower the threshold until the place where two reads agree turns coloured. In the deletion example, show the soft-clipped bases, then colour by pair orientation: the red reads turn grey, because their orientation is normal and only their distance is wrong.</figcaption>
+  </figure>
 </section>
