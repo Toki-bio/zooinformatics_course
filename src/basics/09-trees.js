@@ -368,3 +368,39 @@
   $('b-ils-new').addEventListener('click', function () { iSeed++; drawIls(); });
   drawIls();
 })();
+
+/* block 7: synonymous and non-synonymous changes of one codon (standard genetic code) */
+(function () {
+  'use strict';
+  var $ = function (id) { return document.getElementById(id); };
+  var B = 'TCAG', AA = 'FFLLSSSSYY**CC*WLLLLPPPPHHQQRRRRIIIMTTTTNNKKSSRRVVVVAAAADDEEGGGG';
+  var NAME = { F: 'Phe', L: 'Leu', S: 'Ser', Y: 'Tyr', C: 'Cys', W: 'Trp', P: 'Pro', H: 'His', Q: 'Gln', R: 'Arg', I: 'Ile', M: 'Met', T: 'Thr', N: 'Asn', K: 'Lys', V: 'Val', A: 'Ala', D: 'Asp', E: 'Glu', G: 'Gly', '*': 'stop' };
+  function aa(c) { return AA[16 * B.indexOf(c[0]) + 4 * B.indexOf(c[1]) + B.indexOf(c[2])]; }
+  if (typeof document === 'undefined') { if (typeof module !== 'undefined') module.exports = { aa: aa }; return; }
+  var CODONS = ['CTG', 'TTT', 'GGC', 'ATG'], cod = 'CTG', pos = 2;
+  function btn(parent, label, on, fn) {
+    var b = document.createElement('button'); b.type = 'button'; b.textContent = label; b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.addEventListener('click', fn); parent.appendChild(b);
+  }
+  function draw() {
+    var cs = $('b-cod-seg'), ps = $('b-pos-seg'); cs.textContent = ''; ps.textContent = '';
+    CODONS.forEach(function (c) { btn(cs, c + ' (' + NAME[aa(c)] + ')', c === cod, function () { cod = c; draw(); }); });
+    [0, 1, 2].forEach(function (p) { btn(ps, 'base ' + (p + 1), p === pos, function () { pos = p; draw(); }); });
+    var box = $('b-cod'); box.textContent = '';
+    var from = aa(cod), syn = 0, non = 0, stop = 0;
+    B.split('').forEach(function (b) {
+      if (b === cod[pos]) return;
+      var nc = cod.slice(0, pos) + b + cod.slice(pos + 1), to = aa(nc);
+      var d = document.createElement('div');
+      var same = to === from;
+      if (to === '*') stop++; else if (same) syn++; else non++;
+      d.className = 'b-panel ' + (same ? 'b-win' : 'b-wrong');
+      d.innerHTML = '<h4>' + cod + ' → ' + nc.slice(0, pos) + '<b>' + nc[pos] + '</b>' + nc.slice(pos + 1) + '</h4><p>' + NAME[from] + ' → ' + NAME[to] + ': ' +
+        (same ? '<span class="b-yes">synonymous</span>' : to === '*' ? '<span class="b-no">the protein stops here</span>' : '<span class="b-no">non-synonymous</span>') + '</p>';
+      box.appendChild(d);
+    });
+    $('b-codmsg').textContent = 'Base ' + (pos + 1) + ' of ' + cod + ' (' + NAME[from] + '): ' + syn + ' of 3 possible changes keep the amino acid, ' + non + ' change it' + (stop ? ', ' + stop + ' make a stop codon' : '') + '. ' +
+      (pos === 2 ? 'Third bases are where most synonymous changes happen.' : pos === 1 ? 'Every change at the second base changes the amino acid.' : 'At the first base only a few codons, such as those of Leu and Arg, have synonymous changes.');
+  }
+  draw();
+})();

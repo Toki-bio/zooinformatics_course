@@ -10,3 +10,5 @@
 Doubts: bar and tree sizes are toy values. The "wrong/tie" wording depends on seed and is computed.
 
 Trimmed 2026-11-06: removed from page text: toy simulation parameters (branch lengths 0.75/0.05), bootstrap tie-breaking rule, gene flow/duplication caveat, simplified-animals note, Bootstrap data-set descriptions; the full lesson has them.
+
+7. Synonymous and non-synonymous changes (added 2026-11-18): lesson section 13 (dN/dS; every second-position change is non-synonymous; first-position synonymous changes only in a few codons such as Leu CTN/TTR and Arg CGR/AGR). Standard genetic code table in the block's script compared with the section 13 engine on all 64 codons: 0 differences. The toy shows the three possible changes at one position of one codon; changes to a stop codon are shown as such (section 13 leaves them out of site counts, stated there).
