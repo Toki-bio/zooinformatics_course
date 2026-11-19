@@ -1,0 +1,11 @@
+#s09-wrap .s09-in{font:13px var(--f-mono);background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:3px;padding:4px 6px;width:92px}
+#s09-wrap .s09-in.s09-name{width:150px}
+#s09-wrap .s09-in.s09-bad{border-color:var(--bad);outline:1px solid var(--bad)}
+#s09-wrap .s09-sw{display:inline-block;width:22px;height:0;border-top:3px solid;vertical-align:middle;margin-right:6px}
+#s09-wrap .s09-drop{border:1.5px dashed var(--line);border-radius:4px;padding:12px;font-size:13.5px;color:var(--muted)}
+#s09-wrap .s09-drop.s09-over{border-color:var(--accent);color:var(--fg)}
+#s09-wrap .s09-drop input{max-width:100%;font:inherit}
+#s09-wrap .s09-chk{min-width:auto;flex-direction:row;align-items:center;gap:6px}
+#s09-wrap .s09-x{font:14px var(--f-mono);background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:3px;cursor:pointer;padding:1px 7px}
+#s09-wrap .s09-read{font-family:var(--f-mono);font-size:12.5px;min-height:3.2em}
+#s09-wrap .s09-read span{display:inline-block;margin-right:16px;max-width:100%}
