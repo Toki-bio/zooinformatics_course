@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-11-19
+- Lesson 04 section 09: a viewer that reads PSMC (`.psmc`, also main run + bootstraps) and MSMC/MSMC2 (`.final.txt`) result files in the browser, draws several at once, rescales each file with its own mutation rate and generation time, and saves SVG, PNG and TSV.
+
 ## 2026-11-07
 - Lesson 07 section 02: what `-g -3` does in the ssearch36 call, tested. Lesson 06 section 06: the two array numbers told apart. Lesson 09: tip letters marked as letters only.
 - Lesson 03: the text no longer names who ran the tools on species A. Lesson 09 section 01: the Newick root and the tree counts now cite PHYLIP and OEIS instead of Wikipedia.

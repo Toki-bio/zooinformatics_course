@@ -1,0 +1,87 @@
+<section aria-labelledby="s09" id="s09-wrap">
+  <h2 id="s09"><span class="n">09</span>A viewer for your own PSMC and MSMC files</h2>
+  <p class="lede">The figures so far were toys. This section is a working tool: it reads the result files of PSMC and MSMC or MSMC2 from your computer, draws them together, and lets you give every file its own mutation rate and generation time. Use it to look at a finished run without installing gnuplot, to put two species with different constants on one plot, and to see at once how much a curve moves when the constants change (<a href="#s04">s04</a>).</p>
+
+  <h3>What it reads</h3>
+  <dl class="defs">
+    <dt><code>.psmc</code></dt><dd>The output of <code>psmc</code> (<a href="#s03">s03</a>). The viewer takes θ<sub>0</sub> from the <code>TR</code> line and t<sub>k</sub> and λ<sub>k</sub> from the <code>RS</code> lines of one <span class="tip" title="Iteration: one round of the fit. PSMC writes every round to the file, each starting with an RD line; later rounds are closer to the final estimate.">iteration</span>, the last one in the file unless you ask for another.</dd>
+    <dt>main run + bootstraps</dt><dd>A file made by joining the main run and the <span class="tip" title="Bootstrap: the genome is cut into pieces, the pieces are drawn again at random with replacement, and PSMC is run on each such resampled genome. The spread of the resulting curves shows how firmly the data support each part of the main curve.">bootstrap</span> runs (<code>cat main.psmc round-*.psmc &gt; combined.psmc</code>, <a href="#s03">s03</a>). The first run is drawn as a thick line, the others as thin lines of the same colour.</dd>
+    <dt><code>.final.txt</code></dt><dd>The result table of MSMC or MSMC2 (<a href="#s05">s05</a>): columns <code>time_index</code>, <code>left_time_boundary</code>, <code>right_time_boundary</code> and one or more <code>lambda</code> columns. A two-population file with three λ columns can also be drawn as the <span class="tip" title="Relative cross-coalescence rate: how often lineages from two different populations merge, compared with lineages from the same population. Near 1 the two behave as one population, near 0 they are fully separated.">relative cross-coalescence rate</span> of <a href="#s07">s07</a>.</dd>
+  </dl>
+  <p>The files are read by your browser on your own computer. Nothing is sent anywhere, so unpublished results are safe to open.</p>
+
+  <section class="tool" aria-labelledby="s09-tool-h">
+    <div class="tool-head"><span class="tool-tag">Tool</span><h3 id="s09-tool-h">Plot and rescale result files</h3></div>
+    <p class="tool-note">The page opens with three <b>invented toy files</b> in the real file layouts (they are not the output of any run) so that there is something to try. Choose your own files to replace them. μ is the mutation rate per site per generation and <i>g</i> the generation time in years; type a new value in the table and the curve is redrawn.</p>
+    <div class="s09-drop" id="s09-drop">
+      <label for="s09-pick">Choose result files (several at once is fine), or drop them on this box: </label>
+      <input type="file" id="s09-pick" multiple>
+    </div>
+    <div class="calc" role="group" aria-label="Constants for newly added files">
+      <label for="s09-dmu">μ for new files<input id="s09-dmu" value="5.4e-9" inputmode="decimal"></label>
+      <label for="s09-dg">g for new files (years)<input id="s09-dg" value="1" inputmode="decimal"></label>
+      <button type="button" class="btn" id="s09-all">Use for all files</button>
+      <button type="button" class="btn" id="s09-toy">Toy files</button>
+      <button type="button" class="btn" id="s09-clear">Remove all</button>
+    </div>
+    <p class="warn-text" id="s09-msg" role="status"></p>
+    <div class="controls" role="group" aria-label="What to draw">
+      <div class="seg" role="group" aria-label="Quantity" id="s09-view"><button type="button" data-v="ne" aria-pressed="true">Population size</button><button type="button" data-v="rccr" aria-pressed="false">Cross-coalescence</button></div>
+      <div class="seg" role="group" aria-label="Time axis" id="s09-xs"><button type="button" data-v="log" aria-pressed="true">time: log</button><button type="button" data-v="lin" aria-pressed="false">linear</button></div>
+      <div class="seg" role="group" aria-label="Size axis" id="s09-ys"><button type="button" data-v="lin" aria-pressed="true">size: linear</button><button type="button" data-v="log" aria-pressed="false">log</button></div>
+      <label class="s09-chk"><input type="checkbox" id="s09-boot" checked> bootstrap curves</label>
+      <label class="s09-chk"><input type="checkbox" id="s09-trim" checked> <span class="tip" title="psmc_plot.pl leaves out the intervals of the last (oldest) parameter group unless you give -L, because that group is the least reliable. Untick to draw it, as -L does.">leave out the oldest PSMC group</span></label>
+    </div>
+    <div class="calc" role="group" aria-label="Axis limits and iteration">
+      <label for="s09-xmin">years from<input id="s09-xmin" placeholder="auto" inputmode="decimal"></label>
+      <label for="s09-xmax">years to<input id="s09-xmax" placeholder="auto" inputmode="decimal"></label>
+      <label for="s09-ymin">size from<input id="s09-ymin" placeholder="auto" inputmode="decimal"></label>
+      <label for="s09-ymax">size to<input id="s09-ymax" placeholder="auto" inputmode="decimal"></label>
+      <label for="s09-rd">PSMC iteration<input id="s09-rd" placeholder="last" inputmode="numeric"></label>
+    </div>
+    <figure>
+      <div class="svgbox" id="s09-plot"></div>
+      <div class="s09-read" id="s09-read" aria-live="off"></div>
+      <figcaption id="s09-cap"></figcaption>
+    </figure>
+    <div class="tbl"><table>
+      <thead><tr><th>show</th><th>curve</th><th>file</th><th>rate per generation</th><th>g, years</th><th><span class="tip" title="Bin size: how many bases one letter of the .psmcfa input stands for (fq2psmcfa -s, 100 by default). Only PSMC needs it.">bin s</span></th><th></th></tr></thead>
+      <tbody id="s09-files"></tbody>
+    </table></div>
+    <div class="calc" role="group" aria-label="Save">
+      <button type="button" class="btn" id="s09-svg">Save figure (SVG)</button>
+      <button type="button" class="btn" id="s09-png">Save figure (PNG)</button>
+      <button type="button" class="btn" id="s09-tsv">Save numbers (TSV)</button>
+    </div>
+    <p class="tool-note"><span class="tip" title="Scalable Vector Graphics: a drawing made of lines and text that stays sharp at any size and can be edited in Inkscape or Illustrator.">SVG</span> is the format to give to a journal or to edit; PNG is a picture for slides. The <span class="tip" title="Tab-separated values: a plain text table that opens in a spreadsheet or in R.">TSV</span> table holds every drawn curve as years and size with the μ and <i>g</i> that were used, so that others can redraw it (<a href="#s08">s08</a>).</p>
+  </section>
+
+  <h3>How the numbers are scaled</h3>
+  <p>The viewer applies the formulas of <a href="#s04">s04</a>, in the same way as the plotting scripts that come with the programs.</p>
+  <div class="formula">PSMC:  N<sub>0</sub> = θ<sub>0</sub> / (4 μ s)      years ago = 2 N<sub>0</sub> t<sub>k</sub> g      N<sub>e</sub> = λ<sub>k</sub> N<sub>0</sub><br>MSMC:  years ago = left_time_boundary × g / μ      N<sub>e</sub> = 1 / (2 μ λ)<br>cross-coalescence = 2 λ<sub>01</sub> / (λ<sub>00</sub> + λ<sub>11</sub>)</div>
+  <p>It differs from <code>psmc_plot.pl</code> in four ways, all of them choices of display:</p>
+  <ul>
+    <li>It draws the <b>last</b> iteration in the file. <code>psmc_plot.pl</code> draws iteration 20 unless you give <code>-n</code> (<a href="#s03">s03</a>). Type a number in "PSMC iteration" to pick another.</li>
+    <li>It does not cut the recent end of the time axis; <code>psmc_plot.pl</code> starts at 10,000 by default (<code>-x</code>). Set "years from" yourself.</li>
+    <li>Sizes are plain numbers of individuals, not units of 10<sup>4</sup>.</li>
+    <li>It applies no correction for missed heterozygous sites (<code>-N</code> and <code>-M</code> of <code>psmc_plot.pl</code>, <a href="#s04">s04</a>). Low-coverage runs need that correction before they are compared.</li>
+  </ul>
+  <p>A step is drawn from the start of each time interval to the start of the next, so each curve ends at the start of its last interval. On a logarithmic time axis the first interval, which starts at zero, runs in from the left edge.</p>
+
+  <details class="simple"><summary>Simple explanation with examples: two files, two rulers</summary><div class="in">
+    <p>Every file holds numbers in model units. The viewer multiplies them by a ruler built from μ and <i>g</i>, and each file may have its own ruler. Take the PSMC example of <a href="#s04">s04</a> (θ<sub>0</sub> = 0.08 per 100-base bin) and one MSMC2 row with a left time boundary of 0.00001 and λ = 2000:</p>
+    <div class="toy">PSMC, μ = 5.4e-9, g = 1:    N0 = 0.08 / (4 × 5.4e-9 × 100) = <span class="a">37,037</span>
+  RS row with t = 0.5, λ = 1.5:   2 × 37,037 × 0.5 × 1 = <span class="a">37,037 years</span>,  Ne = 1.5 × 37,037 = <span class="a">55,600</span>
+
+MSMC2, μ = 5.4e-9, g = 1:
+  0.00001 × 1 / 5.4e-9 = <span class="a">1,852 years</span>,   Ne = 1 / (2 × 5.4e-9 × 2000) = <span class="a">46,296</span>
+
+the same MSMC2 row for a species with g = 3 years:
+  0.00001 × 3 / 5.4e-9 = <span class="h">5,556 years</span>,   Ne = <span class="h">46,296</span>   (only the time moves)</div>
+    <p>Try it in the tool: change <i>g</i> of one toy file from 1 to 3 and its curve slides to the right without changing height; double its μ and it moves left and down by half. If two species really differ in generation time, giving each file its own <i>g</i> is the honest way to draw them on one time axis. If you do not know the constants, say so in the figure legend (<a href="#s08">s08</a>).</p>
+  </div></details>
+
+  <div class="note warn"><b>What the viewer cannot tell you.</b> It draws whatever the file holds. Whether a peak is real is decided by the checks of <a href="#s06">s06</a>, and the default μ = 5.4 × 10<sup>-9</sup> and <i>g</i> = 1 are the placeholders of this lesson, not values for your species.</div>
+
+  <p class="tool-note">Sources: <code>utils/psmc_plot.pl</code> (github.com/lh3/psmc) and <code>plot_utils.py</code> (github.com/stschiff/msmc-tools), both read as source code. Details in the section notes.</p>
+</section>

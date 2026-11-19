@@ -47,6 +47,11 @@
    "title": "Reporting",
    "what": "What the methods must state, how to draw the figure, which claims one genome cannot support, which files to share.",
    "tools": "methods checklist · psmc_plot.pl -R"
+  },
+  {
+   "title": "Viewer for your own files",
+   "what": "Open PSMC and MSMC result files in the browser, give each its own mutation rate and generation time, save the figure and the numbers.",
+   "tools": ".psmc · combined.psmc · MSMC2 .final.txt"
   }
  ],
  "footer": "Figures are toy examples drawn from simple models, for learning to read real output. Commands and defaults were checked against each tool's documentation and source code at the versions named in each section (see the notes file of each section in the course repository); check them against the version you have installed."
