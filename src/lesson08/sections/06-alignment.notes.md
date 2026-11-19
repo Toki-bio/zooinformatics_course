@@ -87,3 +87,25 @@ Written 2026-11-05. Every source below was opened. "Abstract only" or "reference
 - Pearson's +1/-3 for web megablast may not match current BLAST+ defaults. Left out here.
 - "Gapped" lambda and K for +5/-4 are not used on the page; the rough table uses the ungapped lambda.
 - Ties: the table's traceback prefers the diagonal, then the gap from above, then the gap from the left, and starts from the first cell holding the maximum. Other equally good alignments may exist.
+
+## Block "ssearch36 on a whole genome: what happens inside" (added 2026-11-19)
+
+Sources:
+- FASTA36 source, tag `v36.3.8h_04-May-2020` (commit 98d3270) and HEAD da94699 (36.3.8j2), https://github.com/wrpearson/fasta36.
+  Read by an independent agent and summarised with file:line evidence in the lab knowledge base
+  (Toki-bio/knowlege, `.claude/skills/ssearch36-fasta36/references/genome-scan-behaviour.md`, commit 3525622). Key lines (8h / HEAD):
+  - pieces: `MAXLIB 150000` `defs.h:93`; reader stops 10 short `nmgetlib.c:574 / 587` (149,990); overlap 150 `comp_lib9.c:890 / 894`.
+  - one score per piece per strand: `dropgsw2.c:696-830`; reverse strand = reverse-complemented query `comp_lib9.c:1127 / 1132`.
+  - gates: `e_cut /= 5` (2.0) and `e_cut_r = 0.001` for DNA without -E, `initfa.c:1535-1536 / 1585-1586`; `-E "e1 e2"` gives e_cut_r = e1/e2, `initfa.c:1104 / 1138`.
+  - only E < e_cut aligned `comp_lib9.c:1359-1362 / 1364-1367`; further copies by recursion `wm_align.c:172-276` above `repeat_thresh` `comp_lib9.c:1537 / 1542`.
+  - statistics: regression needs 5 length bins (`scaleswn.c:1998`), falls back to MLE (`464-466`); shuffle below 500 (piece, strand) records (`comp_lib9.c:1077-1078 / 1082-1083`); MLE_cen censors 5 % (`scaleswn.c:872-879`).
+  - E under MLE: `z = Lambda*score - log(K*n1*n0)` (`scaleswn.c:2544 / 2558`) and k = L/n1 (`2679-2680`): n1 cancels.
+- Our tests on the server's ssearch36 36.3.8h (2026-11-19), random DNA, one 50-base fragment:
+  2.5 / 20 / 100 Mb: "(shuffled [500]) MLE" / "(shuffled [500]) MLE" / "MLE_cen (cen=33)"; perfect copy 79.8 / 74.4 / 80.2 bits, E 1.2e-16 / 4.1e-14 / 3.5e-15.
+  Switch: shuffled at 30 and 36 Mb, MLE_cen at 39 and 45 Mb.
+  600 copies with 8 substitutions (84 % identity), six per 150 kb piece in 100 Mb: 100 found with no -E, 100 with -E "10 10", 600 with -E "10 1" and "100 1".
+  Same 60 Mb file holding a 60 Mb sequence and a 5 kb scaffold, one perfect copy in each: both E = 2.9e-15, 79.8 bits.
+  Copy at 149,901 of a 300 kb sequence: printed twice. Copies at bases 1 and 99,951 of a 100 kb sequence and two adjacent copies: all found.
+  Fully open gate: 1,801 x 50-base fragments against 5 Mb of real sequence ran more than 4 h with 2 x 4 threads.
+- The "four hours" and the open-gate trial come from the lab's own scanner test (SINE-de-novo-genome-scan, reverted); the page names no species or unpublished data.
+- sear2k window size 2,500 bases: lesson 7 s02 and the sear2k digest in the lab knowledge base.

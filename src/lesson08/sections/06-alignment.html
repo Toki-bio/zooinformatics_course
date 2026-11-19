@@ -139,6 +139,33 @@ ssearch36 -n -E 0.001 -m 8C query.fa library.fa</pre></div>
   <p>The cost is the table: every cell of query length times library length is filled, so a 300-bp query against both strands of a 3-Gb genome means about 2&times;10<sup>12</sup> cells. Two things make this practical. Processor instructions that work on many cells at once speed the calculation up 10 to 20 times (manual page), and the FASTA guide puts ssearch36 at "only 2 - 5X slower" than the <span class="tip" title="Heuristic: a method that takes a shortcut. It is fast, but it does not guarantee the best answer.">heuristic</span> <code>fasta36</code>. Threads do the rest (<code>-T</code>).</p>
   <p>Its statistics differ from BLAST's too. BLAST relies on &lambda; and K estimated in advance for each scoring system. ssearch36 scores every library sequence, so it can fit the chance distribution from the scores of the search itself. That works only if most of the library is unrelated to the query: the guide says the routines "assume that the library contains a large sample of unrelated sequences". Where this fails, <code>-z 11</code> fits the statistics to shuffled copies of the library instead.</p>
   <p>Global relatives exist as well: <code>ggsearch36</code> does a Needleman-Wunsch search in the same package.</p>
-  <div class="note"><b>In our projects.</b> A SINE family breaks the assumption above: a genome is full of real copies of the query. Our public tool sear2k therefore runs ssearch36 with <code>-z 11</code> on a genome cut into short windows. <a href="../07-sines-satellites/#s02">Lesson 7, section 02</a> explains the command option by option and shows why standard word-based tools miss old copies.</div>
+  <h3>ssearch36 on a whole genome: what happens inside</h3>
+  <p>A genome search is not one comparison with one long sequence. Three steps happen inside the program that the command line does not show. We read them in the FASTA36 source code (version 36.3.8h, the one on our server, and the 2026 version) and checked each on random DNA with copies of a 50-base fragment planted at known places.</p>
+  <ol>
+    <li><b>The sequence is cut into pieces.</b> Every library sequence longer than 150,000 bases is split into pieces of 149,990 bases, and neighbouring pieces overlap by 150 bases. Positions are reported in the whole sequence, not in the piece. A copy that lies inside an overlap is reported twice, at the same position.</li>
+    <li><b>The fast pass keeps one score per piece.</b> For each piece and each strand, the fast <span class="tip" title="SIMD: processor instructions that compute many table cells at once.">SIMD</span> pass finds only the best score. A second, weaker copy in the same piece is not seen at this stage.</li>
+    <li><b>Two hidden E-value gates.</b> Without <code>-E</code>, a DNA search aligns a piece only if its best copy has E &lt; 2. Each further copy in that piece is kept only if it reaches about E &lt; 0.001, a far stricter bar. Only what passes is aligned, with the slow exact method, and printed.</li>
+  </ol>
+  <p>The statistics are fitted again for every query and every file searched, and E grows with the total length of the file. Below about 37.5 Mb (250 pieces) the program fits shuffled copies of the pieces; above that it fits the real scores and sets aside the top 2.5 %. A query with real copies in many pieces, such as a SINE fragment, makes every E larger. So the same alignment does not keep the same numbers:</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Test on random DNA (ssearch36 36.3.8h)</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>One perfect 50-base copy; the same kind of random sequence cut into files of 2.5, 20 and 100 Mb</td><td>79.8, 74.4 and 80.2 bits; E = 1&times;10<sup>&minus;16</sup>, 4&times;10<sup>&minus;14</sup>, 4&times;10<sup>&minus;15</sup></td></tr>
+      <tr><td>600 copies (84 % identical), six in each 150,000-base piece of a 100 Mb file, default gates</td><td>100 found: one per piece</td></tr>
+      <tr><td>The same, with <code>-E "10 1"</code> (both gates at E &lt; 10)</td><td>all 600 found</td></tr>
+      <tr><td>A copy on a 5,000-base scaffold and one in a 60 Mb sequence, in the same file</td><td>the same E and bits</td></tr>
+    </tbody>
+  </table></div>
+  <div class="code"><button type="button">copy</button><pre><span class="c"># which statistics did this search use? (look for "shuffled", "MLE_cen" or "Expectation_n fit")</span>
+ssearch36 -n -m 0 query.fa library.fa | grep -m1 Statistics
+<span class="c"># keep every copy in a piece, not only the best: raise the second gate (e1 = 10, second gate = 10/1)</span>
+ssearch36 -n -E "10 1" -m 8C query.fa library.fa</pre></div>
+  <p>Raising the gates has a price. Every extra copy is aligned with the slow method, and a fully open gate (<code>-E "1000000 1"</code>) aligns every chance match too: in our test, 1,801 fragments against 5 Mb took more than four hours. The number of copies found also depends on how the genome was cut into files, so compare counts only between searches cut the same way.</p>
+  <details class="simple"><summary>Simple explanation with examples: one sequence, three pieces</summary><div class="in">
+    <p>Take one sequence of 300,000 bases. The program reads it as three pieces: bases 1&ndash;149,990, then 149,841&ndash;299,830, then 299,681&ndash;300,000. Each piece starts 150 bases before the previous one ends.</p>
+    <p>Put two copies of your fragment in the first piece, one perfect and one with a few mismatches. The fast pass looks at the first piece and writes down one number: the score of the perfect copy. The weaker copy is found only later, and only if it beats the strict second gate. If the perfect copy itself had missed the first gate (E &lt; 2), nothing in that piece would be printed at all.</p>
+    <p>Put a copy at base 149,900. It lies in both the first and the second piece, so it is printed twice with the same position. Merge overlapping hits before you count them.</p>
+  </div></details>
+  <div class="note"><b>In our projects.</b> A SINE family breaks the assumption above: a genome is full of real copies of the query. Our public tool sear2k therefore runs ssearch36 with <code>-z 11</code> on a genome cut into short windows. Each 2,500-base window is a single short piece, so "one best copy per piece" means one per window, not one per 150,000 bases. <a href="../07-sines-satellites/#s02">Lesson 7, section 02</a> explains the command option by option and shows why standard word-based tools miss old copies.</div>
   <p>Exhaustive search answers "what is the best alignment?" with certainty, at a cost that grows with every base searched. For a whole library of reads, or a genome searched many times, that cost is too high. The next section keeps the scoring and the statistics, and looks at how to fill only the small part of the table that matters.</p>
 </section>
