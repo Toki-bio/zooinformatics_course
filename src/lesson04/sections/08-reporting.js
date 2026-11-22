@@ -66,7 +66,7 @@
       if (v >= 1e3) return +(v / 1e3).toPrecision(3) + 'k';
       return +v.toPrecision(2) + '';
     }
-    function fmtE(v){ var e = Math.floor(Math.log10(v) + 1e-9), m = v / Math.pow(10, e); return (Math.abs(m - 1) < 1e-6 ? '' : (+m.toPrecision(2)) + '×') + '1e' + e; }
+    function fmtE(v){ if (v === 0) return '0'; var e = Math.floor(Math.log10(v) + 1e-9), m = v / Math.pow(10, e); return (Math.abs(m - 1) < 1e-6 ? '' : (+m.toPrecision(2)) + '×') + '1e' + e; }
 
     function drawFig(){
       var g = +F.g.value, sc = F.sc.checked, lg = F.log.checked, lab = F.lab.checked;
