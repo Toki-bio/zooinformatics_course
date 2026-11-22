@@ -60,13 +60,15 @@
   var xt = [[1e3,'1 ky'],[1e4,'10 ky'],[1e5,'100 ky'],[1e6,'1 My'],[1e7,'10 My'],[1e8,'100 My']];
   var yt = [[1e3,'1k'],[1e4,'10k'],[1e5,'100k'],[1e6,'1M']];
   xt.forEach(function(t){ mk('line', { x1: sx(t[0]), x2: sx(t[0]), y1: T, y2: H - B, 'class': 'grid' }, svg);
-    var tx = mk('text', { x: sx(t[0]), y: H - B + 16, 'text-anchor': t[0] === 1e8 ? 'end' : 'middle' }, svg); tx.textContent = t[1]; });
+    var tx = mk('text', { x: sx(t[0]), y: H - B + 20, 'text-anchor': t[0] === 1e8 ? 'end' : 'middle' }, svg); tx.textContent = t[1]; });
   yt.forEach(function(t){ mk('line', { x1: L, x2: W - R, y1: sy(t[0]), y2: sy(t[0]), 'class': 'grid' }, svg);
     var tx = mk('text', { x: L - 6, y: sy(t[0]) + 4, 'text-anchor': 'end' }, svg); tx.textContent = t[1]; });
   mk('rect', { x: L, y: T, width: W - L - R, height: H - T - B, 'class': 'ax' }, svg);
   var xl = mk('text', { x: (L + W - R) / 2, y: H - 8, 'text-anchor': 'middle', 'class': 'lab' }, svg); xl.textContent = 'years ago (log scale)';
-  var yl = mk('text', { x: 14, y: (T + H - B) / 2, 'text-anchor': 'middle', 'class': 'lab',
-    transform: 'rotate(-90 14 ' + ((T + H - B) / 2) + ')' }, svg); yl.textContent = 'effective population size (log)';
+  // y-axis title read bottom-to-top, laid on a vertical path: looks like rotate(-90), and its box is measured where it is drawn
+  mk('path', { id: 's04-ylab', d: 'M14 ' + ((T + H - B) / 2 + 1000) + 'V' + ((T + H - B) / 2 - 1000) }, defs);
+  var yl = mk('textPath', { href: '#s04-ylab', startOffset: '50%' }, mk('text', { 'text-anchor': 'middle', 'class': 'lab' }, svg));
+  yl.textContent = 'effective population size (log)';
 
   var plot = mk('g', { 'clip-path': 'url(#s04-clip)' }, svg);
   var envG = mk('g', {}, plot);

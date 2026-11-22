@@ -7,6 +7,15 @@
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's08-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   /* ---------------- 1. figure: bad vs reportable ---------------- */
@@ -105,7 +114,7 @@
       ticksX.forEach(function(t){
         var x = px(t);
         gx.appendChild(mk('line', { x1: x, x2: x, y1: T, y2: T + PH, 'class': 'grid' }));
-        gx.appendChild(mk('text', { x: x, y: T + PH + 16, 'text-anchor': 'middle' }, sc ? fmtE(t) : fmtN(t)));
+        gx.appendChild(mk('text', { x: x, y: T + PH + 20, 'text-anchor': 'middle' }, sc ? fmtE(t) : fmtN(t)));
       });
       ticksY.forEach(function(t){
         var y = py(t);
@@ -137,8 +146,7 @@
         var ttl = sc ? 'Toy PSMC curve in scaled units (no μ or g needed)' : 'Toy PSMC curve · μ = 5.4×10⁻⁹ per site per generation, g = ' + g + ' yr';
         svg.appendChild(mk('text', { x: L, y: 22, 'class': 'lab' }, ttl));
         svg.appendChild(mk('text', { x: L + PW / 2, y: H - 12, 'text-anchor': 'middle', 'class': 'lab' }, sc ? 'pairwise divergence d = 2μT per bp (time)' : 'years ago' + (lg ? ' (log scale)' : '')));
-        var yl = mk('text', { x: 16, y: T + PH / 2, 'text-anchor': 'middle', 'class': 'lab', transform: 'rotate(-90 16 ' + (T + PH / 2) + ')' }, sc ? 'θ = 4·Ne·μ per bp' : 'effective population size Ne' + (lg ? ' (log)' : ''));
-        svg.appendChild(yl);
+        svg.appendChild(vtitle(16, T + PH / 2, { 'text-anchor': 'middle', 'class': 'lab' }, sc ? 'θ = 4·Ne·μ per bp' : 'effective population size Ne' + (lg ? ' (log)' : '')));
       } else {
         svg.appendChild(mk('text', { x: L + PW / 2, y: H - 12, 'text-anchor': 'middle', 'class': 'lab' }, 'time'));
         svg.appendChild(mk('text', { x: 16, y: T + PH / 2, 'text-anchor': 'middle', 'class': 'lab', transform: 'rotate(-90 16 ' + (T + PH / 2) + ')' }, 'Ne'));

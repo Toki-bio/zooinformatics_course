@@ -94,6 +94,15 @@
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's01-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function fmtN(n){ return Math.round(n).toLocaleString('en-US'); }
   function fmtT(t){ return t >= 1e6 ? (t / 1e6).toFixed(t >= 1e7 ? 0 : 1) + 'M' : t >= 1000 ? Math.round(t / 1000) + 'k' : String(Math.round(t)); }
   function fmtBp(bp){ return bp >= 1e6 ? (bp / 1e6).toFixed(1) + ' Mb' : bp >= 1000 ? (bp / 1000).toFixed(bp >= 1e4 ? 0 : 1) + ' kb' : Math.round(bp) + ' bp'; }
@@ -217,7 +226,7 @@
       svg.appendChild(mk('line', { x1: X0, x2: X0 + PW, y1: zy(T), y2: zy(T), 'class': 'grid' }));
       svg.appendChild(mk('text', { x: X0 - 8, y: zy(T) + 4, 'text-anchor': 'end' }, fmtT(T)));
     });
-    svg.appendChild(mk('text', { x: 14, y: yz + hz / 2, transform: 'rotate(-90 14 ' + (yz + hz / 2) + ')', 'text-anchor': 'middle' }, 'TMRCA (gen.)'));
+    svg.appendChild(vtitle(14, yz + hz / 2, { 'text-anchor': 'middle' }, 'TMRCA (gen.)'));
     // find first segment in zoom
     var lo = 0, hi = nSeg - 1;
     while (lo < hi){ var m = (lo + hi + 1) >> 1; if (segStart[m] <= zs) lo = m; else hi = m - 1; }
@@ -610,7 +619,7 @@
       host.replaceChildren(svg);
     }
     function fig5(){
-      var host = el('s01-cz-f5'), W = width(host), H = 300, yB = 262, yT = 14, sc = (yB - yT) / 5, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'A tree of four copies with mutations marked as crosses on the branches. A and B share a recent ancestor and differ by few mutations; A and C are joined only at the root and differ by many.' });
+      var host = el('s01-cz-f5'), W = width(host), H = 304, yB = 262, yT = 14, sc = (yB - yT) / 5, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'A tree of four copies with mutations marked as crosses on the branches. A and B share a recent ancestor and differ by few mutations; A and C are joined only at the root and differ by many.' });
       svg.style.minWidth = '300px';
       var x = [0.14, 0.36, 0.62, 0.86].map(function(f){ return f * W; }), tAB = 1.2, tCD = 2.4, tR = 5;
       var xAB = (x[0] + x[1]) / 2, xCD = (x[2] + x[3]) / 2, xR = (xAB + xCD) / 2;

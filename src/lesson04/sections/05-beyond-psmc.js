@@ -8,6 +8,15 @@
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's05-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function fmtInt(x){ return Math.round(x).toLocaleString('en-US'); }
   function fmtYears(y){
     if (y >= 1e6) return (y / 1e6).toFixed(y >= 1e7 ? 0 : 1) + ' My';
@@ -44,7 +53,7 @@
     var st = { samp: 's' };
     var ctl = { n: el('s05-n'), m: el('s05-m'), N: el('s05-N') };
     var T0 = 0.003, T1 = 300;
-    var X0 = 70, PW = 860, W = 960, Y0 = 26, PH = 250;
+    var X0 = 76, PW = 854, W = 960, Y0 = 26, PH = 250;
     function xp(t){ return X0 + (Math.log10(t) - Math.log10(T0)) / (Math.log10(T1) - Math.log10(T0)) * PW; }
 
     function legend(){
@@ -127,8 +136,7 @@
       svg.appendChild(mk('text', { x: X0 - 8, y: Y0 + PH + 15, 'text-anchor': 'end', fill: css('--muted') }, '2N gen.'));
       svg.appendChild(mk('text', { x: X0 - 8, y: Y0 + PH + 31, 'text-anchor': 'end', fill: css('--muted') }, 'years'));
       svg.appendChild(mk('text', { x: X0 + PW / 2, y: Y0 + PH + 50, 'text-anchor': 'middle', 'class': 'lab' }, 'time before present (upper row: units of 2N generations; lower row: years for the island size set above, g = 1 yr) →'));
-      var yl = mk('text', { x: 16, y: Y0 + PH / 2, 'text-anchor': 'middle', transform: 'rotate(-90 16 ' + (Y0 + PH / 2) + ')', 'class': 'lab' }, 'apparent size (units of one island, N)');
-      svg.appendChild(yl);
+      svg.appendChild(vtitle(16, Y0 + PH / 2, { 'text-anchor': 'middle', 'class': 'lab' }, 'apparent size (units of one island, N)'));
       // reference lines
       [[1, 'one island (N)'], [n, 'all islands (nN = ' + n + 'N)']].forEach(function(r){
         var yy = yp(r[0]);

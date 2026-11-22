@@ -160,6 +160,15 @@
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's03-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   var W = 960, X0 = 74, X1 = 940, Y0 = 18, Y1 = 318, XMIN = 3, XMAX = 7, YMIN = Math.log10(300), YMAX = Math.log10(5e6);
   function xp(t){ var l = Math.log10(Math.max(t, 1)); return X0 + (Math.min(Math.max(l, XMIN), XMAX) - XMIN) / (XMAX - XMIN) * (X1 - X0); }
   function yp(N){ var l = Math.log10(Math.max(N, 1)); return Y1 - (Math.min(Math.max(l, YMIN), YMAX) - YMIN) / (YMAX - YMIN) * (Y1 - Y0); }
@@ -221,8 +230,7 @@
     });
     svg.appendChild(mk('rect', { x: X0, y: Y0, width: X1 - X0, height: Y1 - Y0, fill: 'none', stroke: css('--muted'), 'stroke-width': 1 }));
     svg.appendChild(mk('text', { x: (X0 + X1) / 2, y: 404, 'text-anchor': 'middle', class: 'lab' }, 'years ago (toy: 1 generation = 1 year)'));
-    var yl = mk('text', { x: 14, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', class: 'lab', transform: 'rotate(-90 14 ' + ((Y0 + Y1) / 2) + ')' }, 'effective size (log)');
-    svg.appendChild(yl);
+    svg.appendChild(vtitle(14, (Y0 + Y1) / 2, { 'text-anchor': 'middle', class: 'lab' }, 'effective size (log)'));
     // group strip
     var strip = groupSteps(lam, T, pat, N0);
     strip.forEach(function(s, i){

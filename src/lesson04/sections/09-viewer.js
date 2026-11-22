@@ -239,8 +239,11 @@
     yt.minor.forEach(function(t){ var y = sy(t.v).toFixed(1); svg += '<line x1="' + (L - 4) + '" x2="' + L + '" y1="' + y + '" y2="' + y + '" style="' + AX + '"/>'; });
     svg += '<path d="M' + L + ' ' + T + 'V' + (T + PH) + 'H' + (L + PW) + '" style="' + AX + '"/>';
     svg += txt(L + PW / 2, H - 8, 'years ago (each file scaled with its own μ and g)', 'middle', ';fill:var(--fg);font-size:11.5px');
-    svg += '<text transform="translate(14 ' + (T + PH / 2).toFixed(1) + ') rotate(-90)" text-anchor="middle" style="' + TXT + ';fill:var(--fg);font-size:11.5px">' +
-      (state.view === 'rccr' ? 'relative cross-coalescence rate' : 'effective population size Nₑ') + '</text>';
+    // y-axis title read bottom-to-top, laid on a vertical path: looks like rotate(-90), and its box is measured where it is drawn
+    var yid = forFile ? 's09-ylab-file' : 's09-ylab';
+    svg += '<defs><path id="' + yid + '" d="M14 ' + (T + PH / 2 + 1000).toFixed(1) + 'V' + (T + PH / 2 - 1000).toFixed(1) + '"/></defs>' +
+      '<text text-anchor="middle" style="' + TXT + ';fill:var(--fg);font-size:11.5px"><textPath href="#' + yid + '" startOffset="50%">' +
+      (state.view === 'rccr' ? 'relative cross-coalescence rate' : 'effective population size Nₑ') + '</textPath></text>';
 
     // steps: level until the start of the next interval, then up or down
     function draw(s){

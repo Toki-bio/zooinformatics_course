@@ -1838,6 +1838,15 @@ the same MSMC2 row for a species with g = 3 years:
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's01-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function fmtN(n){ return Math.round(n).toLocaleString('en-US'); }
   function fmtT(t){ return t >= 1e6 ? (t / 1e6).toFixed(t >= 1e7 ? 0 : 1) + 'M' : t >= 1000 ? Math.round(t / 1000) + 'k' : String(Math.round(t)); }
   function fmtBp(bp){ return bp >= 1e6 ? (bp / 1e6).toFixed(1) + ' Mb' : bp >= 1000 ? (bp / 1000).toFixed(bp >= 1e4 ? 0 : 1) + ' kb' : Math.round(bp) + ' bp'; }
@@ -1961,7 +1970,7 @@ the same MSMC2 row for a species with g = 3 years:
       svg.appendChild(mk('line', { x1: X0, x2: X0 + PW, y1: zy(T), y2: zy(T), 'class': 'grid' }));
       svg.appendChild(mk('text', { x: X0 - 8, y: zy(T) + 4, 'text-anchor': 'end' }, fmtT(T)));
     });
-    svg.appendChild(mk('text', { x: 14, y: yz + hz / 2, transform: 'rotate(-90 14 ' + (yz + hz / 2) + ')', 'text-anchor': 'middle' }, 'TMRCA (gen.)'));
+    svg.appendChild(vtitle(14, yz + hz / 2, { 'text-anchor': 'middle' }, 'TMRCA (gen.)'));
     // find first segment in zoom
     var lo = 0, hi = nSeg - 1;
     while (lo < hi){ var m = (lo + hi + 1) >> 1; if (segStart[m] <= zs) lo = m; else hi = m - 1; }
@@ -2354,7 +2363,7 @@ the same MSMC2 row for a species with g = 3 years:
       host.replaceChildren(svg);
     }
     function fig5(){
-      var host = el('s01-cz-f5'), W = width(host), H = 300, yB = 262, yT = 14, sc = (yB - yT) / 5, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'A tree of four copies with mutations marked as crosses on the branches. A and B share a recent ancestor and differ by few mutations; A and C are joined only at the root and differ by many.' });
+      var host = el('s01-cz-f5'), W = width(host), H = 304, yB = 262, yT = 14, sc = (yB - yT) / 5, svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'A tree of four copies with mutations marked as crosses on the branches. A and B share a recent ancestor and differ by few mutations; A and C are joined only at the root and differ by many.' });
       svg.style.minWidth = '300px';
       var x = [0.14, 0.36, 0.62, 0.86].map(function(f){ return f * W; }), tAB = 1.2, tCD = 2.4, tR = 5;
       var xAB = (x[0] + x[1]) / 2, xCD = (x[2] + x[3]) / 2, xR = (xAB + xCD) / 2;
@@ -3001,6 +3010,15 @@ the same MSMC2 row for a species with g = 3 years:
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's03-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   var W = 960, X0 = 74, X1 = 940, Y0 = 18, Y1 = 318, XMIN = 3, XMAX = 7, YMIN = Math.log10(300), YMAX = Math.log10(5e6);
   function xp(t){ var l = Math.log10(Math.max(t, 1)); return X0 + (Math.min(Math.max(l, XMIN), XMAX) - XMIN) / (XMAX - XMIN) * (X1 - X0); }
   function yp(N){ var l = Math.log10(Math.max(N, 1)); return Y1 - (Math.min(Math.max(l, YMIN), YMAX) - YMIN) / (YMAX - YMIN) * (Y1 - Y0); }
@@ -3062,8 +3080,7 @@ the same MSMC2 row for a species with g = 3 years:
     });
     svg.appendChild(mk('rect', { x: X0, y: Y0, width: X1 - X0, height: Y1 - Y0, fill: 'none', stroke: css('--muted'), 'stroke-width': 1 }));
     svg.appendChild(mk('text', { x: (X0 + X1) / 2, y: 404, 'text-anchor': 'middle', class: 'lab' }, 'years ago (toy: 1 generation = 1 year)'));
-    var yl = mk('text', { x: 14, y: (Y0 + Y1) / 2, 'text-anchor': 'middle', class: 'lab', transform: 'rotate(-90 14 ' + ((Y0 + Y1) / 2) + ')' }, 'effective size (log)');
-    svg.appendChild(yl);
+    svg.appendChild(vtitle(14, (Y0 + Y1) / 2, { 'text-anchor': 'middle', class: 'lab' }, 'effective size (log)'));
     // group strip
     var strip = groupSteps(lam, T, pat, N0);
     strip.forEach(function(s, i){
@@ -3744,13 +3761,15 @@ the same MSMC2 row for a species with g = 3 years:
   var xt = [[1e3,'1 ky'],[1e4,'10 ky'],[1e5,'100 ky'],[1e6,'1 My'],[1e7,'10 My'],[1e8,'100 My']];
   var yt = [[1e3,'1k'],[1e4,'10k'],[1e5,'100k'],[1e6,'1M']];
   xt.forEach(function(t){ mk('line', { x1: sx(t[0]), x2: sx(t[0]), y1: T, y2: H - B, 'class': 'grid' }, svg);
-    var tx = mk('text', { x: sx(t[0]), y: H - B + 16, 'text-anchor': t[0] === 1e8 ? 'end' : 'middle' }, svg); tx.textContent = t[1]; });
+    var tx = mk('text', { x: sx(t[0]), y: H - B + 20, 'text-anchor': t[0] === 1e8 ? 'end' : 'middle' }, svg); tx.textContent = t[1]; });
   yt.forEach(function(t){ mk('line', { x1: L, x2: W - R, y1: sy(t[0]), y2: sy(t[0]), 'class': 'grid' }, svg);
     var tx = mk('text', { x: L - 6, y: sy(t[0]) + 4, 'text-anchor': 'end' }, svg); tx.textContent = t[1]; });
   mk('rect', { x: L, y: T, width: W - L - R, height: H - T - B, 'class': 'ax' }, svg);
   var xl = mk('text', { x: (L + W - R) / 2, y: H - 8, 'text-anchor': 'middle', 'class': 'lab' }, svg); xl.textContent = 'years ago (log scale)';
-  var yl = mk('text', { x: 14, y: (T + H - B) / 2, 'text-anchor': 'middle', 'class': 'lab',
-    transform: 'rotate(-90 14 ' + ((T + H - B) / 2) + ')' }, svg); yl.textContent = 'effective population size (log)';
+  // y-axis title read bottom-to-top, laid on a vertical path: looks like rotate(-90), and its box is measured where it is drawn
+  mk('path', { id: 's04-ylab', d: 'M14 ' + ((T + H - B) / 2 + 1000) + 'V' + ((T + H - B) / 2 - 1000) }, defs);
+  var yl = mk('textPath', { href: '#s04-ylab', startOffset: '50%' }, mk('text', { 'text-anchor': 'middle', 'class': 'lab' }, svg));
+  yl.textContent = 'effective population size (log)';
 
   var plot = mk('g', { 'clip-path': 'url(#s04-clip)' }, svg);
   var envG = mk('g', {}, plot);
@@ -3857,6 +3876,15 @@ the same MSMC2 row for a species with g = 3 years:
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's05-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function fmtInt(x){ return Math.round(x).toLocaleString('en-US'); }
   function fmtYears(y){
     if (y >= 1e6) return (y / 1e6).toFixed(y >= 1e7 ? 0 : 1) + ' My';
@@ -3893,7 +3921,7 @@ the same MSMC2 row for a species with g = 3 years:
     var st = { samp: 's' };
     var ctl = { n: el('s05-n'), m: el('s05-m'), N: el('s05-N') };
     var T0 = 0.003, T1 = 300;
-    var X0 = 70, PW = 860, W = 960, Y0 = 26, PH = 250;
+    var X0 = 76, PW = 854, W = 960, Y0 = 26, PH = 250;
     function xp(t){ return X0 + (Math.log10(t) - Math.log10(T0)) / (Math.log10(T1) - Math.log10(T0)) * PW; }
 
     function legend(){
@@ -3976,8 +4004,7 @@ the same MSMC2 row for a species with g = 3 years:
       svg.appendChild(mk('text', { x: X0 - 8, y: Y0 + PH + 15, 'text-anchor': 'end', fill: css('--muted') }, '2N gen.'));
       svg.appendChild(mk('text', { x: X0 - 8, y: Y0 + PH + 31, 'text-anchor': 'end', fill: css('--muted') }, 'years'));
       svg.appendChild(mk('text', { x: X0 + PW / 2, y: Y0 + PH + 50, 'text-anchor': 'middle', 'class': 'lab' }, 'time before present (upper row: units of 2N generations; lower row: years for the island size set above, g = 1 yr) →'));
-      var yl = mk('text', { x: 16, y: Y0 + PH / 2, 'text-anchor': 'middle', transform: 'rotate(-90 16 ' + (Y0 + PH / 2) + ')', 'class': 'lab' }, 'apparent size (units of one island, N)');
-      svg.appendChild(yl);
+      svg.appendChild(vtitle(16, Y0 + PH / 2, { 'text-anchor': 'middle', 'class': 'lab' }, 'apparent size (units of one island, N)'));
       // reference lines
       [[1, 'one island (N)'], [n, 'all islands (nN = ' + n + 'N)']].forEach(function(r){
         var yy = yp(r[0]);
@@ -4493,7 +4520,7 @@ the same MSMC2 row for a species with g = 3 years:
 
   // ---- strip: first 300 blocks (30 Mb)
   function drawStrip(o, mask){
-    var W = 960, H = 140, X0 = 78, PW = 870, NS_ = 300, bw = PW / NS_;
+    var W = 960, H = 148, X0 = 78, PW = 870, NS_ = 300, bw = PW / NS_;
     var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Het count per 100-kb block along the first 30 Mb of the toy genome' });
     svg.style.minWidth = '640px';
     svg.appendChild(mk('text', { x: X0, y: 14, 'class': 'lab' }, 'The het mosaic: first 30 Mb, observed hets per kb in each 100-kb block'));
@@ -4509,12 +4536,12 @@ the same MSMC2 row for a species with g = 3 years:
       svg.appendChild(r);
       var fpH = Math.min(o.fpk[i] / 100, ymax) / ymax * h;
       if (fpH > 0.3) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: (y0 + h - bh).toFixed(2), width: Math.max(bw - 0.4, 0.6).toFixed(2), height: Math.min(fpH, bh).toFixed(2), fill: css('--err') }));
-      if (o.isRoh[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 4, width: bw.toFixed(2), height: 5, fill: css('--accent') }));
-      if (mask && mask[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 15, width: bw.toFixed(2), height: 5, fill: css('--fg') }));
+      if (o.isRoh[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 8, width: bw.toFixed(2), height: 5, fill: css('--accent') }));
+      if (mask && mask[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 23, width: bw.toFixed(2), height: 5, fill: css('--fg') }));
     }
-    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 10, 'text-anchor': 'end' }, 'true ROH'));
-    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 21, 'text-anchor': 'end' }, 'masked'));
-    [0, 10, 20, 30].forEach(function(mb){ svg.appendChild(mk('text', { x: X0 + mb * 10 * bw, y: H - 2, 'text-anchor': mb === 0 ? 'start' : (mb === 30 ? 'end' : 'middle') }, mb + ' Mb')); });
+    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 10.5, 'text-anchor': 'end', 'dominant-baseline': 'central' }, 'true ROH'));
+    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 25.5, 'text-anchor': 'end', 'dominant-baseline': 'central' }, 'masked'));
+    [0, 10, 20, 30].forEach(function(mb){ svg.appendChild(mk('text', { x: X0 + mb * 10 * bw, y: H - 4, 'text-anchor': mb === 0 ? 'start' : (mb === 30 ? 'end' : 'middle') }, mb + ' Mb')); });
     el('s06-strip').replaceChildren(svg);
   }
 
@@ -4807,7 +4834,8 @@ the same MSMC2 row for a species with g = 3 years:
       var y = yp(NA * th[0]);
       if (y < y0 || y > y0 + h) return;
       svg.appendChild(mk('line', { x1: X0, y1: y, x2: X0 + PW, y2: y, stroke: css('--muted'), 'stroke-width': 1, 'stroke-dasharray': th[0] === 1 ? '' : '2 4' }));
-      svg.appendChild(mk('text', { x: X0 + PW - 2, y: y - 3, 'text-anchor': 'end' }, th[1]));
+      // the 1.5 × line is only log10(1.5) above the ancestral line, so the ancestral label goes below its line
+      svg.appendChild(mk('text', { x: X0 + PW - 2, y: th[0] === 1 ? y + 14 : y - 3, 'text-anchor': 'end' }, th[1]));
     });
     function exactPath(r){
       var d = '', started = false;
@@ -4925,6 +4953,15 @@ the same MSMC2 row for a species with g = 3 years:
     if (txt != null) e.textContent = txt;
     return e;
   }
+  // y-axis title read bottom-to-top, laid on a vertical path through (x, yc): looks like rotate(-90), and its box is measured where it is drawn
+  var vtN = 0;
+  function vtitle(x, yc, attrs, txt){
+    var id = 's08-vt' + (++vtN), g = mk('g', {}), defs = mk('defs', {}), t = mk('text', attrs);
+    defs.appendChild(mk('path', { id: id, d: 'M' + x + ' ' + (yc + 1000) + 'V' + (yc - 1000) }));
+    t.appendChild(mk('textPath', { href: '#' + id, startOffset: '50%' }, txt));
+    g.appendChild(defs); g.appendChild(t);
+    return g;
+  }
   function esc(s){ return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
 
   /* ---------------- 1. figure: bad vs reportable ---------------- */
@@ -5023,7 +5060,7 @@ the same MSMC2 row for a species with g = 3 years:
       ticksX.forEach(function(t){
         var x = px(t);
         gx.appendChild(mk('line', { x1: x, x2: x, y1: T, y2: T + PH, 'class': 'grid' }));
-        gx.appendChild(mk('text', { x: x, y: T + PH + 16, 'text-anchor': 'middle' }, sc ? fmtE(t) : fmtN(t)));
+        gx.appendChild(mk('text', { x: x, y: T + PH + 20, 'text-anchor': 'middle' }, sc ? fmtE(t) : fmtN(t)));
       });
       ticksY.forEach(function(t){
         var y = py(t);
@@ -5055,8 +5092,7 @@ the same MSMC2 row for a species with g = 3 years:
         var ttl = sc ? 'Toy PSMC curve in scaled units (no μ or g needed)' : 'Toy PSMC curve · μ = 5.4×10⁻⁹ per site per generation, g = ' + g + ' yr';
         svg.appendChild(mk('text', { x: L, y: 22, 'class': 'lab' }, ttl));
         svg.appendChild(mk('text', { x: L + PW / 2, y: H - 12, 'text-anchor': 'middle', 'class': 'lab' }, sc ? 'pairwise divergence d = 2μT per bp (time)' : 'years ago' + (lg ? ' (log scale)' : '')));
-        var yl = mk('text', { x: 16, y: T + PH / 2, 'text-anchor': 'middle', 'class': 'lab', transform: 'rotate(-90 16 ' + (T + PH / 2) + ')' }, sc ? 'θ = 4·Ne·μ per bp' : 'effective population size Ne' + (lg ? ' (log)' : ''));
-        svg.appendChild(yl);
+        svg.appendChild(vtitle(16, T + PH / 2, { 'text-anchor': 'middle', 'class': 'lab' }, sc ? 'θ = 4·Ne·μ per bp' : 'effective population size Ne' + (lg ? ' (log)' : '')));
       } else {
         svg.appendChild(mk('text', { x: L + PW / 2, y: H - 12, 'text-anchor': 'middle', 'class': 'lab' }, 'time'));
         svg.appendChild(mk('text', { x: 16, y: T + PH / 2, 'text-anchor': 'middle', 'class': 'lab', transform: 'rotate(-90 16 ' + (T + PH / 2) + ')' }, 'Ne'));
@@ -5485,8 +5521,11 @@ the same MSMC2 row for a species with g = 3 years:
     yt.minor.forEach(function(t){ var y = sy(t.v).toFixed(1); svg += '<line x1="' + (L - 4) + '" x2="' + L + '" y1="' + y + '" y2="' + y + '" style="' + AX + '"/>'; });
     svg += '<path d="M' + L + ' ' + T + 'V' + (T + PH) + 'H' + (L + PW) + '" style="' + AX + '"/>';
     svg += txt(L + PW / 2, H - 8, 'years ago (each file scaled with its own μ and g)', 'middle', ';fill:var(--fg);font-size:11.5px');
-    svg += '<text transform="translate(14 ' + (T + PH / 2).toFixed(1) + ') rotate(-90)" text-anchor="middle" style="' + TXT + ';fill:var(--fg);font-size:11.5px">' +
-      (state.view === 'rccr' ? 'relative cross-coalescence rate' : 'effective population size Nₑ') + '</text>';
+    // y-axis title read bottom-to-top, laid on a vertical path: looks like rotate(-90), and its box is measured where it is drawn
+    var yid = forFile ? 's09-ylab-file' : 's09-ylab';
+    svg += '<defs><path id="' + yid + '" d="M14 ' + (T + PH / 2 + 1000).toFixed(1) + 'V' + (T + PH / 2 - 1000).toFixed(1) + '"/></defs>' +
+      '<text text-anchor="middle" style="' + TXT + ';fill:var(--fg);font-size:11.5px"><textPath href="#' + yid + '" startOffset="50%">' +
+      (state.view === 'rccr' ? 'relative cross-coalescence rate' : 'effective population size Nₑ') + '</textPath></text>';
 
     // steps: level until the start of the next interval, then up or down
     function draw(s){

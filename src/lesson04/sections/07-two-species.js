@@ -189,7 +189,8 @@
       var y = yp(NA * th[0]);
       if (y < y0 || y > y0 + h) return;
       svg.appendChild(mk('line', { x1: X0, y1: y, x2: X0 + PW, y2: y, stroke: css('--muted'), 'stroke-width': 1, 'stroke-dasharray': th[0] === 1 ? '' : '2 4' }));
-      svg.appendChild(mk('text', { x: X0 + PW - 2, y: y - 3, 'text-anchor': 'end' }, th[1]));
+      // the 1.5 × line is only log10(1.5) above the ancestral line, so the ancestral label goes below its line
+      svg.appendChild(mk('text', { x: X0 + PW - 2, y: th[0] === 1 ? y + 14 : y - 3, 'text-anchor': 'end' }, th[1]));
     });
     function exactPath(r){
       var d = '', started = false;

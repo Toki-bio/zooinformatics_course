@@ -120,7 +120,7 @@
 
   // ---- strip: first 300 blocks (30 Mb)
   function drawStrip(o, mask){
-    var W = 960, H = 140, X0 = 78, PW = 870, NS_ = 300, bw = PW / NS_;
+    var W = 960, H = 148, X0 = 78, PW = 870, NS_ = 300, bw = PW / NS_;
     var svg = mk('svg', { viewBox: '0 0 ' + W + ' ' + H, width: '100%', role: 'img', 'aria-label': 'Het count per 100-kb block along the first 30 Mb of the toy genome' });
     svg.style.minWidth = '640px';
     svg.appendChild(mk('text', { x: X0, y: 14, 'class': 'lab' }, 'The het mosaic: first 30 Mb, observed hets per kb in each 100-kb block'));
@@ -136,12 +136,12 @@
       svg.appendChild(r);
       var fpH = Math.min(o.fpk[i] / 100, ymax) / ymax * h;
       if (fpH > 0.3) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: (y0 + h - bh).toFixed(2), width: Math.max(bw - 0.4, 0.6).toFixed(2), height: Math.min(fpH, bh).toFixed(2), fill: css('--err') }));
-      if (o.isRoh[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 4, width: bw.toFixed(2), height: 5, fill: css('--accent') }));
-      if (mask && mask[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 15, width: bw.toFixed(2), height: 5, fill: css('--fg') }));
+      if (o.isRoh[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 8, width: bw.toFixed(2), height: 5, fill: css('--accent') }));
+      if (mask && mask[i]) svg.appendChild(mk('rect', { x: (X0 + i * bw).toFixed(2), y: y0 + h + 23, width: bw.toFixed(2), height: 5, fill: css('--fg') }));
     }
-    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 10, 'text-anchor': 'end' }, 'true ROH'));
-    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 21, 'text-anchor': 'end' }, 'masked'));
-    [0, 10, 20, 30].forEach(function(mb){ svg.appendChild(mk('text', { x: X0 + mb * 10 * bw, y: H - 2, 'text-anchor': mb === 0 ? 'start' : (mb === 30 ? 'end' : 'middle') }, mb + ' Mb')); });
+    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 10.5, 'text-anchor': 'end', 'dominant-baseline': 'central' }, 'true ROH'));
+    svg.appendChild(mk('text', { x: X0 - 8, y: y0 + h + 25.5, 'text-anchor': 'end', 'dominant-baseline': 'central' }, 'masked'));
+    [0, 10, 20, 30].forEach(function(mb){ svg.appendChild(mk('text', { x: X0 + mb * 10 * bw, y: H - 4, 'text-anchor': mb === 0 ? 'start' : (mb === 30 ? 'end' : 'middle') }, mb + ' Mb')); });
     el('s06-strip').replaceChildren(svg);
   }
 
