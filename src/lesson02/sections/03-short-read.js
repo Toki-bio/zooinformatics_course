@@ -281,4 +281,60 @@
     mIn.addEventListener('input', draw); hIn.addEventListener('input', draw); qIn.addEventListener('input', draw);
     draw();
   })();
+  /* ================= 4. mate pair: circle, junction, read categories ================= */
+  (function(){
+    var fig = $('s03-mp-fig'); if(!fig) return;
+    var sIn = $('s03-mp-s'), jIn = $('s03-mp-j'), out = $('s03-mp-out');
+    var A = 'var(--accent)', B = 'var(--het)', J = 'var(--bad)', M = 'var(--muted)', L = 'var(--line)';
+    var RL = 150, JL = 38, MIN = 25;
+    function rect(x,y,w,h,c,o){ return '<rect x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" rx="2" fill="'+c+'"'+(o?' opacity="'+o+'"':'')+'/>'; }
+    function txt(x,y,s,a){ return '<text x="'+x+'" y="'+y+'"'+(a?' text-anchor="'+a+'"':'')+'>'+s+'</text>'; }
+    function arrow(x1,x2,y,c){ var d = x2 > x1 ? -7 : 7; return '<path d="M'+x1+' '+y+'H'+x2+'M'+(x2+d)+' '+(y-5)+'L'+x2+' '+y+'L'+(x2+d)+' '+(y+5)+'" fill="none" stroke="'+c+'" stroke-width="3"/>'; }
+    function category(j){
+      if(j >= RL) return {n:'unknown', t:'no junction seen in the read: usually a mate pair, sometimes a piece without a junction', a:RL, b:0, u:true};
+      var a = j, b = Math.max(0, RL - j - JL);
+      var aok = a >= MIN, bok = b >= MIN;
+      if(aok && bok) return {n:'mp + pe', t:'the junction is in the middle: the read is split into a long-distance part and a short-distance part', a:a, b:b};
+      if(aok) return {n:'mp', t:'the junction is near the end: the part before it is kept as a mate pair', a:a, b:b};
+      return {n:'pe', t:'the junction is at the start: only the part behind it is left, an ordinary short pair', a:a, b:b};
+    }
+    function draw(){
+      var st = +sIn.value, j = +jIn.value;
+      $('s03-mp-so').textContent = st; $('s03-mp-jo').textContent = j >= RL ? 'none in read 1' : j + 1;
+      jIn.disabled = st !== 4;
+      var s = '<svg viewBox="0 0 900 190" width="100%" style="min-width:700px" role="img" aria-label="Mate-pair library, step '+st+' of 5">';
+      var T = '', R = '';
+      if(st === 1){
+        T = 'A long piece of DNA, about 9,000 bases. An enzyme cuts the DNA and puts a 19-base adapter carrying biotin on each end.';
+        s += rect(80,80,20,16,J) + rect(100,80,170,16,A) + rect(270,80,360,16,L) + rect(630,80,170,16,B) + rect(800,80,20,16,J);
+        s += txt(185,70,'one end','middle') + txt(715,70,'other end','middle') + txt(90,120,'adapter','middle') + txt(810,120,'adapter','middle') + txt(450,120,'about 9,000 bases','middle');
+      } else if(st === 2){
+        T = 'The two ends are joined: a circle. The two adapters now lie side by side and form the junction (38 bases).';
+        s += '<circle cx="450" cy="100" r="72" fill="none" stroke="'+L+'" stroke-width="14"/>';
+        s += '<path d="M450 28A72 72 0 0 0 387.6 64" fill="none" stroke="'+A+'" stroke-width="14"/><path d="M450 28A72 72 0 0 1 512.4 64" fill="none" stroke="'+B+'" stroke-width="14"/>';
+        s += rect(441,20,18,16,J) + txt(450,14,'junction','middle') + txt(372,52,'one end','end') + txt(528,52,'other end');
+      } else if(st === 3){
+        T = 'The circle is broken into pieces of a few hundred bases. Pieces with biotin, that is with the junction, are fished out. Some pieces without it slip through.';
+        s += rect(120,60,150,16,A) + rect(270,60,26,16,J) + rect(296,60,150,16,B) + txt(283,48,'kept: contains the junction','middle');
+        [[560,60,180],[560,95,220],[120,120,200],[370,120,160]].forEach(function(q){ s += rect(q[0],q[1],q[2],16,L); });
+        s += txt(650,48,'no junction: washed away, or not','middle');
+      } else if(st === 4){
+        var k = category(j); var x0 = 150, sc = 1.0, x1 = 750, jx = x0 + Math.min(j, 300);
+        T = 'Both ends of the kept piece are read, 150 bases each, inward. Read 1 starts in one end of the long piece; behind the junction it continues in the other end.';
+        if(j >= RL) jx = 430;
+        s += rect(x0,86,jx-x0,16,A) + rect(jx,86,JL,16,J) + rect(jx+JL,86,x1-jx-JL,16,B) + txt(jx+JL/2,124,'junction','middle');
+        s += arrow(x0, x0+RL, 66, 'var(--fg)') + txt(x0,54,'read 1') + arrow(x1, x1-RL, 66, 'var(--fg)') + txt(x1,54,'read 2','end');
+        s += txt(x0,160,'kept from read 1: ' + (k.u ? '150 bases' : (k.a >= MIN ? k.a+' before the junction' : 'nothing before the junction') + (k.b >= MIN ? ', '+k.b+' behind it' : '')));
+        R = '<div>NxTrim name<b>'+k.n+'</b></div><div>why<b style="font-weight:400">'+k.t+'</b></div>';
+      } else {
+        T = 'On the genome the two reads lie about 9,000 bases apart and point away from each other. Reads turned round by the trimming tool point inward.';
+        s += rect(60,100,780,8,L) + rect(120,96,80,16,A) + rect(700,96,80,16,B);
+        s += arrow(200,120,80,A) + arrow(700,780,80,B) + txt(160,68,'read 1','middle') + txt(740,68,'read 2','middle');
+        s += '<path d="M120 140H780M120 134V146M780 134V146" fill="none" stroke="'+M+'"/>' + txt(450,160,'about 9,000 bases','middle');
+      }
+      s += '</svg>'; fig.innerHTML = s;
+      out.innerHTML = '<div>step '+st+'<b style="font-weight:400">'+T+'</b></div>' + R;
+    }
+    sIn.addEventListener('input', draw); jIn.addEventListener('input', draw); draw();
+  })();
 })();

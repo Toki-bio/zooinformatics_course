@@ -131,13 +131,45 @@ try A→G   TTGC<span class="a">G</span> 30   TGC<span class="a">G</span>T 28   
 
   <!-- ===== PAIRS ===== -->
   <h3 id="s03-pe-h">Read pairs, insert size and scaffolds</h3>
-  <p>Both ends of each DNA fragment are read, so the two reads of a pair lie a known distance apart. The <dfn>insert size</dfn> (or fragment size) is the length of the fragment, both reads included. A normal <dfn>paired-end</dfn> library has fragments of about 300–600 bases, the two reads facing each other. A <dfn>mate-pair</dfn> (jumping) library is made by circularising long fragments, 2–10 kb or more, and reading across the junction; it needs much more DNA and lab work. The <i>Galemys</i> genome used both: paired-end libraries of 350 and 550 bases and mate pairs of 5 and 9 kb.</p>
+  <p>Both ends of each DNA fragment are read, so the two reads of a pair lie a known distance apart. The <dfn>insert size</dfn> (or fragment size) is the length of the fragment, both reads included. A normal <dfn>paired-end</dfn> library has fragments of about 300–600 bases, the two reads facing each other. A <dfn>mate-pair</dfn> (jumping) library brings the two ends of a long fragment, 2–12 kb, into one short piece by way of a circle (<a href="#s03-mp-h">explained below</a>); it needs much more DNA and lab work. The <i>Galemys</i> genome used both: paired-end libraries of 350 and 550 bases and mate pairs of 5 and 9 kb.</p>
   <div class="toy">contig 1 ────────────────────────────▶          contig 2 ─────────────────────────▶
                read 1 ──▶                                  ◀── read 2
                |←────────── insert size ≈ 9,000 (from the library) ───────────→|
 scaffold ──────────────────────────────<span class="x">NNNNNNNNNN</span>──────────────────────────────</div>
+  <p class="tool-note">The arrows show the mate pair after trimming, when the reads have been turned to face each other.</p>
   <p>Pairs do three jobs. (1) Inside the graph they choose between branches: if read 1 lies in the left unique contig, read 2 tells which exit from a repeat is right (SPAdes and ABySS do this; MaSuRCA merges the two reads of a pair into one longer "super-read" when a unique path joins them). (2) <dfn>Scaffolding</dfn>: pairs whose reads fall in two different contigs order and orient those contigs. (3) The distance between the reads gives an estimate of the gap size, written as that many N. Some tools write a fixed number of N when the size is unknown, so an N-run is not always a measured gap size (section 06). ABySS uses mate-pair libraries (<code>mp=</code>) only for scaffolding; they "do not contribute towards the consensus sequence".</p>
   <div class="note"><b>In our projects: N-runs of fixed length and doubled SINE copies.</b> <i>Galemys</i> (ABySS) has 17,284 runs of exactly 50 N, 64 % of them touching a Tal SINE. The published <i>Desmana moschata</i> assembly (GCA_051107935.1) was built from SPAdes 4.0 (k = 99) and MaSuRCA 4.1 contigs, then joined onto the <i>Galemys</i> genome with <span class="tip" title="A tool that orders and joins contigs by aligning them to a related species' genome; see section 05">RagTag</span> 2.1. Almost all of its N-runs are exactly 100 N, RagTag's placeholder for an unknown gap. At those joins the MaSuRCA contigs on both sides often each contained the whole SINE copy, so the same ~250-base copy is written twice with 100 N between: thousands of doubled copies genome-wide. Reference-guided joining copies the neighbour's order and cannot see such overlaps.</div>
+
+  <!-- ===== MATE PAIRS ===== -->
+  <h3 id="s03-mp-h">What a mate pair really is: the circle and the junction</h3>
+  <p>A sequencer can only read the ends of short pieces, a few hundred bases. A mate-pair library gets the two ends of a <b>long</b> piece into one short piece by making a circle. The steps below are those of the Nextera mate-pair kit (<a href="https://doi.org/10.1093/bioinformatics/btt702">Leggett et al. 2014</a>, the NextClip paper; <a href="https://doi.org/10.1093/bioinformatics/btv057">O'Connell et al. 2015</a>, the NxTrim paper).</p>
+
+  <section class="tool explain" aria-labelledby="s03-mp-t">
+    <div class="tool-head"><span class="tool-tag">Try it</span><h3 id="s03-mp-t">From a 9-kb piece to two reads</h3></div>
+    <p class="tool-note">Move the first slider through the five steps. At step 4 move the second slider: it sets where the <dfn>junction</dfn> (the two joined adapters, 38 bases) falls in read 1. Blue and orange are the two ends of the long piece.</p>
+    <div class="controls">
+      <label for="s03-mp-s">step <output id="s03-mp-so">1</output><input type="range" id="s03-mp-s" min="1" max="5" step="1" value="1"></label>
+      <label for="s03-mp-j">junction starts at base <output id="s03-mp-jo">80</output> of read 1<input type="range" id="s03-mp-j" min="0" max="160" step="5" value="80"></label>
+    </div>
+    <div class="svgbox" id="s03-mp-fig"></div>
+    <div class="readout" id="s03-mp-out"></div>
+    <p class="tool-note">Toy numbers: reads of 150 bases, pieces shorter than 25 bases are thrown away. The names are those of NxTrim, which also has a group <code>se</code> for single reads.</p>
+  </section>
+
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Paired-end</th><th>Mate pair</th></tr></thead>
+    <tbody>
+      <tr><td><b>Distance between the reads</b></td><td>about 300–600 bases</td><td>2–12 kb</td></tr>
+      <tr><td><b>Direction</b></td><td>the reads face each other (inward)</td><td>the reads face away from each other (outward); NxTrim turns them round by default, so after trimming they look inward</td></tr>
+      <tr><td><b>Foreign sequence inside reads</b></td><td>only if the piece is shorter than the read</td><td>the junction can lie anywhere in a read; past it the read continues in the <b>other end</b> of the long piece</td></tr>
+      <tr><td><b>Wrong pairs</b></td><td>few</td><td>pieces without a junction (the enrichment is imperfect): ordinary short inward pairs; and <span class="tip" title="Chimera: a molecule made of two pieces that were not neighbours in the genome, for example when two long pieces are joined into one circle">chimeras</span></td></tr>
+      <tr><td><b><span class="tip" title="Duplicates: several read pairs copied from the same original molecule by PCR. They add no new information, but they look like more coverage">Duplicates</span></b></td><td>few in a PCR-free library</td><td>often many: few long molecules survive the steps and are then amplified</td></tr>
+    </tbody>
+  </table></div>
+
+  <p><b>Why assemblers use them for order and distance, not for sequence.</b> The ABySS manual states the rule without a reason; these are the reasons that follow from the table (our reasoning). A junction left in a read makes two places kilobases apart look like neighbours, which is a false edge in the k-mer graph. A read cut at the junction is often shorter than k and then gives no k-mer at all. Duplicates make the k-mer counts of some places too high. And the same animal usually has far more paired-end data, so in unique sequence the mate-pair bases add almost nothing. The value of a mate pair is its distance.</p>
+  <p><b>What is lost.</b> Inside a gap this rule throws away information: if one read of a pair lies in unique sequence beside the gap, the other read may lie <b>in</b> the gap, and the distance says where. Using such reads safely is hard, because a gap usually exists where the sequence is a repeat, and a read from another copy looks the same.</p>
+  <div class="note"><b>A published example: <i>Galemys pyrenaicus</i></b> (<a href="https://doi.org/10.1111/eva.13249">Escoda &amp; Castresana 2021</a>). Three PCR-free paired-end libraries and mate pairs of 5 and 9 kb, ABySS 2.1.5, k = 100. The authors' <a href="https://doi.org/10.5061/dryad.3r2280gd9">deposited commands</a> give ABySS the three paired-end libraries as <code>lib</code> and the two mate-pair libraries only as <code>mp</code>: the contigs contain no mate-pair bases, and 10 pairs were required for a scaffold link (<code>N=10</code>). They sorted the mate pairs with NxTrim and kept only the pairs in which <b>no</b> junction was found (the group "unknown"), because this gave the best first assemblies. Short reads were then removed: below 100 bases for mate pairs in the commands (the text says 150). The NextClip authors write that users would typically take the opposite pairs, those in which the junction <b>was</b> seen; pairs without it can be ordinary short fragments. Our reading: one choice wants full-length reads, the other wants proof of the distance.</div>
 
   <!-- ===== TOOLS ===== -->
   <h3 id="s03-tools-h">Short-read assemblers today</h3>

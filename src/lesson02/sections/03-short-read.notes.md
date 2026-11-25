@@ -60,3 +60,11 @@ Copy buttons in `.code` are not wired by this JS (lesson page script wires `.cod
 - s07 (products): bubble popping -> pseudohaploid; Platanus-allee phased output; MaSuRCA primary/alternative.
 - s08/s10: comparing k runs by N50 + BUSCO.
 - Lesson 1: #gp (spectrum, trusted k-mers), #km, #vgp.
+
+## Mate pairs (added 2026-11-25)
+- Leggett et al. 2014 NextClip, https://doi.org/10.1093/bioinformatics/btt702 (main text opened): transposase attaches a 19 bp biotinylated adaptor to each end; circularisation joins the two; circles fragmented; biotin enrichment imperfect, so paired-end fragments without junction are sequenced; adaptor can occur anywhere in the read; users typically use categories A-C (adaptor seen); PCR duplicates and chimeric inserts named as problems; jumping libraries up to 12 kb (abstract).
+- O'Connell et al. 2015 NxTrim, https://doi.org/10.1093/bioinformatics/btv057 (main text and README opened): 38 bp junction; virtual libraries mp, pe, se, unknown; mp outward-facing, output reverse-complemented by default; adapter at the beginning of a read gives pe, in the middle a split read, unknown = mostly mate pairs with some paired-end contamination.
+- Escoda & Castresana 2021, https://doi.org/10.1111/eva.13249 (PMC8288019, Methods 2.1 and Results 3.2 read in the browser): libraries, NxTrim 'unknown' only, reads under 150 bp removed, ABySS 2.1.5, k = 100. The text does not say which libraries built contigs; the deposited commands do (Dryad doi 10.5061/dryad.3r2280gd9, file Galpyr_commands.txt, read 2026-11-25): abyss-pe k=100 n=10 s=1000 N=10 B=80G H=4 kc=2 lib='pe1 pe2 pe3' mp='mp1 mp2'; nxtrim --rf; fastp --length_required 100 on the mate-pair 'unknown' reads (150 on the paired-end reads).
+- ABySS 2.1.5 README: mate-pair libraries 'are used only for scaffolding and do not contribute towards the consensus sequence'. 50 N = max(estimate, 50): Scaffold/scaffold.cc of 2.1.5.
+- Our reasoning, marked so on the page: why assemblers keep mate-pair bases out; what is lost inside gaps. Toy numbers (150-base reads, 25-base minimum) are the toy's own; NxTrim's defaults were not used.
+- Interactive element 4, `s03-mp-*`: five steps and the junction position; categories follow the geometry: the part of read 1 before the junction with read 2 is a mate pair, the part behind it with read 2 is a short inward pair.

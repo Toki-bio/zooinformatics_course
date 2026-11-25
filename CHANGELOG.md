@@ -1,5 +1,8 @@
 # Changelog
 
+## 2026-11-25
+- Lesson 02 section 03: how a mate-pair library is made (circle, junction), a toy that follows the junction through a read, mate pairs against paired-end reads, and why assemblers use them for distance only. Section 01: the notes on mate pairs and on 50-N runs corrected.
+
 ## 2026-11-19
 - Lesson 04 section 09: a viewer that reads PSMC (`.psmc`, also main run + bootstraps) and MSMC/MSMC2 (`.final.txt`) result files in the browser, draws several at once, rescales each file with its own mutation rate and generation time, and saves SVG, PNG and TSV.
 
